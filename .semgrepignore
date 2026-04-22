@@ -1,0 +1,28 @@
+# Semgrep ignores — SpiderNet OS
+# Scanned by .github/workflows/security.yml
+
+# Dependencies
+**/vendor/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+
+# Build output
+**/dist/
+**/build/
+**/bootstrap/cache/
+**/storage/framework/
+**/storage/logs/
+
+# Tests (fixtures contain deliberately-bad patterns)
+**/tests/
+**/test_*.py
+**/*_test.go
+
+# Generated / migrations
+**/database/migrations/
+**/*.generated.*
+
+# Docs
+docs/
+*.md

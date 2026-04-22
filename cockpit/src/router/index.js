@@ -1,0 +1,150 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
+
+// ---------------------------------------------------------------------------
+// Eagerly-loaded user views (existing)
+// ---------------------------------------------------------------------------
+import Dashboard    from '../views/Dashboard.vue'
+import Agents       from '../views/Agents.vue'
+import Flows        from '../views/Flows.vue'
+import FlowBuilder  from '../views/FlowBuilder.vue'
+import Memory       from '../views/Memory.vue'
+import Usage        from '../views/Usage.vue'
+import Settings     from '../views/Settings.vue'
+import Login        from '../views/Login.vue'
+import Atlas        from '../views/Atlas.vue'
+import Approvals    from '../views/Approvals.vue'
+import Traces       from '../views/Traces.vue'
+import Intelligence from '../views/Intelligence.vue'
+
+// Lazy user views
+const AgentBuilder  = () => import('../views/AgentBuilder.vue')
+const Billing       = () => import('../views/Billing.vue')
+
+// Lazy shell / shared
+const Forbidden     = () => import('../views/Forbidden.vue')
+const NotFound      = () => import('../views/NotFound.vue')
+const Onboarding    = () => import('../views/Onboarding.vue')
+
+// Lazy admin views
+const AdminDashboard = () => import('../views/admin/AdminDashboard.vue')
+const AdminUsers     = () => import('../views/admin/AdminUsers.vue')
+const AdminAudit     = () => import('../views/admin/AdminAudit.vue')
+const AdminCopy      = () => import('../views/admin/AdminCopy.vue')
+
+// Lazy platform (super admin) views
+const PlatformOverview      = () => import('../views/platform/PlatformOverview.vue')
+const PlatformFeatureFlags  = () => import('../views/platform/PlatformFeatureFlags.vue')
+const PlatformRolloutUsageV2 = () => import('../views/platform/PlatformRolloutUsageV2.vue')
+const PlatformStateEngine   = () => import('../views/platform/PlatformStateEngine.vue')
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
+const routes = [
+  // Auth / public
+  { path: '/login',       name: 'Login',       component: Login,      meta: { guest: true } },
+  { path: '/onboarding',  name: 'Onboarding',  component: Onboarding, meta: { requiresAuth: true } },
+  { path: '/403',         name: 'Forbidden',   component: Forbidden },
+  { path: '/404',         name: 'NotFound',    component: NotFound },
+
+  // ---------------- USER SPACE ----------------
+  { path: '/',              name: 'Dashboard',     component: Dashboard,   meta: { requiresAuth: true } },
+  { path: '/atlas',         name: 'Atlas',         component: Atlas,       meta: { requiresAuth: true } },
+  { path: '/agents',        name: 'Agents',        component: Agents,      meta: { requiresAuth: true } },
+  { path: '/agents/new',    name: 'CreateAgent',   component: Agents,      meta: { requiresAuth: true, createMode: true } },
+  { path: '/agents/builder',             name: 'AgentBuilder',         component: AgentBuilder, meta: { requiresAuth: true } },
+  { path: '/agents/builder/:templateId', name: 'AgentBuilderTemplate', component: AgentBuilder, meta: { requiresAuth: true } },
+  { path: '/flows',         name: 'Flows',         component: Flows,       meta: { requiresAuth: true } },
+  { path: '/flows/new',     name: 'CreateFlow',    component: FlowBuilder, meta: { requiresAuth: true } },
+  { path: '/flows/:id',     name: 'FlowBuilder',   component: FlowBuilder, meta: { requiresAuth: true } },
+  { path: '/approvals',     name: 'Approvals',     component: Approvals,   meta: { requiresAuth: true } },
+  { path: '/traces',        name: 'Traces',        component: Traces,      meta: { requiresAuth: true } },
+  { path: '/intelligence',  name: 'Intelligence',  component: Intelligence,meta: { requiresAuth: true } },
+  { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },
+  { path: '/usage',         name: 'Usage',         component: Usage,       meta: { requiresAuth: true } },
+  { path: '/settings',      name: 'Settings',      component: Settings,    meta: { requiresAuth: true } },
+  { path: '/settings/usage',name: 'UsageSettings', component: Usage,       meta: { requiresAuth: true } },
+  { path: '/settings/automation-level', name: 'AutomationLevel', component: () => import('../views/settings/AutomationLevel.vue'), meta: { requiresAuth: true, capability: 'tenant.manage' } },
+  { path: '/billing',       name: 'Billing',       component: Billing,     meta: { requiresAuth: true } },
+
+  // ---------------- ADMIN SPACE ----------------
+  {
+    path: '/admin',
+    meta: { requiresAuth: true, roles: ['admin', 'super_admin'] },
+    children: [
+      { path: '',        name: 'AdminDashboard', component: AdminDashboard },
+      { path: 'users',   name: 'AdminUsers',     component: AdminUsers,  meta: { capability: 'users.manage' } },
+      { path: 'audit',   name: 'AdminAudit',     component: AdminAudit,  meta: { capability: 'audit.view' } },
+      { path: 'copy',    name: 'AdminCopy',      component: AdminCopy,   meta: { capability: 'copy.manage' } },
+      { path: 'budget',  name: 'AdminBudget',    component: Billing,     meta: { capability: 'budget.edit' } },
+    ],
+  },
+
+  // ---------------- PLATFORM SPACE (super admin) ----------------
+  {
+    path: '/platform',
+    meta: { requiresAuth: true, roles: ['super_admin'] },
+    children: [
+      { path: '',                   name: 'PlatformOverview',       component: PlatformOverview },
+      { path: 'feature-flags',      name: 'PlatformFeatureFlags',   component: PlatformFeatureFlags, meta: { stepUp: true, capability: 'flag.write' } },
+      { path: 'rollouts/usage-v2',  name: 'PlatformRolloutUsageV2', component: PlatformRolloutUsageV2, meta: { stepUp: true, capability: 'rollout.cutover' } },
+      { path: 'ste',                name: 'PlatformStateEngine',   component: PlatformStateEngine,   meta: { capability: 'ste.view' } },
+    ],
+  },
+
+  // Catch-all
+  { path: '/:pathMatch(.*)*', redirect: '/404' },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
+// ---------------------------------------------------------------------------
+// Guards
+// ---------------------------------------------------------------------------
+
+router.beforeEach((to, _from, next) => {
+  const auth = useAuthStore()
+
+  // Public / guest routes
+  if (to.meta.guest) {
+    return auth.isAuthenticated ? next('/') : next()
+  }
+
+  // Auth requirement
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return next({ path: '/login', query: { return_to: to.fullPath } })
+  }
+
+  // Phase 1: Onboarding gate — redirect to onboarding if incomplete
+  // Skip check for onboarding route itself and public routes
+  if (auth.requiresOnboarding() && to.path !== '/onboarding' && !to.meta.guest) {
+    return next('/onboarding')
+  }
+
+  // If onboarding is complete, don't allow returning to onboarding
+  if (auth.isOnboardingComplete && to.path === '/onboarding') {
+    return next('/atlas')
+  }
+
+  // Role check
+  if (to.meta.roles && !to.meta.roles.includes(auth.role)) {
+    return next({ path: '/403', query: { required_roles: to.meta.roles.join(',') } })
+  }
+
+  // Capability check
+  if (to.meta.capability && !auth.has(to.meta.capability)) {
+    return next({ path: '/403', query: { required_capability: to.meta.capability } })
+  }
+
+  // Step-up freshness for sensitive routes. The destination page's
+  // StepUpGuard will trigger an interactive MFA prompt; here we just
+  // surface the requirement so the UI can branch.
+  return next()
+})
+
+export default router

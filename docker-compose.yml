@@ -1,0 +1,342 @@
+services:
+  # ─── PostgreSQL 16 + pgvector ───
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: spidernet
+      POSTGRES_USER: spidernet
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-spidernet}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spidernet -d spidernet"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spidernet
+
+  # ─── Redis 7 ───
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spidernet
+
+  # ─── Zookeeper (Kafka dependency) ───
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  # ─── Kafka Event Bus ───
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  # ─── Neo4j Graph Database ───
+  neo4j:
+    image: neo4j:5.13-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/spidernet
+      NEO4J_PLUGINS: '["apoc", "gds"]'
+    volumes:
+      - neo4jdata:/data
+      - neo4jlogs:/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  # ─── Qdrant Vector Database ───
+  qdrant:
+    image: qdrant/qdrant:v1.6.1
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrantdata:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  # ─── Soketi WebSocket Server ───
+  websocket:
+    image: quay.io/soketi/soketi:1.6-16-debian
+    ports:
+      - "6001:6001"
+      - "9601:9601"
+    environment:
+      SOKETI_DEFAULT_APP_ID: spidernet
+      SOKETI_DEFAULT_APP_KEY: ${PUSHER_APP_KEY:-spidernet-key}
+      SOKETI_DEFAULT_APP_SECRET: ${PUSHER_APP_SECRET:-spidernet-secret}
+      SOKETI_DEFAULT_APP_ENABLE_CLIENT_MESSAGES: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:6001 || true"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  # ─── Laravel API (Control Plane) ───
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: spidernet
+      DB_PASSWORD: ${DB_PASSWORD:-spidernet}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      BROADCAST_DRIVER: pusher
+      PUSHER_APP_ID: spidernet
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY:-spidernet-key}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET:-spidernet-secret}
+      PUSHER_HOST: websocket
+      PUSHER_PORT: 6001
+      PUSHER_SCHEME: http
+      INFERENCE_URL: http://inference:9000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      COST_CEILING_DEFAULT: ${COST_CEILING_DEFAULT:-50.00}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  # ─── Laravel Horizon (Queue Worker) ───
+  horizon:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: php artisan horizon
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: spidernet
+      DB_PASSWORD: ${DB_PASSWORD:-spidernet}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      BROADCAST_DRIVER: pusher
+      PUSHER_APP_ID: spidernet
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY:-spidernet-key}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET:-spidernet-secret}
+      PUSHER_HOST: websocket
+      PUSHER_PORT: 6001
+      PUSHER_SCHEME: http
+      INFERENCE_URL: http://inference:9000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  # ─── Laravel Scheduler ───
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: spidernet
+      DB_PASSWORD: ${DB_PASSWORD:-spidernet}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      INFERENCE_URL: http://inference:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  # ─── Python Intelligence Worker (Action Plane) ───
+  intelligence:
+    build:
+      context: ./intelligence
+      dockerfile: Dockerfile
+    volumes:
+      - ./intelligence:/app
+    environment:
+      DATABASE_URL: postgresql://spidernet:${DB_PASSWORD:-spidernet}@db:5432/spidernet
+      REDIS_URL: redis://redis:6379/0
+      INFERENCE_URL: http://inference:9000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LARAVEL_API_URL: http://api:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - spidernet
+
+  # ─── FastAPI Inference Plane ───
+  inference:
+    build:
+      context: ./inference
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./inference:/app
+    environment:
+      REDIS_URL: redis://redis:6379/1
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEFAULT_COST_CEILING: ${COST_CEILING_DEFAULT:-50.00}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - spidernet
+
+  # ─── HashiCorp Vault (dev mode, opt-in) ────────────────────────────
+  # Start with:  docker compose --profile secrets up vault
+  # Dev root token:  spidernet-dev-root
+  # Unsealed automatically; data is in-memory only (profile excluded by
+  # default so this never runs in normal `docker compose up`).
+  vault:
+    image: hashicorp/vault:1.17
+    profiles: ["secrets"]
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: spidernet-dev-root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8200/v1/sys/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  # ─── Vue 3 Cockpit (UI Plane) ───
+  cockpit:
+    build:
+      context: ./cockpit
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./cockpit:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_HOST: localhost
+      VITE_WS_PORT: 6001
+      VITE_WS_KEY: ${PUSHER_APP_KEY:-spidernet-key}
+    depends_on:
+      - api
+    networks:
+      - spidernet
+
+volumes:
+  pgdata:
+  redisdata:
+  kafkadata:
+  neo4jdata:
+  neo4jlogs:
+  qdrantdata:
+
+networks:
+  spidernet:
+    driver: bridge

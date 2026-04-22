@@ -1,0 +1,49 @@
+id: followup-timing
+shared: true
+description: "Optimal timing for lead follow-up messages"
+
+variants:
+  - id: immediate
+    description: "Respond within 1 minute"
+    timing: "0-1m"
+    success_rate: 0.38
+    alpha: 38
+    beta: 62
+    tags: [whatsapp, sms]
+
+  - id: quick
+    description: "Respond within 5 minutes"
+    timing: "1-5m"
+    success_rate: 0.28
+    alpha: 28
+    beta: 72
+    tags: [whatsapp, email]
+
+  - id: standard
+    description: "Respond within 15 minutes"
+    timing: "5-15m"
+    success_rate: 0.18
+    alpha: 18
+    beta: 82
+    tags: [email, phone]
+
+  - id: slow
+    description: "Respond within 1 hour"
+    timing: "15-60m"
+    success_rate: 0.10
+    alpha: 10
+    beta: 90
+    tags: [email]
+
+  - id: too_late
+    description: "Respond after 1 hour"
+    timing: ">60m"
+    success_rate: 0.05
+    alpha: 5
+    beta: 95
+    tags: [email]
+
+aggregation:
+  method: thompson_sampling
+  exploration_rate: 0.15
+  update_frequency: daily

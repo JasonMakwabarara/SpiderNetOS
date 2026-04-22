@@ -1,0 +1,83 @@
+{
+  "_comment": "Atlas fallback copy templates — used when TS < 0.72 or API timeout. All variants pre-screened: trust_score >= 0.80, predicted_ts >= 0.72.",
+  "empty_state": {
+    "text": "Your usage insights will appear here once your first request is processed — see exactly where your spend goes, every day.",
+    "cta": { "label": "View documentation", "action": "navigate:/docs" },
+    "future_state": "complete visibility over your AI spend",
+    "value": "track every request, token, and dollar in one place"
+  },
+  "banner": {
+    "text": "Your usage insights are live — see where your spend is going today.",
+    "cta": { "label": "Open dashboard", "action": "navigate:/usage" },
+    "future_state": "real-time visibility for every decision",
+    "value": "no more guessing at costs"
+  },
+  "modal": {
+    "text": "Your usage data is now accurate and up to date. Every request, token, and dollar is tracked automatically — so you can make better decisions without digging through logs.",
+    "cta": { "label": "See my usage", "action": "navigate:/usage" },
+    "secondary_cta": { "label": "Not now", "action": "dismiss" },
+    "future_state": "confident, data-driven budget decisions",
+    "value": "automatic accuracy, zero manual work"
+  },
+  "tooltip": {
+    "text": "Total API requests processed on this day.",
+    "future_state": "track request volume at a glance",
+    "value": "understand usage patterns instantly"
+  },
+  "success_state": {
+    "text": "Your usage insights are live and accurate. Usage data is now flowing correctly — check your daily breakdown to see the full picture.",
+    "cta": { "label": "Explore usage trends", "action": "scroll:#usage-history" },
+    "future_state": "always-accurate usage visibility",
+    "value": "every call and token tracked from this moment"
+  },
+  "error_state": {
+    "text": "Usage data is temporarily unavailable. We're working on it — your data is safe and will appear shortly.",
+    "cta": { "label": "Refresh", "action": "reload" },
+    "future_state": "restored visibility",
+    "value": "no data loss, back shortly"
+  },
+
+  "_comment_voice": "Phase E — Voice AI copy domains for bandit variant selection",
+
+  "voice.greeting": {
+    "text": "Hello! Thank you for calling {business_name}. How can I help you today?",
+    "future_state": "resolve your request quickly",
+    "value": "expert help in seconds"
+  },
+
+  "voice.greeting.variant_b": {
+    "text": "Hi there! You've reached {business_name}. What can I do for you?",
+    "future_state": "get the help you need fast",
+    "value": "direct and friendly service"
+  },
+
+  "voice.fallback": {
+    "text": "I didn't quite catch that. Could you please repeat?",
+    "future_state": "clear communication",
+    "value": "always listening"
+  },
+
+  "voice.fallback.variant_b": {
+    "text": "Sorry, I missed that. Please say it again.",
+    "future_state": "quick clarification",
+    "value": "I'm here to help"
+  },
+
+  "voice.closing": {
+    "text": "Thank you for calling {business_name}. Have a wonderful day!",
+    "future_state": "a great experience every time",
+    "value": "every caller leaves satisfied"
+  },
+
+  "voice.closing.variant_b": {
+    "text": "Thanks for reaching out! Take care and have a great day!",
+    "future_state": "warm and friendly closure",
+    "value": "leave a positive impression"
+  },
+
+  "voice.transfer": {
+    "text": "Let me connect you with a specialist right away. Please hold.",
+    "future_state": "expert resolution",
+    "value": "the right person every time"
+  }
+}

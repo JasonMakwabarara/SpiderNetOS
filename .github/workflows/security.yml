@@ -1,0 +1,144 @@
+name: Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Weekly Monday 06:00 UTC — catches new CVEs between PRs.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write   # Upload SARIF to GitHub Security tab
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── PHP dependency audit ───────────────────────────────────────────
+  composer-audit:
+    name: composer audit (backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Install (no scripts, dev deps included for audit coverage)
+        run: composer install --no-scripts --no-interaction --prefer-dist
+
+      - name: Audit
+        run: composer audit --format=plain --no-dev --locked
+
+  # ─── JS dependency audit (cockpit) ──────────────────────────────────
+  npm-audit:
+    name: npm audit (cockpit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cockpit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cockpit/package-lock.json
+
+      - name: Install
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Audit (production deps, fail on high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  # ─── Python dependency audit (intelligence + inference) ─────────────
+  pip-audit:
+    name: pip-audit (intelligence + inference)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [intelligence, inference]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install pip-audit
+        run: pip install pip-audit==2.7.3
+
+      - name: Audit
+        working-directory: ${{ matrix.project }}
+        run: |
+          if [ -f requirements.txt ]; then
+            pip-audit --requirement requirements.txt --strict --vulnerability-service osv
+          else
+            echo "No requirements.txt found for ${{ matrix.project }}, skipping"
+          fi
+
+  # ─── Static analysis (Semgrep) ──────────────────────────────────────
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan with security + language packs
+        run: |
+          semgrep scan \
+            --config=p/security-audit \
+            --config=p/secrets \
+            --config=p/owasp-top-ten \
+            --config=p/php \
+            --config=p/javascript \
+            --config=p/python \
+            --error \
+            --severity=ERROR \
+            --severity=WARNING \
+            --sarif --output=semgrep.sarif \
+            --metrics=off
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # ─── Gitleaks — catch committed secrets ────────────────────────────
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .github/gitleaks.toml
+        continue-on-error: false

@@ -1,0 +1,58 @@
+{
+  "_comment": "Schema contracts for Atlas copy/RL persistence tables.",
+  "tables": {
+    "atlas_prompts": {
+      "columns": {
+        "id":             { "type": "uuid",    "nullable": false },
+        "surface":        { "type": "varchar", "nullable": false },
+        "components":     { "type": "jsonb",   "nullable": false },
+        "template":       { "type": "text",    "nullable": false },
+        "status":         { "type": "varchar", "nullable": false, "default": "active" },
+        "generation":     { "type": "integer", "nullable": false, "default": "0" },
+        "parent_prompt_id": { "type": "uuid",  "nullable": true },
+        "avg_ts":         { "type": "numeric", "nullable": false, "default": "0" },
+        "avg_ctr":        { "type": "numeric", "nullable": false, "default": "0" },
+        "avg_conversion": { "type": "numeric", "nullable": false, "default": "0" },
+        "stability":      { "type": "numeric", "nullable": false, "default": "0" },
+        "impressions":    { "type": "integer", "nullable": false, "default": "0" }
+      }
+    },
+    "atlas_copy_variants": {
+      "columns": {
+        "id":            { "type": "uuid",    "nullable": false },
+        "prompt_id":     { "type": "uuid",    "nullable": false },
+        "surface":       { "type": "varchar", "nullable": false },
+        "text":          { "type": "text",    "nullable": false },
+        "features":      { "type": "jsonb",   "nullable": false },
+        "predicted_ts":  { "type": "numeric", "nullable": false },
+        "trust_score":   { "type": "numeric", "nullable": false },
+        "status":        { "type": "varchar", "nullable": false, "default": "active" },
+        "alpha":         { "type": "numeric", "nullable": false, "default": "1" },
+        "beta":          { "type": "numeric", "nullable": false, "default": "1" },
+        "avg_reward":    { "type": "numeric", "nullable": false, "default": "0" }
+      }
+    },
+    "atlas_copy_impressions": {
+      "columns": {
+        "id":           { "type": "bigint",    "nullable": false },
+        "variant_id":   { "type": "uuid",      "nullable": false },
+        "tenant_id":    { "type": "uuid",      "nullable": false },
+        "surface":      { "type": "varchar",   "nullable": false },
+        "context":      { "type": "jsonb",     "nullable": false },
+        "shown_at":     { "type": "timestamp", "nullable": false },
+        "reward":       { "type": "numeric",   "nullable": true }
+      }
+    },
+    "usage_shadow_diffs": {
+      "columns": {
+        "id":                    { "type": "bigint",  "nullable": false },
+        "tenant_id":             { "type": "uuid",    "nullable": false },
+        "date":                  { "type": "date",    "nullable": false },
+        "resource_type":         { "type": "varchar", "nullable": false },
+        "diff_kind":             { "type": "varchar", "nullable": false },
+        "detected_at":           { "type": "timestamp", "nullable": false },
+        "resolved_at":           { "type": "timestamp", "nullable": true }
+      }
+    }
+  }
+}
