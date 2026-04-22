@@ -10,7 +10,7 @@
   "dependencies": {
     "vue": "^3.4.0",
     "vue-router": "^4.3.0",
-    "pinia": "^2.1.0",
+    "pinia": "^3.0.4",
     "axios": "^1.6.0",
     "laravel-echo": "^1.16.0",
     "pusher-js": "^8.4.0"
