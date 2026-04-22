@@ -128,20 +128,26 @@ async def startup():
     # Initialize Cost Governor
     cost_governor = CostGovernor(default_budget=50.0)
     
-    # Initialize Kafka producer
-    event_producer = EventProducer(bootstrap_servers="kafka:29092")
-    event_producer.start()
+    # Initialize Kafka producer (optional)
+    try:
+        event_producer = EventProducer(bootstrap_servers="kafka:29092")
+        event_producer.start()
+        logger.info("Kafka producer initialized")
+    except Exception as e:
+        logger.warning(f"Kafka not available: {e}")
+        event_producer = None
     
     # Initialize database pool
     try:
         db_pool = await asyncpg.create_pool(
-            "postgresql://spidernet:spidernet@db:5432/spidernet",
+            "postgresql://spidernet:spidernet@localhost:5432/spidernet",
             min_size=5,
             max_size=20
         )
         logger.info("Database connected")
     except Exception as e:
         logger.warning(f"Database connection failed: {e}")
+        db_pool = None
     
     logger.info("CPL Service started successfully")
 
@@ -151,10 +157,10 @@ async def shutdown():
     """Cleanup resources"""
     logger.info("Shutting down CPL Service...")
     
-    if event_producer:
+    if event_producer is not None:
         event_producer.stop()
     
-    if db_pool:
+    if db_pool is not None:
         await db_pool.close()
     
     logger.info("CPL Service shut down")
