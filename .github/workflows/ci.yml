@@ -28,7 +28,7 @@ jobs:
           tools: composer:v2, cs2pr
           coverage: none
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
@@ -49,7 +49,7 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, xml, pdo_sqlite, bcmath
           coverage: none
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
