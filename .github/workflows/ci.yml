@@ -36,6 +36,39 @@ jobs:
       - name: Pint (code style)
         run: vendor/bin/pint --test --format=checkstyle | cs2pr
 
+  backend-test-ci-fast:
+    name: backend — PHPUnit (CiFast)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, pdo_sqlite, bcmath
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+      - run: composer install --prefer-dist --no-progress --no-interaction
+      - name: CiFast tests (no Redis / no pgvector migrations)
+        run: php artisan test --testsuite=CiFast
+
+  feature-pack-validate:
+    name: feature-pack — manifest validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pyyaml==6.0.1
+      - name: Validate reference pack
+        run: python scripts/validate_feature_pack.py packages/feature-packs/real-estate-crm/pack.yaml
+
   cockpit-build:
     name: cockpit — lint + build
     runs-on: ubuntu-latest

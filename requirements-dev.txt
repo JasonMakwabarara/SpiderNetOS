@@ -1,0 +1,29 @@
+# SpiderNetOS Development Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Testing Framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Testcontainers (Integration Testing)
+testcontainers>=3.7.0
+testcontainers-postgres>=0.0.1
+testcontainers-redis>=0.0.1
+testcontainers-kafka>=0.0.1
+
+# API Testing
+httpx>=0.24.0
+
+# Code Quality
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+bandit>=1.7.0
+
+# Load Testing
+locust>=2.15.0
+
+# Feature pack CI validation (scripts/validate_feature_pack.py)
+pyyaml>=6.0

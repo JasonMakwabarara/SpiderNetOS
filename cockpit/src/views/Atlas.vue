@@ -15,8 +15,13 @@
     </div>
 
     <!-- Right Panel: Context (1/3) -->
-    <div class="w-1/3 flex flex-col bg-gray-50 overflow-hidden">
+    <div class="flex w-1/3 min-h-0 flex-col overflow-hidden bg-gray-50">
+      <HannahGuidancePanel
+        :force-onboarding-seed="showHannahBootstrap"
+        @run-command="handleSend"
+      />
       <AtlasContextPanel
+        class="min-h-0 flex-1"
         :ast="atlasStore.commandAst"
         :tasks="atlasStore.tasks"
         :active-agent="atlasStore.activeAgent"
@@ -42,21 +47,36 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAtlasStore } from '../stores/atlas.js'
 import AtlasChatPanel from '../components/AtlasChatPanel.vue'
 import AtlasContextPanel from '../components/AtlasContextPanel.vue'
+import HannahGuidancePanel from '../components/HannahGuidancePanel.vue'
 
 const route = useRoute()
 const atlasStore = useAtlasStore()
+const showHannahBootstrap = computed(
+  () => route.query.seed === 'onboarding' || route.query.hannah === '1'
+)
 
 onMounted(async () => {
   const sessionParam = route.query.session
   if (sessionParam) {
     await atlasStore.loadSession(sessionParam)
-  } else if (!atlasStore.sessionId) {
+  } else if (!atlasStore.currentSessionId) {
     await atlasStore.initSession()
+  }
+
+  const key = atlasStore.currentSessionId
+    ? `atlas.seed.done.${atlasStore.currentSessionId}`
+    : null
+
+  if (showHannahBootstrap.value && key && typeof sessionStorage !== 'undefined') {
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1')
+      await atlasStore.sendMessage('Help me get started after onboarding.')
+    }
   }
 })
 

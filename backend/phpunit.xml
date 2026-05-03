@@ -10,6 +10,10 @@
         <testsuite name="Feature">
             <directory suffix="Test.php">./tests/Feature</directory>
         </testsuite>
+        <!-- PR CI: deterministic pure tests — no Postgres pgvector migrations, no Redis -->
+        <testsuite name="CiFast">
+            <directory suffix="Test.php">./tests/Unit/Ste</directory>
+        </testsuite>
     </testsuites>
 
     <source>

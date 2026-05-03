@@ -94,6 +94,8 @@ class MetaPlanner
                 'degraded' => $costStatus['degraded'],
                 'estimated_cost' => $estimatedCost,
                 'cost_estimate_source' => 'adaptive',
+                // Phase 1: explicit automation_level on agent.dispatched for STE / analytics
+                'automation_level' => $automationLevel,
             ]
         );
         

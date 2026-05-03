@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.commandos.bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- CHANGE: path to Python in your virtual environment -->
+        <string>__VENV_PYTHON__</string>
+        <string>-m</string>
+        <string>apps.command.main</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <!-- CHANGE: path to your workspace root -->
+    <string>__WORKSPACE_ROOT__</string>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__WORKSPACE_ROOT__/data/command.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__WORKSPACE_ROOT__/data/command.stderr.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>/Users/__USERNAME__</string>
+    </dict>
+</dict>
+</plist>

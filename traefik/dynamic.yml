@@ -1,0 +1,162 @@
+# Traefik Dynamic Configuration
+# SpiderNet OS - Routing and Rate Limiting
+
+http:
+  middlewares:
+    # Rate Limiting
+    rate-limit-api:
+      rateLimit:
+        burst: 100
+        average: 50
+
+    rate-limit-auth:
+      rateLimit:
+        burst: 10
+        average: 5
+
+    rate-limit-atlas:
+      rateLimit:
+        burst: 30
+        average: 15
+
+    # Security Headers
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+
+    # CORS
+    cors-headers:
+      headers:
+        accessControlAllowOriginList:
+          - "*"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "X-Requested-With"
+        accessControlMaxAge: 86400
+
+    # Compression
+    compress:
+      gzip: {}
+
+  routers:
+    # Laravel API
+    api:
+      rule: "Host(`api.spidernet.localhost`) || PathPrefix(`/api`)"
+      service: api
+      middlewares:
+        - "rate-limit-api"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # Vue Cockpit
+    cockpit:
+      rule: "Host(`cockpit.spidernet.localhost`)"
+      service: cockpit
+      middlewares:
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # CPL Service
+    cpl:
+      rule: "Host(`cpl.spidernet.localhost`)"
+      service: cpl
+      middlewares:
+        - "rate-limit-api"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # Simulation Service
+    simulation:
+      rule: "Host(`simulation.spidernet.localhost`)"
+      service: simulation
+      middlewares:
+        - "rate-limit-api"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # Inference Plane
+    inference:
+      rule: "Host(`inference.spidernet.localhost`)"
+      service: inference
+      middlewares:
+        - "rate-limit-api"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:8000"
+
+    cockpit:
+      loadBalancer:
+        servers:
+          - url: "http://cockpit:5173"
+
+    cpl:
+      loadBalancer:
+        servers:
+          - url: "http://cpl-service:9100"
+
+    simulation:
+      loadBalancer:
+        servers:
+          - url: "http://simulation-service:9200"
+
+    inference:
+      loadBalancer:
+        servers:
+          - url: "http://inference:9000"
+
+tcp:
+  routers:
+    kafka-1:
+      rule: "HostSNI(`kafka-1.spidernet.localhost`)"
+      service: kafka-1
+      tls: {}
+
+    kafka-2:
+      rule: "HostSNI(`kafka-2.spidernet.localhost`)"
+      service: kafka-2
+      tls: {}
+
+    kafka-3:
+      rule: "HostSNI(`kafka-3.spidernet.localhost`)"
+      service: kafka-3
+      tls: {}
+
+  services:
+    kafka-1:
+      loadBalancer:
+        servers:
+          - address: "kafka-1:9092"
+
+    kafka-2:
+      loadBalancer:
+        servers:
+          - address: "kafka-2:9093"
+
+    kafka-3:
+      loadBalancer:
+        servers:
+          - address: "kafka-3:9094"

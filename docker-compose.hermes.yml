@@ -1,0 +1,47 @@
+# SpiderNetOS Hermes Agent - Docker Compose for Windows
+# Uses local Ollama models (gemma4:31b, qwen3.6) instead of cloud API
+version: '3.8'
+
+services:
+  hermes-agent:
+    image: python:3.11-slim
+    container_name: hermes-agent
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./hermes-skills/hermes_local_bridge.py:/app/hermes_local_bridge.py:ro
+      - ./hermes-skills:/app/skills:ro
+      - hermes_data:/app/data
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - HERMES_PRIMARY_MODEL=gemma4:31b
+      - HERMES_FALLBACK_MODEL=qwen3.6:latest
+      - SPIDERNET_API_URL=http://host.docker.internal:8000
+      - REDIS_URL=redis://host.docker.internal:6379/2
+      - HERMES_MODE=spidernet_integration
+    command: >
+      sh -c "pip install fastapi uvicorn aiohttp redis pydantic requests -q && python /app/hermes_local_bridge.py"
+    networks:
+      - spidernet
+    restart: unless-stopped
+
+  hermes-worker:
+    image: python:3.11-slim
+    container_name: hermes-worker
+    volumes:
+      - ./hermes-skills/hermes_worker.py:/app/hermes_worker.py:ro
+    environment:
+      - SPIDERNET_API_URL=http://host.docker.internal:8000
+      - REDIS_URL=redis://host.docker.internal:6379/2
+    command: >
+      sh -c "pip install redis requests schedule -q && python /app/hermes_worker.py"
+    networks:
+      - spidernet
+    restart: unless-stopped
+
+volumes:
+  hermes_data:
+
+networks:
+  spidernet:
+    external: true

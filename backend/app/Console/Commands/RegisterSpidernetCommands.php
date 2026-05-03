@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\ProjectionCheck;
+use App\Console\Commands\SpidernetPackInstall;
+use App\Console\Commands\SpidernetPackValidate;
 use App\Console\Commands\ReplayDetectDivergence;
 use App\Console\Commands\ReplayEvents;
 use App\Console\Commands\VerifyEventChain;
@@ -20,6 +22,8 @@ class RegisterSpidernetCommands extends Command
             VerifyEventChain::class,
             ProjectionCheck::class,
             ReplayDetectDivergence::class,
+            SpidernetPackInstall::class,
+            SpidernetPackValidate::class,
         ];
 
         foreach ($commands as $commandClass) {

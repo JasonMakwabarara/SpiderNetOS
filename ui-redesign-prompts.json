@@ -1,0 +1,51 @@
+{
+  "model": "gemma4:31b",
+  "output_dir": "/workspace/SpiderNetOS/cockpit/src",
+  "theme": {
+    "primary": "#FF6B2C",
+    "secondary": "#FF8C42",
+    "accent": "#FFA726",
+    "background": "#0F0F0F",
+    "surface": "#1A1A1A",
+    "text": "#F0F0F0",
+    "muted": "#8A8A8A",
+    "success": "#4CAF50",
+    "warning": "#FFC107",
+    "danger": "#F44336",
+    "info": "#2196F3"
+  },
+  "components": [
+    {
+      "file": "views/Dashboard.vue",
+      "prompt": "Create a modern SpiderNetOS Dashboard component in Vue 3 Composition API with Tailwind CSS. Theme: dark background (#0F0F0F), orange primary (#FF6B2C). Features: real-time GPU metrics cards (2x RTX 5090), service health grid (Inference, Atlas, CPL, Cockpit), recent commands panel, Pareto frontier chart placeholder, network topology visualization. Use lucide-vue-next icons. Gradient accents. Glassmorphism cards. Responsive grid layout."
+    },
+    {
+      "file": "components/SystemGraph.vue",
+      "prompt": "Create a SystemGraph Vue 3 component visualizing SpiderNetOS microservices architecture. Dark theme with orange (#FF6B2C) connections. Use SVG or canvas for force-directed graph showing: Inference Node, Atlas API, CPL Engine, Memory Graph, Cockpit UI. Animated data flow particles along edges. Hover tooltips with service status. Scale on GPU count."
+    },
+    {
+      "file": "components/ParetoPlot.vue",
+      "prompt": "Create a ParetoPlot Vue 3 component for CPL reward visualization. Dark theme, orange gradient line chart. X-axis: training iterations, Y-axis: reward/cost ratio. Show frontier curve, current policy position, baseline comparison. Animated path drawing. Use canvas or SVG. Responsive."
+    },
+    {
+      "file": "components/RewardChart.vue",
+      "prompt": "Create a RewardChart Vue 3 component showing cumulative rewards over time. Area chart with orange gradient fill (#FF6B2C to transparent). Dark background. Show multiple series: inference, atlas, cpl rewards. Real-time update simulation. Legend. Tooltip with exact values."
+    },
+    {
+      "file": "components/CommandPalette.vue",
+      "prompt": "Create a CommandPalette Vue 3 component like VS Code's command palette or Linear's. Dark overlay, orange accent border. Slash command autocomplete (/create, /run, /status, /health, /help). Keyboard navigation (arrow keys, enter, escape). Recent commands history. AI suggestion chips. Smooth animations."
+    },
+    {
+      "file": "components/GpuMonitor.vue",
+      "prompt": "Create a GpuMonitor Vue 3 component showing dual RTX 5090 status. Circular progress rings for VRAM usage (orange gradient). Temperature gauges. Power draw bars. Active model display (Gemma4, Qwen3.6). Real-time number animation. Dark card with subtle orange glow."
+    },
+    {
+      "file": "layouts/AppShell.vue",
+      "prompt": "Create an AppShell Vue 3 layout component. Collapsible sidebar with orange active indicators. Top bar with breadcrumb, search, notifications bell (orange dot for alerts), user avatar. Main content area with page transitions. Dark theme (#0F0F0F). Responsive: sidebar becomes drawer on mobile."
+    },
+    {
+      "file": "styles/orange-theme.css",
+      "prompt": "Create a comprehensive CSS file for SpiderNetOS orange theme. CSS custom properties for all colors. Dark mode base. Orange gradient utilities. Glassmorphism utilities (.glass { backdrop-filter: blur(12px); background: rgba(255,107,44,0.05); border: 1px solid rgba(255,107,44,0.1); }). Glow effects. Animation keyframes for pulse, shimmer, slide-in. Typography scale."
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+# SpiderNetOS Staging Environment
+# Full HA stack for pre-production validation
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_certs:/letsencrypt
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=admin@spidernetos.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.staging.local`)
+      - traefik.http.routers.dashboard.service=api@internal
+    networks:
+      - spidernet
+
+  db-primary:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: spidernet
+      POSTGRES_USER: spidernet
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - pgdata_staging:/var/lib/postgresql/data
+      - ./certs/services/postgres:/tls:ro
+    secrets:
+      - db_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spidernet"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - spidernet
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass $(cat /run/secrets/redis_password) --tls-port 6380
+    volumes:
+      - ./certs/services/redis:/tls:ro
+    secrets:
+      - redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - spidernet
+
+  kafka-1:
+    image: confluentinc/cp-kafka:7.5.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - spidernet
+
+secrets:
+  db_password:
+    external: true
+  redis_password:
+    external: true
+  pusher_app_secret:
+    external: true
+
+volumes:
+  pgdata_staging:
+  traefik_certs:
+
+networks:
+  spidernet:
+    driver: bridge

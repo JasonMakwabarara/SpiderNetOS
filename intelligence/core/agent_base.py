@@ -11,6 +11,9 @@ import asyncio
 import json
 from datetime import datetime
 
+# DeepSeek integration for strategic reasoning
+from .deepseek_client import DeepSeekClient, get_deepseek_client
+
 
 @dataclass
 class AgentContext:
@@ -92,16 +95,111 @@ class MetaPlanner:
     All agent dispatch goes through here. Agents cannot call other agents directly.
     """
     
-    def __init__(self, redis_client, event_store, cost_governor):
+    def __init__(self, redis_client, event_store, cost_governor, use_deepseek: bool = True):
         self.redis = redis_client
         self.event_store = event_store
         self.cost_governor = cost_governor
         self.agents: Dict[str, AgentBase] = {}
         self._running = False
+        
+        # DeepSeek strategic reasoning layer
+        self.use_deepseek = use_deepseek
+        self.deepseek: Optional[DeepSeekClient] = None
+        if use_deepseek:
+            try:
+                self.deepseek = get_deepseek_client()
+            except Exception as e:
+                print(f"[MetaPlanner] DeepSeek not available: {e}")
+                self.use_deepseek = False
     
     def register_agent(self, agent: AgentBase) -> None:
         """Register an agent with the planner"""
         self.agents[agent.agent_id] = agent
+    
+    async def plan_strategy(
+        self,
+        tenant_id: str,
+        command: str,
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Use DeepSeek for strategic planning before dispatch.
+        
+        Returns execution plan with:
+        - Which agents to use
+        - Execution order
+        - Risk assessment
+        - Cost estimate
+        """
+        if not self.use_deepseek or not self.deepseek:
+            # Fallback to heuristic planning
+            return self._heuristic_plan(command, context)
+        
+        # Get cost context
+        budget = await self.cost_governor.get_budget_status(tenant_id)
+        
+        # Build planning context
+        plan_context = {
+            'budget': budget.get('remaining', 0),
+            'cost_ceiling': budget.get('ceiling', 50),
+            'active_agents': list(self.agents.keys()),
+            'load': context.get('system_load', 0),
+            'tier': context.get('tenant_tier', 'basic'),
+            'time_constraint': context.get('time_constraint', 'none')
+        }
+        
+        # Call DeepSeek for strategic reasoning
+        try:
+            plan = await asyncio.get_event_loop().run_in_executor(
+                None,  # Default executor
+                self.deepseek.plan_execution,
+                command,
+                plan_context
+            )
+            
+            # Record planning event
+            await self.event_store.append(
+                tenant_id=tenant_id,
+                aggregate_type='metaplanner',
+                aggregate_id='strategy',
+                event_type='metaplanner.strategy_planned',
+                payload={
+                    'command': command[:100],  # Truncate
+                    'plan': plan,
+                    'model': self.deepseek.model,
+                }
+            )
+            
+            return plan
+            
+        except Exception as e:
+            print(f"[MetaPlanner] DeepSeek planning failed: {e}")
+            return self._heuristic_plan(command, context)
+    
+    def _heuristic_plan(self, command: str, context: Dict) -> Dict:
+        """Fallback heuristic planning when DeepSeek unavailable"""
+        # Simple keyword-based routing
+        command_lower = command.lower()
+        
+        if any(k in command_lower for k in ['create', 'build', 'make', 'generate']):
+            agents = ['atlas', 'forge']
+        elif any(k in command_lower for k in ['deploy', 'infrastructure', 'scale']):
+            agents = ['atlas', 'nexus']
+        elif any(k in command_lower for k in ['analyze', 'report', 'metrics']):
+            agents = ['atlas', 'prism']
+        elif any(k in command_lower for k in ['security', 'monitor', 'alert']):
+            agents = ['atlas', 'sentinel']
+        else:
+            agents = ['atlas']
+        
+        return {
+            'agents': agents,
+            'execution_order': list(range(len(agents))),
+            'risks': ['heuristic_fallback'],
+            'estimated_cost': 5.0 * len(agents),
+            'execution_decision': 'execute_now',
+            'rationale': 'Heuristic fallback - DeepSeek unavailable'
+        }
     
     async def dispatch(
         self,

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import path from 'path'
 
 /*
  * Tier 1 security: emit the same header set in dev as the API backend.
@@ -37,9 +38,15 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: ['cockpit.internal.spidernetos.com', '*.spidernetos.com'],
     headers: securityHeaders,
   },
   preview: {
     headers: securityHeaders,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
 })

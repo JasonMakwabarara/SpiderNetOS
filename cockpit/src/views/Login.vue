@@ -125,10 +125,11 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const mode = ref('login')
@@ -145,10 +146,21 @@ const registerForm = reactive({
   tenantName: ''
 })
 
+function postAuthRedirect() {
+  const target = typeof route.query.return_to === 'string' ? route.query.return_to : null
+  if (target && target.startsWith('/')) {
+    return router.push(target)
+  }
+  if (authStore.requiresOnboarding()) {
+    return router.push('/onboarding')
+  }
+  return router.push('/')
+}
+
 async function handleLogin() {
   const result = await authStore.login(loginForm.email, loginForm.password)
   if (result.success) {
-    router.push('/')
+    postAuthRedirect()
   }
 }
 
@@ -160,7 +172,7 @@ async function handleRegister() {
     registerForm.tenantName
   )
   if (result.success) {
-    router.push('/')
+    postAuthRedirect()
   }
 }
 </script>

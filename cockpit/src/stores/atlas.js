@@ -206,6 +206,11 @@ export const useAtlasStore = defineStore('atlas', () => {
    * Create a new chat session.
    * @returns {Promise<string>} The new session ID.
    */
+  /** Alias used by Atlas.vue — creates a chat session when none is loaded yet. */
+  async function initSession() {
+    return createSession()
+  }
+
   async function createSession() {
     isLoading.value = true
     error.value = null
@@ -446,6 +451,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     totalCost,
     // Actions
     sendMessage,
+    initSession,
     createSession,
     loadSession,
     executePlan,

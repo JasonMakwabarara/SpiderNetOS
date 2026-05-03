@@ -12,7 +12,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "codegen": "node tools/dev/codegen.js"
+    "codegen": "node tools/dev/codegen.js",
+    "training:gate:atlas": "powershell -ExecutionPolicy Bypass -File scripts/training-gate.ps1"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

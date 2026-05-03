@@ -1,4 +1,12 @@
-.PHONY: dev build up down migrate seed health clean composer-install npm-install codegen deploy-check
+.PHONY: dev build up down migrate seed health clean composer-install npm-install codegen deploy-check training-gate
+
+TRAINING_INPUT ?= $(CURSOR_EXPORT)
+TRAINING_OUT_DIR ?= training_data
+TRAINING_MIN_QUALITY ?= 2
+TRAINING_MIN_QUALITY_SFT ?= 2
+TRAINING_MIN_SFT_ROWS ?= 20
+TRAINING_MIN_PREF_ROWS ?= 20
+TRAINING_MIN_DISTINCT_PREF_RATIO ?= 0.95
 
 dev:              ## Start all services (Docker + Turbo)
 	docker compose up -d db redis websocket inference intelligence
@@ -60,3 +68,12 @@ restart-intelligence: ## Restart intelligence worker
 
 status:           ## Show running services
 	docker compose ps
+
+training-gate:    ## Convert Cursor export and run training quality gate
+	@if [ -z "$(TRAINING_INPUT)" ]; then \
+		echo "TRAINING_INPUT (or CURSOR_EXPORT) is required."; \
+		echo "Example: make training-gate TRAINING_INPUT=/path/to/export.md"; \
+		exit 1; \
+	fi
+	python scripts/convert_cursor_markdown_to_jsonl.py --input "$(TRAINING_INPUT)" --out-dir "$(TRAINING_OUT_DIR)" --min-quality $(TRAINING_MIN_QUALITY) --min-quality-sft $(TRAINING_MIN_QUALITY_SFT) --quality-report
+	python scripts/eval_training_data_quality.py --sft "$(TRAINING_OUT_DIR)/sft.jsonl" --preference "$(TRAINING_OUT_DIR)/preference.jsonl" --min-quality $(TRAINING_MIN_QUALITY) --min-sft-rows $(TRAINING_MIN_SFT_ROWS) --min-preference-rows $(TRAINING_MIN_PREF_ROWS) --min-distinct-preference-ratio $(TRAINING_MIN_DISTINCT_PREF_RATIO)

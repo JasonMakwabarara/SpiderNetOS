@@ -47,6 +47,20 @@ class KafkaTopics:
     MEMORY_STORED = "memory.stored"
     MEMORY_RETRIEVED = "memory.retrieved"
     
+    # Simulation Topics (RL Training Environment)
+    SIMULATION_EPISODE_START = "simulation.episode.start"
+    SIMULATION_EPISODE_END = "simulation.episode.end"
+    SIMULATION_STATE = "simulation.state"
+    SIMULATION_ACTION = "simulation.action"
+    SIMULATION_REWARD = "simulation.reward"
+    SIMULATION_CALIBRATION_UPDATE = "simulation.calibration.update"
+    SIMULATION_DEPLOYMENT_REQUEST = "simulation.deployment.request"
+    SIMULATION_DEPLOYMENT_APPROVED = "simulation.deployment.approved"
+    POLICY_VERSION_REGISTERED = "policy.version.registered"
+    POLICY_ROLLOUT_STARTED = "policy.rollout.started"
+    POLICY_PROMOTED = "policy.promoted"
+    POLICY_ROLLED_BACK = "policy.rolled.back"
+    
     @classmethod
     def get_all_topics(cls) -> list:
         """Get list of all topic names"""
@@ -69,6 +83,19 @@ class KafkaTopics:
             cls.COST_VIOLATION,
             cls.MEMORY_STORED,
             cls.MEMORY_RETRIEVED,
+            # Simulation topics
+            cls.SIMULATION_EPISODE_START,
+            cls.SIMULATION_EPISODE_END,
+            cls.SIMULATION_STATE,
+            cls.SIMULATION_ACTION,
+            cls.SIMULATION_REWARD,
+            cls.SIMULATION_CALIBRATION_UPDATE,
+            cls.SIMULATION_DEPLOYMENT_REQUEST,
+            cls.SIMULATION_DEPLOYMENT_APPROVED,
+            cls.POLICY_VERSION_REGISTERED,
+            cls.POLICY_ROLLOUT_STARTED,
+            cls.POLICY_PROMOTED,
+            cls.POLICY_ROLLED_BACK,
         ]
     
     @classmethod
@@ -159,5 +186,21 @@ class KafkaTopics:
                 cls.MEMORY_STORED,
                 cls.MEMORY_RETRIEVED,
                 cls.EXECUTION_OUTCOME
+            ],
+            'simulation-service': [
+                cls.SIMULATION_EPISODE_START,
+                cls.SIMULATION_EPISODE_END,
+                cls.SIMULATION_STATE,
+                cls.SIMULATION_ACTION,
+                cls.SIMULATION_REWARD,
+                cls.EXECUTION_OUTCOME,
+                cls.POLICY_VERSION_REGISTERED,
+                cls.POLICY_ROLLOUT_STARTED
+            ],
+            'cpl-training': [
+                cls.SIMULATION_EPISODE_END,
+                cls.SIMULATION_CALIBRATION_UPDATE,
+                cls.POLICY_PROMOTED,
+                cls.POLICY_ROLLED_BACK
             ]
         }

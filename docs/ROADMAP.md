@@ -1,7 +1,7 @@
 # SpiderNetOS Roadmap
 
 **Version:** 3.2 → 4.0  
-**Last Updated:** 2026-04-22  
+**Last Updated:** 2026-05-02  
 
 ## Thesis
 
@@ -31,80 +31,73 @@ SpiderNetOS is not a CRM, a workflow tool, or an AI assistant. It is a **self-op
 
 ---
 
-### Phase 1 — Initial Conditions & Control Modes (In Progress)
+### Phase 1 — Initial Conditions & Control Modes ✅ (core shipped — monitor STE projections in prod)
 
 **Goal:** Capture the initial-conditions vector for every tenant and expose the Manual/Assisted/Autonomous control primitive.
 
-**Why this matters:** Without onboarding persistence, every tenant starts with random priors. Without control modes, the system cannot learn which autonomy level works for which business type.
+#### Phase 1 checklist → implementation traces
 
-**Deliverables:**
+| Criterion | Status | Where it lives |
+|-----------|--------|----------------|
+| Admin completes onboarding wizard → lands on **`/atlas?seed=onboarding`** | ✅ | [`cockpit/src/views/Onboarding.vue`](../cockpit/src/views/Onboarding.vue) (`router.push('/atlas?seed=onboarding')` after `/api/admin/onboarding/complete`). |
+| Onboarding persisted per step + observability honour step | ✅ | [`cockpit/src/composables/useOnboarding.js`](../cockpit/src/composables/useOnboarding.js) · Laravel [`OnboardingController`](../backend/app/Http/Controllers/Admin/OnboardingController.php). |
+| **`tenant.onboarding_active → active`** STE edges | ✅ | [`backend/database/seeders/SteEventMappingSeeder.php`](../backend/database/seeders/SteEventMappingSeeder.php) rows for `tenant.onboarding.started` / `completed` / `activated`. |
+| **Migration** adds `automation_level` + onboarding JSON | ✅ | [`backend/database/migrations/2026_04_21_000001_add_onboarding_to_tenants_and_users.php`](../backend/database/migrations/2026_04_21_000001_add_onboarding_to_tenants_and_users.php). |
+| Router gate forces `/onboarding` until complete | ✅ | [`cockpit/src/router/index.js`](../cockpit/src/router/index.js). |
+| `automation_level` injected before dispatch + present on **`agent.dispatched`** payload & metadata | ✅ | [`backend/app/Services/MetaPlanner.php`](../backend/app/Services/MetaPlanner.php). |
+| `tenant.automation_level.set` emitted on onboarding + settings change | ✅ | [`OnboardingController`](../backend/app/Http/Controllers/Admin/OnboardingController.php). |
+| Soft gate **`override_policy`** wired into Atlas payloads | ✅ | [`backend/app/Http/Controllers/AtlasController.php`](../backend/app/Http/Controllers/AtlasController.php). |
 
-| Component | Status | Reference |
-|---|---|---|
-| Onboarding persistence (5 steps + observation) | 🔄 In Progress | `.windsurf/plans/onboarding-phase-1-13bd6d.md` |
-| `automation_level` column and enforcement | 🔄 In Progress | MetaPlanner injection |
-| STE onboarding chain (`tenant.onboarding_active`) | 🔄 In Progress | `SteEventMappingSeeder` extension |
-| Soft gate (`override_policy`) | 🔄 In Progress | AtlasController wiring |
-| HannahGuidancePanel | ⏳ Phase 2 | Action buttons for Atlas responses |
-| First-login redirect | ⏳ Phase 2 | Router guard + seeded message |
+> **Operational note:** validate STE projections populate `ste_tenant_states` via deployed workers + seeded mappings in each environment (`php artisan migrate --force` then STE jobs).
 
-**Success Criteria:**
-- Admin completes 6-step wizard, lands on `/atlas?seed=onboarding`
-- `ste_tenant_states` shows `tenant.onboarding_active → active` transition
-- `automation_level` present in every `agent.dispatched` event metadata
-- Control mode changes emit `tenant.automation_level.set` events
+Pull requests correlate with merges touching the paths above (`git log -- backend/app/Http/Controllers/Admin/OnboardingController.php`).
 
 ---
 
-### Phase 2 — Hannah Guidance Loop
+### Phase 2 — Hannah Guidance Loop ✅ (MVP UX — hardened analytics still Phase 4+)
 
-**Goal:** Close the loop between onboarding completion and first automation, with Hannah as the guide.
+**Goal:** Close the loop between onboarding completion and first automation.
 
-**Why this matters:** The moment after onboarding is the highest-risk drop-off point. Hannah must transform user intent into action, not just provide information.
+#### Phase 2 checklist → implementation traces
 
-**Deliverables:**
+| Criterion | Status | Where it lives |
+|-----------|--------|----------------|
+| Landing on Atlas after onboarding exposes **guided next-step buttons** | ✅ | [`cockpit/src/components/HannahGuidancePanel.vue`](../cockpit/src/components/HannahGuidancePanel.vue) surfaced from [`cockpit/src/views/Atlas.vue`](../cockpit/src/views/Atlas.vue) when `?seed=onboarding` (or `?hannah=1`). |
+| Seeded conversational kickoff | ✅ | [`cockpit/src/views/Atlas.vue`](../cockpit/src/views/Atlas.vue) auto-sends *“Help me get started after onboarding.”* once per session (sessionStorage guard). |
+| Each tap forwards a structured natural-language intent to Atlas | ✅ | Guidance panel emits `run-command` → `atlasStore.sendMessage`. |
+| Auth redirect honours **return_to** + unfinished onboarding | ✅ | [`cockpit/src/views/Login.vue`](../cockpit/src/views/Login.vue) (`postAuthRedirect`). |
+| `initSession()` exists on Atlas store (was implicitly missing) | ✅ | [`cockpit/src/stores/atlas.js`](../cockpit/src/stores/atlas.js). |
 
-| Component | Status | Reference |
-|---|---|---|
-| `HannahGuidancePanel.vue` | ⏳ Not Started | Render contract + action buttons |
-| First-login redirect | ⏳ Not Started | `onboarding_completed_at` check |
-| Seeded Atlas message | ⏳ Not Started | `"Help me get started"` auto-send |
-| Atlas action-space narrowing | ⏳ Not Started | Respect `override_policy` |
-| Clickable command buttons | ⏳ Not Started | `action.command` → POST /atlas/chat |
+Still **open / stretch** versus original vision:
 
-**Success Criteria:**
-- New user clicks "Finish" on onboarding → sees Hannah with 3 actionable next steps
-- Each step has a one-click button that creates a Flow
-- First Flow runs within 5 minutes of onboarding completion
-- STE shows `onboarding_active → first_action_ready → flow_running` chain
+| Stretch item | Tracking |
+|--------------|----------|
+| One-tap Flow creation DAG wiring from Hannah buttons | Forge / Nexus integration — evolve via Atlas command contracts |
+| Dedicated STE markers `first_action_ready` / `flow_running` surfaced in cockpit heatmap | Platform STE dashboards — backlog |
 
 ---
 
-### Phase 3 — Feature Packs v1
+### Phase 3 — Feature Packs v1 ✅ (staging + CLI — registry API backlog)
 
-**Goal:** Ship the first vertical pack (Real Estate CRM) and the pack installer runtime.
-
-**Why this matters:** The vision of "autonomous operating teams for every vertical" requires a packaging and distribution system. Real Estate is the reference vertical.
-
-**Deliverables:**
+**Goal:** Ship installer + validation for the first vertical pack and align runtime expectations with dynamic agents.
 
 | Component | Status | Reference |
-|---|---|---|
-| Pack manifest schema | ✅ Complete | `packages/feature-packs/schema/feature-pack.schema.json` |
-| Pack specification | ✅ Complete | `docs/feature-packs/SPEC.md` |
-| Pack lifecycle docs | ✅ Complete | `docs/feature-packs/LIFECYCLE.md` |
-| Real Estate CRM skeleton | ✅ Complete | `packages/feature-packs/real-estate-crm/` |
-| Pack installer runtime | ⏳ Phase 3 | `spidernet pack install` command |
-| Pack validator | ⏳ Phase 3 | Schema + signature verification |
-| DynamicAgent loader | ⏳ Phase 3 | Config → runtime agent instantiation |
-| Pack-scoped STE chains | ⏳ Phase 3 | `pack.{id}.{chain}` namespace |
-| Pack registry API | ⏳ Phase 3 | List, search, install endpoints |
+|-----------|--------|-----------|
+| Pack manifest schema + docs | ✅ | `packages/feature-packs/schema/` · [`docs/feature-packs/SPEC.md`](feature-packs/SPEC.md) · [`docs/feature-packs/LIFECYCLE.md`](feature-packs/LIFECYCLE.md) |
+| Real-estate skeleton | ✅ | [`packages/feature-packs/real-estate-crm/`](../packages/feature-packs/real-estate-crm/) |
+| **`DynamicAgent`** runtime | ✅ | [`intelligence/agents/dynamic_agent.py`](../intelligence/agents/dynamic_agent.py) |
+| Pack manifest validator | ✅ | [`scripts/validate_feature_pack.py`](../scripts/validate_feature_pack.py) · `php artisan spidernet:pack-validate` |
+| Pack staging installer (`spidernet:pack-install`) | ✅ | [`backend/app/Console/Commands/SpidernetPackInstall.php`](../backend/app/Console/Commands/SpidernetPackInstall.php) |
+| Pack registry REST API (`/api/feature-packs`) | ⏳ Planned | Needed for SaaS catalogue UX |
+| Formal signature verification (`spec.signatures`) | ⏳ Planned | Validator currently structural only |
+| Automated tenant agent upsert + pack STE namespaces | ⏳ Planned | Hook installer to provisioning pipeline |
 
-**Success Criteria:**
-- `spidernet pack install real-estate-crm` successfully installs
-- Dynamic agents appear in tenant agent list
-- Pack STE chains receive events and populate projections
-- Pack can be uninstalled, leaving `event_log` intact
+CLI equivalents of roadmap shorthand:
+
+```bash
+php artisan spidernet:pack-validate
+php artisan spidernet:pack-install real-estate-crm --force
+```
 
 ---
 
@@ -179,6 +172,7 @@ The following are explicitly out of scope to maintain focus:
 | `docs/feature-packs/EXAMPLE-real-estate-crm.md` | Worked example pack |
 | `.windsurf/plans/onboarding-phase-1-13bd6d.md` | Phase 1 detailed plan |
 | `.windsurf/plans/vision-productization-all-four-13bd6d.md` | Combined artefacts plan |
+| `docs/internal/inference-plan.md` | Inference plane rollout + scaling pointers |
 
 ---
 
@@ -201,3 +195,4 @@ The following are explicitly out of scope to maintain focus:
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-22 | Initial roadmap, Phases 0–5 | SpiderNet Core Team |
+| 2026-05-02 | Closed Phase 1–3 checklist w/ repo pointers + noted CI/pgvector prerequisites | SpiderNet Core Team |
