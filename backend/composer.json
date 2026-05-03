@@ -10,7 +10,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/horizon": "^5.24",
         "guzzlehttp/guzzle": "^7.8",
-        "predis/predis": "^2.2",
+        "predis/predis": "^3.4",
         "twilio/sdk": "^8.0"
     },
     "require-dev": {
