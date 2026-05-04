@@ -1,68 +1,92 @@
 <template>
   <Teleport to="body">
-    <Transition name="commandbar-fade">
+    <Transition name="cmdbar">
       <div
         v-if="visible"
-        class="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm"
+        class="fixed inset-0 z-[9999] flex items-start justify-center pt-[14vh] px-4"
+        style="background: rgba(5,7,10,0.55); backdrop-filter: blur(8px);"
+        data-testid="command-palette"
         @click.self="close"
-        @keydown.escape="close"
       >
         <div
           ref="panelRef"
-          class="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+          class="w-full max-w-xl sn-panel overflow-hidden"
+          style="border-color: var(--border-active); box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,229,200,0.18);"
           role="dialog"
-          aria-label="Command bar"
+          aria-modal="true"
+          aria-label="Command palette"
+          @keydown.escape.stop="close"
         >
-          <!-- Input -->
-          <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <span class="text-gray-400 text-lg">/</span>
+          <!-- Input row -->
+          <div class="flex items-center gap-3 px-4 py-3 border-b" style="border-color: var(--border);">
+            <svg class="w-4 h-4 shrink-0" style="color: var(--accent);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7" /><path stroke-linecap="round" d="M21 21l-4.3-4.3"/>
+            </svg>
             <input
               ref="inputRef"
               v-model="query"
               type="text"
-              placeholder="Type a command\u2026"
-              class="flex-1 bg-transparent text-gray-900 dark:text-gray-100 text-base outline-none placeholder:text-gray-400"
+              placeholder="Jump to a route, run a command, or search…"
+              class="flex-1 bg-transparent border-0 px-0 py-0 text-[15px] outline-none focus:outline-none focus:ring-0 focus:border-0"
+              style="color: var(--text-primary); box-shadow: none;"
               autocomplete="off"
               spellcheck="false"
-              @input="onInput"
-              @keydown.enter="executeSelected"
+              data-testid="command-palette-input"
+              @input="selectedIndex = 0"
+              @keydown.enter.prevent="executeSelected"
               @keydown.arrow-down.prevent="moveSelection(1)"
               @keydown.arrow-up.prevent="moveSelection(-1)"
             />
+            <span class="sn-kbd shrink-0">esc</span>
           </div>
 
-          <!-- Autocomplete / recent list -->
-          <ul
-            v-if="displayItems.length > 0"
-            class="max-h-72 overflow-y-auto py-1"
-          >
-            <li
-              v-for="(item, idx) in displayItems"
-              :key="item.id"
-              class="flex items-center gap-3 px-4 py-2 cursor-pointer text-sm transition-colors"
-              :class="idx === selectedIndex
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'"
-              @click="executeItem(item)"
-              @mouseenter="selectedIndex = idx"
-            >
-              <span class="w-5 text-center text-base opacity-60">{{ item.icon || '/' }}</span>
-              <span class="flex-1 truncate">{{ item.label }}</span>
-              <span
-                v-if="item.shortcut"
-                class="text-xs text-gray-400 dark:text-gray-500 font-mono"
+          <!-- Results -->
+          <div class="max-h-[420px] overflow-y-auto" data-testid="command-palette-results">
+            <template v-for="(group, gi) in groupedResults" :key="group.label">
+              <div
+                v-if="group.items.length"
+                class="sn-nav-group-label"
+                style="padding: 0.6rem 0.9rem 0.25rem;"
+              >{{ group.label }} <span class="opacity-60">· {{ group.items.length }}</span></div>
+              <button
+                v-for="(item, idx) in group.items" :key="item.id"
+                class="w-full text-left flex items-center gap-3 px-4 py-2 transition-colors"
+                :class="absoluteIndex(gi, idx) === selectedIndex ? 'is-active' : ''"
+                :style="absoluteIndex(gi, idx) === selectedIndex
+                  ? 'background: var(--accent-weak); color: var(--accent);'
+                  : 'color: var(--text-secondary);'"
+                :data-testid="`command-item-${item.id}`"
+                @mouseenter="selectedIndex = absoluteIndex(gi, idx)"
+                @click="executeItem(item)"
               >
-                {{ item.shortcut }}
-              </span>
-            </li>
-          </ul>
+                <span class="w-5 h-5 shrink-0 grid place-items-center" style="color: var(--text-muted);" v-html="item.icon"></span>
+                <span class="flex-1 truncate text-sm">
+                  <span style="color: var(--text-primary);">{{ item.label }}</span>
+                  <span v-if="item.hint" class="ml-2 text-xs" style="color: var(--text-muted);">{{ item.hint }}</span>
+                </span>
+                <span v-if="item.shortcut" class="sn-kbd shrink-0">{{ item.shortcut }}</span>
+                <span v-else-if="item.path" class="sn-kbd shrink-0 opacity-70">→</span>
+              </button>
+            </template>
 
-          <!-- Empty state -->
-          <div
-            v-else
-            class="px-4 py-6 text-center text-sm text-gray-400"
-          >
-            No matching commands
+            <div
+              v-if="!totalResults"
+              class="px-4 py-8 text-center text-sm"
+              style="color: var(--text-muted);"
+            >
+              No matches for <code class="mono" style="color: var(--text-secondary);">{{ query }}</code>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="px-4 py-2 flex items-center justify-between border-t text-[11px]"
+               style="border-color: var(--border); color: var(--text-muted); background: rgba(0,0,0,0.25);">
+            <span class="flex items-center gap-2">
+              <span class="sn-kbd">↑↓</span> navigate
+              <span class="sn-kbd">↵</span> open
+              <span class="sn-kbd">esc</span> close
+            </span>
+            <span>SpiderNetOS · ⌘K</span>
           </div>
         </div>
       </div>
@@ -71,24 +95,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useCommandsStore } from '@/stores/commands'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
+import { useAtlasStore } from '../stores/atlas.js'
 
-// -------------------------------------------------------------------------- //
-//  Emits
-// -------------------------------------------------------------------------- //
-
-const emit = defineEmits(['execute'])
-
-// -------------------------------------------------------------------------- //
-//  Store
-// -------------------------------------------------------------------------- //
-
-const commandsStore = useCommandsStore()
-
-// -------------------------------------------------------------------------- //
-//  State
-// -------------------------------------------------------------------------- //
+const router = useRouter()
+const authStore = useAuthStore()
+const atlasStore = useAtlasStore()
 
 const visible = ref(false)
 const query = ref('')
@@ -96,32 +110,167 @@ const selectedIndex = ref(0)
 const inputRef = ref(null)
 const panelRef = ref(null)
 
-// -------------------------------------------------------------------------- //
-//  Commands & filtering
-// -------------------------------------------------------------------------- //
+// ── Index ──────────────────────────────────────────────────────────
+// Routes the cockpit can navigate to + actions Atlas can execute.
+// Static index avoids surprising users with stale router state and
+// keeps keyboard latency essentially zero.
 
-const filteredCommands = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return []
+const ICONS = {
+  arrow:    '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  cmd:      '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6V4m0 16v-2m6-12V4m0 16v-2m-9-9H4m16 0h-2m-9 6H4m16 0h-2"/></svg>',
+  bolt:     '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h7l-1 8 11-14h-7l0-6z"/></svg>',
+  user:     '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3"/><path stroke-linecap="round" d="M5 21a7 7 0 0114 0"/></svg>',
+}
 
-  return commandsStore.commands.filter((cmd) => {
-    const haystack = `${cmd.label} ${cmd.id} ${cmd.description || ''}`.toLowerCase()
-    return haystack.includes(q)
-  })
+const ROUTES = [
+  { id: 'r-dashboard',  label: 'Dashboard',           hint: 'Overview & ops feed', path: '/' },
+  { id: 'r-atlas',      label: 'Atlas',               hint: 'Command surface',     path: '/atlas' },
+  { id: 'r-approvals',  label: 'Approvals',           hint: 'Review queue',        path: '/approvals' },
+  { id: 'r-traces',     label: 'Traces',              hint: 'Execution history',   path: '/traces' },
+  { id: 'r-agents',     label: 'Agents',              hint: 'Manage AI workers',   path: '/agents' },
+  { id: 'r-flows',      label: 'Flows',               hint: 'DAG library',         path: '/flows' },
+  { id: 'r-flow-new',   label: 'New flow',            hint: 'Open builder',        path: '/flows/new' },
+  { id: 'r-memory',     label: 'Memory',              hint: 'Knowledge & facts',   path: '/memory' },
+  { id: 'r-intel',      label: 'Intelligence',        hint: 'Workers & jobs',      path: '/intelligence' },
+  { id: 'r-usage',      label: 'Usage',               hint: 'Cost & budgets',      path: '/usage' },
+  { id: 'r-settings',   label: 'Settings',            hint: 'Tenant settings',     path: '/settings' },
+  { id: 'r-automation', label: 'Automation level',    hint: 'Manual / Assisted / Autonomous', path: '/settings/automation-level' },
+  { id: 'r-billing',    label: 'Billing',             hint: 'Plan & invoices',     path: '/billing' },
+  { id: 'r-onboarding', label: 'Onboarding wizard',   hint: 'First-run flow',      path: '/onboarding' },
+]
+
+const ADMIN_ROUTES = [
+  { id: 'r-admin',         label: 'Admin overview', hint: 'Tenant admin',  path: '/admin' },
+  { id: 'r-admin-users',   label: 'Admin · Users',  hint: 'Invite / manage',path: '/admin/users' },
+  { id: 'r-admin-budget',  label: 'Admin · Budget', hint: 'Caps & alerts',  path: '/admin/budget' },
+  { id: 'r-admin-copy',    label: 'Admin · Copy lab', hint: 'Bandit experiments', path: '/admin/copy' },
+  { id: 'r-admin-audit',   label: 'Admin · Audit',  hint: 'Audit log',      path: '/admin/audit' },
+]
+
+const PLATFORM_ROUTES = [
+  { id: 'r-pf',          label: 'Platform overview',  hint: 'Tenants & rollouts', path: '/platform' },
+  { id: 'r-pf-flags',    label: 'Feature flags',      hint: 'Toggle matrix',     path: '/platform/feature-flags' },
+  { id: 'r-pf-rollout',  label: 'Rollout · usage v2', hint: 'Cutover controls',   path: '/platform/rollouts/usage-v2' },
+  { id: 'r-pf-ste',      label: 'State Transition Engine', hint: 'Tenant projections', path: '/platform/ste' },
+]
+
+const ACTIONS = [
+  { id: 'a-new-flow',       label: 'Create new flow',                hint: 'Action',  shortcut: 'N F', run: () => router.push('/flows/new') },
+  { id: 'a-new-agent',      label: 'Create new agent',               hint: 'Action',  shortcut: 'N A', run: () => router.push('/agents/new') },
+  { id: 'a-atlas-status',   label: 'Atlas: weekly outcomes',         hint: 'Atlas',   run: () => askAtlas('/status weekly') },
+  { id: 'a-atlas-approvals',label: 'Atlas: pending approvals',       hint: 'Atlas',   run: () => askAtlas('/approvals pending') },
+  { id: 'a-atlas-anomalies',label: 'Atlas: budget anomalies',        hint: 'Atlas',   run: () => askAtlas('/usage anomalies') },
+  { id: 'a-atlas-trace',    label: 'Atlas: latest trace',            hint: 'Atlas',   run: () => askAtlas('/trace latest') },
+  { id: 'a-promote',        label: 'Promote agent → autonomous',     hint: 'Atlas',   run: () => askAtlas('/agents promote ag_1') },
+  { id: 'a-logout',         label: 'Sign out',                       hint: 'Account', run: () => { authStore.logout(); router.push('/login') } },
+  { id: 'a-toggle-role-admin', label: 'Switch role → admin',         hint: 'Demo',    run: () => authStore.switchRole('admin') },
+  { id: 'a-toggle-role-super', label: 'Switch role → super_admin',   hint: 'Demo',    run: () => authStore.switchRole('super_admin') },
+  { id: 'a-toggle-role-user',  label: 'Switch role → user',          hint: 'Demo',    run: () => authStore.switchRole('user') },
+]
+
+function askAtlas(cmd) {
+  router.push('/atlas').then(() => atlasStore.sendMessage?.(cmd).catch(() => {}))
+}
+
+// Role-aware index assembly
+const allRoutes = computed(() => {
+  const out = [...ROUTES]
+  if (authStore.isAdmin) out.push(...ADMIN_ROUTES)
+  if (authStore.isSuperAdmin) out.push(...PLATFORM_ROUTES)
+  return out
 })
 
-const recentCommands = computed(() => {
-  return commandsStore.recentCommands.slice(0, 8)
+// ── Fuzzy scoring ──────────────────────────────────────────────────
+// Returns Infinity if the query doesn't match (subsequence on label or hint).
+// Lower score = better.
+function score(item, q) {
+  if (!q) return 0
+  const hay = `${item.label} ${item.hint || ''} ${item.path || ''}`.toLowerCase()
+  const needle = q.toLowerCase()
+  if (hay.startsWith(needle)) return 0
+  if (hay.includes(needle)) return 10
+  // Subsequence
+  let i = 0, lastIdx = -1, gaps = 0
+  for (let h = 0; h < hay.length && i < needle.length; h++) {
+    if (hay[h] === needle[i]) {
+      if (lastIdx >= 0) gaps += h - lastIdx - 1
+      lastIdx = h
+      i++
+    }
+  }
+  if (i === needle.length) return 30 + gaps + (hay.length - needle.length) * 0.05
+  return Infinity
+}
+
+const matchedRoutes = computed(() => {
+  const q = query.value.trim()
+  return allRoutes.value
+    .map((r) => ({ ...r, _s: score(r, q), kind: 'route', icon: ICONS.arrow }))
+    .filter((r) => r._s !== Infinity)
+    .sort((a, b) => a._s - b._s)
+    .slice(0, 8)
 })
 
-/** Show filtered results when the user is typing, otherwise show recents. */
-const displayItems = computed(() => {
-  return query.value.trim().length > 0 ? filteredCommands.value : recentCommands.value
+const matchedActions = computed(() => {
+  const q = query.value.trim()
+  return ACTIONS
+    .map((a) => ({ ...a, _s: score(a, q), kind: 'action', icon: ICONS.bolt }))
+    .filter((a) => a._s !== Infinity)
+    .sort((a, b) => a._s - b._s)
+    .slice(0, 6)
 })
 
-// -------------------------------------------------------------------------- //
-//  Actions
-// -------------------------------------------------------------------------- //
+const groupedResults = computed(() => {
+  const q = query.value.trim()
+  if (!q) {
+    // Empty state: surface a helpful "Quick jumps" + "Common actions" preset
+    return [
+      { label: 'Quick jumps',    items: allRoutes.value.slice(0, 6).map((r) => ({ ...r, kind: 'route', icon: ICONS.arrow })) },
+      { label: 'Common actions', items: ACTIONS.slice(0, 4).map((a) => ({ ...a, kind: 'action', icon: ICONS.bolt })) },
+    ]
+  }
+  return [
+    { label: 'Routes',  items: matchedRoutes.value },
+    { label: 'Actions', items: matchedActions.value },
+  ]
+})
+
+const totalResults = computed(() => groupedResults.value.reduce((n, g) => n + g.items.length, 0))
+
+function absoluteIndex(groupIdx, itemIdx) {
+  let acc = 0
+  for (let i = 0; i < groupIdx; i++) acc += groupedResults.value[i].items.length
+  return acc + itemIdx
+}
+
+function flat() {
+  return groupedResults.value.flatMap((g) => g.items)
+}
+
+function moveSelection(delta) {
+  const list = flat()
+  if (!list.length) return
+  selectedIndex.value = (selectedIndex.value + delta + list.length) % list.length
+}
+
+function executeSelected() {
+  const list = flat()
+  const item = list[selectedIndex.value]
+  if (item) executeItem(item)
+}
+
+function executeItem(item) {
+  if (item.kind === 'action' && typeof item.run === 'function') {
+    item.run()
+  } else if (item.path) {
+    router.push(item.path)
+  }
+  close()
+}
+
+watch(query, () => { selectedIndex.value = 0 })
+
+// ── Open / close + global hotkey ────────────────────────────────────
 
 function open() {
   visible.value = true
@@ -135,72 +284,38 @@ function close() {
   query.value = ''
 }
 
-function onInput() {
-  selectedIndex.value = 0
-}
-
-function moveSelection(delta) {
-  const len = displayItems.value.length
-  if (len === 0) return
-  selectedIndex.value = (selectedIndex.value + delta + len) % len
-}
-
-function executeSelected() {
-  const item = displayItems.value[selectedIndex.value]
-  if (item) executeItem(item)
-}
-
-function executeItem(item) {
-  commandsStore.recordRecent(item)
-  emit('execute', item)
-  close()
-}
-
-// -------------------------------------------------------------------------- //
-//  Global keyboard listener: `/` to open (outside inputs)
-// -------------------------------------------------------------------------- //
-
 function onGlobalKeydown(event) {
-  // Ignore when focus is inside an input, textarea, or contenteditable.
-  const tag = event.target?.tagName?.toLowerCase()
-  const isEditable =
-    tag === 'input' ||
-    tag === 'textarea' ||
-    event.target?.isContentEditable
-
-  if (event.key === '/' && !isEditable && !visible.value) {
+  // ⌘K / Ctrl+K — toggle the palette regardless of focus
+  const isModK = (event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')
+  if (isModK) {
     event.preventDefault()
-    open()
+    visible.value ? close() : open()
+    return
+  }
+  // "/" opens when no input/textarea is focused
+  if (event.key === '/' && !visible.value) {
+    const tag = event.target?.tagName?.toLowerCase()
+    const editable = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable
+    if (!editable) {
+      event.preventDefault()
+      open()
+    }
   }
 }
 
-onMounted(() => {
-  document.addEventListener('keydown', onGlobalKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onGlobalKeydown)
-})
-
-// Reset selection when items change.
-watch(displayItems, () => {
-  selectedIndex.value = 0
-})
-
-// -------------------------------------------------------------------------- //
-//  Expose for parent components
-// -------------------------------------------------------------------------- //
+onMounted(() => { document.addEventListener('keydown', onGlobalKeydown) })
+onBeforeUnmount(() => { document.removeEventListener('keydown', onGlobalKeydown) })
 
 defineExpose({ open, close })
 </script>
 
 <style scoped>
-.commandbar-fade-enter-active,
-.commandbar-fade-leave-active {
-  transition: opacity 0.15s ease;
+.cmdbar-enter-active, .cmdbar-leave-active { transition: opacity 0.16s ease; }
+.cmdbar-enter-from, .cmdbar-leave-to { opacity: 0; }
+.cmdbar-enter-active > div, .cmdbar-leave-active > div {
+  transition: transform 0.16s ease, opacity 0.16s ease;
 }
-.commandbar-fade-enter-from,
-.commandbar-fade-leave-to {
-  opacity: 0;
-}
+.cmdbar-enter-from > div { transform: translateY(-6px); opacity: 0.6; }
+.cmdbar-leave-to > div   { transform: translateY(-3px); opacity: 0.4; }
+.is-active { color: var(--accent) !important; }
 </style>

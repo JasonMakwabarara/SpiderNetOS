@@ -52,7 +52,7 @@ mode), **Billing**.
   - Moved existing `/app/cockpit/` skeleton → `/app/frontend/` (supervisor expected path).
   - `package.json` rebuilt: `yarn start` runs Vite on :3000; added Vitest, happy-dom, @vue/test-utils.
   - `vite.config.js` locked to port 3000, allowedHosts=true, HMR via wss.
-  - `.env` → `VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com`.
+  - `.env` → `VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
 - **Design system (flight-deck)**
   - `tailwind.config.js` — cyan palette, legacy color remaps (indigo→cyan, red→danger, green→success, yellow→amber, gray→dark surfaces) so legacy views inherit the theme.
   - `src/style.css` — token vocabulary (`--bg`, `--accent`, `--text-*`), `.sn-card`, `.sn-btn(-primary|-danger)`, `.sn-pill(-accent|-warn|-danger|-success)`, `.sn-nav-link`, `.sn-kbd`, grid background, shimmer.
@@ -65,27 +65,29 @@ mode), **Billing**.
   - Capabilities derived from role map; super_admin short-circuits `has()`.
   - localStorage persistence for token/user/tenant/caps/impersonation.
 - **Dashboard** (`src/views/Dashboard.vue`) — rewritten: automation mode, pending approvals, active agents, today's spend, Live Ops Feed, budget snapshot, Hannah suggestions, quick jumps.
-- **All existing views** (Atlas, Flows, FlowBuilder, Approvals, Traces, Agents, Intelligence, Memory, Usage, Settings, Automation Level, Billing, Onboarding, Admin Dashboard, Admin Users, Admin Audit, Admin Copy, Admin Budget, Platform Overview, Platform Feature Flags, Platform Rollouts, Platform STE, Forbidden, NotFound) — verified rendering in the flight-deck palette via live screenshots on the preview URL.
-- **FastAPI mock** (`/app/backend/server.py`)
-  - Health, Auth (login/register/me/logout/step-up), Atlas (chat/sessions/execute/cancel/events/enhance-prompt), Command, Agents (+ templates + delegation), Flows (+ execute/publish/executions), Approvals (+ approve/reject), Traces, Intelligence workers, Memory, Usage (budget/current/daily/monthly/series/anomalies), Admin (users/audit/copy), Platform (overview/feature-flags/rollouts/ste/impersonate), Onboarding, Billing.
-  - All list endpoints return Laravel-style `{data: [...]}` envelope to match existing Pinia store contracts.
+- **Approvals** (`src/views/Approvals.vue`) — full rewrite: split queue|diff layout, pending/approved/rejected/all filter, risk pills, before/after diff blocks. Low/medium risk → soft `ConfirmDialog` with optional reason; **high risk → `TypedConfirmDialog`** requiring "I UNDERSTAND" + non-empty audit reason.
+- **TypedConfirmDialog** (`src/components/feedback/TypedConfirmDialog.vue`) — rethemed to flight-deck dark, exposes `reasonRequired` + `riskLabel` + diff slot.
+- **Command palette** (`src/components/CommandBar.vue`) — full rewrite. Subsequence-fuzzy index over routes (role-aware) + actions (Atlas commands, role swap, sign out). Empty state shows Quick jumps + Common actions. Keyboard nav (↑↓ Enter Esc), global hotkey ⌘K / Ctrl+K and `/`. Renders inside Teleport, accent cyan rail.
+- **Usage** (`src/views/Usage.vue`) — full rewrite. 30-day cost area-**sparkline** with hover crosshair (SVG, no chart lib), DOW × week cost **heatmap** (cyan intensity), **anomalies** panel from `/api/usage/anomalies`, live budget cards + caps editor. PUT `/api/usage/budget` added on backend.
+- **WebSocket** (`src/composables/useWebSocket.js`) — real Echo + Pusher wiring restored, with channel.listen for tenant.<id> events fanning out into agents/flows/usage/approvals/traces/atlas stores. Auto-degrades to deterministic stub when `VITE_PUSHER_KEY` is unset.
+- **All other existing views** (Atlas, Flows, FlowBuilder, Traces, Agents, Intelligence, Memory, Settings, Automation Level, Billing, Onboarding, Admin Dashboard, Admin Users, Admin Audit, Admin Copy, Admin Budget, Platform Overview, Platform Feature Flags, Platform Rollouts, Platform STE, Forbidden, NotFound) — verified rendering in the flight-deck palette via live screenshots.
+- **FastAPI mock** (`/app/backend/server.py`) — every `/api/*` endpoint the cockpit hits, all returning Laravel-style `{data: ...}` envelopes. `PUT /api/usage/budget` added this session for the new caps editor.
 - **Tests** (`tests/`) — 11 passing (auth store: 5, router guard: 6).
-- **Build** — `yarn build` produces a clean production bundle (dist/index-*.js ~344 KB, gzip 108 KB).
-- **Docs** — `/app/frontend/README.md` with stack, run instructions, env, IA table, token legend, mock-to-Laravel map.
+- **Build** — `yarn build` produces a clean production bundle (~360 KB / 114 KB gzip).
+- **Docs** — `/app/frontend/README.md`, `/app/frontend/.env.example`.
 
 ## Prioritized backlog
 
 ### P0 — none open
 ### P1 — polish
-- Replace the stubbed WebSocket indicator with real Echo + Pusher wiring.
-- Add a real command palette fuzzy search index (currently a `⌘K` trigger button only).
-- Replace Approvals Approve/Reject plain buttons with a typed-confirm dialog for high-risk entries.
+- Replace the `MOCKED` FastAPI backend with the real Laravel API gateway (only requires changing `VITE_API_URL`; mock can be deleted).
+- Wire `VITE_PUSHER_KEY` once the broadcaster is provisioned (composable already restored — just supply env vars).
 ### P2 — future
-- Token/cost series charts on `/usage` — replace placeholder list with a proper sparkline + heatmap.
+- ⌘K palette: include recent-traces and recent-approvals as ad-hoc result groups.
 - `/admin/copy` experiment uplift chart (histogram).
 - `/platform/ste` simulation panel — wire to a real POST and stream results.
 - Keyboard shortcut cheatsheet behind `?`.
-- Dark/light theme toggle (currently dark-only by design).
+- Optional dark/light theme toggle (currently dark-only by design).
 
 ## Next tasks on user resume
 

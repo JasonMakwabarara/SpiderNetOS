@@ -506,6 +506,18 @@ async def usage_budget():
     }}
 
 
+@api.put("/usage/budget")
+async def update_budget(body: Dict[str, Any]):
+    return {"data": {
+        "monthly_limit": float(body.get("monthly_limit", 1800.0)),
+        "daily_limit": float(body.get("daily_limit", 95.0)),
+        "alert_threshold": float(body.get("alert_threshold", 0.8)),
+        "action_at_limit": body.get("action_at_limit", "degrade"),
+        "near_limit": False,
+        "degraded": False,
+    }}
+
+
 @api.get("/usage/current")
 async def usage_current():
     return {"data": {

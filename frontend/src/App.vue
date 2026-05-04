@@ -246,6 +246,9 @@ import { useFlowsStore } from './stores/flows.js'
 import CommandBar from './components/CommandBar.vue'
 import RoleBadge from './components/security/RoleBadge.vue'
 import ImpersonationBanner from './components/impersonation/ImpersonationBanner.vue'
+import { useApprovalsStore } from './stores/approvals.js'
+import { useTracesStore } from './stores/traces.js'
+import { useAtlasStore } from './stores/atlas.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -253,6 +256,9 @@ const authStore = useAuthStore()
 const usageStore = useUsageStore()
 const agentsStore = useAgentsStore()
 const flowsStore = useFlowsStore()
+const approvalsStore = useApprovalsStore()
+const tracesStore = useTracesStore()
+const atlasStore = useAtlasStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -377,7 +383,7 @@ const autoPillClass = computed(() => {
   return 'sn-pill'
 })
 
-const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore)
+const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore)
 
 function openCommandBar() {
   cmdBarRef.value?.open?.()

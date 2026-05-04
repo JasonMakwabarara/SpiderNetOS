@@ -1,301 +1,346 @@
 <template>
-  <div class="approvals p-6 space-y-6">
+  <div class="px-8 py-6 max-w-[1500px] mx-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <header class="flex items-start justify-between gap-4 mb-5">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Approvals</h1>
-        <p class="text-sm text-gray-500 mt-1">
-          Review and manage pending approval requests
+        <h1 class="text-[26px] font-heading font-semibold tracking-tight" style="color: var(--text-primary);">Approvals</h1>
+        <p class="text-sm mt-1" style="color: var(--text-muted);">
+          Review and decide on changes Atlas wants to make. High-risk changes require a typed confirm.
         </p>
       </div>
-      <div class="flex items-center space-x-3">
-        <span
-          v-if="approvalsStore.pendingCount > 0"
-          class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full"
-        >
-          {{ approvalsStore.pendingCount }} pending
-        </span>
-        <button
-          @click="refreshApprovals"
-          class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-          title="Refresh"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      <div class="flex items-center gap-2 shrink-0">
+        <span v-if="pendingCount" class="sn-pill sn-pill-warn" data-testid="approvals-pending-count">{{ pendingCount }} pending</span>
+        <button class="sn-btn" data-testid="approvals-refresh" @click="refresh">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8 8 0 004.582 9M20 20v-5h-.581m0 0a8 8 0 01-15.357-2"/>
           </svg>
+          Refresh
         </button>
       </div>
-    </div>
+    </header>
 
-    <!-- Filter Tabs -->
-    <div class="border-b border-gray-200">
-      <nav class="flex space-x-8">
-        <button
-          v-for="tab in filterTabs"
-          :key="tab.value"
-          @click="activeFilter = tab.value"
-          class="pb-3 px-1 text-sm font-medium border-b-2 transition-colors"
-          :class="activeFilter === tab.value
-            ? 'border-indigo-600 text-indigo-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-        >
-          {{ tab.label }}
-          <span
-            v-if="tab.count > 0"
-            class="ml-2 px-2 py-0.5 text-xs rounded-full"
-            :class="activeFilter === tab.value ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'"
-          >
-            {{ tab.count }}
-          </span>
-        </button>
-      </nav>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="approvalsStore.isLoading" class="text-center py-12">
-      <div class="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto" />
-      <p class="mt-4 text-gray-500">Loading approvals...</p>
-    </div>
-
-    <!-- Empty State -->
-    <div v-else-if="filteredApprovals.length === 0" class="text-center py-12 bg-white rounded-lg border border-gray-200">
-      <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <h3 class="text-lg font-medium text-gray-900">No approvals found</h3>
-      <p class="text-gray-500 mt-1">
-        {{ activeFilter === 'all' ? 'No approval requests yet' : `No ${activeFilter} approvals` }}
-      </p>
-    </div>
-
-    <!-- Approval Cards -->
-    <div v-else class="space-y-4">
-      <div
-        v-for="approval in filteredApprovals"
-        :key="approval.id"
-        class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+    <!-- Filters -->
+    <nav class="flex items-center gap-1 mb-4" aria-label="Approval filters">
+      <button
+        v-for="t in tabs" :key="t.value"
+        class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+        :style="activeFilter === t.value
+          ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid rgba(0,229,200,0.30);'
+          : 'background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);'"
+        :data-testid="`approvals-tab-${t.value}`"
+        @click="activeFilter = t.value"
       >
-        <div class="p-5">
-          <div class="flex items-start justify-between">
-            <div class="flex items-start space-x-4">
-              <!-- Type Badge -->
-              <span
-                class="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-full"
-                :class="typeBadgeClass(approval.type)"
-              >
-                {{ approval.type }}
-              </span>
+        {{ t.label }}
+        <span class="ml-1.5 opacity-70">{{ t.count }}</span>
+      </button>
+    </nav>
 
+    <!-- Split view -->
+    <section class="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4 min-h-[60vh]">
+      <!-- Queue -->
+      <aside class="sn-card overflow-hidden flex flex-col">
+        <div class="px-3 py-2 border-b text-[11px] uppercase tracking-widest font-semibold"
+             style="border-color: var(--border); color: var(--text-muted);">
+          Queue · {{ filteredApprovals.length }}
+        </div>
+        <ul class="flex-1 overflow-y-auto divide-y" style="border-color: var(--divider);">
+          <li v-if="!filteredApprovals.length" class="px-4 py-12 text-center text-sm" style="color: var(--text-muted);">
+            All clear. Nothing waiting on you.
+          </li>
+          <li
+            v-for="apr in filteredApprovals" :key="apr.id"
+            class="px-3 py-2.5 cursor-pointer transition-colors"
+            :style="selected?.id === apr.id
+              ? 'background: var(--accent-weak); border-left: 2px solid var(--accent);'
+              : 'border-left: 2px solid transparent;'"
+            :data-testid="`approval-item-${apr.id}`"
+            @click="selectedId = apr.id"
+          >
+            <div class="flex items-center gap-2 mb-1">
+              <span class="sn-pill text-[10px]">{{ apr.type }}</span>
+              <span :class="riskPill(apr.risk)">{{ apr.risk || 'low' }}</span>
+              <span class="ml-auto sn-pill text-[10px]" :class="statusPill(apr.status)">{{ apr.status }}</span>
+            </div>
+            <div class="text-sm truncate" style="color: var(--text-primary);">
+              {{ apr.title || apr.resource_name }}
+            </div>
+            <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
+              {{ apr.requested_by || 'Atlas' }} · {{ timeAgo(apr.created_at) }}
+            </div>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Detail -->
+      <article class="sn-card p-0 overflow-hidden flex flex-col" data-testid="approval-detail">
+        <template v-if="selected">
+          <header class="px-5 py-4 border-b" style="border-color: var(--border);">
+            <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <!-- Resource Info -->
-                <h4 class="text-sm font-semibold text-gray-900">
-                  {{ approval.resource_name || approval.title || 'Unnamed Resource' }}
-                </h4>
-                <p v-if="approval.resource_type" class="text-xs text-gray-500 mt-0.5">
-                  {{ approval.resource_type }} {{ approval.resource_id ? `#${approval.resource_id}` : '' }}
-                </p>
-
-                <!-- Reason -->
-                <p v-if="approval.reason" class="text-sm text-gray-600 mt-2">
-                  {{ approval.reason }}
-                </p>
-
-                <!-- Metadata -->
-                <div class="flex items-center space-x-4 mt-3 text-xs text-gray-400">
-                  <span v-if="approval.requested_by" class="flex items-center space-x-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span>{{ approval.requested_by }}</span>
-                  </span>
-                  <span class="flex items-center space-x-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{{ formatTime(approval.created_at) }}</span>
-                  </span>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="sn-pill text-[10px]">{{ selected.type }}</span>
+                  <span :class="riskPill(selected.risk)">{{ selected.risk || 'low' }}</span>
+                  <span class="sn-pill text-[10px]" :class="statusPill(selected.status)">{{ selected.status }}</span>
                 </div>
+                <h2 class="font-heading font-semibold text-[18px]" style="color: var(--text-primary);">
+                  {{ selected.title || selected.resource_name }}
+                </h2>
+                <p class="text-xs mt-1 mono" style="color: var(--text-muted);">
+                  {{ selected.id }} · {{ selected.requested_by || 'Atlas' }} · {{ timeAgo(selected.created_at) }}
+                </p>
               </div>
             </div>
+          </header>
 
-            <!-- Status Badge -->
-            <span
-              class="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-full"
-              :class="statusBadgeClass(approval.status)"
-            >
-              {{ approval.status }}
+          <div class="flex-1 overflow-auto p-5 space-y-4">
+            <!-- Summary -->
+            <section v-if="selected.summary || selected.reason">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Summary</h3>
+              <p class="text-sm" style="color: var(--text-primary);">{{ selected.summary || selected.reason }}</p>
+            </section>
+
+            <!-- Diff -->
+            <section v-if="selected.diff">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Diff</h3>
+              <div class="rounded-md overflow-hidden border" style="border-color: var(--border);">
+                <div class="px-3 py-1.5 text-[11px] mono"
+                     style="background: var(--bg-elevated); color: var(--text-muted);">
+                  field <span style="color: var(--text-secondary);">{{ selected.diff.field }}</span>
+                </div>
+                <div class="grid grid-cols-2">
+                  <div class="px-3 py-2.5 text-xs mono"
+                       style="background: rgba(255,90,122,0.06); color: var(--danger); border-right: 1px solid var(--border);">
+                    <div class="opacity-60 mb-1">— before</div>
+                    <div class="break-all">{{ formatDiff(selected.diff.before) }}</div>
+                  </div>
+                  <div class="px-3 py-2.5 text-xs mono"
+                       style="background: rgba(34,211,155,0.06); color: var(--success);">
+                    <div class="opacity-60 mb-1">+ after</div>
+                    <div class="break-all">{{ formatDiff(selected.diff.after) }}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Review comment for processed -->
+            <section v-if="selected.review_comment">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Recorded reason</h3>
+              <p class="text-sm rounded-md px-3 py-2"
+                 style="background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border);">
+                {{ selected.review_comment }}
+              </p>
+            </section>
+          </div>
+
+          <!-- Action bar -->
+          <footer
+            v-if="selected.status === 'pending'"
+            class="px-5 py-3 border-t flex items-center justify-between gap-3"
+            style="border-color: var(--border); background: rgba(0,0,0,0.25);"
+          >
+            <span class="text-xs" style="color: var(--text-muted);">
+              <span v-if="isHigh">High risk — typed confirm required</span>
+              <span v-else>Reversible action</span>
             </span>
-          </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="sn-btn"
+                style="border-color: rgba(255,90,122,0.40); color: var(--danger);"
+                :data-testid="`approval-reject-${selected.id}`"
+                @click="onReject"
+              >Reject</button>
+              <button
+                class="sn-btn"
+                style="background: rgba(34,211,155,0.16); color: var(--success); border-color: rgba(34,211,155,0.40);"
+                :data-testid="`approval-approve-${selected.id}`"
+                @click="onApprove"
+              >Approve</button>
+            </div>
+          </footer>
+        </template>
 
-          <!-- Action buttons for pending approvals -->
-          <div v-if="approval.status === 'pending'" class="flex items-center space-x-3 mt-4 pt-4 border-t border-gray-100">
-            <button
-              @click="openApproveModal(approval)"
-              class="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Approve
-            </button>
-            <button
-              @click="openRejectModal(approval)"
-              class="px-4 py-2 text-sm font-medium bg-white text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              Reject
-            </button>
-          </div>
-
-          <!-- Review comment for processed approvals -->
-          <div v-if="approval.review_comment" class="mt-4 pt-4 border-t border-gray-100">
-            <p class="text-xs text-gray-500 mb-1">Review Comment:</p>
-            <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{{ approval.review_comment }}</p>
-          </div>
+        <!-- Empty selection -->
+        <div v-else class="flex-1 flex items-center justify-center text-sm" style="color: var(--text-muted);">
+          Select an approval from the queue to review the diff.
         </div>
-      </div>
-    </div>
+      </article>
+    </section>
 
-    <!-- Approve/Reject Confirmation Modal -->
-    <div v-if="modalApproval" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-1">
-            {{ modalAction === 'approve' ? 'Approve Request' : 'Reject Request' }}
-          </h2>
-          <p class="text-sm text-gray-500 mb-4">
-            {{ modalApproval.resource_name || modalApproval.title }}
-          </p>
+    <!-- Soft-confirm dialog (low/medium-risk approve) -->
+    <ConfirmDialog
+      v-if="softDialog.open"
+      v-model="softDialog.open"
+      :title="softDialog.title"
+      :confirm-label="softDialog.confirmLabel"
+      data-testid="approval-soft-dialog"
+      @confirm="softDialog.onConfirm"
+    >
+      <p class="text-sm" style="color: var(--text-secondary);">{{ softDialog.body }}</p>
+      <textarea
+        v-model="softDialog.reason"
+        rows="3"
+        class="mt-3"
+        :placeholder="softDialog.reasonPlaceholder"
+        data-testid="approval-soft-reason"
+      />
+    </ConfirmDialog>
 
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ modalAction === 'approve' ? 'Comment (optional)' : 'Reason for rejection' }}
-            </label>
-            <textarea
-              v-model="modalComment"
-              rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              :placeholder="modalAction === 'approve' ? 'Add a comment...' : 'Explain why this was rejected...'"
-            />
-          </div>
-
-          <div class="flex justify-end space-x-3">
-            <button
-              @click="closeModal"
-              class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              @click="confirmAction"
-              :disabled="isProcessing || (modalAction === 'reject' && !modalComment.trim())"
-              class="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              :class="modalAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'"
-            >
-              {{ isProcessing ? 'Processing...' : (modalAction === 'approve' ? 'Confirm Approve' : 'Confirm Reject') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Typed confirm dialog (high-risk approve) -->
+    <TypedConfirmDialog
+      v-model="typedDialog.open"
+      :phrase="typedDialog.phrase"
+      :title="typedDialog.title"
+      :risk-label="typedDialog.riskLabel"
+      :confirm-label="typedDialog.confirmLabel"
+      reason-required
+      data-testid="approval-typed-dialog"
+      @confirm="typedDialog.onConfirm"
+    >
+      <p class="text-sm" style="color: var(--text-secondary);">{{ typedDialog.body }}</p>
+      <p v-if="typedDialog.diff" class="mt-2 text-xs mono" style="color: var(--text-muted);">
+        {{ typedDialog.diff }}
+      </p>
+    </TypedConfirmDialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useApprovalsStore } from '../stores/approvals.js'
+import ConfirmDialog from '../components/feedback/ConfirmDialog.vue'
+import TypedConfirmDialog from '../components/feedback/TypedConfirmDialog.vue'
 
 const approvalsStore = useApprovalsStore()
 
-const activeFilter = ref('all')
-const modalApproval = ref(null)
-const modalAction = ref('')
-const modalComment = ref('')
-const isProcessing = ref(false)
+const activeFilter = ref('pending')
+const selectedId = ref(null)
 
-const filterTabs = computed(() => [
-  { label: 'All', value: 'all', count: approvalsStore.approvals.length },
-  { label: 'Pending', value: 'pending', count: approvalsStore.pendingApprovals.length },
-  { label: 'Approved', value: 'approved', count: approvalsStore.approvedApprovals.length },
-  { label: 'Rejected', value: 'rejected', count: approvalsStore.rejectedApprovals.length }
-])
+const tabs = computed(() => {
+  const all = approvalsStore.approvals || []
+  const by = (s) => all.filter((a) => a.status === s).length
+  return [
+    { label: 'Pending',  value: 'pending',  count: by('pending') },
+    { label: 'Approved', value: 'approved', count: by('approved') },
+    { label: 'Rejected', value: 'rejected', count: by('rejected') },
+    { label: 'All',      value: 'all',      count: all.length },
+  ]
+})
 
 const filteredApprovals = computed(() => {
-  switch (activeFilter.value) {
-    case 'pending': return approvalsStore.pendingApprovals
-    case 'approved': return approvalsStore.approvedApprovals
-    case 'rejected': return approvalsStore.rejectedApprovals
-    default: return approvalsStore.approvals
-  }
+  const all = approvalsStore.approvals || []
+  if (activeFilter.value === 'all') return all
+  return all.filter((a) => a.status === activeFilter.value)
 })
 
-onMounted(() => {
-  approvalsStore.fetchApprovals()
+const selected = computed(
+  () => (approvalsStore.approvals || []).find((a) => a.id === selectedId.value) || filteredApprovals.value[0] || null
+)
+
+const pendingCount = computed(
+  () => (approvalsStore.approvals || []).filter((a) => a.status === 'pending').length
+)
+
+const isHigh = computed(() => (selected.value?.risk || 'low') === 'high')
+
+// ── Dialogs ───────────────────────────────────────────────────────
+const softDialog = reactive({
+  open: false, title: '', body: '', confirmLabel: 'Confirm',
+  reason: '', reasonPlaceholder: 'Optional comment for the audit log…',
+  onConfirm: () => {},
 })
 
-function refreshApprovals() {
-  approvalsStore.fetchApprovals()
-}
+const typedDialog = reactive({
+  open: false, title: '', body: '', diff: '', phrase: 'CONFIRM',
+  riskLabel: 'High risk', confirmLabel: 'Confirm',
+  onConfirm: () => {},
+})
 
-function openApproveModal(approval) {
-  modalApproval.value = approval
-  modalAction.value = 'approve'
-  modalComment.value = ''
-}
-
-function openRejectModal(approval) {
-  modalApproval.value = approval
-  modalAction.value = 'reject'
-  modalComment.value = ''
-}
-
-function closeModal() {
-  modalApproval.value = null
-  modalAction.value = ''
-  modalComment.value = ''
-}
-
-async function confirmAction() {
-  if (!modalApproval.value) return
-  isProcessing.value = true
-
-  try {
-    if (modalAction.value === 'approve') {
-      await approvalsStore.approveItem(modalApproval.value.id, modalComment.value)
-    } else {
-      await approvalsStore.rejectItem(modalApproval.value.id, modalComment.value)
-    }
-    closeModal()
-  } finally {
-    isProcessing.value = false
+function openSoft({ title, body, confirmLabel, run, placeholder }) {
+  softDialog.title = title
+  softDialog.body = body
+  softDialog.confirmLabel = confirmLabel
+  softDialog.reason = ''
+  softDialog.reasonPlaceholder = placeholder || 'Optional comment for the audit log…'
+  softDialog.onConfirm = async () => {
+    await run(softDialog.reason.trim())
+    softDialog.open = false
   }
+  softDialog.open = true
 }
 
-function typeBadgeClass(type) {
-  const map = {
-    deployment: 'bg-purple-100 text-purple-700',
-    flow: 'bg-blue-100 text-blue-700',
-    agent: 'bg-green-100 text-green-700',
-    budget: 'bg-yellow-100 text-yellow-700',
-    access: 'bg-orange-100 text-orange-700'
+function openTyped({ title, body, diff, phrase, run }) {
+  typedDialog.title = title
+  typedDialog.body = body
+  typedDialog.diff = diff
+  typedDialog.phrase = phrase
+  typedDialog.riskLabel = 'High risk'
+  typedDialog.confirmLabel = 'Approve'
+  typedDialog.onConfirm = async ({ reason }) => {
+    await run(reason)
+    typedDialog.open = false
   }
-  return map[type] || 'bg-gray-100 text-gray-700'
+  typedDialog.open = true
 }
 
-function statusBadgeClass(status) {
-  const map = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    approved: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700'
+async function onApprove() {
+  const apr = selected.value
+  if (!apr) return
+  if ((apr.risk || 'low') === 'high') {
+    openTyped({
+      title: `Approve · ${apr.title}`,
+      body: 'This change is high-risk. Type the phrase below and provide an audit reason to continue.',
+      diff: apr.diff ? `${apr.diff.field}: ${formatDiff(apr.diff.before)} → ${formatDiff(apr.diff.after)}` : '',
+      phrase: 'I UNDERSTAND',
+      run: async (reason) => approvalsStore.approve?.(apr.id, reason),
+    })
+    return
   }
-  return map[status] || 'bg-gray-100 text-gray-700'
+  openSoft({
+    title: `Approve · ${apr.title}`,
+    body: 'This change will be applied immediately.',
+    confirmLabel: 'Approve',
+    placeholder: 'Optional comment for the audit log…',
+    run: async (reason) => approvalsStore.approve?.(apr.id, reason),
+  })
 }
 
-function formatTime(timestamp) {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = Math.floor((now - date) / 1000)
-
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return date.toLocaleDateString()
+function onReject() {
+  const apr = selected.value
+  if (!apr) return
+  openSoft({
+    title: `Reject · ${apr.title}`,
+    body: 'The request will be archived as rejected. Atlas may resubmit a different proposal.',
+    confirmLabel: 'Reject',
+    placeholder: 'Reason for rejection (visible in audit log)…',
+    run: async (reason) => approvalsStore.reject?.(apr.id, reason),
+  })
 }
+
+function refresh() { approvalsStore.fetchApprovals?.() }
+
+function riskPill(r) {
+  if (r === 'high')   return 'sn-pill sn-pill-danger text-[10px]'
+  if (r === 'medium') return 'sn-pill sn-pill-warn text-[10px]'
+  return 'sn-pill sn-pill-success text-[10px]'
+}
+function statusPill(s) {
+  if (s === 'approved') return 'sn-pill-success'
+  if (s === 'rejected') return 'sn-pill-danger'
+  return 'sn-pill-warn'
+}
+function timeAgo(ts) {
+  if (!ts) return ''
+  const s = Math.max(1, Math.floor((Date.now() - new Date(ts).getTime()) / 1000))
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
+function formatDiff(v) {
+  if (v === null || v === undefined) return '—'
+  if (typeof v === 'object') return JSON.stringify(v)
+  return String(v)
+}
+
+onMounted(() => approvalsStore.fetchApprovals?.())
 </script>
