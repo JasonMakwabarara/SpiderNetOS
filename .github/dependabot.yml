@@ -19,7 +19,7 @@ updates:
       dev-deps:
         dependency-type: development
 
-  # ─── Node / cockpit ────────────────────────────────────────────────
+  # ─── Node / cockpit (Vue SPA) ───────────────────────────────────────
   - package-ecosystem: npm
     directory: /cockpit
     schedule:

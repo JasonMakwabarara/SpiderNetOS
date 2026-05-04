@@ -447,7 +447,7 @@ services:
     networks:
       - spidernet
 
-  # ─── Vue 3 Cockpit (UI Plane) ───
+  # ─── Vue 3 Cockpit (UI plane)
   cockpit:
     build:
       context: ./cockpit

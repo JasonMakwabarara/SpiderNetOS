@@ -30,21 +30,21 @@ onboarding screens.
 ## Run it
 
 ```bash
-cd /app/frontend
+cd /app/cockpit
 yarn install
 yarn start          # vite on 0.0.0.0:3000
 yarn build          # production bundle
 yarn test           # Vitest — auth store + router guard
 ```
 
-Supervisor is preconfigured to run `yarn start` in `/app/frontend`.
+Supervisor is preconfigured to run `yarn start` in `/app/cockpit`.
 
 ### Env
 
 Only one variable is required:
 
 ```bash
-# /app/frontend/.env
+# /app/cockpit/.env
 VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com
 ```
 

@@ -31,7 +31,7 @@ mode), **Billing**.
 
 ## Architecture
 
-- **Frontend** `/app/frontend/` — Vue 3 + Vite + Pinia + Tailwind. Supervisor runs `yarn start` on :3000.
+- **Cockpit** `/app/cockpit/` — Vue 3 + Vite + Pinia + Tailwind. Supervisor runs `yarn start` on :3000.
 - **Backend (mock)** `/app/backend/server.py` — FastAPI, mocked `/api/*` endpoints. Supervisor runs uvicorn on :8001.
 - **Kubernetes ingress** routes `/api/*` to port 8001 and everything else to port 3000, preserving the preview URL.
 - **Realtime (WS)** is stubbed (always-connected after 420ms) — see `src/composables/useWebSocket.js` `TODO (Laravel)` block for wiring Echo + Pusher when the broadcaster is up.
@@ -49,7 +49,7 @@ mode), **Billing**.
 ## Implemented — sessions 2026-01
 
 - **Infra**
-  - Moved existing `/app/cockpit/` skeleton → `/app/frontend/` (supervisor expected path).
+  - Cockpit app lives at `/app/cockpit/` (supervisor expected path).
   - `package.json` rebuilt: `yarn start` runs Vite on :3000; added Vitest, happy-dom, @vue/test-utils.
   - `vite.config.js` locked to port 3000, allowedHosts=true, HMR via wss.
   - `.env` → `VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
@@ -77,7 +77,7 @@ mode), **Billing**.
 - **FastAPI mock** (`/app/backend/server.py`) — every `/api/*` endpoint with `{data: ...}` envelope. New this round: `POST /api/traces/:id/share`, `GET /api/public/traces/:token`, `POST /api/ste/simulate` (StreamingResponse / SSE), `GET|PUT /api/admin/copy/state`.
 - **Tests** — 11 Vitest cases passing (auth store + router guard).
 - **Build** — `yarn build` produces a clean production bundle (~365 KB / 116 KB gzip).
-- **Docs** — `/app/frontend/README.md`, `/app/frontend/.env.example`.
+- **Docs** — `/app/cockpit/README.md`, `/app/cockpit/.env.example`.
 
 ## Prioritized backlog
 
