@@ -470,6 +470,7 @@ async def trace_detail(trace_id: str):
 import hashlib
 
 _SHARED_TRACES: Dict[str, Dict[str, Any]] = {}
+_SHARED_APPROVALS: Dict[str, Dict[str, Any]] = {}
 
 
 @api.post("/traces/{trace_id}/share")
@@ -506,6 +507,41 @@ async def public_trace(token: str):
             {"ts": past(0), "level": "warn",  "msg": "retry 1/2 (rate limit)"},
             {"ts": past(0), "level": "info",  "msg": "end ok"},
         ],
+        "tenant_name": "Acme Ops",
+        "shared_at": rec["created_at"],
+        "expires_at": rec["expires_at"],
+    }}
+
+
+# ─── Share-an-Approval (public read-only) ────────────────────────────────
+@api.post("/approvals/{apr_id}/share")
+async def share_approval(apr_id: str):
+    a = next((a for a in _APPROVALS if a["id"] == apr_id), None)
+    if not a:
+        raise HTTPException(404, "approval not found")
+    token = hashlib.sha256(f"apr-{apr_id}-{uuid.uuid4().hex}".encode()).hexdigest()[:24]
+    _SHARED_APPROVALS[token] = {
+        "approval_id": apr_id,
+        "tenant_id": "tnt_acme",
+        "created_at": now_iso(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+    }
+    return {
+        "token": token,
+        "expires_at": _SHARED_APPROVALS[token]["expires_at"],
+        "share_path": f"/share/approval/{token}",
+    }
+
+
+@api.get("/public/approvals/{token}")
+async def public_approval(token: str):
+    rec = _SHARED_APPROVALS.get(token)
+    if not rec:
+        raise HTTPException(404, "share not found or expired")
+    a = next((a for a in _APPROVALS if a["id"] == rec["approval_id"]), None)
+    if not a:
+        raise HTTPException(404, "approval gone")
+    return {"data": a | {
         "tenant_name": "Acme Ops",
         "shared_at": rec["created_at"],
         "expires_at": rec["expires_at"],
