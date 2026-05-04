@@ -1,7 +1,10 @@
 <template>
+  <!-- Public route (no shell, no auth) -->
+  <RouterView v-if="route.meta.public" />
+
   <!-- Unauthenticated: full-bleed hero -->
   <div
-    v-if="!authStore.isAuthenticated"
+    v-else-if="!authStore.isAuthenticated"
     class="min-h-screen"
     style="background: var(--gradient-hero);"
   >

@@ -85,9 +85,76 @@
               <span class="sn-kbd">↑↓</span> navigate
               <span class="sn-kbd">↵</span> open
               <span class="sn-kbd">esc</span> close
+              <button class="sn-kbd hover:text-white transition-colors" data-testid="command-palette-cheat" @click="openCheat">?</button> shortcuts
             </span>
             <span>SpiderNetOS · ⌘K</span>
           </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Keyboard cheat sheet -->
+    <Transition name="cmdbar">
+      <div
+        v-if="cheatVisible"
+        class="fixed inset-0 z-[9999] flex items-center justify-center px-4"
+        style="background: rgba(5,7,10,0.65); backdrop-filter: blur(6px);"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
+        data-testid="cheat-sheet"
+        @click.self="closeCheat"
+        @keydown.escape="closeCheat"
+      >
+        <div class="w-full max-w-2xl sn-panel overflow-hidden" style="border-color: var(--border-active);">
+          <header class="px-5 py-4 border-b flex items-center justify-between" style="border-color: var(--border);">
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">Cockpit</div>
+              <h3 class="font-heading font-semibold text-[16px] mt-0.5" style="color: var(--text-primary);">
+                Keyboard shortcuts &amp; slash commands
+              </h3>
+            </div>
+            <button class="sn-btn" data-testid="cheat-close" @click="closeCheat">
+              <span class="sn-kbd">esc</span>
+            </button>
+          </header>
+
+          <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold mb-2 mt-1"
+                   style="color: var(--text-muted);">Navigation</div>
+              <div v-for="row in CHEATS.nav" :key="row.label"
+                   class="flex items-center justify-between py-1 text-sm" style="color: var(--text-secondary);">
+                <span>{{ row.label }}</span>
+                <span class="flex gap-1"><span v-for="k in row.keys" :key="k" class="sn-kbd">{{ k }}</span></span>
+              </div>
+            </div>
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold mb-2 mt-1"
+                   style="color: var(--text-muted);">Palette</div>
+              <div v-for="row in CHEATS.palette" :key="row.label"
+                   class="flex items-center justify-between py-1 text-sm" style="color: var(--text-secondary);">
+                <span>{{ row.label }}</span>
+                <span class="flex gap-1"><span v-for="k in row.keys" :key="k" class="sn-kbd">{{ k }}</span></span>
+              </div>
+            </div>
+
+            <div class="md:col-span-2 mt-3">
+              <div class="text-[10px] tracking-widest uppercase font-semibold mb-2"
+                   style="color: var(--text-muted);">Atlas slash commands</div>
+              <ul class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                <li v-for="cmd in CHEATS.slash" :key="cmd.cmd" class="flex items-baseline gap-3">
+                  <code class="mono text-[12px] px-1.5 py-0.5 rounded" style="background: var(--bg-elevated); color: var(--accent); border: 1px solid var(--border);">{{ cmd.cmd }}</code>
+                  <span style="color: var(--text-secondary);">{{ cmd.label }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <footer class="px-5 py-3 border-t text-[11px]"
+                  style="border-color: var(--border); background: rgba(0,0,0,0.25); color: var(--text-muted);">
+            Press <span class="sn-kbd">?</span> any time to open this list.
+          </footer>
         </div>
       </div>
     </Transition>
@@ -99,16 +166,23 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAtlasStore } from '../stores/atlas.js'
+import api from '../services/api.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const atlasStore = useAtlasStore()
 
 const visible = ref(false)
+const cheatVisible = ref(false)
 const query = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref(null)
 const panelRef = ref(null)
+
+// Live lanes — fetched lazily on open
+const recentTraces = ref([])
+const recentApprovals = ref([])
+const lanesLoaded = ref(false)
 
 // ── Index ──────────────────────────────────────────────────────────
 // Routes the cockpit can navigate to + actions Atlas can execute.
@@ -172,6 +246,38 @@ function askAtlas(cmd) {
   router.push('/atlas').then(() => atlasStore.sendMessage?.(cmd).catch(() => {}))
 }
 
+// Cheat-sheet content (kept in lockstep with onGlobalKeydown + ACTIONS).
+const CHEATS = {
+  nav: [
+    { label: 'Open command palette',   keys: ['⌘', 'K'] },
+    { label: 'Open command palette',   keys: ['Ctrl', 'K'] },
+    { label: 'Open command palette',   keys: ['/'] },
+    { label: 'Show this help',         keys: ['?'] },
+    { label: 'Close any modal',        keys: ['esc'] },
+    { label: 'Move selection',         keys: ['↑', '↓'] },
+    { label: 'Open / run',             keys: ['↵'] },
+  ],
+  palette: [
+    { label: 'Jump to Atlas',          keys: ['G', 'A'] },
+    { label: 'Jump to Approvals',      keys: ['G', 'P'] },
+    { label: 'Jump to Traces',         keys: ['G', 'T'] },
+    { label: 'New flow',               keys: ['N', 'F'] },
+    { label: 'New agent',              keys: ['N', 'A'] },
+    { label: 'Switch role',            keys: ['R'] },
+    { label: 'Sign out',               keys: ['Q'] },
+  ],
+  slash: [
+    { cmd: '/status weekly',           label: 'Summarize the last 7 days of outcomes' },
+    { cmd: '/approvals pending',       label: 'Show all pending approvals' },
+    { cmd: '/usage anomalies',         label: 'Surface budget anomalies' },
+    { cmd: '/trace latest',            label: 'Open the most recent trace' },
+    { cmd: '/agents promote <id>',     label: 'Promote agent to autonomous mode' },
+    { cmd: '/flows publish <slug>',    label: 'Publish a draft flow (queues approval)' },
+    { cmd: '/budget set <usd>',        label: 'Set monthly budget cap' },
+    { cmd: '/memory search <q>',       label: 'Search tenant memory' },
+  ],
+}
+
 // Role-aware index assembly
 const allRoutes = computed(() => {
   const out = [...ROUTES]
@@ -223,11 +329,39 @@ const matchedActions = computed(() => {
 const groupedResults = computed(() => {
   const q = query.value.trim()
   if (!q) {
-    // Empty state: surface a helpful "Quick jumps" + "Common actions" preset
-    return [
+    // Empty state: surface live lanes + Quick jumps + Common actions.
+    const groups = []
+    if (recentApprovals.value.length) {
+      groups.push({
+        label: 'Live · pending approvals',
+        items: recentApprovals.value.slice(0, 4).map((a) => ({
+          id: `live-apr-${a.id}`,
+          label: a.title || a.resource_name || a.id,
+          hint: `${a.risk || 'low'} risk · ${a.requested_by || 'Atlas'}`,
+          path: '/approvals',
+          kind: 'route',
+          icon: ICONS.bolt,
+        })),
+      })
+    }
+    if (recentTraces.value.length) {
+      groups.push({
+        label: 'Live · recent traces',
+        items: recentTraces.value.slice(0, 4).map((t) => ({
+          id: `live-trc-${t.id}`,
+          label: t.subject || t.id,
+          hint: `${t.kind} · ${t.status} · ${t.actor || ''}`,
+          path: '/traces',
+          kind: 'route',
+          icon: ICONS.arrow,
+        })),
+      })
+    }
+    groups.push(
       { label: 'Quick jumps',    items: allRoutes.value.slice(0, 6).map((r) => ({ ...r, kind: 'route', icon: ICONS.arrow })) },
       { label: 'Common actions', items: ACTIONS.slice(0, 4).map((a) => ({ ...a, kind: 'action', icon: ICONS.bolt })) },
-    ]
+    )
+    return groups
   }
   return [
     { label: 'Routes',  items: matchedRoutes.value },
@@ -276,12 +410,38 @@ function open() {
   visible.value = true
   query.value = ''
   selectedIndex.value = 0
+  if (!lanesLoaded.value) loadLiveLanes()
   nextTick(() => inputRef.value?.focus())
 }
 
 function close() {
   visible.value = false
   query.value = ''
+}
+
+async function loadLiveLanes() {
+  try {
+    const [tracesResp, approvalsResp] = await Promise.allSettled([
+      api.get('/api/traces'),
+      api.get('/api/approvals'),
+    ])
+    if (tracesResp.status === 'fulfilled') {
+      recentTraces.value = (tracesResp.value.data?.data || []).slice(0, 6)
+    }
+    if (approvalsResp.status === 'fulfilled') {
+      const all = approvalsResp.value.data?.data || []
+      recentApprovals.value = all.filter((a) => a.status === 'pending').slice(0, 6)
+    }
+    lanesLoaded.value = true
+  } catch { /* lanes are best-effort */ }
+}
+
+function openCheat() {
+  cheatVisible.value = true
+}
+
+function closeCheat() {
+  cheatVisible.value = false
 }
 
 function onGlobalKeydown(event) {
@@ -292,21 +452,29 @@ function onGlobalKeydown(event) {
     visible.value ? close() : open()
     return
   }
-  // "/" opens when no input/textarea is focused
-  if (event.key === '/' && !visible.value) {
-    const tag = event.target?.tagName?.toLowerCase()
-    const editable = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable
-    if (!editable) {
-      event.preventDefault()
-      open()
-    }
+
+  const tag = event.target?.tagName?.toLowerCase()
+  const editable = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable
+
+  // "/" opens palette when no input is focused
+  if (event.key === '/' && !visible.value && !editable) {
+    event.preventDefault()
+    open()
+    return
+  }
+
+  // "?" opens cheat sheet (Shift+/) when no input is focused
+  if ((event.key === '?' || (event.shiftKey && event.key === '/')) && !editable) {
+    if (visible.value) return
+    event.preventDefault()
+    cheatVisible.value ? closeCheat() : openCheat()
   }
 }
 
 onMounted(() => { document.addEventListener('keydown', onGlobalKeydown) })
 onBeforeUnmount(() => { document.removeEventListener('keydown', onGlobalKeydown) })
 
-defineExpose({ open, close })
+defineExpose({ open, close, openCheat, closeCheat })
 </script>
 
 <style scoped>

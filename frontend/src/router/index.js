@@ -25,6 +25,7 @@ const Billing       = () => import('../views/Billing.vue')
 const Forbidden     = () => import('../views/Forbidden.vue')
 const NotFound      = () => import('../views/NotFound.vue')
 const Onboarding    = () => import('../views/Onboarding.vue')
+const SharedTrace   = () => import('../views/SharedTrace.vue')
 
 // Lazy admin views
 const AdminDashboard = () => import('../views/admin/AdminDashboard.vue')
@@ -45,6 +46,7 @@ const PlatformStateEngine   = () => import('../views/platform/PlatformStateEngin
 const routes = [
   // Auth / public
   { path: '/login',       name: 'Login',       component: Login,      meta: { guest: true } },
+  { path: '/share/trace/:token', name: 'SharedTrace', component: SharedTrace, meta: { public: true } },
   { path: '/onboarding',  name: 'Onboarding',  component: Onboarding, meta: { requiresAuth: true } },
   { path: '/403',         name: 'Forbidden',   component: Forbidden },
   { path: '/404',         name: 'NotFound',    component: NotFound },
@@ -109,6 +111,9 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
+
+  // Truly public routes (e.g. /share/trace/:token) bypass every gate.
+  if (to.meta.public) return next()
 
   // Public / guest routes
   if (to.meta.guest) {

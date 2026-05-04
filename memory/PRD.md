@@ -46,7 +46,7 @@ mode), **Billing**.
 6. Accessibility: keyboard focus ring (cyan), semantic landmarks, contrast.
 7. Vitest tests for auth store + router guard decisions.
 
-## Implemented — 2026-01 session
+## Implemented — sessions 2026-01
 
 - **Infra**
   - Moved existing `/app/cockpit/` skeleton → `/app/frontend/` (supervisor expected path).
@@ -54,39 +54,42 @@ mode), **Billing**.
   - `vite.config.js` locked to port 3000, allowedHosts=true, HMR via wss.
   - `.env` → `VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
 - **Design system (flight-deck)**
-  - `tailwind.config.js` — cyan palette, legacy color remaps (indigo→cyan, red→danger, green→success, yellow→amber, gray→dark surfaces) so legacy views inherit the theme.
-  - `src/style.css` — token vocabulary (`--bg`, `--accent`, `--text-*`), `.sn-card`, `.sn-btn(-primary|-danger)`, `.sn-pill(-accent|-warn|-danger|-success)`, `.sn-nav-link`, `.sn-kbd`, grid background, shimmer.
+  - `tailwind.config.js` — cyan palette, legacy color remaps so legacy views inherit the theme.
+  - `src/style.css` — token vocabulary + components (`sn-card`, `sn-btn`, `sn-pill`, `sn-nav-link`, `sn-kbd`, `sn-grad-text`).
 - **Shell** (`src/App.vue`)
-  - Top bar: logo + tenant + env badge + breadcrumbs + WS status + command-palette trigger (⌘K) + budget pill + help + user menu with demo role switcher.
-  - Sidebar: grouped Operate / Build / Observe / Tenant. Admin + Platform pivot.
-  - Route transitions (opacity + subtle Y-translate).
-- **Auth** (`src/stores/auth.js` + `src/views/Login.vue`)
-  - Fake login against the FastAPI mock; role picked on the login card + swappable from the user menu.
-  - Capabilities derived from role map; super_admin short-circuits `has()`.
-  - localStorage persistence for token/user/tenant/caps/impersonation.
-- **Dashboard** (`src/views/Dashboard.vue`) — rewritten: automation mode, pending approvals, active agents, today's spend, Live Ops Feed, budget snapshot, Hannah suggestions, quick jumps.
-- **Approvals** (`src/views/Approvals.vue`) — full rewrite: split queue|diff layout, pending/approved/rejected/all filter, risk pills, before/after diff blocks. Low/medium risk → soft `ConfirmDialog` with optional reason; **high risk → `TypedConfirmDialog`** requiring "I UNDERSTAND" + non-empty audit reason.
-- **TypedConfirmDialog** (`src/components/feedback/TypedConfirmDialog.vue`) — rethemed to flight-deck dark, exposes `reasonRequired` + `riskLabel` + diff slot.
-- **Command palette** (`src/components/CommandBar.vue`) — full rewrite. Subsequence-fuzzy index over routes (role-aware) + actions (Atlas commands, role swap, sign out). Empty state shows Quick jumps + Common actions. Keyboard nav (↑↓ Enter Esc), global hotkey ⌘K / Ctrl+K and `/`. Renders inside Teleport, accent cyan rail.
-- **Usage** (`src/views/Usage.vue`) — full rewrite. 30-day cost area-**sparkline** with hover crosshair (SVG, no chart lib), DOW × week cost **heatmap** (cyan intensity), **anomalies** panel from `/api/usage/anomalies`, live budget cards + caps editor. PUT `/api/usage/budget` added on backend.
-- **WebSocket** (`src/composables/useWebSocket.js`) — real Echo + Pusher wiring restored, with channel.listen for tenant.<id> events fanning out into agents/flows/usage/approvals/traces/atlas stores. Auto-degrades to deterministic stub when `VITE_PUSHER_KEY` is unset.
-- **All other existing views** (Atlas, Flows, FlowBuilder, Traces, Agents, Intelligence, Memory, Settings, Automation Level, Billing, Onboarding, Admin Dashboard, Admin Users, Admin Audit, Admin Copy, Admin Budget, Platform Overview, Platform Feature Flags, Platform Rollouts, Platform STE, Forbidden, NotFound) — verified rendering in the flight-deck palette via live screenshots.
-- **FastAPI mock** (`/app/backend/server.py`) — every `/api/*` endpoint the cockpit hits, all returning Laravel-style `{data: ...}` envelopes. `PUT /api/usage/budget` added this session for the new caps editor.
-- **Tests** (`tests/`) — 11 passing (auth store: 5, router guard: 6).
-- **Build** — `yarn build` produces a clean production bundle (~360 KB / 114 KB gzip).
+  - Top bar: env badge, breadcrumbs, WS status, ⌘K trigger, budget pill, role switcher.
+  - Sidebar grouped Operate / Build / Observe / Tenant + Admin/Platform pivot.
+  - Public-route bypass added so `/share/trace/:token` renders without the cockpit chrome.
+- **Auth** — fake login via FastAPI mock; super_admin default; role swap from user menu; capabilities derived from a static map.
+- **Dashboard** — automation mode, pending approvals, active agents, today's spend, Live Ops Feed, budget snapshot, Hannah suggestions, quick jumps.
+- **Approvals** — split queue|diff, risk pills, low/medium → soft `ConfirmDialog`, high → `TypedConfirmDialog` (`Type I UNDERSTAND` + required reason).
+- **Command palette** (`src/components/CommandBar.vue`)
+  - Subsequence-fuzzy index over routes (role-aware) + actions.
+  - **Live lanes** — fetches recent traces and pending approvals on open and surfaces them as dedicated empty-state groups.
+  - Global hotkeys ⌘K / Ctrl+K / `/`.
+  - **Cheat sheet** modal — opens with `?` (or footer button), grouped Navigation / Palette / Atlas slash commands.
+- **Usage** — SVG cost sparkline (hover crosshair), DOW × week heatmap, anomalies feed, budget caps editor (PUT `/api/usage/budget`).
+- **WebSocket** (`src/composables/useWebSocket.js`) — real Echo + Pusher restored with channel.listen for tenant-private events; auto-degrades to deterministic stub when `VITE_PUSHER_KEY` is unset.
+- **STE Simulation Panel** (`src/components/ste/SimulationPanel.vue`) — completely rewritten. Calls `POST /api/ste/simulate` and consumes the **Server-Sent Events** stream via `fetch + ReadableStream`. UI animates KPIs, progress bar, and live distribution bars frame-by-frame.
+- **Admin Copy Lab** — full retheme + **uplift histogram** (SVG). Bars in cyan for above-control, red for below, accent-strong for the winning arm; companion arm-rows table; methodology side panel with total impressions + best uplift.
+- **Share-a-Trace** — `POST /api/traces/:id/share` mints a tenant-scoped, 7-day token. Cockpit shows a Share button on each expanded trace, opens a dialog with copy-to-clipboard URL. New public route `/share/trace/:token` (`SharedTrace.vue`, marked `meta.public`) bypasses every guard and reads `GET /api/public/traces/:token`.
+- **All other views** (Atlas, Flows, FlowBuilder, Agents, Memory, Settings, Automation Level, Billing, Onboarding, Admin Dashboard, Admin Users, Admin Audit, Admin Budget, Platform Overview, Platform Feature Flags, Platform Rollouts, Platform STE, Forbidden, NotFound) — flight-deck themed.
+- **FastAPI mock** (`/app/backend/server.py`) — every `/api/*` endpoint with `{data: ...}` envelope. New this round: `POST /api/traces/:id/share`, `GET /api/public/traces/:token`, `POST /api/ste/simulate` (StreamingResponse / SSE), `GET|PUT /api/admin/copy/state`.
+- **Tests** — 11 Vitest cases passing (auth store + router guard).
+- **Build** — `yarn build` produces a clean production bundle (~365 KB / 116 KB gzip).
 - **Docs** — `/app/frontend/README.md`, `/app/frontend/.env.example`.
 
 ## Prioritized backlog
 
 ### P0 — none open
-### P1 — polish
-- Replace the `MOCKED` FastAPI backend with the real Laravel API gateway (only requires changing `VITE_API_URL`; mock can be deleted).
-- Wire `VITE_PUSHER_KEY` once the broadcaster is provisioned (composable already restored — just supply env vars).
+### P1 — infra-bound (cannot finish in this pod, but code paths are ready)
+- Provision Laravel `/api` and flip `VITE_API_URL`. Then `rm /app/backend/server.py`. **MOCKED** until then.
+- Provision a Pusher / Soketi broadcaster and supply `VITE_PUSHER_KEY`, `VITE_WS_HOST` etc — `useWebSocket.js` is already wired for it.
 ### P2 — future
-- ⌘K palette: include recent-traces and recent-approvals as ad-hoc result groups.
-- `/admin/copy` experiment uplift chart (histogram).
-- `/platform/ste` simulation panel — wire to a real POST and stream results.
-- Keyboard shortcut cheatsheet behind `?`.
+- Track recent palette selections and surface a "Recently used" lane.
+- Stream STE simulation results into a stacked-area chart (currently bars + KPIs).
+- Histogram statistical-significance overlay on the AdminCopy uplift chart.
+- Add a `/share/approval/:token` mirror of Share-a-Trace.
 - Optional dark/light theme toggle (currently dark-only by design).
 
 ## Next tasks on user resume

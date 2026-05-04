@@ -466,6 +466,52 @@ async def trace_detail(trace_id: str):
     ]}}
 
 
+# ─── Share-a-Trace (public read-only) ────────────────────────────────────
+import hashlib
+
+_SHARED_TRACES: Dict[str, Dict[str, Any]] = {}
+
+
+@api.post("/traces/{trace_id}/share")
+async def share_trace(trace_id: str):
+    t = next((t for t in _TRACES if t["id"] == trace_id), None)
+    if not t:
+        raise HTTPException(404, "trace not found")
+    token = hashlib.sha256(f"{trace_id}-{uuid.uuid4().hex}".encode()).hexdigest()[:24]
+    _SHARED_TRACES[token] = {
+        "trace_id": trace_id,
+        "tenant_id": "tnt_acme",
+        "created_at": now_iso(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+    }
+    return {
+        "token": token,
+        "expires_at": _SHARED_TRACES[token]["expires_at"],
+        "share_path": f"/share/trace/{token}",
+    }
+
+
+@api.get("/public/traces/{token}")
+async def public_trace(token: str):
+    rec = _SHARED_TRACES.get(token)
+    if not rec:
+        raise HTTPException(404, "share not found or expired")
+    t = next((t for t in _TRACES if t["id"] == rec["trace_id"]), None)
+    if not t:
+        raise HTTPException(404, "trace gone")
+    return {"data": t | {
+        "events": [
+            {"ts": past(0), "level": "info",  "msg": "start"},
+            {"ts": past(0), "level": "info",  "msg": "llm.call model=gpt-4o tokens=420"},
+            {"ts": past(0), "level": "warn",  "msg": "retry 1/2 (rate limit)"},
+            {"ts": past(0), "level": "info",  "msg": "end ok"},
+        ],
+        "tenant_name": "Acme Ops",
+        "shared_at": rec["created_at"],
+        "expires_at": rec["expires_at"],
+    }}
+
+
 # ─── Intelligence ────────────────────────────────────────────────────────
 @api.get("/intelligence/workers")
 async def intel_workers():
@@ -655,6 +701,111 @@ async def rollout_usage_v2():
 @api.post("/platform/impersonate")
 async def impersonate(body: Dict[str, Any]):
     return {"ok": True, "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()}
+
+
+# ─── STE simulate (SSE) ──────────────────────────────────────────────────
+import asyncio
+import json as _json
+import math
+from fastapi.responses import StreamingResponse
+
+
+@api.post("/ste/simulate")
+async def ste_simulate(body: Dict[str, Any]):
+    """
+    Stream Monte-Carlo simulation frames as Server-Sent Events.
+    The cockpit's SimulationPanel.vue reads this with fetch + ReadableStream.
+    """
+    chain       = body.get("chain", "session_lifecycle")
+    start_state = body.get("start_state", "visitor")
+    runs        = int(body.get("runs", 1000))
+    steps       = int(body.get("steps", 10))
+
+    states = ["visitor", "trial", "active", "expansion", "champion", "churned"]
+    if start_state not in states:
+        states.insert(0, start_state)
+
+    async def event_stream():
+        # Frame 0 — meta
+        yield f"data: {_json.dumps({'kind': 'meta', 'chain': chain, 'runs': runs, 'steps': steps, 'start_state': start_state, 'states': states})}\n\n"
+        # Frames 1..N — progressive convergence on a target distribution
+        target = {
+            "visitor":   0.18,
+            "trial":     0.14,
+            "active":    0.31,
+            "expansion": 0.12,
+            "champion":  0.09,
+            "churned":   0.16,
+        }
+        # Ensure states present in target
+        for s in states:
+            target.setdefault(s, 0.05)
+        total = sum(target.values())
+        for k in target:
+            target[k] /= total
+
+        frames = 24
+        for i in range(1, frames + 1):
+            t = i / frames
+            # Eased convergence (cubic)
+            ease = 1 - math.pow(1 - t, 3)
+            dist = {s: round(((1 - ease) * (1.0 / len(states)) + ease * target[s]) * (1 + 0.04 * (random.random() - 0.5)), 4) for s in states}
+            # Renormalize
+            tot = sum(dist.values())
+            dist = {k: round(v / tot, 4) for k, v in dist.items()}
+
+            activation = round(dist.get("active", 0) + dist.get("expansion", 0) + dist.get("champion", 0), 4)
+            churn      = round(dist.get("churned", 0), 4)
+            ev         = round(activation - churn, 4)
+
+            payload = {
+                "kind": "frame",
+                "frame": i,
+                "total": frames,
+                "progress": round(i / frames, 3),
+                "distribution": dist,
+                "activation_probability": activation,
+                "churn_probability": churn,
+                "expected_value": ev,
+            }
+            yield f"data: {_json.dumps(payload)}\n\n"
+            await asyncio.sleep(0.12)
+
+        # Final
+        final_dist = dist
+        activation = round(final_dist.get("active", 0) + final_dist.get("expansion", 0) + final_dist.get("champion", 0), 4)
+        churn      = round(final_dist.get("churned", 0), 4)
+        ev         = round(activation - churn, 4)
+        ci_low     = max(0.0, round(activation - 0.04, 4))
+        ci_high    = min(1.0, round(activation + 0.04, 4))
+        yield f"data: {_json.dumps({'kind':'done','activation_probability':activation,'churn_probability':churn,'expected_value':ev,'confidence_95':[ci_low,ci_high],'end_state_distribution':final_dist})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    })
+
+
+# ─── Admin copy state + experiments ──────────────────────────────────────
+_COPY_STATE: Dict[str, str] = {
+    "empty_state": "on", "banner": "on", "modal": "on",
+    "tooltip": "on", "success_state": "on", "error_state": "on",
+}
+
+
+@api.get("/admin/copy/state")
+async def admin_copy_state():
+    return {"state": _COPY_STATE}
+
+
+@api.put("/admin/copy/state")
+async def admin_copy_state_set(body: Dict[str, Any]):
+    surface = body.get("surface")
+    value   = body.get("value", "on")
+    if surface in _COPY_STATE:
+        _COPY_STATE[surface] = value
+    return {"state": _COPY_STATE}
 
 
 @api.get("/platform/ste/matrix")
