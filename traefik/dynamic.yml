@@ -111,7 +111,7 @@ http:
     cockpit:
       loadBalancer:
         servers:
-          - url: "http://cockpit:5173"
+          - url: "http://cockpit:3000"
 
     cpl:
       loadBalancer:

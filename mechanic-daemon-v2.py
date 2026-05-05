@@ -7,9 +7,10 @@ MODEL = "gemma4:31b"
 BASE = "/workspace/SpiderNetOS"
 
 SITES = {
-    "landing": {"dir": f"{BASE}/sites/landing", "port": 3000, "domain": "spidernetos.com", "check": "SpiderNetOS"},
+    # Apex domain serves the repository Cockpit SPA (not sites/landing).
+    "apex_cockpit": {"dir": f"{BASE}/cockpit", "port": 3000, "domain": "spidernetos.com", "check": "SpiderNet"},
     "customer": {"dir": f"{BASE}/sites/customer-cockpit", "port": 3001, "domain": "cockpit.spidernetos.com", "check": "SpiderNetOS"},
-    "internal": {"dir": f"{BASE}/cockpit", "port": 3002, "domain": "cockpit.internal.spidernetos.com", "check": "Cockpit"},
+    "internal_cockpit": {"dir": f"{BASE}/cockpit", "port": 3002, "domain": "cockpit.internal.spidernetos.com", "check": "Cockpit"},
 }
 
 LOG = f"{BASE}/logs/mechanic.log"
@@ -114,6 +115,24 @@ def fix_site(name, info):
     site_dir = info["dir"]
     dist_dir = os.path.join(site_dir, "dist")
 
+    # Repository cockpit — only npm build; never overwrite src/ with landing stubs.
+    if os.path.normpath(site_dir) == os.path.normpath(f"{BASE}/cockpit"):
+        if not os.path.isfile(os.path.join(site_dir, "package.json")):
+            log(f"{name}: cockpit missing package.json", "ERROR")
+            return False
+        if os.path.isdir(dist_dir) and os.listdir(dist_dir):
+            ok, err = npm_build(site_dir)
+            if ok:
+                log(f"{name}: cockpit dist valid")
+                return True
+            log(f"{name}: cockpit rebuild after failed check: {err[-300:]}", "WARN")
+        ok, err = npm_build(site_dir)
+        if not ok:
+            log(f"{name}: cockpit build failed: {err[-300:]}", "ERROR")
+            return False
+        log(f"{name}: cockpit build OK")
+        return True
+
     # Check if dist exists and is valid
     if os.path.exists(dist_dir):
         files = os.listdir(dist_dir)
@@ -136,14 +155,7 @@ def fix_site(name, info):
     main = "import { createApp } from 'vue'\nimport App from './App.vue'\ncreateApp(App).mount('#app')\n"
     open(os.path.join(site_dir, "src/main.js"), "w").write(main)
 
-    if name == "landing":
-        fix_file(site_dir, "src/App.vue",
-            "Vue 3 landing for SpiderNetOS. Dark #0A0A0F. Hero: canvas particle network (40 dots, lines <150px). "
-            "Title SpiderNetOS orange gradient. Subtitle about autonomous scaling. Orange CTA. "
-            "3 cards BUILD/SELL/SCALE with emojis. Metrics: 2.4M Agents, $840M, 99.97%. Footer. "
-            "Tailwind CSS. script setup. Every HTML tag closes.", 3500)
-
-    elif name == "customer":
+    if name == "customer":
         fix_file(site_dir, "src/App.vue",
             "Vue 3 customer dashboard. Left sidebar: nav items Dashboard/Agents/Flows/Approvals(badge 3)/Traces/Usage/Memory/Settings with emojis. "
             "Sidebar bottom shows budget $34.50/$50.00 with orange progress bar. Main: top bar + content area. "

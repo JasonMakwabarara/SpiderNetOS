@@ -14,7 +14,7 @@ else
     # Verify sites are up
     echo ""
     echo "Checking sites..."
-    for port in 3000 3001 3002; do
+    for port in 3000 3001; do
         code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$port)
         echo "Port $port: HTTP $code"
     done

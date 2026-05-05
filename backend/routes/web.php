@@ -10,7 +10,7 @@ Route::get('/', function () {
         'planes' => [
             'control' => 'http://localhost:8000',
             'inference' => 'http://localhost:9000',
-            'cockpit' => 'http://localhost:5173',
+            'cockpit' => 'http://localhost:3000',
         ],
     ]);
 });

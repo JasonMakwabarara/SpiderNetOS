@@ -1,24 +1,21 @@
 #!/bin/bash
-# Use Vast.ai's provided port 8080
+# Use Vast.ai's provided port 8080 (external) → run cockpit SPA on internal 18368.
 
-echo "Setting up SpiderNetOS on Vast.ai port 8080..."
+echo "Setting up SpiderNetOS Cockpit on Vast.ai port 8080..."
 
-# Vast.ai maps: 8080 (external) -> 18368 (internal)
-# So we need to run nginx or the site on port 18368
-
-# Kill existing
-pkill -f nginx
-pkill -f cloudflared
-pkill -f "http.server"
+pkill -f nginx || true
+pkill -f cloudflared || true
+pkill -f "http.server" || true
 sleep 1
 
-# Option 1: Run landing site directly on port 18368
-cd /workspace/SpiderNetOS/sites/landing/dist
-python3 -m http.server 18368 --bind 0.0.0.0 &
+BASE="/workspace/SpiderNetOS"
+export COCKPIT_APEX_PORT=18368
+
+bash "$BASE/scripts/serve-cockpit-apex.sh" || exit 1
 
 echo ""
-echo "Landing site should now be accessible at:"
-echo "  http://220.134.41.156:8080"
+echo "Cockpit should be accessible at:"
+echo "  http://<VAST_IP>:8080"
 echo ""
 echo "Test locally first:"
-curl -I http://localhost:18368
+curl -I "http://localhost:18368"

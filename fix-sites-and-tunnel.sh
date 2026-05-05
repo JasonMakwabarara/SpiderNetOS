@@ -1,60 +1,53 @@
 #!/bin/bash
-# Complete fix for sites and tunnel
+# Complete fix for sites and tunnel — apex serves cockpit SPA on :3000.
 
 echo "=== Fixing SpiderNetOS Sites ==="
 
-# 1. Kill everything
-pkill -f nginx
-pkill -f cloudflared
-pkill -f "http.server"
+pkill -f nginx || true
+pkill -f cloudflared || true
+pkill -f "http.server" || true
 sleep 2
 
-# 2. Verify sites are still built
-echo "Checking dist folders..."
-for port in 3000 3001 3002; do
-    if [ -f "/workspace/SpiderNetOS/sites/landing/dist/index.html" ] && [ $port -eq 3000 ]; then
-        echo "✓ Port $port: dist exists"
-    elif [ -f "/workspace/SpiderNetOS/sites/customer-cockpit/dist/index.html" ] && [ $port -eq 3001 ]; then
-        echo "✓ Port $port: dist exists"
-    elif [ -f "/workspace/SpiderNetOS/cockpit/dist/index.html" ] && [ $port -eq 3002 ]; then
-        echo "✓ Port $port: dist exists"
-    else
-        echo "✗ Port $port: dist MISSING"
-    fi
-done
+BASE="${BASE:-/workspace/SpiderNetOS}"
 
-# 3. Start sites directly (skip nginx)
+echo "Checking cockpit build..."
+if [[ ! -f "$BASE/cockpit/dist/index.html" ]]; then
+  echo "⚠ cockpit/dist missing — run scripts/serve-cockpit-apex.sh (build + preview)."
+fi
+
 echo ""
-echo "Starting sites on ports 3000-3002..."
-cd /workspace/SpiderNetOS/sites/landing/dist && nohup python3 -m http.server 3000 --bind 0.0.0.0 > /tmp/site-3000.log 2>&1 &
-cd /workspace/SpiderNetOS/sites/customer-cockpit/dist && nohup python3 -m http.server 3001 --bind 0.0.0.0 > /tmp/site-3001.log 2>&1 &
-cd /workspace/SpiderNetOS/cockpit/dist && nohup python3 -m http.server 3002 --bind 0.0.0.0 > /tmp/site-3002.log 2>&1 &
+echo "Starting cockpit apex on port 3000..."
+bash "$BASE/scripts/serve-cockpit-apex.sh" || exit 1
+
+if [[ -f "$BASE/sites/customer-cockpit/dist/index.html" ]]; then
+  echo "Starting customer cockpit on port 3001..."
+  cd "$BASE/sites/customer-cockpit/dist" && nohup python3 -m http.server 3001 --bind 0.0.0.0 >/tmp/site-3001.log 2>&1 &
+else
+  echo "⚠ Customer site dist missing — skipping port 3001."
+fi
 
 sleep 3
 
-# 4. Verify sites are running
 echo ""
-echo "Verifying sites..."
-for port in 3000 3001 3002; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$port)
-    if [ "$code" = "200" ]; then
-        echo "✓ Port $port: HTTP 200"
-    else
-        echo "✗ Port $port: HTTP $code"
-    fi
+echo "Verifying..."
+for port in 3000 3001; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/" || echo "000")
+  if [[ "$code" == "200" ]]; then
+    echo "✓ Port $port: HTTP 200"
+  else
+    echo "⚠ Port $port: HTTP ${code}"
+  fi
 done
 
-# 5. Start tunnel on port 3000 (landing site directly)
 echo ""
-echo "Starting Cloudflare tunnel..."
-nohup cloudflared tunnel --url http://localhost:3000 > /tmp/tunnel.log 2>&1 &
+echo "Starting Cloudflare tunnel (quick mode → localhost:3000) ..."
+nohup cloudflared tunnel --url http://localhost:3000 >/tmp/tunnel.log 2>&1 &
 sleep 5
 
-# 6. Get the URL
 echo ""
-echo "Tunnel URL:"
-grep -o 'https://[^ ]*\.trycloudflare\.com' /tmp/tunnel.log | head -1
+echo "Tunnel URL (quick tunnel):"
+grep -o 'https://[^ ]*\\.trycloudflare\\.com' /tmp/tunnel.log | head -1 || true
 
 echo ""
+echo "For custom hostnames (spidernetos.com), use named tunnel config (create-cloudflare-config.sh)."
 echo "=== Setup Complete ==="
-echo "Test the URL above in your browser"

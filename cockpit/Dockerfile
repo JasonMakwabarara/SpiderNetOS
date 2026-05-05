@@ -7,6 +7,7 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 5173
+EXPOSE 3000
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Align with vite.config.js / tunnel apex (spidernetos.com → :3000)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]

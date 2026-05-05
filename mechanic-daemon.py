@@ -21,7 +21,7 @@ SERVICES = {
     "inference": {"url": "http://localhost:9000/health", "port": 9000, "dir": "/workspace/SpiderNetOS/inference", "cmd": "python3 main.py"},
     "atlas-api": {"url": "http://localhost:8001/health", "port": 8001, "dir": "/workspace/SpiderNetOS/atlas-api", "cmd": "python3 main.py"},
     "cpl": {"url": "http://localhost:9100/health", "port": 9100, "dir": "/workspace/SpiderNetOS/services/cpl-service", "cmd": "python3 main.py"},
-    "cockpit": {"port": 5173, "dir": "/workspace/SpiderNetOS/cockpit", "cmd": "npm run dev"},
+    "cockpit": {"port": 3000, "dir": "/workspace/SpiderNetOS/cockpit", "cmd": "npm run dev"},
     "intelligence": {"port": None, "dir": "/workspace/SpiderNetOS/intelligence", "cmd": "python3 main.py"}
 }
 
@@ -110,7 +110,7 @@ class MechanicDaemon:
         
         # Known hardcoded fixes for common issues
         self.HARDCODED_FIXES = {
-            "cockpit_port_in_use": "kill -9 $(lsof -t -i:5173) 2>/dev/null; sleep 2; cd /workspace/SpiderNetOS/cockpit && nohup npm run dev > /workspace/SpiderNetOS/logs/cockpit.log 2>&1 &",
+            "cockpit_port_in_use": "kill -9 $(lsof -t -i:3000) 2>/dev/null; sleep 2; cd /workspace/SpiderNetOS/cockpit && nohup npm run dev > /workspace/SpiderNetOS/logs/cockpit.log 2>&1 &",
             "cpl_datetime_utc": "sed -i 's/datetime.now(datetime.UTC)/datetime.utcnow()/g' /workspace/SpiderNetOS/services/cpl-service/main.py",
             "port_already_bound": "kill -9 $(lsof -t -i:{port}) 2>/dev/null",
             "service_not_responding": "cd {dir} && {cmd} &"
@@ -151,7 +151,7 @@ class MechanicDaemon:
             return "port_already_bound", f"Port {SERVICES[service]['port']} already in use"
         if "datetime.UTC" in logs:
             return "cpl_datetime_utc", "datetime.UTC not supported"
-        if "port 5173 is already in use" in logs:
+        if "port 3000 is already in use" in logs:
             return "cockpit_port_in_use", "Cockpit port in use"
         if "connection refused" in logs.lower():
             return "service_not_responding", "Service not responding"

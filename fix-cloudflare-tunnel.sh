@@ -25,14 +25,17 @@ tunnel: spidernetos
 credentials-file: /root/.cloudflared/spidernetos.json
 
 ingress:
+  # Apex + cockpit hosts → cockpit SPA (port 3000). See scripts/serve-cockpit-apex.sh.
   - hostname: spidernetos.com
     service: http://localhost:3000
   - hostname: www.spidernetos.com
     service: http://localhost:3000
+  - hostname: cockpit.spidernetos.com
+    service: http://localhost:3000
   - hostname: app.spidernetos.com
     service: http://localhost:3001
   - hostname: cockpit.internal.spidernetos.com
-    service: http://localhost:3002
+    service: http://localhost:3000
   - service: http_status:404
 EOF
     echo "✓ Config created"

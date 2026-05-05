@@ -27,7 +27,7 @@ echo "╔═══════════════════════�
 echo "║     SpiderNet OS is running!             ║"
 echo "╠══════════════════════════════════════════╣"
 echo "║  API:        http://localhost:8000       ║"
-echo "║  Cockpit:    http://localhost:5173       ║"
+echo "║  Cockpit:    http://localhost:3000       ║"
 echo "║  Inference:  http://localhost:9000       ║"
 echo "║  WebSocket:  ws://localhost:6001         ║"
 echo "║  PostgreSQL: localhost:5432              ║"
