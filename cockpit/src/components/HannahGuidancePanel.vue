@@ -25,9 +25,11 @@
         <button
           type="button"
           class="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-left text-sm font-medium text-indigo-800 shadow-sm hover:border-indigo-400 hover:bg-indigo-50"
-          @click="run(step.prompt)"
+          :disabled="creatingFlow && step.action === 'create-flow'"
+          @click="run(step.prompt, step)"
         >
           {{ step.label }}
+          <span v-if="creatingFlow && step.action === 'create-flow'" class="ml-2 animate-pulse">…</span>
         </button>
       </li>
     </ul>
@@ -37,6 +39,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import axios from 'axios'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const props = defineProps({
   forceOnboardingSeed: {
@@ -45,10 +50,11 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['run-command'])
+const emit = defineEmits(['run-command', 'flow-created'])
 
 const route = useRoute()
 const dismissedLocal = ref(false)
+const creatingFlow = ref(false)
 
 const STORAGE_KEY = 'cockpit:hannah-guidance-dismissed'
 
@@ -56,6 +62,10 @@ const steps = [
   {
     label: 'Draft my first automation flow',
     prompt: 'Help me design and draft my first SpiderNet automation flow for my team.',
+    action: 'create-flow',
+    flowName: 'Quick Start Flow',
+    flowSlug: 'quick-start-flow',
+    flowDescription: 'Automated flow created from Hannah guidance.',
   },
   {
     label: 'Tune automation level safely',
@@ -82,8 +92,42 @@ const visible = computed(() => {
   return !!(props.forceOnboardingSeed || route.query.seed === 'onboarding')
 })
 
-function run(prompt) {
-  emit('run-command', prompt)
+async function createFlow(step) {
+  if (creatingFlow.value) return
+  creatingFlow.value = true
+
+  try {
+    const response = await axios.post(`${API_URL}/api/flows`, {
+      name: step.flowName,
+      slug: `${step.flowSlug}-${Date.now()}`,
+      description: step.flowDescription,
+      dag: {
+        nodes: [
+          { id: 'trigger', type: 'trigger', config: { event: 'manual' } },
+          { id: 'action', type: 'action', config: { action: 'notify', message: 'Flow started!' } },
+        ],
+        edges: [{ from: 'trigger', to: 'action' }],
+      },
+      triggers: ['manual'],
+    })
+
+    const flowId = response.data.id
+    await axios.post(`${API_URL}/api/flows/${flowId}/publish`)
+    emit('flow-created', { id: flowId, name: step.flowName })
+    emit('run-command', `Flow "${step.flowName}" created and published successfully. What should it do next?`)
+  } catch (err) {
+    emit('run-command', `Failed to create flow: ${err.response?.data?.error || err.message}. Can you help me fix this?`)
+  } finally {
+    creatingFlow.value = false
+  }
+}
+
+function run(prompt, step) {
+  if (step?.action === 'create-flow') {
+    createFlow(step)
+  } else {
+    emit('run-command', prompt)
+  }
 }
 
 function dismiss() {

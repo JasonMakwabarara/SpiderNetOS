@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Yaml\Yaml;
 
 class SpidernetPackValidate extends Command
 {
@@ -55,6 +56,47 @@ class SpidernetPackValidate extends Command
 
         $this->info('Pack manifest validates.');
 
+        $sigCheck = $this->validateSignatures($path);
+        if ($sigCheck !== true) {
+            $this->error("Signature validation failed: {$sigCheck}");
+
+            return self::FAILURE;
+        }
+
+        $this->info('Signature validation passed.');
+
         return self::SUCCESS;
+    }
+
+    private function validateSignatures(string $manifestPath): true|string
+    {
+        $yaml = Yaml::parseFile($manifestPath);
+        $sigs = $yaml['spec']['signatures'] ?? null;
+
+        if ($sigs === null) {
+            return true;
+        }
+
+        if (! is_array($sigs)) {
+            return 'signatures must be an object';
+        }
+
+        if (empty($sigs['publisher'] ?? '') || empty($sigs['signature'] ?? '')) {
+            return 'signatures must have publisher and signature fields';
+        }
+
+        if (str_starts_with($sigs['signature'], 'placeholder')) {
+            return 'signature must not be a placeholder — fail closed';
+        }
+
+        if (! preg_match('/^[A-Za-z0-9+\/=_-]+$/', $sigs['signature'])) {
+            return 'signature contains invalid characters';
+        }
+
+        if (! preg_match('/^[a-z0-9-]+$/', $sigs['publisher'])) {
+            return 'publisher must match [a-z0-9-]+';
+        }
+
+        return true;
     }
 }

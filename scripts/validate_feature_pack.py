@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural validation for SpiderNet Feature Pack pack.yaml manifests.
+"""Structural + signature validation for SpiderNet Feature Pack pack.yaml manifests.
 
 Requires PyYAML (`pip install pyyaml`).
 Intended parity with docs in packages/feature-packs/schema/feature-pack.schema.json (subset).
@@ -7,12 +7,16 @@ Intended parity with docs in packages/feature-packs/schema/feature-pack.schema.j
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 _REQUIRED_TOP = ("apiVersion", "kind", "metadata", "spec")
 _REQUIRED_META = ("id", "version", "vertical")
 _AGENT_FIELDS = ("id", "displayName", "capabilities")
+_SIG_FIELDS = ("publisher", "signature")
+_ID_RE = re.compile(r"^[a-z0-9-]+$")
+_SIG_RE = re.compile(r"^[A-Za-z0-9+/=_-]+$")
 
 
 def _die(msg: str) -> None:
@@ -71,6 +75,26 @@ def main() -> None:
         for f in _AGENT_FIELDS:
             if f not in ag:
                 _die(f"Dynamic agent missing {f}")
+
+    sigs = prv.get("signatures")
+    if sigs is not None:
+        if not isinstance(sigs, dict):
+            _die("spec.signatures must be an object")
+        for f in _SIG_FIELDS:
+            if f not in sigs:
+                _die(f"spec.signatures missing {f}")
+        publisher = sigs.get("publisher", "")
+        signature = sigs.get("signature", "")
+        if not isinstance(publisher, str) or not publisher:
+            _die("spec.signatures.publisher must be a non-empty string")
+        if not isinstance(signature, str) or not signature:
+            _die("spec.signatures.signature must be a non-empty string")
+        if signature.startswith("placeholder"):
+            _die("spec.signatures.signature must not be a placeholder — fail closed")
+        if not _SIG_RE.match(signature):
+            _die("spec.signatures.signature contains invalid characters")
+        if not _ID_RE.match(publisher):
+            _die("spec.signatures.publisher must match [a-z0-9-]+")
 
     print(f"OK: {path.name} ({md.get('id')} @{md.get('version')})")
 

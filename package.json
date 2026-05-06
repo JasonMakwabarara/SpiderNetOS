@@ -13,7 +13,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "codegen": "node tools/dev/codegen.js",
-    "training:gate:atlas": "powershell -ExecutionPolicy Bypass -File scripts/training-gate.ps1"
+    "training:gate:atlas": "powershell -ExecutionPolicy Bypass -File scripts/training-gate.ps1",
+    "mcp:build": "cd services/mcp-server && npm run build",
+    "mcp:start": "powershell -ExecutionPolicy Bypass -File scripts/start-mcp-server.ps1",
+    "mcp:inspect": "cd services/mcp-server && npm run inspect"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "gates": {
+    "min_sft_rows": true,
+    "min_preference_rows": true,
+    "min_distinct_preference_ratio": true,
+    "sft_quality_hit_ratio": true,
+    "preference_quality_hit_ratio": true
+  },
+  "metrics": {
+    "sft_rows": 20,
+    "preference_rows": 20,
+    "sft_mean_quality": 4,
+    "preference_mean_quality": 4,
+    "sft_quality_distribution": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 20
+    },
+    "preference_quality_distribution": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 20
+    },
+    "rejected_type_distribution": {
+      "missing_database_integration": 1,
+      "incorrect_architecture": 1,
+      "missing_validation": 2,
+      "missing_immediate_action": 1,
+      "suboptimal_design": 1,
+      "missing_direct_action": 1,
+      "missing_middleware_pattern": 1,
+      "performance_issue": 2,
+      "suboptimal_algorithm": 1,
+      "suboptimal_architecture": 1,
+      "missing_aggregation": 1,
+      "missing_guardrails": 1,
+      "missing_integration": 1,
+      "missing_security": 1,
+      "missing_extensibility": 1,
+      "missing_automation": 1,
+      "missing_quality": 1,
+      "missing_quality_gate": 1
+    },
+    "distinct_preference_ratio": 1.0,
+    "sft_quality_hit_ratio": 1.0,
+    "preference_quality_hit_ratio": 1.0
+  }
+}

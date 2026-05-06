@@ -464,7 +464,7 @@ class VoiceController extends Controller
         $tenantId  = $request->user()->tenant_id;
         $validated = $request->validate([
             'phone_number'    => 'required|string|max:20',
-            'provider'        => 'nullable|string|in:twilio,vonage',
+            'provider'        => 'nullable|string|in:twilio,signalwire,vonage',
             'provider_sid'    => 'nullable|string|max:100',
             'agent_id'        => 'nullable|string|max:100',
             'config'          => 'nullable|array',

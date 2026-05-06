@@ -27,6 +27,13 @@
 - [ ] Verify SSL certificates active
 - [ ] Check cost ceilings are enforced
 
+## Training Data Quality Gate
+- [ ] Run training quality gate: `make training-gate TRAINING_INPUT=/path/to/export.md`
+- [ ] Verify all gates pass (min SFT rows, min preference rows, quality ratios)
+- [ ] Confirm `training_data/*/quality_gate.json` shows `"passed": true`
+- [ ] Verify gated data copied to `intelligence/atlas/training/current/`
+- [ ] If gate fails: review `quality_report.json`, fix transcripts, re-run
+
 ## Post-Deployment
 - [ ] Run smoke tests against production
 - [ ] Verify logging aggregation

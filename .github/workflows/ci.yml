@@ -106,3 +106,68 @@ jobs:
       - name: Ruff check
         working-directory: ${{ matrix.project }}
         run: ruff check . --output-format=github
+
+  services-ruff:
+    name: services — ruff (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ruff
+        run: pip install ruff==0.6.9
+      - name: Ruff check services/
+        working-directory: services
+        run: ruff check . --output-format=github
+
+  backend-test-full:
+    name: backend — full test suite (Postgres + Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: spidernet
+          POSTGRES_PASSWORD: spidernet
+          POSTGRES_DB: spidernet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, pdo_pgsql, bcmath
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+      - run: composer install --prefer-dist --no-progress --no-interaction
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -U spidernet -d spidernet_test; do
+            sleep 1
+          done
+      - name: Migrate
+        run: php artisan migrate --force
+      - name: Run full PHPUnit suite
+        run: ./vendor/bin/phpunit -c phpunit.github-full.xml

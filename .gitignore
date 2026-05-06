@@ -62,3 +62,4 @@ credentials.json
 *.pem
 *.key
 .credentials
+.gitnexus

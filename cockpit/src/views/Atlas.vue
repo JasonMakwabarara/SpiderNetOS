@@ -19,6 +19,7 @@
       <HannahGuidancePanel
         :force-onboarding-seed="showHannahBootstrap"
         @run-command="handleSend"
+        @flow-created="handleFlowCreated"
       />
       <AtlasContextPanel
         class="min-h-0 flex-1"
@@ -94,5 +95,9 @@ function handleExecuteSuggestion(suggestion) {
 
 function handleDismissSuggestion(index) {
   atlasStore.dismissSuggestion(index)
+}
+
+function handleFlowCreated(flow) {
+  atlasStore.sendMessage(`Flow "${flow.name}" has been created and published. What should I configure next?`)
 }
 </script>

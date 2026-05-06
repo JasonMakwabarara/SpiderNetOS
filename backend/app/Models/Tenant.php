@@ -47,6 +47,11 @@ class Tenant extends Model
     {
         return $this->hasMany(Flow::class);
     }
+
+    public function featurePacks(): HasMany
+    {
+        return $this->hasMany(FeaturePack::class);
+    }
     
     public function isActive(): bool
     {

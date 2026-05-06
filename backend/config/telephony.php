@@ -6,7 +6,7 @@ return [
     | Default Telephony Provider
     |--------------------------------------------------------------------------
     |
-    | Supported: "twilio", "vonage"
+    | Supported: "twilio", "signalwire", "vonage"
     |
     */
     'default' => env('TELEPHONY_PROVIDER', 'twilio'),
@@ -20,8 +20,17 @@ return [
         'twilio' => [
             'sid' => env('TWILIO_SID', ''),
             'auth_token' => env('TWILIO_AUTH_TOKEN', ''),
+            'api_base' => 'https://api.twilio.com/2010-04-01',
             'webhook_url' => env('TWILIO_WEBHOOK_URL', 'https://your-domain.com/voice/inbound'),
             'status_callback' => env('TWILIO_STATUS_CALLBACK', 'https://your-domain.com/voice/status'),
+        ],
+        'signalwire' => [
+            'project_id' => env('SIGNALWIRE_PROJECT_ID', ''),
+            'auth_token' => env('SIGNALWIRE_AUTH_TOKEN', ''),
+            'space' => env('SIGNALWIRE_SPACE', ''),  // e.g. example.signalwire.com
+            'api_base' => env('SIGNALWIRE_API_BASE', ''),  // computed if empty
+            'webhook_url' => env('SIGNALWIRE_WEBHOOK_URL', 'https://your-domain.com/voice/inbound'),
+            'status_callback' => env('SIGNALWIRE_STATUS_CALLBACK', 'https://your-domain.com/voice/status'),
         ],
         'vonage' => [
             'api_key' => env('VONAGE_API_KEY', ''),

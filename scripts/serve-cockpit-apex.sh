@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Serve the cockpit SPA on port 3000 (apex + Cloudflare Tunnel default).
-# Uses `vite preview` so client-side routes work (history mode).
+# Uses `vite preview` with SPA history mode fallback.
 
 set -euo pipefail
 
@@ -17,6 +17,7 @@ mkdir -p /tmp
 
 pkill -f "http\\.server ${PORT}\\b" 2>/dev/null || true
 pkill -f "vite preview.*--port ${PORT}" 2>/dev/null || true
+pkill -f "node.*serve-spa.js" 2>/dev/null || true
 sleep 1
 
 cd "$COCKPIT"
@@ -30,9 +31,10 @@ if [[ ! -f dist/index.html ]]; then
   npm run build
 fi
 
-echo "Starting cockpit preview on 0.0.0.0:${PORT}"
-nohup npm run preview -- --host "0.0.0.0" --port "$PORT" >>/tmp/site-3000.log 2>&1 &
+echo "Starting cockpit on 0.0.0.0:${PORT}"
+nohup node serve-spa.js >>/tmp/site-3000.log 2>&1 &
 sleep 2
+
 curl -sf -o /dev/null -w "apex cockpit: HTTP %{http_code}\n" "http://127.0.0.1:${PORT}/" || {
   echo "FAIL: cockpit did not respond on ${PORT}; see /tmp/site-3000.log" >&2
   tail -40 /tmp/site-3000.log 2>/dev/null || true

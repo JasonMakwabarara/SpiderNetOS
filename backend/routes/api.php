@@ -18,6 +18,7 @@ use App\Http\Controllers\Integrations\CalendarController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\PlatformController;
+use App\Http\Controllers\FeaturePackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -144,6 +145,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/integrations',                       [IntegrationsController::class, 'index']);
     Route::post('/integrations/{provider}/authorize', [IntegrationsController::class, 'authorize']);
     Route::post('/integrations/calendar/book',        [CalendarController::class, 'book']);
+
+    // Feature Packs (Phase 3)
+    Route::get('/feature-packs', [FeaturePackController::class, 'index']);
+    Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
 });
 
 // ─── Admin workspace (role:admin) ───────────────────────────────
