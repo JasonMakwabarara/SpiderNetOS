@@ -193,6 +193,77 @@ Route::middleware(['auth:sanctum', 'role:super_admin', 'throttle:platform'])->pr
         Route::post('/impersonate/{id}/end',     [PlatformController::class, 'endImpersonation']);
     });
 
+// ─── Financial Services (Financial OS) ───────────────────────────────
+Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
+    ->prefix('financial')
+    ->group(function () {
+        // Ledger
+        Route::get('/ledger', [\App\Http\Controllers\Financial\LedgerController::class, 'index']);
+        Route::get('/ledger/trial-balance', [\App\Http\Controllers\Financial\LedgerController::class, 'trialBalance']);
+        Route::get('/ledger/cash-flow', [\App\Http\Controllers\Financial\LedgerController::class, 'cashFlow']);
+        Route::get('/ledger/accounts/{accountId}', [\App\Http\Controllers\Financial\LedgerController::class, 'generalLedger']);
+        Route::post('/ledger/journal-entry', [\App\Http\Controllers\Financial\LedgerController::class, 'journalEntry']);
+        Route::get('/ledger/accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'accounts']);
+        Route::post('/ledger/accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'createAccount']);
+        Route::get('/ledger/chart-of-accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'chartOfAccounts']);
+        Route::post('/ledger/chart-of-accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'createChartAccount']);
+
+        // Invoices
+        Route::get('/invoices', [\App\Http\Controllers\Financial\InvoiceController::class, 'index']);
+        Route::get('/invoices/{id}', [\App\Http\Controllers\Financial\InvoiceController::class, 'show']);
+        Route::post('/invoices', [\App\Http\Controllers\Financial\InvoiceController::class, 'store']);
+        Route::post('/invoices/{id}/send', [\App\Http\Controllers\Financial\InvoiceController::class, 'send']);
+        Route::post('/invoices/{id}/mark-paid', [\App\Http\Controllers\Financial\InvoiceController::class, 'markPaid']);
+        Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Financial\InvoiceController::class, 'cancel']);
+        Route::get('/invoices/overdue', [\App\Http\Controllers\Financial\InvoiceController::class, 'overdue']);
+        Route::get('/invoices/summary', [\App\Http\Controllers\Financial\InvoiceController::class, 'summary']);
+
+        // Customers
+        Route::get('/customers', [\App\Http\Controllers\Financial\InvoiceController::class, 'customers']);
+        Route::post('/customers', [\App\Http\Controllers\Financial\InvoiceController::class, 'createCustomer']);
+
+        // Payments
+        Route::get('/payments', [\App\Http\Controllers\Financial\PaymentController::class, 'index']);
+        Route::get('/payments/{id}', [\App\Http\Controllers\Financial\PaymentController::class, 'show']);
+        Route::post('/payments', [\App\Http\Controllers\Financial\PaymentController::class, 'recordPayment']);
+        Route::post('/payments/initiate', [\App\Http\Controllers\Financial\PaymentController::class, 'initiatePayment']);
+        Route::get('/transactions', [\App\Http\Controllers\Financial\PaymentController::class, 'transactions']);
+        Route::get('/payments/summary', [\App\Http\Controllers\Financial\PaymentController::class, 'summary']);
+
+        // Financial Overview
+        Route::get('/dashboard', [\App\Http\Controllers\Financial\FinancialController::class, 'dashboard']);
+        Route::get('/reports', [\App\Http\Controllers\Financial\FinancialController::class, 'reports']);
+        Route::post('/reports/generate', [\App\Http\Controllers\Financial\FinancialController::class, 'generateReport']);
+        Route::get('/aging-report', [\App\Http\Controllers\Financial\FinancialController::class, 'agingReport']);
+        Route::post('/risk-check', [\App\Http\Controllers\Financial\FinancialController::class, 'checkTransactionRisk']);
+
+        // Wallets
+        Route::get('/wallets', [\App\Http\Controllers\Financial\FinancialController::class, 'wallets']);
+        Route::post('/wallets', [\App\Http\Controllers\Financial\FinancialController::class, 'createWallet']);
+        Route::get('/wallets/{id}/transactions', [\App\Http\Controllers\Financial\FinancialController::class, 'walletTransactions']);
+
+        // Budgets
+        Route::get('/budgets', [\App\Http\Controllers\Financial\FinancialController::class, 'budgets']);
+        Route::post('/budgets', [\App\Http\Controllers\Financial\FinancialController::class, 'createBudget']);
+
+        // Tax
+        Route::get('/tax-rates', [\App\Http\Controllers\Financial\FinancialController::class, 'taxRates']);
+        Route::post('/tax-rates', [\App\Http\Controllers\Financial\FinancialController::class, 'createTaxRate']);
+
+        // Alerts
+        Route::get('/alerts', [\App\Http\Controllers\Financial\FinancialController::class, 'alerts']);
+        Route::post('/alerts/{alertId}/acknowledge', [\App\Http\Controllers\Financial\FinancialController::class, 'acknowledgeAlert']);
+
+        // Portfolios & Trading
+        Route::get('/portfolios', [\App\Http\Controllers\Financial\PortfolioController::class, 'index']);
+        Route::get('/portfolios/{id}', [\App\Http\Controllers\Financial\PortfolioController::class, 'show']);
+        Route::post('/portfolios', [\App\Http\Controllers\Financial\PortfolioController::class, 'store']);
+        Route::get('/portfolios/{id}/performance', [\App\Http\Controllers\Financial\PortfolioController::class, 'performance']);
+        Route::post('/portfolios/{id}/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'executeTrade']);
+        Route::post('/portfolios/{id}/update-prices', [\App\Http\Controllers\Financial\PortfolioController::class, 'updatePrices']);
+        Route::get('/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'trades']);
+    });
+
 // ─── State Transition Engine (STE) — read-first, super_admin only ──────────
 Route::middleware(['auth:sanctum', 'role:super_admin', 'can.do:ste.view'])
     ->prefix('ste')

@@ -21,6 +21,13 @@ import Intelligence from '../views/Intelligence.vue'
 const AgentBuilder  = () => import('../views/AgentBuilder.vue')
 const Billing       = () => import('../views/Billing.vue')
 
+// Lazy financial views
+const FinancialDashboard = () => import('../views/financial/FinancialDashboard.vue')
+const FinancialLedger    = () => import('../views/financial/FinancialLedger.vue')
+const Invoices           = () => import('../views/financial/Invoices.vue')
+const Payments           = () => import('../views/financial/Payments.vue')
+const Portfolios         = () => import('../views/financial/Portfolios.vue')
+
 // Lazy shell / shared
 const Forbidden     = () => import('../views/Forbidden.vue')
 const NotFound      = () => import('../views/NotFound.vue')
@@ -70,6 +77,13 @@ const routes = [
   { path: '/settings/usage',name: 'UsageSettings', component: Usage,       meta: { requiresAuth: true } },
   { path: '/settings/automation-level', name: 'AutomationLevel', component: () => import('../views/settings/AutomationLevel.vue'), meta: { requiresAuth: true, capability: 'tenant.manage' } },
   { path: '/billing',       name: 'Billing',       component: Billing,     meta: { requiresAuth: true } },
+
+  // ---------------- FINANCIAL OS ----------------
+  { path: '/financial',           name: 'FinancialDashboard', component: FinancialDashboard, meta: { requiresAuth: true } },
+  { path: '/financial/ledger',    name: 'FinancialLedger',    component: FinancialLedger,    meta: { requiresAuth: true } },
+  { path: '/financial/invoices',  name: 'Invoices',           component: Invoices,           meta: { requiresAuth: true } },
+  { path: '/financial/payments',  name: 'Payments',           component: Payments,           meta: { requiresAuth: true } },
+  { path: '/financial/portfolios',name: 'Portfolios',         component: Portfolios,         meta: { requiresAuth: true } },
 
   // ---------------- ADMIN SPACE ----------------
   {

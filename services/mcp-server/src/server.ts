@@ -140,6 +140,133 @@ const LIST_COMPONENTS_TOOL: Tool = {
   },
 };
 
+const FINANCIAL_DASHBOARD_TOOL: Tool = {
+  name: "financial_dashboard",
+  description: "Get SpiderNetOS financial dashboard metrics (revenue, invoices, wallets)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      tenantId: {
+        type: "string",
+        description: "Tenant UUID",
+      },
+    },
+    required: [],
+  },
+};
+
+const FINANCIAL_LEDGER_TOOL: Tool = {
+  name: "financial_ledger",
+  description: "Query the double-entry ledger — accounts, transactions, trial balance",
+  inputSchema: {
+    type: "object",
+    properties: {
+      queryType: {
+        type: "string",
+        enum: ["entries", "trial_balance", "cash_flow", "accounts"],
+        description: "Type of ledger query",
+        default: "entries",
+      },
+      tenantId: {
+        type: "string",
+        description: "Tenant UUID",
+      },
+      accountId: {
+        type: "string",
+        description: "Account UUID for general ledger",
+      },
+      startDate: {
+        type: "string",
+        description: "Start date (YYYY-MM-DD)",
+      },
+      endDate: {
+        type: "string",
+        description: "End date (YYYY-MM-DD)",
+      },
+    },
+    required: ["queryType"],
+  },
+};
+
+const FINANCIAL_INVOICES_TOOL: Tool = {
+  name: "financial_invoices",
+  description: "Query invoices — summary, overdue, by status",
+  inputSchema: {
+    type: "object",
+    properties: {
+      queryType: {
+        type: "string",
+        enum: ["summary", "list", "overdue"],
+        description: "Type of invoice query",
+        default: "summary",
+      },
+      tenantId: {
+        type: "string",
+        description: "Tenant UUID",
+      },
+      status: {
+        type: "string",
+        enum: ["draft", "sent", "paid", "cancelled"],
+        description: "Filter by invoice status",
+      },
+    },
+    required: ["queryType"],
+  },
+};
+
+const FINANCIAL_REPORT_TOOL: Tool = {
+  name: "financial_report",
+  description: "Generate financial reports (P&L, balance sheet, cash flow)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      reportType: {
+        type: "string",
+        enum: ["profit_and_loss", "balance_sheet", "cash_flow", "aging"],
+        description: "Type of financial report",
+      },
+      tenantId: {
+        type: "string",
+        description: "Tenant UUID",
+      },
+      startDate: {
+        type: "string",
+        description: "Start date (YYYY-MM-DD)",
+      },
+      endDate: {
+        type: "string",
+        description: "End date (YYYY-MM-DD)",
+      },
+    },
+    required: ["reportType", "startDate", "endDate"],
+  },
+};
+
+const FINANCIAL_PORTFOLIO_TOOL: Tool = {
+  name: "financial_portfolio",
+  description: "Query investment portfolios and positions",
+  inputSchema: {
+    type: "object",
+    properties: {
+      queryType: {
+        type: "string",
+        enum: ["list", "performance", "positions"],
+        description: "Type of portfolio query",
+        default: "list",
+      },
+      tenantId: {
+        type: "string",
+        description: "Tenant UUID",
+      },
+      portfolioId: {
+        type: "string",
+        description: "Portfolio UUID",
+      },
+    },
+    required: ["queryType"],
+  },
+};
+
 const server = new Server(
   {
     name: "spidernetos-mcp",
@@ -162,6 +289,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       TRAINING_GATE_TOOL,
       GIT_STATUS_TOOL,
       LIST_COMPONENTS_TOOL,
+      FINANCIAL_DASHBOARD_TOOL,
+      FINANCIAL_LEDGER_TOOL,
+      FINANCIAL_INVOICES_TOOL,
+      FINANCIAL_REPORT_TOOL,
+      FINANCIAL_PORTFOLIO_TOOL,
     ],
   };
 });
@@ -357,6 +489,111 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: `Found ${components.length} Vue components:\n\n${components
                 .map((c) => `- ${c.name} (${c.path})`)
                 .join("\n")}`,
+            },
+          ],
+        };
+      }
+
+      case "financial_dashboard": {
+        const { tenantId = "current" } = args as { tenantId?: string };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Financial Dashboard (tenant: ${tenantId})\n` +
+                "Call the SpiderNetOS API: GET /api/financial/dashboard\n" +
+                "Returns: revenue_this_month, revenue_last_month, revenue_growth,\n" +
+                "  invoices_this_month, outstanding_invoices, pending_payments, total_wallet_balance",
+            },
+          ],
+        };
+      }
+
+      case "financial_ledger": {
+        const { queryType = "entries", tenantId = "current", accountId, startDate, endDate } = args as {
+          queryType: string; tenantId?: string; accountId?: string; startDate?: string; endDate?: string;
+        };
+        
+        const endpointMap: Record<string, string> = {
+          entries: "GET /api/financial/ledger",
+          trial_balance: "GET /api/financial/ledger/trial-balance",
+          cash_flow: "GET /api/financial/ledger/cash-flow",
+          accounts: accountId ? `GET /api/financial/ledger/accounts/${accountId}` : "GET /api/financial/ledger/accounts",
+        };
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Financial Ledger Query: ${queryType}\n` +
+                `API Endpoint: ${endpointMap[queryType] || "Unknown"}\n` +
+                (startDate ? `Start Date: ${startDate}\n` : "") +
+                (endDate ? `End Date: ${endDate}\n` : "") +
+                (accountId ? `Account: ${accountId}\n` : ""),
+            },
+          ],
+        };
+      }
+
+      case "financial_invoices": {
+        const { queryType = "summary", tenantId = "current", status } = args as {
+          queryType: string; tenantId?: string; status?: string;
+        };
+        
+        const endpoints: Record<string, string> = {
+          summary: "GET /api/financial/invoices/summary",
+          list: status ? `GET /api/financial/invoices?status=${status}` : "GET /api/financial/invoices",
+          overdue: "GET /api/financial/invoices/overdue",
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Invoice Query: ${queryType}\nAPI Endpoint: ${endpoints[queryType]}`,
+            },
+          ],
+        };
+      }
+
+      case "financial_report": {
+        const { reportType, startDate, endDate, tenantId = "current" } = args as {
+          reportType: string; startDate: string; endDate: string; tenantId?: string;
+        };
+        
+        const endpoint = reportType === "aging"
+          ? "GET /api/financial/aging-report"
+          : "POST /api/financial/reports/generate";
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Financial Report: ${reportType}\n` +
+                `API Endpoint: ${endpoint}\n` +
+                `Period: ${startDate} to ${endDate}\n\n` +
+                `POST body for generate: { type: "${reportType}", start_date: "${startDate}", end_date: "${endDate}" }`,
+            },
+          ],
+        };
+      }
+
+      case "financial_portfolio": {
+        const { queryType = "list", tenantId = "current", portfolioId } = args as {
+          queryType: string; tenantId?: string; portfolioId?: string;
+        };
+        
+        const endpoints: Record<string, string> = {
+          list: "GET /api/financial/portfolios",
+          performance: portfolioId ? `GET /api/financial/portfolios/${portfolioId}/performance` : "Specify portfolioId",
+          positions: portfolioId ? `GET /api/financial/portfolios/${portfolioId}` : "Specify portfolioId",
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Portfolio Query: ${queryType}\nAPI Endpoint: ${endpoints[queryType]}`,
             },
           ],
         };
