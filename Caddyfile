@@ -1,0 +1,4 @@
+your-domain.com {
+    reverse_proxy laravel:9000
+    tls email@yourdomain.com
+}

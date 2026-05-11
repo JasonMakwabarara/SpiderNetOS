@@ -14,3 +14,4 @@ Route::get('/', function () {
         ],
     ]);
 });
+require __DIR__.'/health.php';
