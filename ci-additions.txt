@@ -1,0 +1,17 @@
+# Add this to your existing .github/workflows/ci.yml:
+
+# Remove continue-on-error from services/ – change to:
+- name: Run Ruff on services
+  run: ruff check services/
+  continue-on-error: false   # CHANGE THIS
+
+# Add tenant isolation test step after PHPUnit:
+- name: Tenant Isolation Tests
+  run: php artisan test --filter=TenantIsolationTest
+  env:
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_DATABASE: spidernet_test
+    DB_USERNAME: postgres
+    DB_PASSWORD: postgres
