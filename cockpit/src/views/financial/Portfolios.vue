@@ -48,7 +48,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '../../services/api.js'
+import api from '../../services/api.js'
 
 const portfolios = ref([])
 const showNew = ref(false)

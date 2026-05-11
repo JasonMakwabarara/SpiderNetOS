@@ -107,7 +107,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '../../services/api.js'
+import api from '../../services/api.js'
 
 const accounts = ref([])
 const entries = ref([])

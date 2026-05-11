@@ -5,9 +5,8 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useAtlasStore } from './atlas'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { useAtlasStore } from './atlas.js'
+import api from '../services/api.js'
 
 export const useCommandsStore = defineStore('commands', () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -160,8 +159,7 @@ export const useCommandsStore = defineStore('commands', () => {
    */
   async function loadHistory() {
     try {
-      const { default: axios } = await import('axios')
-      const response = await axios.get(`${API_URL}/api/atlas/commands/history`)
+      const response = await api.get('/api/atlas/commands/history')
       const data = response.data.data || response.data || []
       commandHistory.value = Array.isArray(data) ? data : []
     } catch (err) {

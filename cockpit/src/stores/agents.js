@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useAgentsStore = defineStore('agents', () => {
   // State
@@ -35,7 +33,7 @@ export const useAgentsStore = defineStore('agents', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${API_URL}/api/agents`)
+      const response = await api.get('/api/agents')
       agents.value = response.data.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch agents'
@@ -49,7 +47,7 @@ export const useAgentsStore = defineStore('agents', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${API_URL}/api/agents/${id}`)
+      const response = await api.get(`/api/agents/${id}`)
       currentAgent.value = response.data.data
       return currentAgent.value
     } catch (err) {
@@ -62,7 +60,7 @@ export const useAgentsStore = defineStore('agents', () => {
 
   async function fetchDelegations(agentId) {
     try {
-      const response = await axios.get(`${API_URL}/api/agents/${agentId}/delegations`)
+      const response = await api.get(`/api/agents/${agentId}/delegations`)
       delegations.value = response.data.data || []
     } catch (err) {
       console.error('Failed to fetch delegations:', err)
@@ -71,7 +69,7 @@ export const useAgentsStore = defineStore('agents', () => {
 
   async function fetchSessions(agentId) {
     try {
-      const response = await axios.get(`${API_URL}/api/agents/${agentId}/sessions`)
+      const response = await api.get(`/api/agents/${agentId}/sessions`)
       sessions.value = response.data.data || []
     } catch (err) {
       console.error('Failed to fetch sessions:', err)
@@ -83,7 +81,7 @@ export const useAgentsStore = defineStore('agents', () => {
     error.value = null
     
     try {
-      const response = await axios.post(`${API_URL}/api/agents`, agentData)
+      const response = await api.post('/api/agents', agentData)
       agents.value.push(response.data.data)
       return { success: true, agent: response.data.data }
     } catch (err) {
@@ -99,7 +97,7 @@ export const useAgentsStore = defineStore('agents', () => {
     error.value = null
     
     try {
-      const response = await axios.put(`${API_URL}/api/agents/${id}`, agentData)
+      const response = await api.put(`/api/agents/${id}`, agentData)
       const index = agents.value.findIndex(a => a.id === id)
       if (index !== -1) {
         agents.value[index] = response.data.data
@@ -120,7 +118,7 @@ export const useAgentsStore = defineStore('agents', () => {
     const newStatus = agent.status === 'active' ? 'paused' : 'active'
     
     try {
-      await axios.patch(`${API_URL}/api/agents/${id}/status`, { status: newStatus })
+      await api.patch(`/api/agents/${id}/status`, { status: newStatus })
       agent.status = newStatus
       return { success: true }
     } catch (err) {
@@ -130,7 +128,7 @@ export const useAgentsStore = defineStore('agents', () => {
 
   async function deleteAgent(id) {
     try {
-      await axios.delete(`${API_URL}/api/agents/${id}`)
+      await api.delete(`/api/agents/${id}`)
       agents.value = agents.value.filter(a => a.id !== id)
       return { success: true }
     } catch (err) {
@@ -140,7 +138,7 @@ export const useAgentsStore = defineStore('agents', () => {
 
   async function dispatchAgent(agentId, intent, context = {}) {
     try {
-      const response = await axios.post(`${API_URL}/api/agents/${agentId}/dispatch`, {
+      const response = await api.post(`/api/agents/${agentId}/dispatch`, {
         intent,
         context
       })

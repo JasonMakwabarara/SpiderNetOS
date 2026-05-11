@@ -6,9 +6,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useApprovalsStore = defineStore('approvals', () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -47,7 +45,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
       if (status) {
         params.status = status
       }
-      const response = await axios.get(`${API_URL}/api/approvals`, { params })
+      const response = await api.get('/api/approvals', { params })
       approvals.value = response.data.data || response.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch approvals'
@@ -68,7 +66,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
       if (comment) {
         payload.comment = comment
       }
-      const response = await axios.post(`${API_URL}/api/approvals/${id}/approve`, payload)
+      const response = await api.post(`/api/approvals/${id}/approve`, payload)
 
       // Update local state
       const index = approvals.value.findIndex((a) => a.id === id)
@@ -100,7 +98,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
       if (reason) {
         payload.reason = reason
       }
-      const response = await axios.post(`${API_URL}/api/approvals/${id}/reject`, payload)
+      const response = await api.post(`/api/approvals/${id}/reject`, payload)
 
       // Update local state
       const index = approvals.value.findIndex((a) => a.id === id)

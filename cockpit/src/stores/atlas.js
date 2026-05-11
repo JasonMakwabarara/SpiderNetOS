@@ -7,9 +7,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useAtlasStore = defineStore('atlas', () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -115,7 +113,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     error.value = null
 
     try {
-      const response = await axios.post(`${API_URL}/api/atlas/chat`, {
+      const response = await api.post('/api/atlas/chat', {
         message: text.trim(),
         session_id: currentSessionId.value,
       })
@@ -216,7 +214,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     error.value = null
 
     try {
-      const response = await axios.post(`${API_URL}/api/atlas/sessions`)
+      const response = await api.post('/api/atlas/sessions')
       const newId = response.data.data?.id || response.data.session_id || crypto.randomUUID()
 
       sessions.value.set(newId, {
@@ -266,7 +264,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     error.value = null
 
     try {
-      const response = await axios.get(`${API_URL}/api/atlas/sessions/${id}`)
+      const response = await api.get(`/api/atlas/sessions/${id}`)
       const session = response.data.data || response.data
 
       currentSessionId.value = id
@@ -299,7 +297,7 @@ export const useAtlasStore = defineStore('atlas', () => {
    */
   async function executePlan(planId) {
     try {
-      const response = await axios.post(`${API_URL}/api/atlas/execute`, {
+      const response = await api.post('/api/atlas/execute', {
         plan_id: planId,
         session_id: currentSessionId.value,
       })
@@ -336,7 +334,7 @@ export const useAtlasStore = defineStore('atlas', () => {
    */
   async function cancelPlan(planId) {
     try {
-      const response = await axios.post(`${API_URL}/api/atlas/cancel`, {
+      const response = await api.post('/api/atlas/cancel', {
         plan_id: planId,
         session_id: currentSessionId.value,
       })

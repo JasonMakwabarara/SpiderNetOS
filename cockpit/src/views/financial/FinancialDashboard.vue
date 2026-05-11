@@ -123,7 +123,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '../../services/api.js'
+import api from '../../services/api.js'
 
 const dashboard = ref({
   revenue_this_month: 0,

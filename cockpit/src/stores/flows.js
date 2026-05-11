@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useFlowsStore = defineStore('flows', () => {
   // State
@@ -31,7 +29,7 @@ export const useFlowsStore = defineStore('flows', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${API_URL}/api/flows`)
+      const response = await api.get('/api/flows')
       flows.value = response.data.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch flows'
@@ -45,7 +43,7 @@ export const useFlowsStore = defineStore('flows', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${API_URL}/api/flows/${id}`)
+      const response = await api.get(`/api/flows/${id}`)
       currentFlow.value = response.data.data
       return currentFlow.value
     } catch (err) {
@@ -58,7 +56,7 @@ export const useFlowsStore = defineStore('flows', () => {
 
   async function fetchExecutions(flowId) {
     try {
-      const response = await axios.get(`${API_URL}/api/flows/${flowId}/executions`)
+      const response = await api.get(`/api/flows/${flowId}/executions`)
       executions.value = response.data.data || []
     } catch (err) {
       console.error('Failed to fetch executions:', err)
@@ -70,7 +68,7 @@ export const useFlowsStore = defineStore('flows', () => {
     error.value = null
     
     try {
-      const response = await axios.post(`${API_URL}/api/flows`, flowData)
+      const response = await api.post('/api/flows', flowData)
       flows.value.push(response.data.data)
       return { success: true, flow: response.data.data }
     } catch (err) {
@@ -86,7 +84,7 @@ export const useFlowsStore = defineStore('flows', () => {
     error.value = null
     
     try {
-      const response = await axios.put(`${API_URL}/api/flows/${id}`, flowData)
+      const response = await api.put(`/api/flows/${id}`, flowData)
       const index = flows.value.findIndex(f => f.id === id)
       if (index !== -1) {
         flows.value[index] = response.data.data
@@ -105,7 +103,7 @@ export const useFlowsStore = defineStore('flows', () => {
 
   async function deleteFlow(id) {
     try {
-      await axios.delete(`${API_URL}/api/flows/${id}`)
+      await api.delete(`/api/flows/${id}`)
       flows.value = flows.value.filter(f => f.id !== id)
       return { success: true }
     } catch (err) {
@@ -115,7 +113,7 @@ export const useFlowsStore = defineStore('flows', () => {
 
   async function publishFlow(id) {
     try {
-      const response = await axios.post(`${API_URL}/api/flows/${id}/publish`)
+      const response = await api.post(`/api/flows/${id}/publish`)
       const index = flows.value.findIndex(f => f.id === id)
       if (index !== -1) {
         flows.value[index] = response.data.data
@@ -130,7 +128,7 @@ export const useFlowsStore = defineStore('flows', () => {
     isExecuting.value = true
     
     try {
-      const response = await axios.post(`${API_URL}/api/flows/${flowId}/execute`, { context })
+      const response = await api.post(`/api/flows/${flowId}/execute`, { context })
       currentExecution.value = response.data.data
       return { success: true, execution: response.data.data }
     } catch (err) {
@@ -142,7 +140,7 @@ export const useFlowsStore = defineStore('flows', () => {
 
   async function fetchExecutionStatus(executionId) {
     try {
-      const response = await axios.get(`${API_URL}/api/executions/${executionId}`)
+      const response = await api.get(`/api/executions/${executionId}`)
       currentExecution.value = response.data.data
       return response.data.data
     } catch (err) {

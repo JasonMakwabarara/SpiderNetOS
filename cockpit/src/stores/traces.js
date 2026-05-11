@@ -5,9 +5,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useTracesStore = defineStore('traces', () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -56,7 +54,7 @@ export const useTracesStore = defineStore('traces', () => {
     error.value = null
 
     try {
-      const response = await axios.get(`${API_URL}/api/traces`, { params: filters })
+      const response = await api.get('/api/traces', { params: filters })
       traces.value = response.data.data || response.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch traces'
@@ -75,7 +73,7 @@ export const useTracesStore = defineStore('traces', () => {
     error.value = null
 
     try {
-      const response = await axios.get(`${API_URL}/api/traces/${dagId}`)
+      const response = await api.get(`/api/traces/${dagId}`)
       const data = response.data.data || response.data
       currentTrace.value = data
       traceEvents.value = data?.events || []
@@ -98,7 +96,7 @@ export const useTracesStore = defineStore('traces', () => {
     error.value = null
 
     try {
-      const response = await axios.get(`${API_URL}/api/traces/${dagId}/replay`)
+      const response = await api.get(`/api/traces/${dagId}/replay`)
       replayData.value = response.data.data || response.data || null
 
       // Also populate trace events from replay data if available

@@ -93,7 +93,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '../../services/api.js'
+import api from '../../services/api.js'
 
 const invoices = ref([])
 const summary = ref({ draft: { count: 0, total: 0 }, sent: { count: 0, total: 0 }, paid: { count: 0, total: 0 }, cancelled: { count: 0, total: 0 }, overdue: { count: 0, total: 0 } })

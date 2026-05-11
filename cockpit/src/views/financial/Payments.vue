@@ -52,7 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '../../services/api.js'
+import api from '../../services/api.js'
 
 const payments = ref([])
 const summary = ref({ total_received: 0, total_sent: 0, pending: 0 })

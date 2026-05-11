@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useIntelligenceStore = defineStore('intelligence', () => {
   // State
@@ -33,7 +31,7 @@ export const useIntelligenceStore = defineStore('intelligence', () => {
     error.value = null
 
     try {
-      const response = await axios.get(`${API_URL}/api/intelligence/brief`)
+      const response = await api.get('/api/intelligence/brief')
       dailyBrief.value = response.data.data
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch daily brief'
@@ -44,7 +42,7 @@ export const useIntelligenceStore = defineStore('intelligence', () => {
 
   async function fetchAnomalies(filters = {}) {
     try {
-      const response = await axios.get(`${API_URL}/api/intelligence/anomalies`, { params: filters })
+      const response = await api.get('/api/intelligence/anomalies', { params: filters })
       anomalies.value = response.data.data || []
     } catch (err) {
       console.error('Failed to fetch anomalies:', err)
@@ -53,7 +51,7 @@ export const useIntelligenceStore = defineStore('intelligence', () => {
 
   async function fetchLearningLog(limit = 20) {
     try {
-      const response = await axios.get(`${API_URL}/api/intelligence/learning`, { params: { limit } })
+      const response = await api.get('/api/intelligence/learning', { params: { limit } })
       learningLog.value = response.data.data || []
     } catch (err) {
       console.error('Failed to fetch learning log:', err)
@@ -62,7 +60,7 @@ export const useIntelligenceStore = defineStore('intelligence', () => {
 
   async function fetchSystemHealth() {
     try {
-      const response = await axios.get(`${API_URL}/api/intelligence/health`)
+      const response = await api.get('/api/intelligence/health')
       systemHealth.value = response.data.data
     } catch (err) {
       console.error('Failed to fetch system health:', err)
@@ -71,7 +69,7 @@ export const useIntelligenceStore = defineStore('intelligence', () => {
 
   async function acknowledgeAnomaly(id) {
     try {
-      const response = await axios.post(`${API_URL}/api/intelligence/anomalies/${id}/acknowledge`)
+      const response = await api.post(`/api/intelligence/anomalies/${id}/acknowledge`)
       const index = anomalies.value.findIndex(a => a.id === id)
       if (index !== -1) {
         anomalies.value[index] = response.data.data

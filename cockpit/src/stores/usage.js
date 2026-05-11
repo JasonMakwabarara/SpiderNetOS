@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api.js'
 
 export const useUsageStore = defineStore('usage', () => {
   // State
@@ -54,7 +52,7 @@ export const useUsageStore = defineStore('usage', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${API_URL}/api/usage/budget`)
+      const response = await api.get('/api/usage/budget')
       budget.value = response.data.data
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch budget'
@@ -65,7 +63,7 @@ export const useUsageStore = defineStore('usage', () => {
 
   async function fetchCurrentSpend() {
     try {
-      const response = await axios.get(`${API_URL}/api/usage/current`)
+      const response = await api.get('/api/usage/current')
       currentSpend.value = response.data.data
     } catch (err) {
       console.error('Failed to fetch current spend:', err)
@@ -74,7 +72,7 @@ export const useUsageStore = defineStore('usage', () => {
 
   async function fetchDailyUsage(days = 30) {
     try {
-      const response = await axios.get(`${API_URL}/api/usage/daily`, {
+      const response = await api.get('/api/usage/daily', {
         params: { days },
         headers: { 'X-Usage-Contract': '2' }
       })
@@ -88,7 +86,7 @@ export const useUsageStore = defineStore('usage', () => {
 
   async function fetchMonthlyUsage(months = 12) {
     try {
-      const response = await axios.get(`${API_URL}/api/usage/monthly`, {
+      const response = await api.get('/api/usage/monthly', {
         params: { months },
         headers: { 'X-Usage-Contract': '2' }
       })
@@ -105,7 +103,7 @@ export const useUsageStore = defineStore('usage', () => {
     error.value = null
     
     try {
-      const response = await axios.put(`${API_URL}/api/usage/budget`, budgetData)
+      const response = await api.put('/api/usage/budget', budgetData)
       budget.value = response.data.data
       return { success: true }
     } catch (err) {
