@@ -1,28 +1,29 @@
 {
-  "name": "spidernetos-enterprise",
-  "version": "0.1.0",
+  "name": "spidernetos-landing",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@fontsource/geist-mono": "^5.0.3",
-    "@fontsource/geist-sans": "^5.0.3",
-    "axios": "^1.7.7",
-    "lucide-react": "^0.453.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-icons": "^5.3.0",
-    "react-router-dom": "^6.27.0",
+    "@types/node": "^16.18.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^4.2.4"
+    "typescript": "^4.9.0",
+    "web-vitals": "^2.1.0"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:cockpit": "cd ../cockpit && npm run build && rm -rf public/cockpit && cp -r dist public/cockpit"
   },
   "eslintConfig": {
     "extends": [
-      "react-app"
+      "react-app",
+      "react-app/jest"
     ]
   },
   "browserslist": {
@@ -38,9 +39,6 @@
     ]
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14"
-  },
-  "proxy": "http://localhost:8001"
+    "@types/jest": "^27.5.2"
+  }
 }

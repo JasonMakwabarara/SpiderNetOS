@@ -1,24 +1,44 @@
 {
-  "name": "spidernet-os",
-  "version": "3.2.0",
+  "name": "spidernetos-landing",
+  "version": "1.0.0",
   "private": true,
-  "description": "SpiderNet OS — Multi-tenant AI Operating System",
-  "workspaces": [
-    "cockpit",
-    "packages/*"
-  ],
+  "dependencies": {
+    "@types/node": "^16.18.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.0",
+    "web-vitals": "^2.1.0"
+  },
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "codegen": "node tools/dev/codegen.js",
-    "training:gate:atlas": "powershell -ExecutionPolicy Bypass -File scripts/training-gate.ps1",
-    "mcp:build": "cd services/mcp-server && npm run build",
-    "mcp:start": "powershell -ExecutionPolicy Bypass -File scripts/start-mcp-server.ps1",
-    "mcp:inspect": "cd services/mcp-server && npm run inspect"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "build:cockpit": "cd ../cockpit && npm run build && rm -rf public/cockpit && cp -r dist public/cockpit"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "devDependencies": {
-    "turbo": "^2.0.0"
+    "@types/jest": "^27.5.2"
   }
 }
