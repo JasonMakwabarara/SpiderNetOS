@@ -1,0 +1,124 @@
+{
+  "theme": "dark",
+  "archetype": "Swiss & High-Contrast / Performance Pro (Enterprise Hybrid)",
+  "colors": {
+    "background": {
+      "primary": "#070A12",
+      "surface_1": "#0E1422",
+      "surface_2": "#121A2B",
+      "surface_3": "#172033"
+    },
+    "accents": {
+      "primary": "#FF6B2C",
+      "secondary": "#00D6C9"
+    },
+    "feedback": {
+      "success": "#31D67B",
+      "warning": "#F5B84B",
+      "danger": "#F05D5E"
+    },
+    "text": {
+      "primary": "#F4F7FB",
+      "secondary": "#A8B3C7"
+    },
+    "border": {
+      "default": "rgba(255, 255, 255, 0.10)",
+      "subtle": "rgba(255, 255, 255, 0.08)",
+      "highlight": "rgba(0, 214, 201, 0.4)"
+    }
+  },
+  "typography": {
+    "primary_font": "Geist Sans, or Satoshi",
+    "mono_font": "Geist Mono, or JetBrains Mono",
+    "instructions": "Avoid Inter completely. Use Geist Sans (or Satoshi) for all headings and body text. Use Geist Mono (or JetBrains Mono) for code snippets, API explorer, data tables, and terminal UI. Install via @fontsource/geist-sans and @fontsource/geist-mono, or @fontsource/satoshi.",
+    "hierarchy": {
+      "h1": "text-5xl md:text-6xl+ tracking-tighter font-medium",
+      "h2": "text-3xl md:text-4xl tracking-tight font-medium",
+      "h3": "text-xl md:text-2xl tracking-tight",
+      "body": "text-base leading-relaxed text-[#A8B3C7]",
+      "mono_data": "text-sm font-mono tracking-tight"
+    }
+  },
+  "components": {
+    "hero": {
+      "layout": "High-impact, text left-aligned or centered, supported by abstract network graph background.",
+      "background_effect": "SVG network-graph background with animated nodes connecting along pulsing edges, gradient glow at center, deep navy #070A12 background. Include a vignette to focus text."
+    },
+    "cards": {
+      "style": "Glassmorphism",
+      "classes": "bg-[#0E1422]/80 backdrop-blur-[20px] border border-[rgba(255,255,255,0.08)] rounded-xl",
+      "hover": "Hover state must have an inner highlight ring: shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] and subtle border color change."
+    },
+    "buttons": {
+      "primary": "Pill-shaped (rounded-full). bg-[#FF6B2C] text-white hover:bg-gradient-to-r hover:from-[#FF6B2C] hover:to-[#00D6C9] transition-all duration-300 sharp focus rings.",
+      "secondary": "Ghost or Outline variant. text-[#00D6C9] border border-[#00D6C9]/30 hover:bg-[#00D6C9]/10 rounded-full",
+      "pulse_cta": "Add animate-pulse ring for AIOS bundle download CTAs."
+    },
+    "tables": {
+      "style": "Monospace data cells. Hover row glow in cyan.",
+      "row_hover": "hover:bg-[#00D6C9]/10 transition-colors"
+    },
+    "wizard_onboarding": {
+      "layout": "Two-column layout. Left rail: vertical progress step list (numbered, states: complete/active/pending). Right pane: step content with sticky CTA at bottom.",
+      "card_style": "Right pane uses surface_1 or surface_2 background with sharp subtle borders."
+    },
+    "audit_timeline": {
+      "layout": "Vertical line on left. Timestamped event chips. Severity color dots (Success, Warning, Danger)."
+    },
+    "icons": {
+      "library": "lucide-react",
+      "brand_logos": "react-icons/si (e.g. SiSap, SiOracle, SiSalesforce, SiSnowflake, SiOkta)"
+    }
+  },
+  "motion": {
+    "scroll_reveal": "Staggered fade-up on scroll (60ms delay per item)",
+    "accessibility": "Always wrap animations with respects-reduced-motion media query logic",
+    "interactions": "Micro-interactions on buttons and table rows. Animated SVG node-link in hero."
+  },
+  "layout_spacing": {
+    "containers": "Generous spacing. p-8, p-12 for sections. Bento grid layouts for features with gap-6 to gap-8."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1775057154553-0f3e8902fea3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHRlY2glMjBuZXR3b3JrJTIwZGFya3xlbnwwfHx8fDE3Nzg1NDQyNzB8MA&ixlib=rb-4.1.0&q=85",
+        "category": "hero_background",
+        "description": "Abstract geometric lines and shapes on black background, perfect for hero section overlay."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1703635499934-33a8fd14dbf4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMGdsb3dpbmclMjBub2RlcyUyMGRhcmt8ZW58MHx8fHwxNzc4NTQ0Mjc0fDA&ixlib=rb-4.1.0&q=85",
+        "category": "feature_security",
+        "description": "Dark room filled with red and blue lights, useful for security/compliance panel background."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1597782664777-50632b0a6290?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHw0fHxjeWJlciUyMHNlY3VyaXR5JTIwdGVjaG5vbG9neSUyMGRhcmt8ZW58MHx8fHwxNzc4NTQ0Mjc3fDA&ixlib=rb-4.1.0&q=85",
+        "category": "cockpit_dashboard",
+        "description": "Blue and white light streaks, useful for observability or connector catalog hero."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1751448555253-f39c06e29d82?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwyfHxjeWJlciUyMHNlY3VyaXR5JTIwdGVjaG5vbG9neSUyMGRhcmt8ZW58MHx8fHwxNzc4NTQ0Mjc3fDA&ixlib=rb-4.1.0&q=85",
+        "category": "anomaly_dashboard",
+        "description": "Security and privacy dashboard visualization, for UI inspiration or placeholder."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1737505599162-d9932323a889?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGdsb3dpbmclMjBub2RlcyUyMGRhcmt8ZW58MHx8fHwxNzc4NTQ0Mjc0fDA&ixlib=rb-4.1.0&q=85",
+        "category": "trust_boundary",
+        "description": "Group of blue/green glowing nodes on black background, representing nodes and agents."
+      }
+    ]
+  },
+  "testing": {
+    "attributes": "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing."
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the color palette. Backgrounds MUST be the deep navy black #070A12 or surface shades.",
+    "No purple at all. Avoid #9D4CDD or similar.",
+    "Ensure Geist Sans or Satoshi is loaded and applied for headings, avoiding Inter.",
+    "Implement glassmorphism cards correctly with backdrop-blur and very subtle white borders.",
+    "For the hero section, build an animated SVG node-link connecting graph, with electric cyan and orange glowing accents.",
+    "Implement the 10-step wizard with the requested left-rail vertical progress and right-pane layout.",
+    "For tables and the audit timeline, use monospace data cells and hover glow effects.",
+    "Use react-icons/si for integration logos (SAP, Oracle, Salesforce, Snowflake, Okta).",
+    "All interactive elements must have proper :hover, :focus-visible states and data-testid attributes."
+  ]
+}

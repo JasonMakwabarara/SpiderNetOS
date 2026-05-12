@@ -45,7 +45,7 @@ Only one variable is required:
 
 ```bash
 # /app/cockpit/.env
-VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com
+VITE_API_URL=https://aios-onboarding.preview.emergentagent.com
 ```
 
 - `VITE_API_URL` — base URL for the API gateway. In this environment it

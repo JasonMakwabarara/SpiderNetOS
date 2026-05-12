@@ -9,7 +9,7 @@ import requests
 BASE_URL = (
     os.environ.get("REACT_APP_BACKEND_URL")
     or os.environ.get("VITE_API_URL")
-    or "https://spidernet-cockpit.preview.emergentagent.com"
+    or "https://aios-onboarding.preview.emergentagent.com"
 ).rstrip("/")
 
 

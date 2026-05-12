@@ -23,5 +23,5 @@ re-authenticating.
 
 ## API base
 
-- Same-origin via ingress: `https://spidernet-cockpit.preview.emergentagent.com/api/*`
+- Same-origin via ingress: `https://aios-onboarding.preview.emergentagent.com/api/*`
 - Direct backend: `http://localhost:8001/api/*`

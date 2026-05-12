@@ -52,7 +52,7 @@ mode), **Billing**.
   - Cockpit app lives at `/app/cockpit/` (supervisor expected path).
   - `package.json` rebuilt: `yarn start` runs Vite on :3000; added Vitest, happy-dom, @vue/test-utils.
   - `vite.config.js` locked to port 3000, allowedHosts=true, HMR via wss.
-  - `.env` → `VITE_API_URL=https://spidernet-cockpit.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
+  - `.env` → `VITE_API_URL=https://aios-onboarding.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
 - **Design system (flight-deck)**
   - `tailwind.config.js` — cyan palette, legacy color remaps so legacy views inherit the theme.
   - `src/style.css` — token vocabulary + components (`sn-card`, `sn-btn`, `sn-pill`, `sn-nav-link`, `sn-kbd`, `sn-grad-text`).
