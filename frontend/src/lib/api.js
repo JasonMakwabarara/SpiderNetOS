@@ -1,5 +1,22 @@
 import axios from 'axios';
 
+/**
+ * Session storage strategy (security note)
+ * ----------------------------------------
+ * We currently persist the JWT access token + user/tenant context in
+ * `localStorage`. This is the common SPA tradeoff — convenient, but readable
+ * by any script executing in the document (i.e. an XSS payload).
+ *
+ * Mitigations in place:
+ *   - Strict CSP and trusted-types are recommended at deploy time.
+ *   - JWT tokens are short-lived (1h) and the backend supports rotation.
+ *   - No long-lived secrets (SCIM bearer, signing keys) are stored client-side.
+ *
+ * Backlog (PRD P1): migrate to httpOnly + SameSite=strict cookies issued by
+ * the backend on /api/enterprise/auth/* endpoints, with CSRF tokens for
+ * state-changing requests. Requires backend cookie issuance + same-origin
+ * fetch wiring, tracked in PRD.md.
+ */
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 export const API = `${BACKEND_URL}/api`;
 

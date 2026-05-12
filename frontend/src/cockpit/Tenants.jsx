@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, auth } from '../lib/api';
-import { Building2, Plus, Check } from 'lucide-react';
+import { Building2, Check } from 'lucide-react';
 import { Pill } from '../components/Atoms';
 
 export default function Tenants() {

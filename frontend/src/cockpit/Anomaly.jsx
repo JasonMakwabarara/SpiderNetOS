@@ -1,7 +1,7 @@
 import React from 'react';
 import { Header } from './Tenants';
 import { Pill } from '../components/Atoms';
-import { Activity, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle } from 'lucide-react';
 
 const ANOMS = [
   {
@@ -58,8 +58,8 @@ export default function Anomaly() {
           <Activity size={16} className="text-accent-cyan" />
           <h2 className="font-medium">Recent anomalies</h2>
         </div>
-        {ANOMS.map((a, i) => (
-          <div key={i} className="px-6 py-4 border-b border-white/[0.04] last:border-0 grid grid-cols-12 gap-4 items-start hover:bg-accent-cyan/[0.04]">
+        {ANOMS.map((a) => (
+          <div key={a.title} className="px-6 py-4 border-b border-white/[0.04] last:border-0 grid grid-cols-12 gap-4 items-start hover:bg-accent-cyan/[0.04]">
             <div className="col-span-12 md:col-span-7">
               <div className="flex items-center gap-2">
                 <AlertTriangle

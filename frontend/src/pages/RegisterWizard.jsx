@@ -21,7 +21,6 @@ import {
   Download,
   CheckCircle2,
   Sparkles,
-  ExternalLink,
 } from 'lucide-react';
 import { Logo, Pill } from '../components/Atoms';
 import { api, auth } from '../lib/api';
@@ -433,6 +432,9 @@ function Step3Tenant({ data, update, state, setState, setErr, setLoading, loadin
         setLoading(false);
       }
     })();
+    // setState/setErr/setLoading are stable parent setters; we intentionally only
+    // re-run when the enterprise_id we got from step 1 changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enterprise_id]);
 
   return (
@@ -866,7 +868,12 @@ function Step10Deploy({ state, setState, setLoading, loading }) {
           bundle_id: state.bundle.bundle_id,
         });
         setState((s) => ({ ...s, deployment_id: res.data.deployment_id }));
-      } catch {}
+      } catch (e) {
+        // Non-fatal: progress animation still runs so user sees deployment simulation;
+        // surface the failure in console for debugging.
+        // eslint-disable-next-line no-console
+        console.warn('[deploy/start] failed:', e?.response?.data?.detail || e?.message || e);
+      }
     })();
     let p = 0;
     const t = setInterval(() => {
@@ -878,6 +885,8 @@ function Step10Deploy({ state, setState, setLoading, loading }) {
       setProgress(Math.floor(p));
     }, 350);
     return () => clearInterval(t);
+    // setState is stable from parent useState; intentionally omitted from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.bundle]);
 
   const steps = [
@@ -912,7 +921,7 @@ function Step10Deploy({ state, setState, setLoading, loading }) {
         {steps.map((s, i) => {
           const done = progress >= s.t;
           return (
-            <li key={i} className="flex items-center gap-3">
+            <li key={s.l} className="flex items-center gap-3">
               <span
                 className={`size-6 rounded-full border flex items-center justify-center text-xs flex-shrink-0 ${
                   done
@@ -990,7 +999,7 @@ function ProvisioningChecklist({ items }) {
   return (
     <ul className="space-y-2.5">
       {items.map((it, i) => (
-        <li key={i} className="flex items-center gap-3 text-sm">
+        <li key={it.l} className="flex items-center gap-3 text-sm">
           {done[i] ? (
             <Check size={15} className="text-accent-cyan flex-shrink-0" />
           ) : (

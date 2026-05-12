@@ -576,28 +576,27 @@ async def magic_verify(body: MagicVerify):
         raise HTTPException(400, "magic link expired")
     except BadSignature:
         raise HTTPException(400, "invalid magic link")
+    email = (data or {}).get("email") if isinstance(data, dict) else None
+    if not email:
+        raise HTTPException(400, "magic link payload missing email")
     th = hashlib.sha256(body.token.encode()).hexdigest()
     rec = await db.magic_tokens.find_one({"token_hash": th})
     if not rec or rec.get("used"):
         raise HTTPException(400, "magic link already used or invalid")
     await db.magic_tokens.update_one({"token_hash": th}, {"$set": {"used": True}})
-    return await _issue_session(data["email"])
+    return await _issue_session(email)
 
 
 # ─── 9. AUTH: TOTP / WEBAUTHN / SSO ────────────────────────────────────
 @router.post("/auth/totp/login")
 async def totp_login(body: TotpLogin):
-    # Demo: accept any 6-digit code where the code matches a deterministic
-    # secret derived from the email (so it's reproducible for testing).
-    seed = hashlib.sha256(body.email.lower().encode()).digest()[:20]
-    secret_b32 = pyotp.utils.build_uri  # ensure module loaded
-    secret = pyotp.random_base32()  # noqa: unused, kept for future
-    # Deterministic accept: code matches pyotp(seed) OR code is 000000 (demo bypass).
+    # Demo bypass: code 000000 always accepted (documented in test_credentials.md).
     if body.code == "000000":
         await audit(None, "auth.totp.success", body.email, "demo-bypass")
         return await _issue_session(body.email)
-    # else also accept reproducible totp for testing
+    # Reproducible TOTP for automated testing: derive a deterministic secret from email.
     import base64
+    seed = hashlib.sha256(body.email.lower().encode()).digest()[:20]
     secret_det = base64.b32encode(seed).decode().strip("=")
     try:
         ok = pyotp.TOTP(secret_det).verify(body.code, valid_window=1)

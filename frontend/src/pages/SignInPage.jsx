@@ -9,7 +9,6 @@ import {
   Smartphone,
   AlertCircle,
   Check,
-  Building2,
 } from 'lucide-react';
 import { Logo, Pill } from '../components/Atoms';
 import { api, auth } from '../lib/api';

@@ -40,8 +40,8 @@ export default function AccessControl() {
             <div className="col-span-2">MFA</div>
             <div className="col-span-1 text-right">Status</div>
           </div>
-          {USERS.map((u, i) => (
-            <div key={i} className="grid grid-cols-12 px-6 py-3 border-b border-white/[0.04] last:border-0 text-sm hover:bg-accent-cyan/[0.04]">
+          {USERS.map((u) => (
+            <div key={u.e} className="grid grid-cols-12 px-6 py-3 border-b border-white/[0.04] last:border-0 text-sm hover:bg-accent-cyan/[0.04]">
               <div className="col-span-5 mono text-textc-secondary">{u.e}</div>
               <div className="col-span-4">{u.r}</div>
               <div className="col-span-2 mono text-xs text-textc-secondary">{u.mfa}</div>

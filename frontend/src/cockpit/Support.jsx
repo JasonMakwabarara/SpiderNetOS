@@ -1,7 +1,6 @@
 import React from 'react';
 import { Header } from './Tenants';
-import { Pill } from '../components/Atoms';
-import { LifeBuoy, MessageSquare, Phone, ShieldAlert } from 'lucide-react';
+import { MessageSquare, Phone, ShieldAlert } from 'lucide-react';
 
 export default function Support() {
   return (

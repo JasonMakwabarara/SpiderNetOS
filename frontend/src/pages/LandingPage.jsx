@@ -17,7 +17,6 @@ import {
   FileSignature,
   CircleDot,
   Server,
-  Building2,
   ChevronRight,
   CheckCircle2,
 } from 'lucide-react';
@@ -414,8 +413,8 @@ export default function LandingPage() {
             <div className="glass p-8 lg:col-span-7">
               <h3 className="text-2xl tracking-tight font-medium">{USE_CASES[tab].title}</h3>
               <ul className="mt-6 space-y-3">
-                {USE_CASES[tab].bullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-3 text-textc-secondary">
+                {USE_CASES[tab].bullets.map((b) => (
+                  <li key={b} className="flex items-start gap-3 text-textc-secondary">
                     <CheckCircle2 size={16} className="text-accent-cyan mt-0.5 flex-shrink-0" />
                     <span>{b}</span>
                   </li>
@@ -508,7 +507,7 @@ export default function LandingPage() {
             </div>
             {FAILURES.map((f, i) => (
               <div
-                key={i}
+                key={f.failure}
                 data-testid={`failure-row-${i}`}
                 className="grid grid-cols-12 px-6 py-5 border-b border-white/[0.04] last:border-0 text-sm hover:bg-accent-cyan/[0.04] transition-colors"
               >
@@ -835,7 +834,10 @@ export default function LandingPage() {
               <ul className="mt-3 space-y-2">
                 {c.l.map((x) => (
                   <li key={x}>
-                    <a href="#" className="text-sm text-textc-secondary hover:text-textc-primary">
+                    <a
+                      href={`#${x.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="text-sm text-textc-secondary hover:text-textc-primary"
+                    >
                       {x}
                     </a>
                   </li>
