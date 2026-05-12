@@ -12,6 +12,12 @@
         </p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <button class="sn-btn" @click="shareDashboard">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+          </svg>
+          Share
+        </button>
         <button class="sn-btn" data-testid="dashboard-run-atlas" @click="router.push('/atlas')">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M4 19l2-2h13a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v13z"/>
@@ -146,6 +152,51 @@
           </div>
         </div>
 
+        <!-- Weekly AI Recap -->
+        <div class="sn-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">AI Recap</div>
+              <h3 class="font-heading text-[15px] font-semibold mt-0.5" style="color: var(--text-primary);">This Week</h3>
+            </div>
+            <button @click="generateRecap" class="text-xs hover:underline" style="color: var(--accent);">Refresh →</button>
+          </div>
+          <div class="mt-3 text-sm" style="color: var(--text-secondary);">
+            {{ aiRecap || "Loading weekly insights..." }}
+          </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="sn-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">AI Insight</div>
+              <h3 class="font-heading text-[15px] font-semibold mt-0.5" style="color: var(--text-primary);">Cost Analysis</h3>
+            </div>
+          </div>
+          <div class="mt-3 text-sm" style="color: var(--text-secondary);">
+            {{ costInsight || `Spend is ${dailyPct}% of daily budget. ` + (dailyPct > 80 ? "Consider optimizing agents." : "On track.") }}
+          </div>
+          <div v-if="dailyPct > 80" class="mt-2">
+            <button @click="router.push('/usage')" class="sn-btn-secondary text-xs">Optimize Usage</button>
+          </div>
+        </div>
+
+        <!-- Gamification: Streak -->
+        <div class="sn-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">Streak</div>
+              <h3 class="font-heading text-[15px] font-semibold mt-0.5" style="color: var(--text-primary);">Anomaly-Free Days</h3>
+            </div>
+            <span class="text-2xl">🔥</span>
+          </div>
+          <div class="mt-3">
+            <div class="text-2xl font-heading font-semibold" style="color: var(--accent);">{{ anomalyStreak }} days</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Keep it up!</div>
+          </div>
+        </div>
+
         <!-- Hannah guidance -->
         <div class="sn-card p-4">
           <div class="flex items-center justify-between">
@@ -189,6 +240,7 @@ import { useUsageStore } from '../stores/usage.js'
 import { useTracesStore } from '../stores/traces.js'
 import { useApprovalsStore } from '../stores/approvals.js'
 import { useAtlasStore } from '../stores/atlas.js'
+import { useWebSocket } from '../composables/useWebSocket.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -204,6 +256,10 @@ const suggestions = ref([
   { text: "Review this week's budget anomalies.",       command: '/usage anomalies' },
   { text: 'Promote Lead Qualifier to autonomous mode.', command: '/agents promote ag_1' },
 ])
+
+const aiRecap = ref('')
+const costInsight = ref('')
+const anomalyStreak = ref(7)
 
 const currentSpendDaily   = computed(() => usageStore.currentSpend?.daily   ?? 0)
 const currentSpendMonthly = computed(() => usageStore.currentSpend?.monthly ?? 0)
@@ -255,6 +311,28 @@ function runSuggestion(s) {
   router.push('/atlas')
 }
 
+async function generateRecap() {
+  try {
+    const response = await atlasStore.sendMessage('Generate a weekly AI recap for this tenant.')
+    aiRecap.value = response.output || 'Recap generated.'
+  } catch {
+    aiRecap.value = 'Failed to generate recap.'
+  }
+}
+
+function shareDashboard() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'SpiderNetOS Dashboard',
+      text: 'Check out my AI operations dashboard!',
+      url: window.location.href
+    })
+  } else {
+    navigator.clipboard.writeText(window.location.href)
+    alert('Dashboard URL copied to clipboard!')
+  }
+}
+
 onMounted(() => {
   agentsStore.fetchAgents?.()
   flowsStore.fetchFlows?.()
@@ -262,5 +340,7 @@ onMounted(() => {
   usageStore.fetchCurrentSpend()
   tracesStore.fetchTraces?.()
   approvalsStore.fetchApprovals?.()
+  generateRecap()
+  costInsight.value = `Spend is ${dailyPct.value}% of daily budget. ${dailyPct.value > 80 ? 'Consider optimizing agents.' : 'On track.'}`
 })
 </script>
