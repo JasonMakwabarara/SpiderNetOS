@@ -223,25 +223,26 @@ export default function LandingPage() {
         <div className="container-x relative z-10">
           <div className="max-w-3xl">
             <Pill tone="cyan" className="mb-6" icon={<CircleDot size={12} />}>
-              Enterprise AI Operating System
+              AI Operating System
             </Pill>
             <h1
               data-testid="hero-headline"
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tighter font-medium leading-[1.02]"
             >
-              The enterprise AI{' '}
+              The AI{' '}
               <span className="bg-orange-cyan bg-clip-text text-transparent">
                 Operating System
               </span>{' '}
-              for governed automation.
+              for business automation.
             </h1>
             <p
               data-testid="hero-subcopy"
               className="mt-6 text-lg md:text-xl text-textc-secondary max-w-2xl leading-relaxed"
             >
-              Connect identity, data, applications, and AI agents through one secure operating
-              layer. Deploy AIOS components into your environment with signed bundles, enterprise
-              identity, RBAC, observability, and lifecycle controls — built in.
+              Connect your people, data, applications, and AI agents through one operating layer.
+              Deploy AIOS components into any environment — startups, teams, or enterprises —
+              with signed bundles, identity, RBAC, observability, and lifecycle controls built
+              in.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3">
               <Link
@@ -249,7 +250,7 @@ export default function LandingPage() {
                 data-testid="hero-cta-primary"
                 className="btn-primary"
               >
-                Register your enterprise
+                Get started free
                 <ArrowRight size={16} />
               </Link>
               <a href="#platform" data-testid="hero-cta-secondary" className="btn-ghost">
@@ -287,19 +288,19 @@ export default function LandingPage() {
           <div>
             <SectionEyebrow>The problem</SectionEyebrow>
             <h2 className="section-title mt-3">
-              AI pilots fail when identity, governance, data, and deployment live in separate
+              Most AI projects stall when identity, data, and deployment live in different
               systems.
             </h2>
           </div>
           <div className="text-textc-secondary text-lg leading-relaxed space-y-4">
             <p>
-              Most enterprise AI never reaches production — not because the models are weak, but
-              because identity, data residency, RBAC, observability, and deployment lifecycle are
-              fragmented across four to seven different vendors.
+              The hardest part of putting AI into a business isn't picking the model. It's
+              connecting it to the data, the people, the tools, and the policies that already
+              run the company — and keeping that connection observable and reversible.
             </p>
             <p>
-              SpiderNetOS collapses that surface into one controlled operating layer your CIO,
-              CISO, and integration leads can actually sign off on.
+              SpiderNetOS collapses that surface into one operating layer that scales from a
+              two-person team to a 50,000-seat enterprise.
             </p>
           </div>
         </div>
@@ -310,7 +311,7 @@ export default function LandingPage() {
         <div className="container-x">
           <SectionEyebrow>Platform</SectionEyebrow>
           <h2 className="section-title mt-3 max-w-3xl">
-            One operating layer. Six pillars. Built for enterprise control.
+            One operating layer. Six pillars. Built for real business work.
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
             {PILLARS.map((p, i) => (
@@ -389,7 +390,7 @@ export default function LandingPage() {
         <div className="container-x">
           <SectionEyebrow>Solutions</SectionEyebrow>
           <h2 className="section-title mt-3 max-w-2xl">
-            Enterprise workflows, instrumented end-to-end.
+            Business workflows, instrumented end-to-end.
           </h2>
           <div className="mt-10 flex flex-wrap gap-2" role="tablist" aria-label="Use cases">
             {Object.keys(USE_CASES).map((k) => (
@@ -781,7 +782,7 @@ export default function LandingPage() {
             <NetworkGraph className="opacity-20" />
             <div className="relative">
               <h2 className="section-title text-4xl md:text-5xl tracking-tighter max-w-3xl mx-auto">
-                Start enterprise onboarding.
+                Start your business onboarding.
               </h2>
               <p className="mt-5 text-textc-secondary max-w-xl mx-auto">
                 Register your organization, federate identity, and download a signed AIOS bundle
@@ -789,7 +790,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <Link to="/enterprise/register" className="btn-primary" data-testid="final-cta">
-                  Register your enterprise
+                  Get started free
                   <ArrowRight size={16} />
                 </Link>
                 <Link to="/sign-in" className="btn-ghost">
@@ -817,8 +818,8 @@ export default function LandingPage() {
           <div className="md:col-span-2">
             <Logo />
             <p className="mt-4 text-sm text-textc-secondary max-w-sm">
-              The enterprise AI Operating System for governed automation. Identity, data, agents,
-              workflows, observability — one control plane.
+              The AI Operating System for business automation. Identity, data, agents, workflows,
+              observability — one control plane.
             </p>
             <div className="mt-5 flex gap-2">
               <Pill tone="success">All systems operational</Pill>
@@ -832,16 +833,22 @@ export default function LandingPage() {
             <div key={c.h}>
               <h4 className="text-sm font-medium">{c.h}</h4>
               <ul className="mt-3 space-y-2">
-                {c.l.map((x) => (
-                  <li key={x}>
-                    <a
-                      href={`#${x.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="text-sm text-textc-secondary hover:text-textc-primary"
-                    >
-                      {x}
-                    </a>
-                  </li>
-                ))}
+                {c.l.map((x) => {
+                  const href =
+                    x === 'Trust Center' || x === 'Status'
+                      ? '/trust'
+                      : `#${x.toLowerCase().replace(/\s+/g, '-')}`;
+                  return (
+                    <li key={x}>
+                      <a
+                        href={href}
+                        className="text-sm text-textc-secondary hover:text-textc-primary"
+                      >
+                        {x}
+                      </a>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

@@ -4,13 +4,14 @@ import { Menu, X } from 'lucide-react';
 import { Logo } from './Atoms';
 
 const NAV = [
-  { label: 'Platform', href: '#platform' },
-  { label: 'Solutions', href: '#solutions' },
-  { label: 'Security', href: '#security' },
-  { label: 'Integrations', href: '#integrations' },
-  { label: 'Developers', href: '#developers' },
-  { label: 'Customers', href: '#customers' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Platform', href: '/#platform' },
+  { label: 'Solutions', href: '/#solutions' },
+  { label: 'Security', href: '/#security' },
+  { label: 'Integrations', href: '/#integrations' },
+  { label: 'Developers', href: '/#developers' },
+  { label: 'Customers', href: '/#customers' },
+  { label: 'Trust', href: '/trust' },
+  { label: 'Pricing', href: '/#pricing' },
 ];
 
 export default function MarketingHeader() {
@@ -61,7 +62,7 @@ export default function MarketingHeader() {
             data-testid="header-register"
             className="btn-primary text-sm py-2 px-4"
           >
-            Register enterprise
+            Get started free
           </Link>
         </div>
         <button
@@ -99,7 +100,7 @@ export default function MarketingHeader() {
               onClick={() => setOpen(false)}
               className="btn-primary mt-2 w-full"
             >
-              Register enterprise
+              Get started free
             </Link>
           </div>
         </div>

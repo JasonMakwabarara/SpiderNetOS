@@ -126,7 +126,7 @@ export default function SignInPage() {
             <Logo />
           </Link>
           <Link to="/enterprise/register" className="text-sm text-textc-secondary hover:text-textc-primary">
-            New here? Register enterprise →
+            New here? Get started free →
           </Link>
         </header>
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import RegisterWizard from './pages/RegisterWizard';
+import TrustCenter from './pages/TrustCenter';
 import CockpitLayout from './cockpit/CockpitLayout';
 import Overview from './cockpit/Overview';
 import Tenants from './cockpit/Tenants';
@@ -26,6 +27,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/trust" element={<TrustCenter />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/enterprise/register" element={<RegisterWizard />} />
         <Route
