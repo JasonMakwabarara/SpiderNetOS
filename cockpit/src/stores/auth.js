@@ -32,9 +32,18 @@ const CAP_BY_ROLE = {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-  const token = ref(localStorage.getItem('token'))
-  const tenant = ref(JSON.parse(localStorage.getItem('tenant') || 'null'))
+  // Dual-key bridge: hydrate from EITHER the legacy Vue keys (token/user/tenant/caps)
+  // OR the React shell keys (sn_access_token/sn_user/sn_tenant). Whichever is
+  // present, the cockpit picks it up so login through the React /sign-in or
+  // /enterprise/register flow seamlessly authenticates the Vue cockpit.
+  function _hydrate(legacyKey, bridgeKey, parse = false) {
+    const raw = localStorage.getItem(legacyKey) || localStorage.getItem(bridgeKey)
+    if (raw === null) return parse ? null : null
+    return parse ? JSON.parse(raw || 'null') : raw
+  }
+  const user = ref(_hydrate('user', 'sn_user', true))
+  const token = ref(_hydrate('token', 'sn_access_token'))
+  const tenant = ref(_hydrate('tenant', 'sn_tenant', true))
   const capabilities = ref(JSON.parse(localStorage.getItem('caps') || '[]'))
   const isLoading = ref(false)
   const error = ref(null)
@@ -145,9 +154,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function persist() {
-    if (token.value) localStorage.setItem('token', token.value)
-    if (user.value) localStorage.setItem('user', JSON.stringify(user.value))
-    if (tenant.value) localStorage.setItem('tenant', JSON.stringify(tenant.value))
+    if (token.value) {
+      localStorage.setItem('token', token.value)
+      // Bridge: also write the React shell key so the React side stays in sync.
+      localStorage.setItem('sn_access_token', token.value)
+    }
+    if (user.value) {
+      const u = JSON.stringify(user.value)
+      localStorage.setItem('user', u)
+      localStorage.setItem('sn_user', u)
+    }
+    if (tenant.value) {
+      const t = JSON.stringify(tenant.value)
+      localStorage.setItem('tenant', t)
+      localStorage.setItem('sn_tenant', t)
+    }
     localStorage.setItem('caps', JSON.stringify(capabilities.value))
   }
 
@@ -158,11 +179,9 @@ export const useAuthStore = defineStore('auth', () => {
     capabilities.value = []
     impersonating.value = null
     clearStepUp()
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('tenant')
-    localStorage.removeItem('caps')
-    localStorage.removeItem('impersonating')
+    // Clear BOTH the legacy and the React shell keys.
+    ;['token', 'user', 'tenant', 'caps', 'impersonating',
+      'sn_access_token', 'sn_user', 'sn_tenant'].forEach((k) => localStorage.removeItem(k))
   }
 
   /**

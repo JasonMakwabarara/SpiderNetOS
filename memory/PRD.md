@@ -1,74 +1,91 @@
-# SpiderNetOS — Product Frontend PRD
+# SpiderNetOS — Unified Product PRD
 
-## Original problem statement
-Build a complete modern landing page and frontend for SpiderNetOS — the AI Operating System for business automation. Includes hero + value proposition, security & compliance proof, integrations catalog, developer portal preview, customer story (Hannah AI), pricing/SLA tiers, a sandboxed sign-in experience with enterprise authentication options (OIDC/SAML, SCIM, WebAuthn, TOTP, magic link), a 10-step Registration Wizard, Cockpit admin (tenants, RBAC, connectors, AIOS downloads, audit, anomaly), and a signed AIOS ZIP bundle download with SHA-256 + signature verification.
-
-## Positioning (current, 12 May 2026)
+## Positioning
 - **Headline:** "The AI Operating System for business automation."
-- **Pill:** "AI Operating System"
-- **Subcopy:** "Connect your people, data, applications, and AI agents through one operating layer. Deploy AIOS components into any environment — startups, teams, or enterprises — with signed bundles, identity, RBAC, observability, and lifecycle controls built in."
+- **Tagline:** Connect people, data, applications, and AI agents through one operating layer. Deploy AIOS components into any environment — startups, teams, or enterprises.
 - **Primary CTA:** "Get started free"
-- Shifted from prior "enterprise-only / governed automation" framing to broader **business automation** framing — still serves enterprises (security depth, compliance, audit, SCIM) but no longer excludes mid-market and team-scale customers from the top of funnel.
 
-## User-confirmed choices (12 May 2026)
-- Scope: full end-to-end (landing → register → cockpit). Focus = landing + registration/onboarding.
-- Build on top of existing repo at `/app`.
-- "Real OIDC/SAML/SCIM integration" — implemented protocol surface with a demo IdP path that simulates the ceremony end-to-end (so the flow is functional without provisioning Okta/Entra). Real-provider config fields exposed in Sign-in & Wizard.
-- AIOS bundle = real signed ZIP with SHA-256 + Ed25519 signature on download.
-- Design: electric cyan + SpiderNet orange on deep navy (`#070A12`).
-- **(12 May 2026 add)** Public Trust Center at `/trust` wired to live audit + anomaly + bundle counts.
-- **(12 May 2026 add)** Messaging shift from "enterprise AI / governed" to "AI / business" framing across landing, header, footer, sign-in.
+## Unified architecture (12 May 2026)
 
-## Personas
-- Founder / Ops lead (NEW with broader positioning) — wants to wire AI into their stack without re-platforming.
-- CIO / CTO — adoption with governance.
-- CISO — identity, MFA, encryption, audit, incident response.
-- IT admin — tenant setup, SSO, SCIM, RBAC, provisioning.
-- Data governance lead — residency, retention, access policies.
-- Integration engineer — APIs, connectors, SDK, AIOS bundle install.
+```
+┌─────────── React frontend (port 3000) ───────────┐
+│  /                    → Landing                  │
+│  /trust               → Public Trust Center      │
+│  /sign-in             → 4-method auth            │
+│  /enterprise/register → 10-step wizard           │
+│  /cockpit/*           → STATIC mount → Vue       │
+└───────────────────────────────────────────────────┘
+        ↓ shared JWT in localStorage (dual keys)
+┌────────── Vue Cockpit (built, served as static) ──┐
+│  /cockpit/#/                → Dashboard           │
+│  /cockpit/#/atlas           → Atlas (NL compiler) │
+│  /cockpit/#/agents · /flows · /approvals · /traces│
+│  /cockpit/#/intelligence · /memory · /usage       │
+│  /cockpit/#/financial/{dashboard,ledger,invoices, │
+│                       payments,portfolios}        │
+│  /cockpit/#/admin/{users,audit,copy,budget}       │
+│  /cockpit/#/platform/{flags,rollouts,ste}         │
+│  /cockpit/#/enterprise/{connectors,aios,trust}    │  ← NEW
+│  /cockpit/#/settings · /billing · /onboarding     │
+└───────────────────────────────────────────────────┘
+        ↓
+┌─────────── FastAPI backend (port 8001) ──────────┐
+│  /api/*            (legacy cockpit endpoints)    │
+│  /api/enterprise/* (registration, AIOS, trust,    │
+│                     SCIM, RBAC, audit)           │
+│  /api/scim/v2/*    (SCIM 2.0)                     │
+└───────────────────────────────────────────────────┘
+```
 
-## Architecture
-- **Frontend**: React (CRA) at `/app/frontend`, Tailwind, Geist Sans + Geist Mono. Pages: Landing, **TrustCenter**, SignIn, RegisterWizard, Cockpit (Overview, Tenants, AccessControl, Connectors, AiosDownloads, Audit, Anomaly, DeveloperPortal, Security, Support).
-- **Backend**: FastAPI at `/app/backend/server.py` + `enterprise_api.py`. Routes under `/api/enterprise/*` and SCIM at `/api/scim/v2/*`.
-  - **(NEW)** `GET /api/enterprise/trust/summary` — uptime series, ops counters from audit/anomaly/bundle collections, compliance roadmap, sub-processors, incident response posture.
-  - **(NEW)** `GET /api/enterprise/trust/audit-sample` — redacted 10-event sample with real Ed25519 envelope.
-  - **(NEW)** `GET /api/enterprise/trust/status` — public uptime/status pulse with 6 component subsystems.
-- **Persistence**: MongoDB collections: `enterprises`, `tenants`, `connectors`, `audit_events`, `aios_bundles`, `scim_tokens`, `magic_tokens`, `deployments`, `sso_sessions`, `scim_users`.
-- **AIOS bundle signing**: Ed25519 in-process key. Same key signs Trust Center audit samples → public can verify the same envelope format used for production exports.
+## Why this architecture
+- The Vue cockpit is the **real product** (32 views, 9 Pinia stores, full business automation: Atlas NL compiler, agents, flows, approvals, traces, intelligence, financial ledger, admin, platform). My earlier React cockpit stubs were redundant and have been deleted.
+- The new React shell handles only what's *outside* the product: landing/marketing, trust, onboarding, sign-in.
+- Single sign-in surface across both SPAs via dual-key localStorage bridge.
+- Single backend (FastAPI) serves both — Vue's existing /api/* mocks and the new /api/enterprise/* enterprise endpoints share one tenant/user/audit model.
 
-## What's been implemented
-- **Landing page** with refreshed business-automation messaging across hero, problem, platform, solutions, final CTA, footer.
-- **Trust Center** (`/trust`): live status grid, 30-day uptime chart with SLA target line, compliance roadmap table (SOC 2 / ISO 27001 / GDPR / HIPAA / CSA STAR with progress bars + auditor names), signed-audit-export sample with SHA-256 + Ed25519 + copy buttons, security posture 8-card grid, sub-processors table, contact-security CTA. Footer "Trust Center" + "Status" links now point to `/trust`.
-- **MarketingHeader** with 8 nav items (added "Trust" between Customers and Pricing).
-- **Sign-in** with 4 methods, all functional in demo mode.
-- **10-step Registration Wizard** end-to-end with real backend persistence.
-- **Cockpit** layout + 10 sub-pages.
-- **Backend** enterprise + SCIM 2.0 + Trust Center endpoints.
+## Integration changes made
+### Vue cockpit (`/app/cockpit/`)
+1. **Hash router** + `base: '/cockpit/'` — works on any static host, no server SPA fallback needed.
+2. **Dual-key auth store** — reads from `token`/`user`/`tenant` OR `sn_access_token`/`sn_user`/`sn_tenant`; persist & logout write both.
+3. **Design tokens retuned** to the unified palette (`--bg: #070A12; --accent: #00D6C9; --accent-warm: #FF6B2C`) — surfaces inherit automatically.
+4. **Top-bar logo** swapped to the SpiderNet node-graph mark used on landing.
+5. **New "Enterprise" nav group** between Observe and Tenant with three new views:
+   - `EnterpriseConnectors.vue` → connector catalog (ERP/CRM/IAM/Data) bound to `GET /api/enterprise/connectors`.
+   - `EnterpriseAiosDownloads.vue` → signed AIOS bundle generation + verification + per-OS installer guide; uses `POST /api/enterprise/aios/bundle/create` and `GET /api/enterprise/aios/bundles`.
+   - `EnterpriseTrust.vue` → live audit stream + uptime/SLA/audit/bundles tiles + compliance posture + on-demand signed export sample.
 
-## Test results
-- iteration_2.json: Backend 24/24 ✅, Frontend 36/36 ✅, no blockers.
-- Code-review fixes applied (undefined-variable guard, silent-catch fix, stable React keys, unused imports, localStorage tradeoff documented in `api.js`).
-- Trust Center endpoints smoke-tested: uptime 99.815% on 30-point series, 5 compliance frameworks, 10-event signed sample with 128-char Ed25519 signature, 6 subsystem statuses operational.
+### React frontend (`/app/frontend/`)
+1. **Deleted** `src/cockpit/*` (10 stub files) and the React Router `/cockpit/*` block.
+2. New tiny `CockpitRedirect` gate that hard-redirects `/cockpit/*` to the static Vue index, preserving the hash.
+3. `lib/api.js` `auth.saveSession` now **dual-writes** both key namespaces (and `caps`); `auth.clear` clears both.
+4. `SignInPage` + `RegisterWizard` post-login `nav('/cockpit')` → `window.location.assign('/cockpit/')` (hard nav into Vue SPA).
 
-## Prioritized backlog
-- **P1 (carried)**: real OIDC/SAML code-exchange (Authlib / python3-saml); real WebAuthn ceremony (fido2); email provider for magic links (SendGrid/Resend).
-- **P1 (new from review)**: httpOnly + SameSite=strict cookie session migration to remove localStorage XSS surface.
-- **P2 (carried)**: move AIOS bundle payload to object storage; KMS-backed signing.
-- **P2**: SCIM `/Groups` + PATCH operations for full Okta/Entra inbound compatibility.
-- **P2**: real public status-page integration (StatusPage/Atlassian or Better Uptime ping checks) to replace deterministic series.
-- **P3**: i18n / locale files, RTL layout, region-aware legal copy.
-- **P3**: WCAG AAA audit pass for security-critical copy.
-- **P3**: TypeScript migration starting from `src/lib/api.js` + shared components.
+### Backend (`/app/backend/enterprise_api.py`)
+- `_issue_session` now returns `caps` (capability list) so Vue's RBAC hydrates correctly.
+
+### Build pipeline
+- `cd /app/cockpit && yarn build` → emits to `/app/cockpit/dist/` with `base: '/cockpit/'` so all asset URLs are absolute.
+- `cp -r dist /app/frontend/public/cockpit/` mounts the Vue SPA inside CRA's public folder.
+- Convenience: `yarn cockpit:build` in `/app/frontend/` re-runs the whole chain.
+
+## What stays in the original Vue cockpit (untouched)
+- 32 views including all Atlas / Agents / AgentBuilder / Flows / FlowBuilder / Approvals / Traces / Intelligence / Memory / Usage / Financial(×5) / Admin(×4) / Platform(×4) / Settings / Billing / Onboarding / Login.
+- 9 Pinia stores.
+- CommandBar, ImpersonationBanner, RoleBadge, capability gates, step-up auth gates.
+- Login.vue stays as the cockpit's own fallback (e.g. when /cockpit/ is opened without a session).
+- Onboarding.vue stays as the in-product tour (distinct from the public 10-step registration wizard).
+
+## Backlog (carried + new)
+- **P1 carried**: real OIDC/SAML via Authlib / python3-saml; real WebAuthn via fido2; email provider for magic links.
+- **P1 carried**: httpOnly + SameSite cookie session migration.
+- **P1 new**: Nginx production routing — `/cockpit/` → Vue dist directly (out of CRA `public/`), `/api/*` → FastAPI, everything else → React build.
+- **P2 carried**: AIOS bundle payload → object storage; KMS-backed signing.
+- **P2 carried**: SCIM `/Groups` + PATCH for full Okta/Entra inbound.
+- **P2 new**: Replace deterministic Trust Center uptime series with real status pings.
+- **P3**: i18n, WCAG AAA pass on security-critical copy, TS migration starting from `lib/api.js`.
 
 ## Files of note
-- `/app/frontend/src/pages/LandingPage.jsx`
-- `/app/frontend/src/pages/TrustCenter.jsx` (NEW)
-- `/app/frontend/src/pages/RegisterWizard.jsx`
-- `/app/frontend/src/pages/SignInPage.jsx`
-- `/app/frontend/src/cockpit/*.jsx`
-- `/app/frontend/src/components/MarketingHeader.jsx`
-- `/app/backend/enterprise_api.py` — trust router added end-of-file
-- `/app/backend/server.py` (mounts enterprise + scim routers)
-- `/app/design_guidelines.json`
-- `/app/memory/test_credentials.md`
-
+- React: `src/App.js`, `src/pages/{LandingPage,SignInPage,RegisterWizard,TrustCenter}.jsx`, `src/lib/api.js`, `public/cockpit/` (built Vue bundle)
+- Vue: `src/App.vue`, `src/router/index.js`, `src/stores/auth.js`, `src/style.css`, `src/views/enterprise/{EnterpriseConnectors,EnterpriseAiosDownloads,EnterpriseTrust}.vue`, `vite.config.js`
+- Backend: `backend/server.py`, `backend/enterprise_api.py`
+- Memory: `memory/PRD.md`, `memory/test_credentials.md`

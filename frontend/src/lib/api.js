@@ -32,15 +32,30 @@ api.interceptors.request.use((config) => {
 });
 
 export const auth = {
-  saveSession({ access_token, user, tenant }) {
-    if (access_token) localStorage.setItem('sn_access_token', access_token);
-    if (user) localStorage.setItem('sn_user', JSON.stringify(user));
-    if (tenant) localStorage.setItem('sn_tenant', JSON.stringify(tenant));
+  saveSession({ access_token, user, tenant, caps }) {
+    if (access_token) {
+      localStorage.setItem('sn_access_token', access_token);
+      localStorage.setItem('token', access_token);
+    }
+    if (user) {
+      const u = JSON.stringify(user);
+      localStorage.setItem('sn_user', u);
+      localStorage.setItem('user', u);
+    }
+    if (tenant) {
+      const t = JSON.stringify(tenant);
+      localStorage.setItem('sn_tenant', t);
+      localStorage.setItem('tenant', t);
+    }
+    if (Array.isArray(caps)) {
+      localStorage.setItem('caps', JSON.stringify(caps));
+    }
   },
   clear() {
-    localStorage.removeItem('sn_access_token');
-    localStorage.removeItem('sn_user');
-    localStorage.removeItem('sn_tenant');
+    ['sn_access_token', 'sn_user', 'sn_tenant',
+     'token', 'user', 'tenant', 'caps', 'impersonating'].forEach((k) =>
+      localStorage.removeItem(k),
+    );
   },
   getUser() {
     try {

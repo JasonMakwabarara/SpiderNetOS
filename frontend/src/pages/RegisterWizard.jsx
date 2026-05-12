@@ -280,7 +280,7 @@ export default function RegisterWizard() {
                         tenant: state.tenant,
                       });
                     }
-                    nav('/cockpit');
+                    window.location.assign('/cockpit/');
                   }}
                   data-testid="wizard-finish"
                   className="btn-primary"

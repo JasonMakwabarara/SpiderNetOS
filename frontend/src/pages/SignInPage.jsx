@@ -44,7 +44,7 @@ export default function SignInPage() {
       // demo mode auto-completes
       if (res.data.completed) {
         auth.saveSession(res.data);
-        nav('/cockpit');
+        window.location.assign('/cockpit/');
       } else {
         window.location.href = res.data.authorization_url;
       }
@@ -76,7 +76,7 @@ export default function SignInPage() {
     try {
       const res = await api.post('/enterprise/auth/magic-link/verify', { token });
       auth.saveSession(res.data);
-      nav('/cockpit');
+      window.location.assign('/cockpit/');
     } catch (e) {
       setErr(e?.response?.data?.detail || 'Magic link invalid or expired');
     } finally {
@@ -90,7 +90,7 @@ export default function SignInPage() {
     try {
       const res = await api.post('/enterprise/auth/totp/login', { email, code });
       auth.saveSession(res.data);
-      nav('/cockpit');
+      window.location.assign('/cockpit/');
     } catch (e) {
       setErr(e?.response?.data?.detail || 'TOTP verification failed');
     } finally {
@@ -107,7 +107,7 @@ export default function SignInPage() {
         email: email || 'operator@acme.ops',
       });
       auth.saveSession(res.data);
-      nav('/cockpit');
+      window.location.assign('/cockpit/');
     } catch (e) {
       setErr(e?.response?.data?.detail || 'Passkey not registered for this user');
     } finally {

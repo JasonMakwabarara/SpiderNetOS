@@ -22,14 +22,36 @@
       data-testid="app-top-bar"
     >
       <div class="flex items-center gap-4 min-w-0">
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="w-7 h-7 rounded-md flex items-center justify-center"
-               style="background: linear-gradient(135deg,#00E5C8,#087D6E); box-shadow:0 0 0 1px rgba(0,229,200,0.35);">
-            <svg class="w-4 h-4" style="color:#05070A;" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3 7.2 17l.9-5.4-3.9-3.8 5.4-.8L12 2z"/>
-            </svg>
-          </div>
-          <span class="font-heading font-semibold tracking-tight sn-grad-text text-[15px]">SpiderNetOS</span>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <!-- SpiderNet logo mark — matches landing/marketing surface -->
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="sn-lg-topbar" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FF6B2C"/>
+                <stop offset="1" stop-color="#00D6C9"/>
+              </linearGradient>
+            </defs>
+            <circle cx="16" cy="16" r="3" fill="url(#sn-lg-topbar)"/>
+            <g stroke="url(#sn-lg-topbar)" stroke-width="1.4" stroke-linecap="round" opacity="0.9">
+              <line x1="16" y1="16" x2="6" y2="6"/>
+              <line x1="16" y1="16" x2="26" y2="6"/>
+              <line x1="16" y1="16" x2="6" y2="26"/>
+              <line x1="16" y1="16" x2="26" y2="26"/>
+              <line x1="16" y1="16" x2="16" y2="2"/>
+              <line x1="16" y1="16" x2="16" y2="30"/>
+              <line x1="16" y1="16" x2="2" y2="16"/>
+              <line x1="16" y1="16" x2="30" y2="16"/>
+            </g>
+            <g fill="#F4F7FB">
+              <circle cx="6" cy="6" r="1.4"/><circle cx="26" cy="6" r="1.4"/>
+              <circle cx="6" cy="26" r="1.4"/><circle cx="26" cy="26" r="1.4"/>
+              <circle cx="16" cy="2" r="1.2"/><circle cx="16" cy="30" r="1.2"/>
+              <circle cx="2" cy="16" r="1.2"/><circle cx="30" cy="16" r="1.2"/>
+            </g>
+          </svg>
+          <span class="font-heading font-semibold tracking-tight text-[15px]" style="color: var(--text-primary);">
+            Spider<span style="color: var(--accent-warm);">Net</span>OS
+          </span>
         </div>
 
         <!-- Tenant switcher -->
@@ -292,6 +314,9 @@ const ic = {
   rollout:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 12h12"/></svg>',
   ste:      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path stroke-linecap="round" d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7"/></svg>',
   overview: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>',
+  connectors: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M7 7V3M17 7V3M5 7h14v4a7 7 0 01-14 0V7zM12 18v3"/></svg>',
+  aios:     '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>',
+  shield:   '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z"/></svg>',
 }
 
 // Grouped nav
@@ -320,6 +345,14 @@ const tenantNav = {
   label: 'Tenant', items: [
     { key: 'settings', name: 'Settings', path: '/settings', icon: ic.settings },
     { key: 'billing', name: 'Billing', path: '/billing', icon: ic.billing },
+  ],
+}
+
+const enterpriseNav = {
+  label: 'Enterprise', items: [
+    { key: 'ent-connectors', name: 'Connectors', path: '/enterprise/connectors', icon: ic.connectors },
+    { key: 'ent-aios', name: 'AIOS Downloads', path: '/enterprise/aios', icon: ic.aios },
+    { key: 'ent-trust', name: 'Audit & Trust', path: '/enterprise/trust', icon: ic.shield },
   ],
 }
 
@@ -364,7 +397,7 @@ const hasWorkspaceChoice = computed(() => workspaceChoices.value.length > 1)
 const visibleNavigation = computed(() => {
   if (currentWorkspace.value === '/platform') return platformNav
   if (currentWorkspace.value === '/admin') return adminNav
-  return [userNav, buildNav, observeNav, tenantNav]
+  return [userNav, buildNav, observeNav, enterpriseNav, tenantNav]
 })
 
 function switchWorkspace(path) { router.push(path) }

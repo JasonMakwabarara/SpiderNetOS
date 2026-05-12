@@ -684,8 +684,26 @@ async def _issue_session(email: str, tenant_slug: Optional[str] = None) -> Dict[
         "tenant_id": tenant["id"],
     }
     token = mk_jwt(user["id"], tenant["id"], "tenant_owner")
+    # Capabilities — these are what the Vue cockpit's RBAC reads from its
+    # auth store under `caps`. We grant a broad set for tenant_owner so the
+    # Operate / Build / Observe / Enterprise / Tenant nav groups are all
+    # visible; Admin and Platform groups require role=admin / super_admin.
+    caps = [
+        "tenant.view", "tenant.manage",
+        "users.invite", "users.manage",
+        "approvals.manage", "audit.view", "audit.export",
+        "connectors.create", "connectors.manage",
+        "aios.request", "aios.download",
+        "scim.configure",
+    ]
     await audit(tenant["id"], "session.issued", email, tenant["id"])
-    return {"access_token": token, "token_type": "Bearer", "user": user, "tenant": tenant}
+    return {
+        "access_token": token,
+        "token_type": "Bearer",
+        "user": user,
+        "tenant": tenant,
+        "caps": caps,
+    }
 
 
 # ─── 10. SCIM 2.0 endpoints (skeleton) ─────────────────────────────────

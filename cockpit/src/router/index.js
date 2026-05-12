@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
 // ---------------------------------------------------------------------------
@@ -110,12 +110,26 @@ const routes = [
     ],
   },
 
+  // ---------------- ENTERPRISE SPACE (signed AIOS, connectors, audit) ----------------
+  {
+    path: '/enterprise',
+    meta: { requiresAuth: true },
+    children: [
+      { path: 'connectors', name: 'EnterpriseConnectors',
+        component: () => import('../views/enterprise/EnterpriseConnectors.vue') },
+      { path: 'aios',       name: 'EnterpriseAios',
+        component: () => import('../views/enterprise/EnterpriseAiosDownloads.vue') },
+      { path: 'trust',      name: 'EnterpriseTrust',
+        component: () => import('../views/enterprise/EnterpriseTrust.vue') },
+    ],
+  },
+
   // Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/404' },
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes,
 })
 

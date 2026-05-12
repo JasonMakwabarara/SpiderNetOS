@@ -4,23 +4,6 @@ import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import RegisterWizard from './pages/RegisterWizard';
 import TrustCenter from './pages/TrustCenter';
-import CockpitLayout from './cockpit/CockpitLayout';
-import Overview from './cockpit/Overview';
-import Tenants from './cockpit/Tenants';
-import AccessControl from './cockpit/AccessControl';
-import Connectors from './cockpit/Connectors';
-import AiosDownloads from './cockpit/AiosDownloads';
-import Audit from './cockpit/Audit';
-import Anomaly from './cockpit/Anomaly';
-import DeveloperPortal from './cockpit/DeveloperPortal';
-import Security from './cockpit/Security';
-import Support from './cockpit/Support';
-import { auth } from './lib/api';
-
-function RequireAuth({ children }) {
-  if (!auth.isAuthed()) return <Navigate to="/sign-in" replace />;
-  return children;
-}
 
 export default function App() {
   return (
@@ -30,27 +13,31 @@ export default function App() {
         <Route path="/trust" element={<TrustCenter />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/enterprise/register" element={<RegisterWizard />} />
-        <Route
-          path="/cockpit"
-          element={
-            <RequireAuth>
-              <CockpitLayout />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<Overview />} />
-          <Route path="tenants" element={<Tenants />} />
-          <Route path="access" element={<AccessControl />} />
-          <Route path="connectors" element={<Connectors />} />
-          <Route path="downloads" element={<AiosDownloads />} />
-          <Route path="audit" element={<Audit />} />
-          <Route path="anomaly" element={<Anomaly />} />
-          <Route path="developers" element={<DeveloperPortal />} />
-          <Route path="security" element={<Security />} />
-          <Route path="support" element={<Support />} />
-        </Route>
+        {/*
+          /cockpit/* is served as STATIC assets by CRA from /public/cockpit/.
+          The built Vue cockpit (hash-router, base /cockpit/) lives there.
+          We never want React Router to claim that path, so we render a tiny
+          gate that hard-redirects to the static index. Browser will then
+          load the Vue app, and the hash router takes over.
+        */}
+        <Route path="/cockpit/*" element={<CockpitRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+function CockpitRedirect() {
+  React.useEffect(() => {
+    // Replace so the back button doesn't ping-pong.
+    const dest = '/cockpit/' + (window.location.hash || '#/');
+    window.location.replace(dest);
+  }, []);
+  return (
+    <div style={{ minHeight: '100vh', background: '#070A12', color: '#A8B3C7',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'Geist Sans, system-ui, sans-serif' }}>
+      Opening Cockpit…
+    </div>
   );
 }

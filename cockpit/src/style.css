@@ -5,34 +5,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─────────── SpiderNetOS — Flight-Deck tokens ─────────── */
-/* Dark-first. Single cyan accent. No rainbow gradients. */
+/* SpiderNetOS — Cockpit design tokens (aligned with marketing/landing) */
+/* Dark navy + electric cyan + SpiderNet orange. */
 :root {
-  --bg:            #05070A;
-  --bg-subtle:     #0A0D12;
-  --bg-card:       #0F141C;
-  --bg-elevated:   #151B26;
-  --surface-low:   #0D1118;
-  --surface-high:  #171E2A;
+  --bg:            #070A12;
+  --bg-subtle:     #0A0F1C;
+  --bg-card:       #0E1422;
+  --bg-elevated:   #121A2B;
+  --surface-low:   #0E1422;
+  --surface-high:  #172033;
 
-  --text-primary:   #ECF2F5;
-  --text-secondary: #96A1B2;
-  --text-muted:     #5E6A7D;
+  --text-primary:   #F4F7FB;
+  --text-secondary: #A8B3C7;
+  --text-muted:     #6B7693;
 
-  --border:         rgba(255,255,255,0.06);
-  --border-active:  rgba(0,229,200,0.40);
+  --border:         rgba(255,255,255,0.08);
+  --border-active:  rgba(0,214,201,0.40);
   --divider:        rgba(255,255,255,0.04);
 
-  --accent:         #00E5C8;
-  --accent-weak:    rgba(0,229,200,0.14);
+  --accent:         #00D6C9;
+  --accent-weak:    rgba(0,214,201,0.14);
   --accent-stronger:#17DFC3;
-  --amber:          #F5A524;
-  --success:        #22D39B;
-  --warn:           #F5A524;
-  --danger:         #FF5A7A;
+  --accent-warm:    #FF6B2C;
+  --amber:          #F5B84B;
+  --success:        #31D67B;
+  --warn:           #F5B84B;
+  --danger:         #F05D5E;
 
-  --glass-panel: rgba(15,20,28,0.72);
-  --glass-card:  rgba(21,27,38,0.78);
+  --glass-panel: rgba(14,20,34,0.72);
+  --glass-card:  rgba(18,26,43,0.78);
 
   --shadow-card:       0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 40px rgba(0,0,0,0.45);
   --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 60px rgba(0,0,0,0.55);
