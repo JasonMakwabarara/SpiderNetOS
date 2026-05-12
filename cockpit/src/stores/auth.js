@@ -32,9 +32,9 @@ const CAP_BY_ROLE = {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-  const token = ref(localStorage.getItem('token'))
-  const tenant = ref(JSON.parse(localStorage.getItem('tenant') || 'null'))
+  const user = ref(JSON.parse(localStorage.getItem('user') || localStorage.getItem('sn_user') || 'null'))
+  const token = ref(localStorage.getItem('token') || localStorage.getItem('sn_access_token'))
+  const tenant = ref(JSON.parse(localStorage.getItem('tenant') || localStorage.getItem('sn_tenant') || 'null'))
   const capabilities = ref(JSON.parse(localStorage.getItem('caps') || '[]'))
   const isLoading = ref(false)
   const error = ref(null)
@@ -145,9 +145,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function persist() {
-    if (token.value) localStorage.setItem('token', token.value)
-    if (user.value) localStorage.setItem('user', JSON.stringify(user.value))
-    if (tenant.value) localStorage.setItem('tenant', JSON.stringify(tenant.value))
+    if (token.value) {
+      localStorage.setItem('token', token.value)
+      localStorage.setItem('sn_access_token', token.value)
+    }
+    if (user.value) {
+      localStorage.setItem('user', JSON.stringify(user.value))
+      localStorage.setItem('sn_user', JSON.stringify(user.value))
+    }
+    if (tenant.value) {
+      localStorage.setItem('tenant', JSON.stringify(tenant.value))
+      localStorage.setItem('sn_tenant', JSON.stringify(tenant.value))
+    }
     localStorage.setItem('caps', JSON.stringify(capabilities.value))
   }
 
@@ -159,8 +168,11 @@ export const useAuthStore = defineStore('auth', () => {
     impersonating.value = null
     clearStepUp()
     localStorage.removeItem('token')
+    localStorage.removeItem('sn_access_token')
     localStorage.removeItem('user')
+    localStorage.removeItem('sn_user')
     localStorage.removeItem('tenant')
+    localStorage.removeItem('sn_tenant')
     localStorage.removeItem('caps')
     localStorage.removeItem('impersonating')
   }

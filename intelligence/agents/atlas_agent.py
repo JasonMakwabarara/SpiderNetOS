@@ -240,7 +240,7 @@ User message: {context.message}
 Respond helpfully and concisely."""
         
         # Call LLM (with model override if in degraded mode)
-        model = context.model_override or 'gpt-4o-mini'
+        model = context.model_override or 'gemma-4'
         response = await self.llm.complete(prompt, model=model)
         
         # Record cost

@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig({
+  base: '/cockpit/',
   plugins: [vue()],
   server: {
     host: '0.0.0.0',

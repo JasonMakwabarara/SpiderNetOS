@@ -17,6 +17,7 @@ MODEL_COST_TABLE = {
     "gpt-5-nano": {"cost_per_1k_tokens": 0.00005, "latency_avg_ms": 400, "provider": "openai"},
     "gpt-5-mini": {"cost_per_1k_tokens": 0.00025, "latency_avg_ms": 600, "provider": "openai"},
     "gpt-5": {"cost_per_1k_tokens": 0.00125, "latency_avg_ms": 1200, "provider": "openai"},
+    "gpt-5.5": {"cost_per_1k_tokens": 0.0015, "latency_avg_ms": 1400, "provider": "openai"},
     "gpt-5.4": {"cost_per_1k_tokens": 0.0025, "latency_avg_ms": 1500, "provider": "openai"},
     # Reasoning models
     "o4-mini": {"cost_per_1k_tokens": 0.0011, "latency_avg_ms": 3000, "provider": "openai"},
@@ -33,4 +34,6 @@ MODEL_COST_TABLE = {
     "qwen3": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2000, "provider": "ollama"},
     # MedGemma (medical domain — local Ollama)
     "medgemma": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2800, "provider": "ollama"},
+    # Realtime models
+    "gpt-4o-realtime": {"cost_per_1k_tokens": 0.006, "latency_avg_ms": 200, "provider": "realtime"},
 }

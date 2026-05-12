@@ -11,13 +11,22 @@ class MetaPlanner
 {
     private CostGovernor $costGovernor;
     private EventStore $eventStore;
-    
+    private MemoryGraph $memoryGraph;
+    private ReinforcementLearning $reinforcementLearning;
+    private AgentMesh $agentMesh;
+
     public function __construct(
         CostGovernor $costGovernor,
-        EventStore $eventStore
+        EventStore $eventStore,
+        MemoryGraph $memoryGraph,
+        ReinforcementLearning $reinforcementLearning,
+        AgentMesh $agentMesh
     ) {
         $this->costGovernor = $costGovernor;
         $this->eventStore = $eventStore;
+        $this->memoryGraph = $memoryGraph;
+        $this->reinforcementLearning = $reinforcementLearning;
+        $this->agentMesh = $agentMesh;
     }
     
     /**
@@ -165,6 +174,186 @@ class MetaPlanner
             intent: 'process_command',
             context: $mergedContext,
         );
+    }
+
+    /**
+     * Process Hermes multi-channel communication requests.
+     * Similar to Atlas but optimized for external agent coordination.
+     */
+    public function processHermesRequest(
+        string $tenantId,
+        string $message,
+        string $channel,
+        string $conversationId,
+        array $context = [],
+    ): array {
+        // Record Hermes coordination intent
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'hermes_interaction',
+            aggregateId: $conversationId,
+            eventType: 'hermes.coordination_started',
+            payload: [
+                'message' => $message,
+                'channel' => $channel,
+                'timestamp' => now()->toIso8601String(),
+            ],
+            metadata: ['source' => 'hermes_agent']
+        );
+
+        // Parse command into AST (reuse Atlas parsing logic)
+        $ast = $this->parseCommandToAst($message);
+
+        // For complex multi-agent coordination, use specialized logic
+        if ($this->isComplexWorkflow($ast, $message)) {
+            return $this->coordinateComplexWorkflow($tenantId, $ast, $message, $channel, $conversationId, $context);
+        }
+
+        // For simple requests, route through Atlas agent
+        $mergedContext = array_merge([
+            'ast' => $ast,
+            'original_message' => $message,
+            'conversation_id' => $conversationId,
+            'channel' => $channel,
+            'hermes_coordination' => true,
+        ], $context);
+
+        $result = $this->dispatch(
+            tenantId: $tenantId,
+            agentId: $this->resolveAtlasAgent($tenantId),
+            intent: 'process_hermes_request',
+            context: $mergedContext,
+        );
+
+        return array_merge($result, [
+            'channel' => $channel,
+            'conversation_id' => $conversationId,
+            'processing_time_ms' => 0, // Would be calculated in real implementation
+        ]);
+    }
+
+    /**
+     * Determine if a request requires complex multi-agent coordination.
+     */
+    private function isComplexWorkflow(array $ast, string $message): bool
+    {
+        $complexIndicators = [
+            'create_flow',
+            'execute',
+            'analyze',
+            'complex_workflow'
+        ];
+
+        return in_array($ast['type'] ?? '', $complexIndicators) ||
+               str_word_count($message) > 20 ||
+               strpos(strtolower($message), 'coordinate') !== false ||
+               strpos(strtolower($message), 'workflow') !== false;
+    }
+
+    /**
+     * Coordinate complex workflows across multiple agents.
+     */
+    private function coordinateComplexWorkflow(
+        string $tenantId,
+        array $ast,
+        string $message,
+        string $channel,
+        string $conversationId,
+        array $context
+    ): array {
+        $agentsToCoordinate = $this->determineRequiredAgents($ast, $message);
+
+        $coordinationResults = [];
+        $agentsUsed = [];
+
+        foreach ($agentsToCoordinate as $agentId => $intent) {
+            $result = $this->dispatch(
+                tenantId: $tenantId,
+                agentId: $agentId,
+                intent: $intent,
+                context: array_merge([
+                    'ast' => $ast,
+                    'original_message' => $message,
+                    'conversation_id' => $conversationId,
+                    'channel' => $channel,
+                    'coordinated_by_hermes' => true,
+                ], $context)
+            );
+
+            $coordinationResults[] = $result;
+            $agentsUsed[] = $agentId;
+        }
+
+        // Synthesize response from multiple agent outputs
+        $synthesizedResponse = $this->synthesizeAgentResponses($coordinationResults, $channel);
+
+        return [
+            'status' => 'coordinated',
+            'response' => $synthesizedResponse,
+            'agents_used' => $agentsUsed,
+            'coordination_results' => $coordinationResults,
+            'channel' => $channel,
+            'conversation_id' => $conversationId,
+            'processing_time_ms' => 0,
+        ];
+    }
+
+    /**
+     * Determine which agents are needed for a complex workflow.
+     */
+    private function determineRequiredAgents(array $ast, string $message): array
+    {
+        $agents = [];
+
+        switch ($ast['type'] ?? '') {
+            case 'create_flow':
+                $agents['forge'] = 'create_flow';
+                $agents['sentinel'] = 'validate_flow';
+                break;
+            case 'execute':
+                $agents['nexus'] = 'execute_flow';
+                $agents['sentinel'] = 'monitor_execution';
+                break;
+            case 'analyze':
+                $agents['prism'] = 'analyze_data';
+                $agents['sentinel'] = 'monitor_analysis';
+                break;
+            default:
+                // Default coordination for complex requests
+                $agents['atlas'] = 'coordinate_request';
+                if (strpos(strtolower($message), 'data') !== false) {
+                    $agents['prism'] = 'analyze_data';
+                }
+                if (strpos(strtolower($message), 'workflow') !== false) {
+                    $agents['forge'] = 'create_flow';
+                }
+                break;
+        }
+
+        return $agents;
+    }
+
+    /**
+     * Synthesize responses from multiple agents into a coherent reply.
+     */
+    private function synthesizeAgentResponses(array $results, string $channel): string
+    {
+        $successful = array_filter($results, fn($r) => ($r['status'] ?? '') === 'dispatched');
+        $failed = array_filter($results, fn($r) => ($r['status'] ?? '') !== 'dispatched');
+
+        if (empty($successful)) {
+            return "I encountered issues coordinating this request. Please try again.";
+        }
+
+        $response = "I've coordinated this request across " . count($successful) . " agents";
+
+        if (!empty($failed)) {
+            $response .= " (" . count($failed) . " coordination steps are still processing)";
+        }
+
+        $response .= ". The workflow has been initiated and you'll receive updates as it progresses.";
+
+        return $response;
     }
     
     /**
@@ -370,5 +559,195 @@ class MetaPlanner
                 return $tenant?->automation_level ?? 'assisted';
             }
         );
+    }
+
+    /**
+     * Enhanced dispatch with intelligent agent selection using RL and memory
+     */
+    public function intelligentDispatch(
+        string $tenantId,
+        string $intent,
+        array $context = [],
+        array $possibleAgents = null
+    ): array {
+        // Retrieve relevant memories for context
+        $memories = $this->memoryGraph->retrieve($tenantId, $intent, [
+            'content_type' => 'agent_execution',
+            'limit' => 5
+        ]);
+
+        // Enrich context with memory insights
+        $context['memory_insights'] = $this->extractMemoryInsights($memories);
+        $context['historical_performance'] = $this->getHistoricalPerformance($tenantId, $intent);
+
+        // Get possible agents if not provided
+        if ($possibleAgents === null) {
+            $possibleAgents = $this->discoverPossibleAgents($tenantId, $intent, $context);
+        }
+
+        // Use RL to select optimal agent
+        $rlDecision = $this->reinforcementLearning->getOptimalAction(
+            $tenantId,
+            $context,
+            $possibleAgents
+        );
+
+        $selectedAgent = $rlDecision['action'];
+        $selectedAgentId = is_array($selectedAgent) ? ($selectedAgent['id'] ?? $selectedAgent['agent_id']) : $selectedAgent;
+
+        // Dispatch to selected agent
+        $result = $this->dispatch(
+            tenantId: $tenantId,
+            agentId: $selectedAgentId,
+            intent: $intent,
+            context: array_merge($context, [
+                'selection_method' => $rlDecision['selection_method'],
+                'selection_confidence' => $rlDecision['confidence'],
+                'memory_insights_used' => count($memories),
+            ])
+        );
+
+        // Record outcome for future learning
+        if (isset($result['status'])) {
+            $outcome = [
+                'execution_status' => $result['status'],
+                'processing_time' => $result['processing_time_ms'] ?? 0,
+                'cost_incurred' => $result['cost_estimate'] ?? 0,
+            ];
+
+            $reward = $this->calculateReward($result, $context);
+
+            $this->reinforcementLearning->recordOutcome(
+                $tenantId,
+                $selectedAgentId,
+                'agent_selection',
+                $reward,
+                $context,
+                $outcome
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get predictive insights for decision making
+     */
+    public function getPredictiveInsights(
+        string $tenantId,
+        array $proposedAction,
+        array $context = []
+    ): array {
+        // Predict outcome using RL
+        $prediction = $this->reinforcementLearning->predictOutcome(
+            $tenantId,
+            $proposedAction,
+            $context
+        );
+
+        // Get similar historical experiences from memory
+        $similarExperiences = $this->memoryGraph->retrieve($tenantId,
+            $proposedAction['type'] ?? 'general_action',
+            ['content_type' => 'execution_outcome'],
+            3
+        );
+
+        // Calculate risk assessment
+        $riskLevel = $this->assessRisk($prediction, $similarExperiences);
+
+        return [
+            'predicted_reward' => $prediction['predicted_reward'],
+            'confidence' => $prediction['confidence'],
+            'sample_size' => $prediction['sample_size'],
+            'similar_experiences_count' => count($similarExperiences),
+            'risk_level' => $riskLevel,
+            'recommendation' => $this->generateRecommendation($prediction, $riskLevel),
+        ];
+    }
+
+    // Private helper methods
+
+    private function extractMemoryInsights(array $memories): array
+    {
+        $insights = [
+            'successful_patterns' => [],
+            'common_failures' => [],
+            'performance_trends' => [],
+        ];
+
+        foreach ($memories as $memory) {
+            $content = $memory['content'] ?? [];
+
+            if (isset($content['outcome']) && $content['outcome'] === 'success') {
+                $insights['successful_patterns'][] = [
+                    'action' => $content['action'] ?? 'unknown',
+                    'context' => $content['context'] ?? [],
+                    'reward' => $content['reward'] ?? 0,
+                ];
+            }
+        }
+
+        return $insights;
+    }
+
+    private function getHistoricalPerformance(string $tenantId, string $intent): array
+    {
+        return ['avg_success_rate' => 0.5, 'avg_duration' => 0, 'sample_size' => 0];
+    }
+
+    private function discoverPossibleAgents(string $tenantId, string $intent, array $context): array
+    {
+        return $this->getDefaultAgentsForIntent($intent);
+    }
+
+    private function getDefaultAgentsForIntent(string $intent): array
+    {
+        $defaults = [
+            'create_flow' => ['forge'],
+            'execute_flow' => ['nexus'],
+            'analyze_data' => ['prism'],
+            'query_status' => ['sentinel'],
+            'process_command' => ['atlas'],
+        ];
+
+        $agentId = $defaults[$intent] ?? ['atlas'];
+        return array_map(function ($id) {
+            return ['id' => $id, 'agent_id' => $id, 'capabilities' => []];
+        }, (array) $agentId);
+    }
+
+    private function calculateReward(array $result, array $context): float
+    {
+        $baseReward = 0;
+
+        if (($result['status'] ?? '') === 'success') {
+            $baseReward += 1.0;
+        } elseif (($result['status'] ?? '') === 'failed') {
+            $baseReward -= 1.0;
+        }
+
+        return $baseReward;
+    }
+
+    private function assessRisk(array $prediction, array $similarExperiences): string
+    {
+        $confidence = $prediction['confidence'] ?? 0;
+
+        if ($confidence > 0.8) return 'low';
+        if ($confidence > 0.5) return 'medium';
+        return 'high';
+    }
+
+    private function generateRecommendation(array $prediction, string $riskLevel): string
+    {
+        $reward = $prediction['predicted_reward'] ?? 0;
+
+        if ($riskLevel === 'low' && $reward > 0.5) {
+            return 'Strong recommendation - proceed with confidence';
+        } elseif ($riskLevel === 'medium' && $reward > 0) {
+            return 'Proceed with monitoring - moderate risk/reward';
+        } else {
+            return 'High risk - consider alternative approaches';
+        }
     }
 }

@@ -95,6 +95,8 @@ const routes = [
       { path: 'audit',   name: 'AdminAudit',     component: AdminAudit,  meta: { capability: 'audit.view' } },
       { path: 'copy',    name: 'AdminCopy',      component: AdminCopy,   meta: { capability: 'copy.manage' } },
       { path: 'budget',  name: 'AdminBudget',    component: Billing,     meta: { capability: 'budget.edit' } },
+      { path: 'aios',    name: 'AiosDownloads', component: () => import('../views/admin/AiosDownloads.vue'), meta: { capability: 'aios.download', stepUp: true } },
+      { path: 'connectors', name: 'Connectors', component: () => import('../views/admin/Connectors.vue'), meta: { capability: 'connectors.create' } },
     ],
   },
 
@@ -115,7 +117,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory('/cockpit/'),
   routes,
 })
 

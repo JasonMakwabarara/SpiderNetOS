@@ -11,6 +11,7 @@
         @send="handleSend"
         @command="handleCommand"
         @execute-suggestion="handleExecuteSuggestion"
+        @voice="handleVoice"
       />
     </div>
 
@@ -91,6 +92,11 @@ function handleCommand(command) {
 
 function handleExecuteSuggestion(suggestion) {
   atlasStore.executeSuggestion(suggestion)
+}
+
+function handleVoice() {
+  // TODO: Implement voice session creation and WebSocket handling
+  console.log('Voice mode activated')
 }
 
 function handleDismissSuggestion(index) {

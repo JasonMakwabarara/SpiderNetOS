@@ -19,6 +19,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\FeaturePackController;
+use App\Http\Controllers\HermesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,9 +74,20 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Atlas behavioral event ingestion (B5) — lightweight, non-blocking.
     Route::post('/atlas/events', [AtlasController::class, 'events']);
 
+    // Realtime sessions
+    Route::post('/realtime/session', [RealtimeController::class, 'createSession']);
+
     // Enhance Prompt — transforms a terse prompt into a structured instruction.
     // Gated by feature flag `atlas.enhance_prompt`.
     Route::post('/atlas/enhance-prompt', [AtlasController::class, 'enhancePrompt']);
+
+    // Hermes Agent Integration — Multi-channel communication hub
+    Route::prefix('hermes')->middleware('throttle:hermes_api')->group(function () {
+        Route::post('/coordinate', [HermesController::class, 'coordinate']);
+        Route::post('/webhook/{integrationType}', [HermesController::class, 'webhook']);
+        Route::post('/learning/sync', [HermesController::class, 'syncLearning']);
+        Route::get('/status', [HermesController::class, 'status']);
+    });
     
     // Flows (DAG execution)
     Route::apiResource('flows', FlowController::class);

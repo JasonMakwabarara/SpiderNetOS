@@ -93,6 +93,7 @@ return [
         'platform'      => (int) env('RATE_LIMIT_PLATFORM', 20),
         'admin'         => (int) env('RATE_LIMIT_ADMIN', 30),
         'atlas_chat'    => (int) env('RATE_LIMIT_ATLAS_CHAT', 30),
+        'hermes_api'    => (int) env('RATE_LIMIT_HERMES_API', 100),  // Hermes coordination calls
         // Voice webhooks are signed by Twilio; throttling happens upstream.
         'voice_webhook' => (int) env('RATE_LIMIT_VOICE_WEBHOOK', 600),
     ],

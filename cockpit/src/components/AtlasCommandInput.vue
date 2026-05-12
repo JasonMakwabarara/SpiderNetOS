@@ -55,6 +55,18 @@
         variant="ghost"
       />
 
+      <!-- Voice button -->
+      <button
+        @click="handleVoice"
+        :disabled="disabled"
+        class="flex-shrink-0 p-2.5 rounded-lg transition-colors"
+        :class="disabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+      </button>
+
       <!-- Send button -->
       <button
         @click="handleSend"
@@ -95,7 +107,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['send', 'command'])
+const emit = defineEmits(['send', 'command', 'voice'])
 
 const inputText = ref('')
 const textareaRef = ref(null)
@@ -197,6 +209,10 @@ function selectSlashCommand(cmd) {
 function handleSuggestionClick(suggestion) {
   const text = typeof suggestion === 'string' ? suggestion : (suggestion.command || suggestion.text)
   emit('send', text)
+}
+
+function handleVoice() {
+  emit('voice')
 }
 
 function autoResize() {

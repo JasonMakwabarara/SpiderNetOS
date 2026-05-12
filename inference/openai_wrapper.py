@@ -170,6 +170,16 @@ OPENAI_MODELS = {
         "tier": "flagship",
         "note": "general-purpose default",
     },
+    "gpt-5.5": {
+        "input_per_1k": 0.0015,
+        "output_per_1k": 0.012,
+        "context_window": 320_000,
+        "max_output": 64_000,
+        "latency_p50_ms": 1400,
+        "latency_p99_ms": 4500,
+        "tier": "flagship",
+        "note": "fallback for gemma-4",
+    },
     "gpt-5.4": {
         "input_per_1k": 0.0025,
         "output_per_1k": 0.015,

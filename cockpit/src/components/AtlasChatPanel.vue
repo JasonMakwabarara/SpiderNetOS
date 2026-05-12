@@ -149,6 +149,7 @@
         :disabled="isTyping"
         @send="$emit('send', $event)"
         @command="$emit('command', $event)"
+        @voice="$emit('voice')"
       />
     </div>
   </div>

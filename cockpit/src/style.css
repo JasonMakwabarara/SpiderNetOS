@@ -8,22 +8,22 @@
 /* ─────────── SpiderNetOS — Flight-Deck tokens ─────────── */
 /* Dark-first. Single cyan accent. No rainbow gradients. */
 :root {
-  --bg:            #05070A;
-  --bg-subtle:     #0A0D12;
-  --bg-card:       #0F141C;
-  --bg-elevated:   #151B26;
-  --surface-low:   #0D1118;
-  --surface-high:  #171E2A;
+  --bg:            #070A12;
+  --bg-subtle:     #0E1422;
+  --bg-card:       #0E1422;
+  --bg-elevated:   #172033;
+  --surface-low:   #121A2B;
+  --surface-high:  #172033;
 
-  --text-primary:   #ECF2F5;
-  --text-secondary: #96A1B2;
-  --text-muted:     #5E6A7D;
+  --text-primary:   #F4F7FB;
+  --text-secondary: #A8B3C7;
+  --text-muted:     #6B6B7B;
 
-  --border:         rgba(255,255,255,0.06);
-  --border-active:  rgba(0,229,200,0.40);
-  --divider:        rgba(255,255,255,0.04);
+  --border:         rgba(255,255,255,0.10);
+  --border-active:  rgba(0,214,201,0.40);
+  --divider:        rgba(255,255,255,0.05);
 
-  --accent:         #00E5C8;
+  --accent:         #00D6C9;
   --accent-weak:    rgba(0,229,200,0.14);
   --accent-stronger:#17DFC3;
   --amber:          #F5A524;
