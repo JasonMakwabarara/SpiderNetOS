@@ -898,6 +898,16 @@ async def billing():
 # ─── Register router ─────────────────────────────────────────────────────
 app.include_router(api)
 
+# Enterprise endpoints (landing → register → cockpit flow)
+try:
+    from enterprise_api import router as enterprise_router, scim as scim_router
+    app.include_router(enterprise_router)
+    app.include_router(scim_router)
+except Exception as _e:  # pragma: no cover
+    import traceback
+    print("[enterprise_api] failed to import:", _e)
+    traceback.print_exc()
+
 
 @app.get("/")
 async def root():
