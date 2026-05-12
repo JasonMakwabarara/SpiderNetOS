@@ -1,108 +1,62 @@
-# SpiderNetOS — Cockpit PRD
+# SpiderNetOS — Enterprise Frontend PRD
 
 ## Original problem statement
+Build a complete modern landing page and enterprise-focused frontend for SpiderNetOS — the enterprise AI Operating System for governed automation. Includes hero + value proposition, security & compliance proof, integrations catalog, developer portal preview, customer story (Hannah AI), pricing/SLA tiers, a sandboxed sign-in experience with enterprise authentication options (OIDC/SAML, SCIM, WebAuthn, TOTP, magic link), a 10-step Enterprise Registration Wizard, Cockpit admin (tenants, RBAC, connectors, AIOS downloads, audit, anomaly), and a signed AIOS ZIP bundle download with SHA-256 + signature verification.
 
-Design and implement the production frontend for **SpiderNetOS**: a multi-tenant,
-AI-native **business operating system**. The frontend is the **Cockpit** — a
-serious, trustworthy operator console for tenants, admins, and platform super-
-admins. Primary metaphor: control room / flight deck for an autonomous-but-
-governed system.
-
-Core concepts surfaced in navigation and empty states: **Atlas**, **Agents**,
-**Flows**, **Approvals**, **Traces**, **Intelligence workers**, **Memory**,
-**Usage / cost governance**, **Settings** (incl. automation level / control
-mode), **Billing**.
-
-## User choices (captured at session start)
-
-- Accent: **electric cyan**
-- Mock scope: **rich** (FastAPI mock backend if available; else in-memory mocks)
-- Auth: **fake login** (any credentials accepted by mock backend)
-- Default role: **super_admin** + role switcher in user menu
-- Tests: **included** (Vitest)
+## User-confirmed choices (12 May 2026)
+- Scope: full end-to-end (landing → register → cockpit). Focus = landing + registration/onboarding; cockpit improvements layered on top.
+- Build on top of existing repo at `/app`. New React+FastAPI surface deployed alongside the existing Vue cockpit/Laravel backend files (which remain unchanged in the repo).
+- "Real OIDC/SAML/SCIM integration" — implemented protocol-correct surface with a **demo IdP** path that simulates the ceremony end-to-end (so the flow is functional without provisioning Okta/Entra). Real-provider config fields exposed in Sign-in & Wizard.
+- AIOS bundle = real signed ZIP with SHA-256 + Ed25519 signature on download.
+- Design: electric cyan + SpiderNet orange on deep navy (`#070A12`), per problem statement.
 
 ## Personas
+- CIO / CTO — enterprise AI adoption with governance.
+- CISO — identity, MFA, encryption, audit, incident response.
+- IT admin — tenant setup, SSO, SCIM, RBAC, provisioning.
+- Data governance lead — residency, retention, access policies.
+- Integration engineer — APIs, connectors, SDK, AIOS bundle install.
 
-| Persona | Cares about |
-| --- | --- |
-| Tenant user (operator) | Atlas chat, approvals to resolve, running flows, spend to date |
-| Admin | Users, budget, audit, copy lab |
-| Super admin (platform) | Feature flags, rollouts, State Transition Engine, impersonation |
+## Architecture (this iteration)
+- **Frontend** (new): React (CRA) at `/app/frontend`, Tailwind, Geist Sans + Geist Mono via `@fontsource`. Pages: Landing, SignIn, Register Wizard, Cockpit (Overview, Tenants, AccessControl, Connectors, AiosDownloads, Audit, Anomaly, Developer Portal, Security, Support).
+- **Backend** (extended): FastAPI at `/app/backend/server.py` + new `enterprise_api.py` module. Routes under `/api/enterprise/*` (registration, SSO/Magic/TOTP/WebAuthn demo, SCIM provisioning, AIOS bundle ZIP generation + download + verify, tenants, connectors, audit, cockpit overview). SCIM 2.0 endpoints at `/api/scim/v2/*` (Users + ServiceProviderConfig, bearer-token guarded).
+- **Persistence**: MongoDB (`MONGO_URL`, DB `spidernetos`) — collections: `enterprises`, `tenants`, `connectors`, `audit_events`, `aios_bundles` (with embedded zip payload for demo), `scim_tokens`, `magic_tokens`, `deployments`, `sso_sessions`, `scim_users`.
+- **AIOS bundle signing**: Ed25519 in-process key (production should be HSM/KMS-backed). Bundle ZIP contains MANIFEST.json, components/*/COMPONENT.json + payload.bin, README, platform installer (install.sh / install.ps1 / docker-compose.yml). Download response headers expose `X-SpiderNet-SHA256` and `X-SpiderNet-Signature`.
+- **Auth in this build**: JWT (HS256) sessions stored in `localStorage` keys `sn_access_token`, `sn_user`, `sn_tenant`. Real OIDC/SAML provider exchange + WebAuthn ceremony are **demo-pathed** (clearly marked); the protocol surface (config fields, redirect URI, SCIM token, etc.) is plumbed.
 
-## Architecture
+## What's been implemented (12 May 2026)
+- Landing page: MarketingHeader (sticky, mobile drawer), animated SVG network-graph hero, hero copy + 3 CTAs, trust bar, problem statement, 6-pillar feature grid, three-plane AIOS architecture SVG, 6-tab use-case explorer, security & compliance grid, failure-hardening matrix, integrations catalog (12 connectors), developer portal preview with terminal mockup, Hannah AI customer story, 3-tier pricing, final CTA with 10-step onboarding chips, footer.
+- Sign-in page: tile selector for SSO / Magic link / WebAuthn / TOTP, demo IdP path completes & redirects to Cockpit, magic link returns dev token to consume, TOTP demo bypass `000000`.
+- Enterprise Registration Wizard: 10 steps with left-rail vertical progress, sticky CTA, real backend persistence for steps 1 (start), 2 (verify-domain), 3 (create-tenant), 6 (SCIM token), 9 (bundle generate), 10 (deploy start). Steps 4/5/7/8 capture intent locally.
+- Cockpit: layout with sidebar + tenant switcher, Overview metrics + sparkline + quick actions, Tenants table, RBAC roles + members + capability badges, Connectors grid, AIOS Downloads (new bundle + list + verify cards + installer guide), Audit timeline with filter, Anomaly dashboard, Developer Portal API explorer (sends real requests), Security policy panels, Support escalation.
+- Backend enterprise API + SCIM 2.0 skeleton, all routes data-testid'd in frontend.
 
-- **Cockpit** `/app/cockpit/` — Vue 3 + Vite + Pinia + Tailwind. Supervisor runs `yarn start` on :3000.
-- **Backend (mock)** `/app/backend/server.py` — FastAPI, mocked `/api/*` endpoints. Supervisor runs uvicorn on :8001.
-- **Kubernetes ingress** routes `/api/*` to port 8001 and everything else to port 3000, preserving the preview URL.
-- **Realtime (WS)** is stubbed (always-connected after 420ms) — see `src/composables/useWebSocket.js` `TODO (Laravel)` block for wiring Echo + Pusher when the broadcaster is up.
-
-## Core requirements (static)
-
-1. Dark-first UI, restrained single-accent (cyan `#00E5C8`), no rainbow gradients.
-2. Full IA: all 18+ routes listed in the brief present and gated.
-3. Route guards: `guest`, `requiresAuth`, `roles[]`, `capability`, onboarding.
-4. Pinia stores mirror backend concepts; all existing store contracts (Laravel `{data: ...}` envelope) honored by the mock.
-5. Cost governance visible globally (budget pill in top bar, snapshot on dashboard, full view on `/usage`).
-6. Accessibility: keyboard focus ring (cyan), semantic landmarks, contrast.
-7. Vitest tests for auth store + router guard decisions.
-
-## Implemented — sessions 2026-01
-
-- **Infra**
-  - Cockpit app lives at `/app/cockpit/` (supervisor expected path).
-  - `package.json` rebuilt: `yarn start` runs Vite on :3000; added Vitest, happy-dom, @vue/test-utils.
-  - `vite.config.js` locked to port 3000, allowedHosts=true, HMR via wss.
-  - `.env` → `VITE_API_URL=https://aios-onboarding.preview.emergentagent.com`. `.env.example` documents optional Pusher / WS vars.
-- **Design system (flight-deck)**
-  - `tailwind.config.js` — cyan palette, legacy color remaps so legacy views inherit the theme.
-  - `src/style.css` — token vocabulary + components (`sn-card`, `sn-btn`, `sn-pill`, `sn-nav-link`, `sn-kbd`, `sn-grad-text`).
-- **Shell** (`src/App.vue`)
-  - Top bar: env badge, breadcrumbs, WS status, ⌘K trigger, budget pill, role switcher.
-  - Sidebar grouped Operate / Build / Observe / Tenant + Admin/Platform pivot.
-  - Public-route bypass added so `/share/trace/:token` renders without the cockpit chrome.
-- **Auth** — fake login via FastAPI mock; super_admin default; role swap from user menu; capabilities derived from a static map.
-- **Dashboard** — automation mode, pending approvals, active agents, today's spend, Live Ops Feed, budget snapshot, Hannah suggestions, quick jumps.
-- **Approvals** — split queue|diff, risk pills, low/medium → soft `ConfirmDialog`, high → `TypedConfirmDialog` (`Type I UNDERSTAND` + required reason).
-- **Command palette** (`src/components/CommandBar.vue`)
-  - Subsequence-fuzzy index over routes (role-aware) + actions.
-  - **Live lanes** — fetches recent traces and pending approvals on open and surfaces them as dedicated empty-state groups.
-  - Global hotkeys ⌘K / Ctrl+K / `/`.
-  - **Cheat sheet** modal — opens with `?` (or footer button), grouped Navigation / Palette / Atlas slash commands.
-- **Usage** — SVG cost sparkline (hover crosshair), DOW × week heatmap, anomalies feed, budget caps editor (PUT `/api/usage/budget`).
-- **WebSocket** (`src/composables/useWebSocket.js`) — real Echo + Pusher restored with channel.listen for tenant-private events; auto-degrades to deterministic stub when `VITE_PUSHER_KEY` is unset.
-- **STE Simulation Panel** (`src/components/ste/SimulationPanel.vue`) — completely rewritten. Calls `POST /api/ste/simulate` and consumes the **Server-Sent Events** stream via `fetch + ReadableStream`. UI animates KPIs, progress bar, and live distribution bars frame-by-frame.
-- **Admin Copy Lab** — full retheme + **uplift histogram** (SVG). Bars in cyan for above-control, red for below, accent-strong for the winning arm; companion arm-rows table; methodology side panel with total impressions + best uplift.
-- **Share-a-Trace** — `POST /api/traces/:id/share` mints a tenant-scoped, 7-day token. Cockpit shows a Share button on each expanded trace, opens a dialog with copy-to-clipboard URL. New public route `/share/trace/:token` (`SharedTrace.vue`, marked `meta.public`) bypasses every guard and reads `GET /api/public/traces/:token`.
-- **All other views** (Atlas, Flows, FlowBuilder, Agents, Memory, Settings, Automation Level, Billing, Onboarding, Admin Dashboard, Admin Users, Admin Audit, Admin Budget, Platform Overview, Platform Feature Flags, Platform Rollouts, Platform STE, Forbidden, NotFound) — flight-deck themed.
-- **FastAPI mock** (`/app/backend/server.py`) — every `/api/*` endpoint with `{data: ...}` envelope. New this round: `POST /api/traces/:id/share`, `GET /api/public/traces/:token`, `POST /api/ste/simulate` (StreamingResponse / SSE), `GET|PUT /api/admin/copy/state`.
-- **Tests** — 11 Vitest cases passing (auth store + router guard).
-- **Build** — `yarn build` produces a clean production bundle (~365 KB / 116 KB gzip).
-- **Docs** — `/app/cockpit/README.md`, `/app/cockpit/.env.example`.
+## Test results (iteration_2.json)
+- Backend: 24/24 pass.
+- Frontend: 36/36 Playwright assertions across two runs (landing, sign-in flows, full wizard transition, cockpit Overview + 9 sub-routes, AIOS bundle creation, audit, developer portal).
+- No blocking issues. One minor doc nit (SCIM response field name) — non-blocking.
 
 ## Prioritized backlog
+- P1: Real OIDC code-exchange + ID token verification using Authlib (when a real tenant configures provider creds).
+- P1: Real SAML 2.0 ACS using `python3-saml` (cert validation, signed assertions).
+- P1: Real WebAuthn ceremony with `fido2` library (currently demo-stub).
+- P2: Step-up authentication for sensitive ops (tenant delete, bundle generate, key rotation).
+- P2: SCIM `/Groups` + PATCH operations for full Okta/Entra compatibility.
+- P2: AIOS bundle storage moved out of MongoDB into object storage (S3/MinIO).
+- P3: Internationalization (locale files), accessibility audit pass (WCAG AAA on critical security copy), reduced-motion polish.
+- P3: Multi-tenant tenant switcher with real workspace switching.
+- P3: i18n for the landing copy.
 
-### P0 — none open
-### P1 — infra-bound (cannot finish in this pod, but code paths are ready)
-- Provision Laravel `/api` and flip `VITE_API_URL`. Then `rm /app/backend/server.py`. **MOCKED** until then.
-- Provision a Pusher / Soketi broadcaster and supply `VITE_PUSHER_KEY`, `VITE_WS_HOST` etc — `useWebSocket.js` is already wired for it.
-### P2 — future
-- Track recent palette selections and surface a "Recently used" lane.
-- Stream STE simulation results into a stacked-area chart (currently bars + KPIs).
-- Histogram statistical-significance overlay on the AdminCopy uplift chart.
-- Add a `/share/approval/:token` mirror of Share-a-Trace.
-- Optional dark/light theme toggle (currently dark-only by design).
+## Files of note
+- `/app/frontend/src/pages/LandingPage.jsx`
+- `/app/frontend/src/pages/RegisterWizard.jsx`
+- `/app/frontend/src/pages/SignInPage.jsx`
+- `/app/frontend/src/cockpit/*.jsx`
+- `/app/backend/enterprise_api.py`
+- `/app/backend/server.py` (mounts enterprise + scim routers)
+- `/app/design_guidelines.json`
 
-## Next tasks on user resume
-
-1. Wire real Laravel `/api` by setting `VITE_API_URL` — mock backend becomes a no-op.
-2. Re-enable the `useWebSocket` composable with Echo + Pusher when broadcaster credentials land.
-3. Implement typed-confirm dialog on destructive approvals + feature-flag toggle behind step-up.
-
-## Enhancement recommendation
-
-**Share-a-Trace**: give every completed trace a public read-only URL (tenant-
-hashed) so operators can paste a trace into a Slack or a support ticket with a
-single click. It's the highest-leverage "shareability" feature for a system
-whose users spend 5 minutes/week — it turns each trace into a social object
-and pulls non-operator stakeholders into the loop when something interesting
-happens.
+## Next action items
+- Wire a real OIDC provider (Authlib + tenant-stored client creds) and remove the demo bypass for production tenants.
+- Hook in real email delivery (SendGrid/Resend) for magic links.
+- Move AIOS bundle payload to object storage; sign bundles with KMS instead of in-memory key.
