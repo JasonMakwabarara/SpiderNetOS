@@ -15,11 +15,11 @@
     "laravel-echo": "^1.16.1",
     "pinia": "^2.1.7",
     "pusher-js": "^8.4.0",
-    "vue": "^3.4.38",
-    "vue-router": "^4.4.3"
+    "vue": "^3.5.34",
+    "vue-router": "^5.0.7"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.2",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.20",
     "happy-dom": "^14.12.3",
