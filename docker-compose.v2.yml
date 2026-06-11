@@ -1,0 +1,63 @@
+﻿version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: spidernet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  atlas-perception:
+    build: ./services/atlas-perception
+    ports:
+      - "8001:8000"
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  dag-compiler:
+    build: ./services/dag-compiler
+    ports:
+      - "8002:8000"
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  atlas-rl:
+    build: ./services/atlas-rl
+    ports:
+      - "8003:8000"
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  runtime-guardian:
+    build: ./services/runtime-guardian
+    ports:
+      - "8004:8000"
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  semantic-gateway:
+    build: ./services/semantic-gateway
+    ports:
+      - "8005:8000"
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
