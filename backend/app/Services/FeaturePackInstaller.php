@@ -23,8 +23,7 @@ class FeaturePackInstaller
             throw new \InvalidArgumentException('pack_id is required.');
         }
 
-        $repoRoot = dirname(base_path());
-        $src = $repoRoot.'/packages/feature-packs/'.$id;
+        $src = $this->packsRoot().'/'.$id;
 
         if (! is_dir($src)) {
             throw new \RuntimeException("Pack directory not found: {$id}");
@@ -127,5 +126,10 @@ class FeaturePackInstaller
         }
 
         return $count;
+    }
+
+    private function packsRoot(): string
+    {
+        return rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
     }
 }

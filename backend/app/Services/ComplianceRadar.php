@@ -34,8 +34,8 @@ class ComplianceRadar
                 'title' => 'Invoice & tax records',
                 'summary' => 'Keep invoices and payment records organised for tax time and audits.',
                 'severity' => 'awareness',
-                'action' => 'Enable Financial OS',
-                'action_path' => '/feature-packs',
+                'action' => 'Open Financial OS',
+                'action_path' => '/financial',
             ];
         }
 

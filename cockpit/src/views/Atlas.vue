@@ -12,6 +12,8 @@
         @send="handleSend"
         @command="handleCommand"
         @execute-suggestion="handleExecuteSuggestion"
+        @confirm="handleConfirm"
+        @cancel="handleCancel"
       />
     </div>
 
@@ -92,6 +94,14 @@ function handleCommand(command) {
 
 function handleExecuteSuggestion(suggestion) {
   atlasStore.executeSuggestion(suggestion)
+}
+
+function handleConfirm(actionId) {
+  atlasStore.confirmAction(actionId)
+}
+
+function handleCancel(actionId) {
+  atlasStore.cancelAction(actionId)
 }
 
 function handleDismissSuggestion(index) {

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AtlasClarityGate;
 use App\Services\AtlasDiscoveryService;
+use App\Services\PackGrowthService;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
 use App\Services\EventStore;
@@ -14,6 +16,7 @@ use App\Services\TransformationEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class AtlasController extends Controller
@@ -32,6 +35,8 @@ class AtlasController extends Controller
         OnboardingPolicy $onboardingPolicy,
         private readonly AtlasJarvisAugmentor $jarvisAugmentor,
         private readonly AtlasDiscoveryService $discoveryService,
+        private readonly PackGrowthService $packGrowth,
+        private readonly AtlasClarityGate $clarityGate,
     ) {
         $this->eventStore = $eventStore;
         $this->metaPlanner = $metaPlanner;
@@ -106,7 +111,7 @@ class AtlasController extends Controller
 
         // Learn from user input and check discovery mode (skip for slash commands)
         $this->discoveryService->absorbAnswer($tenantId, $message);
-        $discovery = $this->discoveryService->evaluate($tenantId, $message);
+        $discovery = $this->discoveryService->evaluate($tenantId, $message, $this->packGrowth);
         $isSlashCommand = str_starts_with(trim($message), '/');
 
         if (($discovery['mode'] ?? 'act') === 'discover' && ! $isSlashCommand) {
@@ -159,11 +164,255 @@ class AtlasController extends Controller
             ],
         );
 
+        $automationLevel = $request->user()->tenant?->automation_level ?? 'assisted';
+
+        if (! $isSlashCommand) {
+            $clarity = $this->clarityGate->assess($tenantId, $message, $automationLevel);
+
+            if (($clarity['mode'] ?? 'act') === 'clarify') {
+                $question = $clarity['question'] ?? ($clarity['questions'][0] ?? 'Can you tell me a bit more?');
+                $this->clarityGate->recordRefinementSignal($tenantId, 'clarify_asked', [
+                    'interaction_id' => $interactionId,
+                    'intent' => $clarity['consequence']['intent'] ?? null,
+                ]);
+
+                return $this->buildClarifyResponse(
+                    $sessionId,
+                    $interactionId,
+                    $question,
+                    $clarity['questions'] ?? [$question],
+                    $clarity['confidence'] ?? null,
+                );
+            }
+
+            if (($clarity['mode'] ?? 'act') === 'confirm') {
+                $pending = $clarity['pending_action'] ?? [];
+                $actionId = (string) ($pending['id'] ?? Str::uuid());
+
+                $this->supersedePendingConfirm($tenantId, $userId, $actionId);
+
+                Cache::put(
+                    $this->pendingCacheKey($tenantId, $actionId),
+                    [
+                        'message' => $message,
+                        'session_id' => $sessionId,
+                        'style' => $style,
+                        'interaction_id' => $interactionId,
+                        'user_id' => $userId,
+                        'intent' => $pending['intent'] ?? 'automation',
+                        'pending_action' => $pending,
+                    ],
+                    600,
+                );
+
+                $this->clarityGate->recordRefinementSignal($tenantId, 'confirm_requested', [
+                    'interaction_id' => $interactionId,
+                    'action_id' => $actionId,
+                    'intent' => $pending['intent'] ?? null,
+                ]);
+
+                return $this->buildConfirmResponse(
+                    $sessionId,
+                    $interactionId,
+                    $pending,
+                    $message,
+                );
+            }
+        }
+
+        return $this->actOnMessage(
+            tenantId: $tenantId,
+            userId: $userId,
+            message: $message,
+            sessionId: $sessionId,
+            style: $style,
+            interactionId: $interactionId,
+            request: $request,
+            startedAt: $startedAt,
+        );
+    }
+
+    /**
+     * POST /api/atlas/confirm — proceed or cancel a pending consequential action.
+     */
+    public function confirm(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'action_id' => 'required|string|uuid',
+            'decision' => 'required|string|in:proceed,cancel',
+            'session_id' => 'nullable|string',
+            'style' => 'sometimes|string|in:concise,balanced,emotional,analytical,directive',
+        ]);
+
+        $tenantId = $request->attributes->get('tenant_id');
+        $userId = $request->user()->id;
+        $actionId = $validated['action_id'];
+        $cacheKey = $this->pendingCacheKey($tenantId, $actionId);
+
+        if ($validated['decision'] === 'cancel') {
+            $pending = Cache::get($cacheKey);
+
+            if (! is_array($pending)) {
+                return response()->json(['message' => 'Confirmation expired or not found.'], 404);
+            }
+
+            if ($denied = $this->denyIfNotPendingOwner($pending, $userId)) {
+                return $denied;
+            }
+
+            $sessionId = $validated['session_id'] ?? $pending['session_id'] ?? (string) Str::uuid();
+            $interactionId = (string) Str::uuid();
+
+            Cache::forget($cacheKey);
+            $this->forgetPendingIndex($tenantId, $userId, $actionId);
+            $this->clarityGate->recordRefinementSignal($tenantId, 'confirm_cancelled', [
+                'action_id' => $actionId,
+                'intent' => $pending['intent'] ?? null,
+            ]);
+            $this->eventStore->append(
+                tenantId: $tenantId,
+                aggregateType: 'atlas_session',
+                aggregateId: $sessionId,
+                eventType: 'atlas.confirmation.resolved',
+                payload: [
+                    'action_id' => $actionId,
+                    'decision' => 'cancel',
+                    'user_id' => $userId,
+                ],
+            );
+
+            $contract = [
+                'future_state' => 'Nothing changed — you stayed in control.',
+                'value' => 'You avoided acting before you were ready.',
+                'emotional_shift' => 'Confidence that Atlas waits for your signal.',
+                'action_summary' => 'Held — I did not run anything.',
+                'details' => null,
+            ];
+
+            return response()->json([
+                'contract_version' => '1',
+                'session_id' => $sessionId,
+                'interaction_id' => $interactionId,
+                'message' => [
+                    'id' => (string) Str::uuid(),
+                    'role' => 'atlas',
+                    'contract' => $contract,
+                    'timestamp' => now()->toIso8601String(),
+                    'metadata' => [
+                        'intent' => 'confirmation',
+                        'mode' => 'held',
+                        'status' => 'cancelled',
+                        'agent_used' => 'atlas',
+                    ],
+                ],
+            ]);
+        }
+
+        $pending = Cache::pull($cacheKey);
+
+        if (! is_array($pending)) {
+            return response()->json(['message' => 'Confirmation expired or not found.'], 404);
+        }
+
+        if ($denied = $this->denyIfNotPendingOwner($pending, $userId)) {
+            return $denied;
+        }
+
+        $this->forgetPendingIndex($tenantId, $userId, $actionId);
+
+        $sessionId = $validated['session_id'] ?? $pending['session_id'] ?? (string) Str::uuid();
+        $interactionId = (string) Str::uuid();
+
+        $this->clarityGate->recordRefinementSignal($tenantId, 'confirm_proceeded', [
+            'action_id' => $actionId,
+            'intent' => $pending['intent'] ?? null,
+        ]);
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'atlas_session',
+            aggregateId: $sessionId,
+            eventType: 'atlas.confirmation.resolved',
+            payload: [
+                'action_id' => $actionId,
+                'decision' => 'proceed',
+                'user_id' => $userId,
+                'message' => $pending['message'] ?? '',
+            ],
+        );
+
+        $response = $this->actOnMessage(
+            tenantId: $tenantId,
+            userId: $userId,
+            message: (string) ($pending['message'] ?? ''),
+            sessionId: $sessionId,
+            style: $validated['style'] ?? $pending['style'] ?? 'balanced',
+            interactionId: $interactionId,
+            request: $request,
+            startedAt: microtime(true),
+        );
+
+        $payload = $response->getData(true);
+        if (($payload['message']['metadata']['status'] ?? '') === 'dispatched') {
+            $this->clarityGate->recordTrustConfirmation($tenantId, (string) ($pending['intent'] ?? 'automation'));
+        }
+
+        return $response;
+    }
+
+    private function pendingCacheKey(string $tenantId, string $actionId): string
+    {
+        return "atlas_pending:{$tenantId}:{$actionId}";
+    }
+
+    private function pendingIndexKey(string $tenantId, string $userId): string
+    {
+        return "atlas_pending_index:{$tenantId}:{$userId}";
+    }
+
+    private function supersedePendingConfirm(string $tenantId, string $userId, string $newActionId): void
+    {
+        $indexKey = $this->pendingIndexKey($tenantId, $userId);
+        $previousId = Cache::get($indexKey);
+        if (is_string($previousId) && $previousId !== $newActionId) {
+            Cache::forget($this->pendingCacheKey($tenantId, $previousId));
+        }
+        Cache::put($indexKey, $newActionId, 600);
+    }
+
+    private function forgetPendingIndex(string $tenantId, string $userId, string $actionId): void
+    {
+        $indexKey = $this->pendingIndexKey($tenantId, $userId);
+        if (Cache::get($indexKey) === $actionId) {
+            Cache::forget($indexKey);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $pending
+     */
+    private function denyIfNotPendingOwner(array $pending, string|int $userId): ?JsonResponse
+    {
+        if ((string) ($pending['user_id'] ?? '') !== (string) $userId) {
+            return response()->json(['message' => 'This confirmation belongs to another user.'], 403);
+        }
+
+        return null;
+    }
+
+    private function actOnMessage(
+        string $tenantId,
+        string $userId,
+        string $message,
+        string $sessionId,
+        string $style,
+        string $interactionId,
+        Request $request,
+        float $startedAt,
+    ): JsonResponse {
         // Check for onboarding policy override (soft gate)
         $overridePolicy = $this->onboardingPolicy->overrideFor($request->user());
         $onboardingState = $request->user()->tenant?->onboarding ?? [];
 
-        // Emit policy.exposed event for observability baseline
         if ($overridePolicy !== null) {
             Log::info('[Atlas] Onboarding policy exposed', [
                 'tenant_id' => $tenantId,
@@ -173,7 +422,6 @@ class AtlasController extends Controller
             ]);
         }
 
-        // Process through MetaPlanner with context
         $result = $this->metaPlanner->processAtlasRequest(
             tenantId: $tenantId,
             userId: $userId,
@@ -185,7 +433,9 @@ class AtlasController extends Controller
             ],
         );
 
-        // Background inference augmentation (OpenJarvis bridge — not exposed to clients)
+        $ast = $this->metaPlanner->parseCommandToAst($message);
+        $result['ast'] = $ast;
+
         $tenant = $request->attributes->get('tenant');
         $jarvisPayload = $this->jarvisAugmentor->augment(
             tenantId: $tenantId,
@@ -195,10 +445,7 @@ class AtlasController extends Controller
             plan: $tenant?->plan,
         );
 
-        // Parse intent for TransformationEngine
         $parsedIntent = $this->parseIntentForTransformation($result, $message, $jarvisPayload);
-
-        // Transform execution result into 5-field contract
         $executionResult = $this->buildExecutionResult($result, $jarvisPayload);
         $transformed = $this->transformationEngine->transform(
             $parsedIntent,
@@ -209,7 +456,6 @@ class AtlasController extends Controller
         $contract = $transformed['contract'];
         $metaIntent = $result['ast']['type'] ?? ($parsedIntent['task_type'] ?? 'chat');
 
-        // Handle blocked requests: contract-compliant refusal
         if (($result['status'] ?? '') === 'blocked') {
             $contract = [
                 'future_state'    => 'Your request is paused while limits clear.',
@@ -220,7 +466,6 @@ class AtlasController extends Controller
             ];
         }
 
-        // Record Atlas response in event_log
         $this->eventStore->append(
             tenantId: $tenantId,
             aggregateType: 'atlas_session',
@@ -235,7 +480,6 @@ class AtlasController extends Controller
             ],
         );
 
-        // Async log atlas_interactions row for TS/RL (B5)
         $this->interactionLogger->record([
             'interaction_id' => $interactionId,
             'tenant_id' => $tenantId,
@@ -266,6 +510,7 @@ class AtlasController extends Controller
                 'timestamp' => now()->toIso8601String(),
                 'metadata' => [
                     'intent' => $metaIntent,
+                    'mode' => 'act',
                     'agent_used' => $result['agent_id'] ?? 'atlas',
                     'status' => $result['status'] ?? 'received',
                     'style' => $transformed['style'],
@@ -275,6 +520,89 @@ class AtlasController extends Controller
             ],
             'ast' => $result['ast'] ?? null,
             'cost_status' => $result['cost_status'] ?? null,
+        ]);
+    }
+
+    private function buildClarifyResponse(
+        string $sessionId,
+        string $interactionId,
+        string $question,
+        array $questions,
+        ?float $confidence,
+    ): JsonResponse {
+        $contract = [
+            'future_state' => 'We get the right automation, not a guess.',
+            'value' => 'One honest question now saves rework later.',
+            'emotional_shift' => 'Clarity instead of false confidence.',
+            'action_summary' => $question,
+            'details' => null,
+        ];
+
+        return response()->json([
+            'contract_version' => '1',
+            'session_id' => $sessionId,
+            'interaction_id' => $interactionId,
+            'message' => [
+                'id' => (string) Str::uuid(),
+                'role' => 'atlas',
+                'contract' => $contract,
+                'timestamp' => now()->toIso8601String(),
+                'metadata' => [
+                    'intent' => 'clarify',
+                    'mode' => 'clarify',
+                    'questions' => $questions,
+                    'confidence' => $confidence,
+                    'agent_used' => 'atlas',
+                    'status' => 'clarify',
+                ],
+            ],
+            'ast' => ['type' => 'clarify'],
+            'cost_status' => null,
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $pending
+     */
+    private function buildConfirmResponse(
+        string $sessionId,
+        string $interactionId,
+        array $pending,
+        string $message,
+    ): JsonResponse {
+        $summary = (string) ($pending['summary'] ?? Str::limit($message, 140));
+        $reversible = (bool) ($pending['reversible'] ?? true);
+
+        $contract = [
+            'future_state' => 'You approve one step at a time — trust earned, not assumed.',
+            'value' => 'Nothing runs until you say proceed.',
+            'emotional_shift' => 'Full control before anything changes.',
+            'action_summary' => "I understand you want me to: {$summary}",
+            'details' => $reversible
+                ? 'This looks reversible — you can adjust after the first run.'
+                : 'This may change data or send something — please confirm.',
+        ];
+
+        return response()->json([
+            'contract_version' => '1',
+            'session_id' => $sessionId,
+            'interaction_id' => $interactionId,
+            'message' => [
+                'id' => (string) Str::uuid(),
+                'role' => 'atlas',
+                'contract' => $contract,
+                'timestamp' => now()->toIso8601String(),
+                'metadata' => [
+                    'intent' => 'confirm',
+                    'mode' => 'confirm',
+                    'status' => 'awaiting_confirmation',
+                    'agent_used' => 'atlas',
+                    'pending_action' => $pending,
+                ],
+            ],
+            'pending_action' => $pending,
+            'ast' => ['type' => 'confirm'],
+            'cost_status' => null,
         ]);
     }
 

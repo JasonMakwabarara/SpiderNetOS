@@ -24,29 +24,26 @@ class AtlasDiscoveryService
         'what do i need',
     ];
 
-    public function __construct(
-        private readonly AtlasPromptStack $promptStack,
-    ) {}
-
     /**
      * @return array{mode: string, questions?: array<int, string>, suggested_next?: array<string, mixed>, profile_pct?: int}
      */
-    public function evaluate(string $tenantId, string $message): array
+    public function evaluate(string $tenantId, string $message, ?PackGrowthService $growth = null): array
     {
         $profile = $this->profileForTenant($tenantId);
         $pct = (int) ($profile['discovery_complete_pct'] ?? 0);
         $lower = strtolower(trim($message));
 
-        $shouldDiscover = $pct < 60
-            || $this->isVagueMessage($lower)
-            || $this->missingCriticalFields($profile);
+        $profileComplete = $pct >= 60 && ! $this->missingCriticalFields($profile);
+        $shouldDiscover = ! $profileComplete
+            || $this->matchesVaguePatterns($lower)
+            || ($pct < 60 && strlen($lower) < 25);
 
         if (! $shouldDiscover) {
             return ['mode' => 'act', 'profile_pct' => $pct];
         }
 
         $questions = $this->nextQuestions($profile);
-        $suggested = $this->suggestedNext($profile);
+        $suggested = $this->suggestedNext($profile, $tenantId, $growth);
 
         return [
             'mode' => 'discover',
@@ -84,6 +81,20 @@ class AtlasDiscoveryService
         }
         if (preg_match('/\b(contractor|freelanc)\b/', $lower)) {
             $updates['hires_contractors'] = true;
+        }
+
+        if (preg_match('/\b(real estate|property|estate agency)\b/', $lower)) {
+            $updates['industry'] = 'real_estate';
+        } elseif (preg_match('/\b(retail|shop|store|ecommerce)\b/', $lower)) {
+            $updates['industry'] = 'retail';
+        } elseif (preg_match('/\b(consult|agency|professional service|law firm|accounting)\b/', $lower)) {
+            $updates['industry'] = 'professional_services';
+        } elseif (preg_match('/\b(health|clinic|medical|dental)\b/', $lower)) {
+            $updates['industry'] = 'healthcare';
+        } elseif (preg_match('/\b(construction|builder|trades)\b/', $lower)) {
+            $updates['industry'] = 'construction';
+        } elseif (preg_match('/\b(software|tech|saas)\b/', $lower)) {
+            $updates['industry'] = 'technology';
         }
 
         if (strlen(trim($message)) > 20 && ! str_starts_with($lower, '/')) {
@@ -131,7 +142,7 @@ class AtlasDiscoveryService
         return $row ? (array) $row : ['discovery_complete_pct' => 0];
     }
 
-    private function isVagueMessage(string $lower): bool
+    private function matchesVaguePatterns(string $lower): bool
     {
         foreach (self::VAGUE_PATTERNS as $pattern) {
             if (str_contains($lower, $pattern)) {
@@ -139,7 +150,7 @@ class AtlasDiscoveryService
             }
         }
 
-        return strlen($lower) < 25;
+        return false;
     }
 
     /**
@@ -175,8 +186,18 @@ class AtlasDiscoveryService
      * @param array<string, mixed> $profile
      * @return array<string, mixed>
      */
-    private function suggestedNext(array $profile): array
+    private function suggestedNext(array $profile, ?string $tenantId = null, ?PackGrowthService $growth = null): array
     {
+        if ($tenantId && $growth) {
+            $fromGrowth = $growth->suggestedNextForProfile($tenantId);
+            if ($fromGrowth) {
+                $growth->recordSignal($tenantId, 'atlas_suggested', $fromGrowth['pack'] ?? null, [
+                    'relevance_score' => $fromGrowth['relevance_score'] ?? null,
+                ]);
+                return $fromGrowth;
+            }
+        }
+
         if (! empty($profile['issues_invoices'])) {
             return [
                 'type' => 'automation',
@@ -220,5 +241,22 @@ class AtlasDiscoveryService
         }
 
         return (int) min(100, round(($filled / 4) * 100));
+    }
+
+    public function refreshCompletionPct(string $tenantId): void
+    {
+        if (! Schema::hasTable('tenant_business_profiles')) {
+            return;
+        }
+
+        $row = DB::table('tenant_business_profiles')->where('tenant_id', $tenantId)->first();
+        if (! $row) {
+            return;
+        }
+
+        DB::table('tenant_business_profiles')->where('tenant_id', $tenantId)->update([
+            'discovery_complete_pct' => $this->computePct((array) $row),
+            'updated_at' => now(),
+        ]);
     }
 }

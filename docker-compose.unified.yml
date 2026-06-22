@@ -104,6 +104,7 @@ services:
       OPENJARVIS_BRIDGE_URL: http://openjarvis-bridge:8000
       OPENJARVIS_ENABLED: "true"
       FEATURE_ATLAS_OPENJARVIS: "on"
+      FEATURE_PACKS_ROOT: /var/www/packages/feature-packs
       INFERENCE_URL: http://inference:9000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RUN_DB_SEED: ${RUN_DB_SEED:-true}

@@ -81,6 +81,37 @@
             </button>
           </div>
 
+          <!-- Confirm before act -->
+          <div
+            v-if="message.metadata?.mode === 'confirm' && message.metadata?.pending_action"
+            class="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50"
+          >
+            <p class="text-xs font-semibold text-amber-900 uppercase tracking-wide">Confirm before I act</p>
+            <p class="text-sm text-amber-950 mt-1">{{ message.metadata.pending_action.summary }}</p>
+            <ul v-if="message.metadata.pending_action.tasks?.length" class="mt-2 space-y-1 text-xs text-amber-900">
+              <li v-for="task in message.metadata.pending_action.tasks" :key="task.id" class="flex gap-2">
+                <span>•</span>
+                <span>{{ task.label }}</span>
+              </li>
+            </ul>
+            <div class="mt-3 flex gap-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                @click="$emit('confirm', message.metadata.pending_action.id)"
+              >
+                Proceed
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-900 hover:bg-amber-100"
+                @click="$emit('cancel', message.metadata.pending_action.id)"
+              >
+                Not yet
+              </button>
+            </div>
+          </div>
+
           <!-- Suggested next automation -->
           <div v-if="message === props.messages[props.messages.length - 1] && props.suggestedNext?.label" class="mt-2 p-3 rounded-lg border border-indigo-100 bg-indigo-50/50">
             <p class="text-xs font-medium text-indigo-900">Suggested first automation</p>
@@ -204,7 +235,7 @@ const props = defineProps({
   },
 })
 
-defineEmits(['send', 'command', 'execute-suggestion'])
+defineEmits(['send', 'command', 'execute-suggestion', 'confirm', 'cancel'])
 
 const messagesContainer = ref(null)
 

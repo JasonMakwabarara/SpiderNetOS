@@ -35,6 +35,9 @@ export const useAtlasStore = defineStore('atlas', () => {
   /** @type {import('vue').Ref<object|null>} Suggested next automation from discovery */
   const suggestedNext = ref(null)
 
+  /** @type {import('vue').Ref<object|null>} Pending confirm-before-act action */
+  const pendingAction = ref(null)
+
   /** @type {import('vue').Ref<Array<string>>} Discovery questions from Atlas */
   const discoveryQuestions = ref([])
 
@@ -180,12 +183,15 @@ export const useAtlasStore = defineStore('atlas', () => {
           mode: data.message?.metadata?.mode || null,
           questions: data.message?.metadata?.questions || [],
           profile_pct: data.message?.metadata?.profile_pct ?? null,
+          pending_action: data.message?.metadata?.pending_action || data.pending_action || null,
+          status: data.message?.metadata?.status || null,
         },
       }
       messages.value.push(assistantMessage)
 
       suggestedNext.value = data.suggested_next || null
       discoveryQuestions.value = data.message?.metadata?.questions || []
+      pendingAction.value = assistantMessage.metadata.pending_action || null
 
       if (data.suggestions && Array.isArray(data.suggestions)) {
         suggestions.value = data.suggestions
@@ -212,6 +218,75 @@ export const useAtlasStore = defineStore('atlas', () => {
         isError: true,
       }
       messages.value.push(errorMessage)
+      error.value = err.response?.data?.message || err.message
+      return { success: false, error: error.value }
+    } finally {
+      isTyping.value = false
+    }
+  }
+
+  async function confirmAction(actionId) {
+    if (!actionId) return { success: false }
+    isTyping.value = true
+    error.value = null
+    try {
+      const response = await api.post('/api/atlas/confirm', {
+        action_id: actionId,
+        decision: 'proceed',
+        session_id: currentSessionId.value,
+      })
+      const data = response.data
+      pendingAction.value = null
+      const assistantMessage = {
+        id: data.message?.id || `msg_${Date.now()}`,
+        role: 'assistant',
+        content: formatContractContent(data),
+        timestamp: data.message?.timestamp || new Date().toISOString(),
+        contract: data.message?.contract || null,
+        metadata: {
+          agent: data.message?.metadata?.agent_used || null,
+          intent: data.message?.metadata?.intent || null,
+          mode: data.message?.metadata?.mode || 'act',
+          status: data.message?.metadata?.status || null,
+        },
+      }
+      messages.value.push(assistantMessage)
+      if (data.session_id) currentSessionId.value = data.session_id
+      return { success: true, data }
+    } catch (err) {
+      error.value = err.response?.data?.message || err.message
+      return { success: false, error: error.value }
+    } finally {
+      isTyping.value = false
+    }
+  }
+
+  async function cancelAction(actionId) {
+    if (!actionId) return { success: false }
+    isTyping.value = true
+    error.value = null
+    try {
+      const response = await api.post('/api/atlas/confirm', {
+        action_id: actionId,
+        decision: 'cancel',
+        session_id: currentSessionId.value,
+      })
+      const data = response.data
+      pendingAction.value = null
+      const assistantMessage = {
+        id: data.message?.id || `msg_${Date.now()}`,
+        role: 'assistant',
+        content: formatContractContent(data),
+        timestamp: data.message?.timestamp || new Date().toISOString(),
+        contract: data.message?.contract || null,
+        metadata: {
+          mode: data.message?.metadata?.mode || 'held',
+          status: data.message?.metadata?.status || 'cancelled',
+        },
+      }
+      messages.value.push(assistantMessage)
+      return { success: true, data }
+    } catch (err) {
       error.value = err.response?.data?.message || err.message
       return { success: false, error: error.value }
     } finally {
@@ -395,6 +470,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     commandAst.value = null
     activeAgent.value = null
     currentPlan.value = null
+    pendingAction.value = null
     suggestions.value = []
     error.value = null
   }
@@ -457,6 +533,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     commandAst,
     tasks,
     activeAgent,
+    pendingAction,
     slashCommands,
     // Getters
     currentSession,
@@ -479,6 +556,8 @@ export const useAtlasStore = defineStore('atlas', () => {
     clearSession,
     dismissSuggestion,
     executeSuggestion,
+    confirmAction,
+    cancelAction,
     handleTaskUpdate,
     handleAgentUpdate,
     handleStreamChunk,

@@ -21,9 +21,33 @@ Open: http://localhost
 | `/cockpit/#/sales` | Sales & CRM OS |
 | `/cockpit/#/compliance` | Compliance Radar |
 | `/cockpit/#/operate/first-win` | Guided first automation |
-| `/cockpit/#/feature-packs` | Install vertical packs |
+| `/cockpit/#/feature-packs` | Install vertical packs (personalized by industry + feedback) |
+
+Pack catalogue is **tenant-personalized**: relevance scores, industry-specific outcomes, and recommendations grow from business profile, usage signals, and thumbs-up/down feedback.
+
+### Atlas trust gate (`automation_level`)
+
+Tenants store `automation_level` on the `tenants` table: `manual`, `assisted` (default), or `autonomous`. Atlas uses `AtlasClarityGate` after business-profile discovery:
+
+| Level | Behavior |
+|-------|----------|
+| **manual** | Every actionable intent asks for confirmation until that intent type is confirmed 3 times (trust earned per automation). |
+| **assisted** | Reversible actions run immediately; irreversible actions always confirm; low model confidence triggers clarify (only when inference plane is configured). |
+| **autonomous** | Acts by default; irreversible actions still confirm; genuinely ambiguous prompts clarify. |
+
+Chat metadata modes: `discover` (profile), `clarify` (focused question), `confirm` (preview + pending action), `act` (dispatched). Confirm via `POST /api/atlas/confirm` with `{ action_id, decision: proceed|cancel }`. Trust counts live in `tenant_business_profiles.learned_signals.trust`.
+
+Update level: `PUT /api/admin/tenant/automation-level` with `{ "automation_level": "manual|assisted|autonomous" }`.
 
 See also: [OpenJarvis × Atlas integration](OPENJARVIS_INTEGRATION.md) — local-first AI augmentation for AIOS operators.
+
+After cockpit UI changes:
+
+```powershell
+cd cockpit; npm run build; cd ..
+Copy-Item -Recurse -Force cockpit\dist frontend\public\cockpit
+docker compose -f docker-compose.unified.yml up -d --build frontend
+```
 
 ## Architecture
 

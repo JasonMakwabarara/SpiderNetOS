@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Services\AtlasDiscoveryService;
+use App\Services\PackGrowthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ class BusinessProfileController extends Controller
         return response()->json(['data' => $profile]);
     }
 
-    public function update(Request $request, AtlasDiscoveryService $discovery): JsonResponse
+    public function update(Request $request, AtlasDiscoveryService $discovery, PackGrowthService $growth): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_id');
 
@@ -52,6 +53,13 @@ class BusinessProfileController extends Controller
             ]));
         }
 
+        if (! empty($validated['industry'])) {
+            $growth->recordSignal($tenantId, 'profile_industry_set', null, [
+                'industry' => $validated['industry'],
+            ]);
+        }
+
+        $discovery->refreshCompletionPct($tenantId);
         $profile = $discovery->profileForTenant($tenantId);
 
         return response()->json(['data' => $profile]);

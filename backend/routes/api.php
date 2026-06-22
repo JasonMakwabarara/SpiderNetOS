@@ -85,6 +85,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Atlas UI Interface — LLM-backed, secondary throttle to cap $/min per user.
     Route::middleware('throttle:atlas_chat')->group(function () {
         Route::post('/atlas/chat', [AtlasController::class, 'chat']);
+        Route::post('/atlas/confirm', [AtlasController::class, 'confirm']);
         Route::post('/atlas/plan', [AtlasController::class, 'plan']);
         Route::post('/atlas/execute', [AtlasController::class, 'executePlan']);
         Route::post('/atlas/cancel', [AtlasController::class, 'cancelPlan']);
@@ -170,6 +171,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
 
     // Feature Packs (Phase 3)
     Route::get('/feature-packs/catalogue', [FeaturePackController::class, 'catalogue']);
+    Route::get('/feature-packs/recommendations', [FeaturePackController::class, 'recommendations']);
+    Route::post('/feature-packs/signals', [FeaturePackController::class, 'recordSignal']);
+    Route::post('/feature-packs/feedback', [FeaturePackController::class, 'feedback']);
     Route::get('/feature-packs', [FeaturePackController::class, 'index']);
     Route::post('/feature-packs/{id}/install', [FeaturePackController::class, 'install']);
     Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
