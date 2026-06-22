@@ -4,7 +4,12 @@
     <div>
       <h1 class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">Billing & Plans</h1>
       <p class="text-sm mt-1" :style="{ color: 'var(--text-secondary)' }">
-        Manage your subscription, view usage, and configure payment
+        Your SpiderNetOS platform plan and AI usage — not your business invoices or ledger.
+      </p>
+      <p class="text-xs mt-2" :style="{ color: 'var(--text-muted)' }">
+        For invoicing, payments, and cash flow, enable
+        <RouterLink to="/feature-packs" class="underline" style="color: var(--accent);">Financial OS</RouterLink>
+        in Feature Packs.
       </p>
     </div>
 

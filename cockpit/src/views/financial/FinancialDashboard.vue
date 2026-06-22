@@ -3,7 +3,7 @@
     <div>
       <h1 class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">Financial OS</h1>
       <p class="text-sm mt-1" :style="{ color: 'var(--text-secondary)' }">
-        Comprehensive financial management — ledger, invoices, payments, portfolios
+        Your business money — invoices, payments, ledger, and collections. Separate from platform Billing.
       </p>
     </div>
 
@@ -40,17 +40,17 @@
     <div class="dct-card p-6 space-y-4">
       <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Quick Actions</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <router-link to="/financial/invoices/new" class="dct-btn-primary py-3 text-center text-sm">
+        <router-link to="/financial/invoices" class="dct-btn-primary py-3 text-center text-sm">
           + New Invoice
         </router-link>
-        <router-link to="/financial/payments/new" class="dct-btn-primary py-3 text-center text-sm" :style="{ '--btn-bg': 'var(--tealime-vivid)' }">
+        <router-link to="/financial/payments" class="dct-btn-primary py-3 text-center text-sm" :style="{ '--btn-bg': 'var(--tealime-vivid)' }">
           + Record Payment
         </router-link>
         <router-link to="/financial/ledger" class="py-3 rounded-xl font-semibold text-sm border text-center transition-colors" :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
           View Ledger
         </router-link>
-        <router-link to="/financial/reports" class="py-3 rounded-xl font-semibold text-sm border text-center transition-colors" :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
-          Generate Report
+        <router-link to="/financial/invoices" class="py-3 rounded-xl font-semibold text-sm border text-center transition-colors" :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
+          View Invoices
         </router-link>
       </div>
     </div>

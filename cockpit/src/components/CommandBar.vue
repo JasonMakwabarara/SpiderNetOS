@@ -209,7 +209,12 @@ const ROUTES = [
   { id: 'r-usage',      label: 'Usage',               hint: 'Cost & budgets',      path: '/usage' },
   { id: 'r-settings',   label: 'Settings',            hint: 'Tenant settings',     path: '/settings' },
   { id: 'r-automation', label: 'Automation level',    hint: 'Manual / Assisted / Autonomous', path: '/settings/automation-level' },
-  { id: 'r-billing',    label: 'Billing',             hint: 'Plan & invoices',     path: '/billing' },
+  { id: 'r-billing',    label: 'Billing',             hint: 'Platform plan & AI usage', path: '/billing' },
+  { id: 'r-financial',  label: 'Financial OS',        hint: 'Invoices & ledger',       path: '/financial' },
+  { id: 'r-sales',      label: 'Sales & CRM',         hint: 'Pipeline & leads',        path: '/sales' },
+  { id: 'r-compliance', label: 'Compliance Radar',    hint: 'What applies to you',     path: '/compliance' },
+  { id: 'r-first-win',  label: 'First win wizard',    hint: '5-minute automation',   path: '/operate/first-win' },
+  { id: 'r-packs',      label: 'Feature packs',       hint: 'Install vertical OS',   path: '/feature-packs' },
   { id: 'r-onboarding', label: 'Onboarding wizard',   hint: 'First-run flow',      path: '/onboarding' },
 ]
 

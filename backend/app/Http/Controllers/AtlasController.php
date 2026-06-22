@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AtlasDiscoveryService;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
 use App\Services\EventStore;
@@ -30,6 +31,7 @@ class AtlasController extends Controller
         AtlasInteractionLogger $interactionLogger,
         OnboardingPolicy $onboardingPolicy,
         private readonly AtlasJarvisAugmentor $jarvisAugmentor,
+        private readonly AtlasDiscoveryService $discoveryService,
     ) {
         $this->eventStore = $eventStore;
         $this->metaPlanner = $metaPlanner;
@@ -101,6 +103,47 @@ class AtlasController extends Controller
         $style = $request->input('style', config('services.spidernet.atlas_default_style', 'balanced'));
         $interactionId = (string) Str::uuid();
         $startedAt = microtime(true);
+
+        // Learn from user input and check discovery mode (skip for slash commands)
+        $this->discoveryService->absorbAnswer($tenantId, $message);
+        $discovery = $this->discoveryService->evaluate($tenantId, $message);
+        $isSlashCommand = str_starts_with(trim($message), '/');
+
+        if (($discovery['mode'] ?? 'act') === 'discover' && ! $isSlashCommand) {
+            $question = ($discovery['questions'][0] ?? 'What task eats the most time in your week?');
+            $suggested = $discovery['suggested_next'] ?? null;
+
+            $contract = [
+                'future_state' => 'SpiderNetOS learns your business so it can automate the right things first.',
+                'value' => 'One clear next step instead of guessing.',
+                'emotional_shift' => 'Clarity and control from the start.',
+                'action_summary' => $question,
+                'details' => null,
+            ];
+
+            return response()->json([
+                'contract_version' => '1',
+                'session_id' => $sessionId,
+                'interaction_id' => $interactionId,
+                'message' => [
+                    'id' => (string) Str::uuid(),
+                    'role' => 'atlas',
+                    'contract' => $contract,
+                    'timestamp' => now()->toIso8601String(),
+                    'metadata' => [
+                        'intent' => 'discovery',
+                        'mode' => 'discover',
+                        'questions' => $discovery['questions'] ?? [$question],
+                        'profile_pct' => $discovery['profile_pct'] ?? 0,
+                        'agent_used' => 'atlas',
+                        'status' => 'discovery',
+                    ],
+                ],
+                'suggested_next' => $suggested,
+                'ast' => ['type' => 'discovery'],
+                'cost_status' => null,
+            ]);
+        }
 
         // Record user message in event_log (ephemeral session — Hard Rule #3)
         $this->eventStore->append(

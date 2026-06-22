@@ -22,6 +22,8 @@ use App\Http\Controllers\FeaturePackController;
 use App\Http\Controllers\IntelligenceProxyController;
 use App\Http\Controllers\OutcomesController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\BusinessProfileController;
+use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\ShareLinkController;
 
 /*
@@ -169,7 +171,15 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Feature Packs (Phase 3)
     Route::get('/feature-packs/catalogue', [FeaturePackController::class, 'catalogue']);
     Route::get('/feature-packs', [FeaturePackController::class, 'index']);
+    Route::post('/feature-packs/{id}/install', [FeaturePackController::class, 'install']);
     Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
+
+    // Business profile (Atlas discovery learning loop)
+    Route::get('/business-profile', [BusinessProfileController::class, 'show']);
+    Route::put('/business-profile', [BusinessProfileController::class, 'update']);
+
+    // Universal compliance discovery
+    Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 
     // Billing & monetization
     Route::get('/billing/summary', [BillingController::class, 'summary']);

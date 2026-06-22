@@ -12,6 +12,17 @@ powershell -ExecutionPolicy Bypass -File scripts/up.ps1
 
 Open: http://localhost
 
+### Customer-facing cockpit routes (pack-aware)
+
+| Route | Purpose |
+|-------|---------|
+| `/cockpit/#/billing` | Platform subscription & AI usage |
+| `/cockpit/#/financial` | Financial OS (business finance) |
+| `/cockpit/#/sales` | Sales & CRM OS |
+| `/cockpit/#/compliance` | Compliance Radar |
+| `/cockpit/#/operate/first-win` | Guided first automation |
+| `/cockpit/#/feature-packs` | Install vertical packs |
+
 See also: [OpenJarvis × Atlas integration](OPENJARVIS_INTEGRATION.md) — local-first AI augmentation for AIOS operators.
 
 ## Architecture

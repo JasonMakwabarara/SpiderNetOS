@@ -27,8 +27,8 @@
         </div>
         <h3 class="text-xl font-semibold text-gray-900 mb-2">What would you like to do?</h3>
         <p class="text-sm text-gray-500 mb-6 max-w-md">
-          Tell Atlas what you need in plain English. I can create flows, manage agents,
-          query data, deploy changes, and much more.
+          Tell Atlas about your business — or ask &quot;what should I automate first?&quot;
+          SpiderNetOS learns from your answers and suggests one clear next step.
         </p>
         <div class="flex flex-wrap justify-center gap-2">
           <button
@@ -66,6 +66,25 @@
             }"
           >
             <p class="text-sm whitespace-pre-wrap leading-relaxed">{{ message.content }}</p>
+          </div>
+
+          <!-- Discovery question chips -->
+          <div v-if="message.metadata?.questions?.length" class="mt-2 flex flex-wrap gap-2">
+            <button
+              v-for="(q, qi) in message.metadata.questions"
+              :key="qi"
+              type="button"
+              class="px-3 py-1.5 text-xs bg-indigo-50 border border-indigo-200 rounded-full text-indigo-800 hover:bg-indigo-100"
+              @click="$emit('send', q)"
+            >
+              {{ q }}
+            </button>
+          </div>
+
+          <!-- Suggested next automation -->
+          <div v-if="message === props.messages[props.messages.length - 1] && props.suggestedNext?.label" class="mt-2 p-3 rounded-lg border border-indigo-100 bg-indigo-50/50">
+            <p class="text-xs font-medium text-indigo-900">Suggested first automation</p>
+            <p class="text-sm text-indigo-800 mt-0.5">{{ props.suggestedNext.label }}</p>
           </div>
 
           <!-- Atlas metadata -->
@@ -179,6 +198,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  suggestedNext: {
+    type: Object,
+    default: null,
+  },
 })
 
 defineEmits(['send', 'command', 'execute-suggestion'])
@@ -186,11 +209,10 @@ defineEmits(['send', 'command', 'execute-suggestion'])
 const messagesContainer = ref(null)
 
 const quickChips = [
+  'What should I automate first?',
+  'What task eats the most time in my week?',
   'Show system status',
-  'Compare pending recommendations',
-  'Generate weekly digest',
   'List active agents',
-  "Show today's usage",
 ]
 
 const inlineTaskProgress = computed(() => {

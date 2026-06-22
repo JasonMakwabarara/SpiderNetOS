@@ -32,6 +32,12 @@ export const useAtlasStore = defineStore('atlas', () => {
   /** @type {import('vue').Ref<object|null>} The current execution plan (multi-step) */
   const currentPlan = ref(null)
 
+  /** @type {import('vue').Ref<object|null>} Suggested next automation from discovery */
+  const suggestedNext = ref(null)
+
+  /** @type {import('vue').Ref<Array<string>>} Discovery questions from Atlas */
+  const discoveryQuestions = ref([])
+
   /** @type {import('vue').Ref<Array<object>>} Contextual suggestions from Atlas */
   const suggestions = ref([])
 
@@ -171,9 +177,15 @@ export const useAtlasStore = defineStore('atlas', () => {
           intent: data.message?.metadata?.intent || null,
           cost: data.message?.metadata?.estimated_cost_usd ?? null,
           model: data.message?.metadata?.model || null,
+          mode: data.message?.metadata?.mode || null,
+          questions: data.message?.metadata?.questions || [],
+          profile_pct: data.message?.metadata?.profile_pct ?? null,
         },
       }
       messages.value.push(assistantMessage)
+
+      suggestedNext.value = data.suggested_next || null
+      discoveryQuestions.value = data.message?.metadata?.questions || []
 
       if (data.suggestions && Array.isArray(data.suggestions)) {
         suggestions.value = data.suggestions
@@ -440,6 +452,8 @@ export const useAtlasStore = defineStore('atlas', () => {
     error,
     currentPlan,
     suggestions,
+    suggestedNext,
+    discoveryQuestions,
     commandAst,
     tasks,
     activeAgent,

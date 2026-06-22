@@ -23,6 +23,9 @@ const Billing       = () => import('../views/Billing.vue')
 const Outcomes      = () => import('../views/Outcomes.vue')
 const Communications = () => import('../views/Communications.vue')
 const FeaturePacks  = () => import('../views/FeaturePacks.vue')
+const OpsFirstWin     = () => import('../views/operate/OpsFirstWin.vue')
+const SalesHome       = () => import('../views/sales/SalesHome.vue')
+const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 
 // Lazy financial views
 const FinancialDashboard = () => import('../views/financial/FinancialDashboard.vue')
@@ -77,6 +80,9 @@ const routes = [
   { path: '/outcomes',      name: 'Outcomes',      component: Outcomes,      meta: { requiresAuth: true } },
   { path: '/communications', name: 'Communications', component: Communications, meta: { requiresAuth: true } },
   { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
+  { path: '/operate/first-win', name: 'OpsFirstWin', component: OpsFirstWin, meta: { requiresAuth: true } },
+  { path: '/sales', name: 'SalesHome', component: SalesHome, meta: { requiresAuth: true } },
+  { path: '/compliance', name: 'ComplianceHome', component: ComplianceHome, meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },
   { path: '/usage',         name: 'Usage',         component: Usage,       meta: { requiresAuth: true } },
   { path: '/settings',      name: 'Settings',      component: Settings,    meta: { requiresAuth: true } },

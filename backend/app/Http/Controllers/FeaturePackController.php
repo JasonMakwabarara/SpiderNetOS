@@ -3,12 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeaturePack;
+use App\Services\FeaturePackInstaller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\Yaml\Yaml;
 
 class FeaturePackController extends Controller
 {
+    /** Customer-facing outcome bullets keyed by pack_id. */
+    private const PACK_OUTCOMES = [
+        'financial-services' => [
+            'Know who owes you money and chase overdue invoices',
+            'See cash position without opening a spreadsheet',
+            'Get flagged before a large payment needs approval',
+        ],
+        'sales-crm' => [
+            'Never lose a lead because follow-up was late',
+            'See your pipeline and what needs action today',
+            'Win back customers before they churn',
+        ],
+        'real-estate-crm' => [
+            'Capture and qualify property leads automatically',
+            'Schedule viewings without back-and-forth',
+            'Track offers from submission to close',
+        ],
+        'compliance-radar' => [
+            'Discover what compliance applies to your business',
+            'Plain-English obligations — no jargon required',
+            'One action per topic, not an overwhelming checklist',
+        ],
+    ];
+
     public function catalogue(): JsonResponse
     {
         $root = env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs');
@@ -19,13 +44,21 @@ class FeaturePackController extends Controller
                 try {
                     $yaml = Yaml::parseFile($path);
                     $meta = $yaml['metadata'] ?? [];
+                    $packId = $meta['id'] ?? basename(dirname($path));
+                    $agents = $yaml['spec']['provides']['dynamic_agents'] ?? [];
+                    $flows = $yaml['spec']['provides']['flows'] ?? [];
+
                     $entries[] = [
-                        'pack_id' => $meta['id'] ?? basename(dirname($path)),
+                        'pack_id' => $packId,
                         'version' => $meta['version'] ?? '0.0.0',
                         'vertical' => $meta['vertical'] ?? 'general',
-                        'display_name' => $meta['displayName'] ?? $meta['display_name'] ?? $meta['id'] ?? basename(dirname($path)),
+                        'display_name' => $meta['displayName'] ?? $meta['display_name'] ?? $packId,
                         'description' => $meta['description'] ?? '',
                         'installable' => true,
+                        'agent_count' => count($agents),
+                        'flow_count' => count($flows),
+                        'customer_outcomes' => $meta['customer_outcomes'] ?? self::PACK_OUTCOMES[$packId] ?? [],
+                        'entry_path' => $this->entryPath($packId),
                     ];
                 } catch (\Throwable) {
                     continue;
@@ -60,6 +93,7 @@ class FeaturePackController extends Controller
                 'agents' => $pack->agents,
                 'flows' => $pack->flows,
                 'installed_at' => $pack->installed_at?->toIso8601String(),
+                'entry_path' => $this->entryPath($pack->pack_id),
             ];
         });
 
@@ -85,7 +119,37 @@ class FeaturePackController extends Controller
                 'agents' => $pack->agents,
                 'flows' => $pack->flows,
                 'installed_at' => $pack->installed_at?->toIso8601String(),
+                'entry_path' => $this->entryPath($pack->pack_id),
             ],
         ]);
+    }
+
+    /**
+     * POST /api/feature-packs/{id}/install
+     * Response: { data: { pack_id, version, display_name, status, agents_provisioned, entry_path } }
+     */
+    public function install(Request $request, string $id, FeaturePackInstaller $installer): JsonResponse
+    {
+        $tenant = $request->user()->tenant;
+
+        try {
+            $result = $installer->install($tenant, $id, (bool) $request->boolean('force'));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        return response()->json(['data' => $result]);
+    }
+
+    private function entryPath(string $packId): string
+    {
+        return match ($packId) {
+            'financial-services' => '/financial',
+            'sales-crm' => '/sales',
+            'compliance-radar' => '/compliance',
+            default => '/feature-packs',
+        };
     }
 }

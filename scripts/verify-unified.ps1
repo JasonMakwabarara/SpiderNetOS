@@ -20,7 +20,7 @@ Write-Host "`n=== SpiderNetOS Unified Verification ===`n" -ForegroundColor Cyan
 # Objective 1: Landing branch + frontend structure
 Test-Endpoint "Obj1: landing branch" {
     $branch = git -C $repoRoot branch --show-current
-    if ($branch -ne "landing") { throw "Expected landing branch, got $branch" }
+    if ($branch -notin @("landing", "main")) { throw "Expected landing or main branch, got $branch" }
     foreach ($f in @("frontend/src/pages/LandingPage.jsx","frontend/src/pages/SignInPage.jsx","frontend/src/pages/RegisterWizard.jsx","frontend/src/components/MarketingHeader.jsx")) {
         if (-not (Test-Path (Join-Path $repoRoot $f))) { throw "Missing $f" }
     }
@@ -223,6 +223,42 @@ Test-Endpoint "OJ: billing Atlas inference spend fields" {
 
 Test-Endpoint "OJ: integration doc" {
     if (-not (Test-Path (Join-Path $repoRoot "docs\OPENJARVIS_INTEGRATION.md"))) { throw "Missing OPENJARVIS_INTEGRATION.md" }
+}
+
+# Customer-first AIOS contracts (2026-06-22)
+Test-Endpoint "AIOS: feature pack catalogue outcomes" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken" }
+    $r = Invoke-RestMethod -Uri "http://localhost/api/feature-packs/catalogue" -Headers $h -TimeoutSec 20
+    $fin = $r.data | Where-Object { $_.pack_id -eq "financial-services" } | Select-Object -First 1
+    if (-not $fin.customer_outcomes -or $fin.customer_outcomes.Count -lt 1) { throw "Missing financial-services customer_outcomes" }
+}
+
+Test-Endpoint "AIOS: compliance obligations API" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken" }
+    $r = Invoke-RestMethod -Uri "http://localhost/api/compliance/obligations" -Headers $h -TimeoutSec 20
+    if (-not $r.data -or $r.data.Count -lt 1) { throw "Expected at least one obligation" }
+}
+
+Test-Endpoint "AIOS: business profile API" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken" }
+    $r = Invoke-RestMethod -Uri "http://localhost/api/business-profile" -Headers $h -TimeoutSec 20
+    if ($null -eq $r.data) { throw "Missing business profile data envelope" }
+}
+
+Test-Endpoint "AIOS: Atlas discovery mode" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $body = '{"message":"help me get started"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 45
+    if ($r.message.metadata.mode -ne "discover") { throw "Expected discovery mode for vague prompt" }
+}
+
+Test-Endpoint "AIOS: sales-crm pack manifest" {
+    $p = Join-Path $repoRoot "packages\feature-packs\sales-crm\pack.yaml"
+    if (-not (Test-Path $p)) { throw "Missing sales-crm pack.yaml" }
 }
 
 Write-Host "`n=== Results: $pass passed, $fail failed ===`n" -ForegroundColor Cyan

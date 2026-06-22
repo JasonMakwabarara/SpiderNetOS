@@ -320,6 +320,10 @@ const ic = {
   comms:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 12h8M8 16h5M4 6h16v12H4z"/></svg>',
   packs:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 3l8 4v10l-8 4-8-4V7l8-4z"/></svg>',
   outcomes: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 19h16M8 17V7m4 10V5m4 12V9"/></svg>',
+  finance:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path stroke-linecap="round" d="M3 10h18M7 15h4"/></svg>',
+  sales:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>',
+  shield2:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+  firstwin: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
 }
 
 // Grouped nav
@@ -327,9 +331,18 @@ const userNav = {
   label: 'Operate', items: [
     { key: 'dashboard', name: 'Dashboard', path: '/', exact: true, icon: ic.dashboard },
     { key: 'atlas', name: 'Atlas', path: '/atlas', icon: ic.atlas, badge: null },
+    { key: 'first-win', name: 'First win', path: '/operate/first-win', icon: ic.firstwin },
     { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
     { key: 'traces', name: 'Traces', path: '/traces', icon: ic.traces },
+  ],
+}
+const packsNav = {
+  label: 'Packs', items: [
+    { key: 'financial', name: 'Financial OS', path: '/financial', icon: ic.finance },
+    { key: 'sales', name: 'Sales & CRM', path: '/sales', icon: ic.sales },
+    { key: 'compliance', name: 'Compliance Radar', path: '/compliance', icon: ic.shield2 },
+    { key: 'feature-packs', name: 'All packs', path: '/feature-packs', icon: ic.packs },
   ],
 }
 const buildNav = {
@@ -403,7 +416,7 @@ const hasWorkspaceChoice = computed(() => workspaceChoices.value.length > 1)
 const visibleNavigation = computed(() => {
   if (currentWorkspace.value === '/platform') return platformNav
   if (currentWorkspace.value === '/admin') return adminNav
-  return [userNav, buildNav, observeNav, enterpriseNav, tenantNav]
+  return [userNav, packsNav, buildNav, observeNav, enterpriseNav, tenantNav]
 })
 
 function switchWorkspace(path) { router.push(path) }
@@ -464,6 +477,15 @@ const BREADCRUMB_MAP = {
   '/settings/automation-level': ['Settings', 'Automation Level'],
   '/settings/usage': ['Settings', 'Usage'],
   '/billing': ['Billing'],
+  '/financial': ['Financial OS'],
+  '/financial/ledger': ['Financial OS', 'Ledger'],
+  '/financial/invoices': ['Financial OS', 'Invoices'],
+  '/financial/payments': ['Financial OS', 'Payments'],
+  '/financial/portfolios': ['Financial OS', 'Portfolios'],
+  '/sales': ['Sales & CRM'],
+  '/compliance': ['Compliance Radar'],
+  '/operate/first-win': ['First win'],
+  '/feature-packs': ['Feature packs'],
   '/admin': ['Admin'],
   '/admin/users': ['Admin', 'Users'],
   '/admin/audit': ['Admin', 'Audit'],

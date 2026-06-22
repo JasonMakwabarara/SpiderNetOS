@@ -38,7 +38,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -53,6 +53,7 @@ const props = defineProps({
 const emit = defineEmits(['run-command', 'flow-created'])
 
 const route = useRoute()
+const router = useRouter()
 const dismissedLocal = ref(false)
 const creatingFlow = ref(false)
 
@@ -60,20 +61,21 @@ const STORAGE_KEY = 'cockpit:hannah-guidance-dismissed'
 
 const steps = [
   {
+    label: 'Show me my first win in 5 minutes',
+    prompt: 'Guide me through my first automation — something simple I can see in Traces.',
+    action: 'route-first-win',
+  },
+  {
+    label: 'What should I automate first?',
+    prompt: 'What should I automate first in my business? Ask me one question at a time.',
+  },
+  {
     label: 'Draft my first automation flow',
     prompt: 'Help me design and draft my first SpiderNet automation flow for my team.',
     action: 'create-flow',
     flowName: 'Quick Start Flow',
     flowSlug: 'quick-start-flow',
     flowDescription: 'Automated flow created from Hannah guidance.',
-  },
-  {
-    label: 'Tune automation level safely',
-    prompt: 'Explain how manual, assisted, and autonomous modes differ and recommend a starting level.',
-  },
-  {
-    label: 'See observability basics',
-    prompt: 'Walk me through what I should monitor this week after onboarding.',
   },
 ]
 
@@ -89,7 +91,7 @@ const visible = computed(() => {
   if (typeof window !== 'undefined' && window.localStorage.getItem(STORAGE_KEY) === '1') {
     return false
   }
-  return !!(props.forceOnboardingSeed || route.query.seed === 'onboarding')
+  return !!(props.forceOnboardingSeed || route.query.seed === 'onboarding' || route.query.seed === 'discovery')
 })
 
 async function createFlow(step) {
@@ -123,6 +125,10 @@ async function createFlow(step) {
 }
 
 function run(prompt, step) {
+  if (step?.action === 'route-first-win') {
+    router.push('/operate/first-win')
+    return
+  }
   if (step?.action === 'create-flow') {
     createFlow(step)
   } else {

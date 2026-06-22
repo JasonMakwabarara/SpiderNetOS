@@ -8,6 +8,7 @@
         :slash-commands="atlasStore.slashCommands"
         :suggestions="atlasStore.suggestions"
         :tasks="atlasStore.tasks"
+        :suggested-next="atlasStore.suggestedNext"
         @send="handleSend"
         @command="handleCommand"
         @execute-suggestion="handleExecuteSuggestion"
