@@ -133,6 +133,37 @@ class PackGrowthService
     }
 
     /**
+     * Record a signal only if an identical type+pack was not recorded within
+     * the throttle window. Prevents passive signals (e.g. atlas_suggested,
+     * pack_view) from inflating affinity on repeated views/retries.
+     *
+     * @param array<string, mixed> $context
+     */
+    public function recordSignalThrottled(string $tenantId, string $signalType, ?string $packId = null, array $context = [], int $weight = 1, int $throttleSeconds = 86400): void
+    {
+        if (! Schema::hasTable('tenant_pack_signals')) {
+            return;
+        }
+
+        $recent = DB::table('tenant_pack_signals')
+            ->where('tenant_id', $tenantId)
+            ->where('signal_type', $signalType)
+            ->where('created_at', '>=', now()->subSeconds($throttleSeconds));
+
+        if ($packId === null) {
+            $recent->whereNull('pack_id');
+        } else {
+            $recent->where('pack_id', $packId);
+        }
+
+        if ($recent->exists()) {
+            return;
+        }
+
+        $this->recordSignal($tenantId, $signalType, $packId, $context, $weight);
+    }
+
+    /**
      * @param list<array<string, mixed>> $entries
      * @return list<array<string, mixed>>
      */

@@ -116,6 +116,7 @@ const profilePct = ref(0)
 const installing = ref(null)
 const installMessage = ref({})
 const feedbackMessage = ref({})
+const viewedPacks = new Set()
 
 function isInstalled(packId) {
   return installed.value.some((p) => p.pack_id === packId)
@@ -126,12 +127,16 @@ function scrollToPack(packId) {
 }
 
 async function recordView(packId) {
+  if (!packId || viewedPacks.has(packId)) return
+  viewedPacks.add(packId)
   try {
     await api.post('/api/feature-packs/signals', {
       signal_type: 'pack_view',
       pack_id: packId,
     })
-  } catch (_) {}
+  } catch (_) {
+    viewedPacks.delete(packId)
+  }
 }
 
 async function sendFeedback(packId, sentiment, outcome) {
@@ -149,7 +154,7 @@ async function sendFeedback(packId, sentiment, outcome) {
   }
 }
 
-async function load() {
+async function load({ recordViews = false } = {}) {
   loading.value = true
   error.value = null
   try {
@@ -162,7 +167,9 @@ async function load() {
     profilePct.value = cat.data?.meta?.profile_pct ?? 0
     installed.value = inst.data?.data || inst.data || []
     recommendations.value = rec.data?.data || rec.data || []
-    catalogue.value.forEach((p) => recordView(p.pack_id))
+    if (recordViews) {
+      catalogue.value.forEach((p) => recordView(p.pack_id))
+    }
   } catch (e) {
     error.value = e.response?.data?.message || 'Failed to load feature packs.'
   } finally {
@@ -188,7 +195,7 @@ async function installPack(pack) {
   }
 }
 
-onMounted(load)
+onMounted(() => load({ recordViews: true }))
 </script>
 
 <style scoped>

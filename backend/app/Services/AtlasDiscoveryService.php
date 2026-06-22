@@ -191,7 +191,7 @@ class AtlasDiscoveryService
         if ($tenantId && $growth) {
             $fromGrowth = $growth->suggestedNextForProfile($tenantId);
             if ($fromGrowth) {
-                $growth->recordSignal($tenantId, 'atlas_suggested', $fromGrowth['pack'] ?? null, [
+                $growth->recordSignalThrottled($tenantId, 'atlas_suggested', $fromGrowth['pack'] ?? null, [
                     'relevance_score' => $fromGrowth['relevance_score'] ?? null,
                 ]);
                 return $fromGrowth;
