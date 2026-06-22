@@ -123,6 +123,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/approvals', [ApprovalController::class, 'index']);
     Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve']);
     Route::post('/approvals/{approval}/reject', [ApprovalController::class, 'reject']);
+    Route::post('/approvals/{id}/share', [ShareLinkController::class, 'mintApproval']);
     
     // Daily Brief
     Route::get('/brief/latest', [BriefController::class, 'latest']);

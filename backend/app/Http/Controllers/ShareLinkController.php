@@ -77,6 +77,7 @@ class ShareLinkController extends Controller
             'token' => $plain,
             'expires_at' => $expires->toIso8601String(),
             'path' => $path,
+            'share_path' => $path,
         ];
     }
 
@@ -150,6 +151,8 @@ class ShareLinkController extends Controller
                 'subject' => (string) $execution->flow_id,
                 'actor' => 'system',
                 'created_at' => $execution->started_at,
+                'shared_at' => $row->created_at,
+                'expires_at' => $row->expires_at,
                 'duration_ms' => $durationMs,
                 'cost_usd' => 0.0,
                 'metadata' => [
