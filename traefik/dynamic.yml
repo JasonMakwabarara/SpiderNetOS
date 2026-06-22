@@ -53,10 +53,42 @@ http:
       gzip: {}
 
   routers:
-    # Laravel API
+    # React landing + static cockpit (unified entry)
+    landing:
+      rule: "Host(`spidernet.localhost`) || Host(`localhost`)"
+      service: frontend
+      priority: 1
+      middlewares:
+        - "security-headers"
+        - "compress"
+
+    # V2 Semantic Gateway (intelligence layer)
+    intelligence-v2:
+      rule: "PathPrefix(`/api/v2`)"
+      service: semantic-gateway
+      priority: 100
+      middlewares:
+        - "rate-limit-atlas"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # FastAPI cockpit + enterprise API
+    cockpit-api:
+      rule: "PathPrefix(`/api/enterprise`) || PathPrefix(`/api/scim`)"
+      service: cockpit-api
+      priority: 90
+      middlewares:
+        - "rate-limit-auth"
+        - "security-headers"
+        - "cors-headers"
+        - "compress"
+
+    # Laravel API (V1 business logic)
     api:
-      rule: "Host(`api.spidernet.localhost`) || PathPrefix(`/api`)"
+      rule: "Host(`api.spidernet.localhost`) || (PathPrefix(`/api`) && !PathPrefix(`/api/v2`) && !PathPrefix(`/api/enterprise`) && !PathPrefix(`/api/scim`))"
       service: api
+      priority: 80
       middlewares:
         - "rate-limit-api"
         - "security-headers"
@@ -103,6 +135,21 @@ http:
         - "compress"
 
   services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+
+    cockpit-api:
+      loadBalancer:
+        servers:
+          - url: "http://cockpit-api:8001"
+
+    semantic-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://semantic-gateway:8000"
+
     api:
       loadBalancer:
         servers:

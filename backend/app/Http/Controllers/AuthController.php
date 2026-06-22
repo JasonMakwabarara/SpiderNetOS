@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\EventStore;
+use App\Services\UnifiedAuthSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -145,16 +146,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'tenant_id' => $user->tenant_id,
-            ],
-            'token' => $token,
-        ]);
+        return response()->json(UnifiedAuthSession::format($user, $token));
     }
 
     /**

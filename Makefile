@@ -1,4 +1,4 @@
-.PHONY: dev build up down migrate seed health clean composer-install npm-install codegen deploy-check training-gate
+.PHONY: dev build up down migrate seed health clean composer-install npm-install codegen deploy-check training-gate unified unified-dev
 
 TRAINING_INPUT ?= $(CURSOR_EXPORT)
 TRAINING_OUT_DIR ?= training_data
@@ -32,6 +32,12 @@ deploy-check:     ## Run deployment verification checks
 health:           ## Check all service health
 	curl -s http://localhost:8000/api/health | python -m json.tool
 	curl -s http://localhost:9000/health | python -m json.tool
+
+unified:          ## Start unified stack (landing + V1 + V2)
+	docker compose -f docker-compose.unified.yml up -d --build
+
+unified-dev:      ## Start unified backends only (run frontend separately)
+	docker compose -f docker-compose.unified.yml up -d --build mongo postgres redis cockpit-api semantic-gateway atlas-perception dag-compiler atlas-rl runtime-guardian
 
 composer-install: ## Install PHP deps locally for IDE
 	cd backend && composer install --no-scripts

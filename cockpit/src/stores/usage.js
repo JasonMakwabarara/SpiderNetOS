@@ -53,7 +53,7 @@ export const useUsageStore = defineStore('usage', () => {
     
     try {
       const response = await api.get('/api/usage/budget')
-      budget.value = response.data.data
+      budget.value = response.data.data || response.data.budget || null
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch budget'
     } finally {
@@ -64,9 +64,22 @@ export const useUsageStore = defineStore('usage', () => {
   async function fetchCurrentSpend() {
     try {
       const response = await api.get('/api/usage/current')
-      currentSpend.value = response.data.data
+      const payload = response.data.data || response.data.usage || {}
+      currentSpend.value = {
+        daily: payload.daily ?? payload.daily_spend ?? 0,
+        monthly: payload.monthly ?? payload.monthly_spend ?? 0,
+        daily_limit: payload.daily_limit ?? null,
+        monthly_limit: payload.monthly_limit ?? null,
+        daily_remaining: payload.daily_remaining ?? null,
+        monthly_remaining: payload.monthly_remaining ?? null,
+        daily_pct: payload.daily_pct ?? null,
+        monthly_pct: payload.monthly_pct ?? null,
+        tokens_today: payload.tokens_today ?? payload.total_tokens ?? 0,
+        requests_today: payload.requests_today ?? payload.total_calls ?? 0,
+      }
     } catch (err) {
       console.error('Failed to fetch current spend:', err)
+      currentSpend.value = { daily: 0, monthly: 0 }
     }
   }
 

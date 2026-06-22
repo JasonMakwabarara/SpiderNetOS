@@ -39,6 +39,7 @@ export const useAtlasStore = defineStore('atlas', () => {
   const commandAst = ref(null)
   const tasks = ref([])
   const activeAgent = ref(null)
+
   const slashCommands = ref([
     { command: '/create', description: 'Create a new flow or resource' },
     { command: '/run', description: 'Run / execute an existing flow' },
@@ -50,6 +51,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     { command: '/analyze', description: 'Analyze data or metrics' },
     { command: '/monitor', description: 'Monitor system activity in real-time' },
     { command: '/agents', description: 'List and manage agents' },
+    { command: '/research', description: 'Deep analysis with citations' },
     { command: '/clear', description: 'Clear conversation history' },
     { command: '/trace', description: 'Show recent execution traces' },
   ])
@@ -93,12 +95,21 @@ export const useAtlasStore = defineStore('atlas', () => {
       .reduce((sum, m) => sum + m.metadata.cost, 0)
   })
 
-  // ── Actions ────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────
 
-  /**
-   * Send a message to Atlas and receive a response.
-   * @param {string} text - The user message text.
-   */
+  function formatContractContent(payload) {
+    const contract = payload?.message?.contract
+    if (!contract) {
+      return payload?.message?.content || payload?.content || 'I processed your request.'
+    }
+    const parts = [
+      contract.action_summary,
+      contract.value ? `\n\nValue: ${contract.value}` : '',
+      contract.future_state ? `\n\nOutcome: ${contract.future_state}` : '',
+    ].filter(Boolean)
+    return parts.join('') || contract.action_summary || 'Done.'
+  }
+
   async function sendMessage(text) {
     if (!text || !text.trim()) return { success: false }
 
@@ -113,10 +124,11 @@ export const useAtlasStore = defineStore('atlas', () => {
     error.value = null
 
     try {
-      const response = await api.post('/api/atlas/chat', {
+      const payload = {
         message: text.trim(),
         session_id: currentSessionId.value,
-      })
+      }
+      const response = await api.post('/api/atlas/chat', payload)
 
       const data = response.data
 
@@ -140,37 +152,32 @@ export const useAtlasStore = defineStore('atlas', () => {
         currentPlan.value = data.plan
       }
 
-      // Update active agent
-      if (data.agent) {
+      if (data.message?.metadata?.intent || data.message?.metadata?.agent_used) {
         activeAgent.value = {
-          name: data.agent,
-          model: data.model || null,
-          cost: data.cost || 0,
+          name: data.message.metadata.agent_used || 'atlas',
+          model: data.message.metadata.model || null,
+          cost: data.message.metadata.estimated_cost_usd || 0,
         }
       }
 
-      // Handle suggestions if returned
-      if (data.suggestions && Array.isArray(data.suggestions)) {
-        suggestions.value = data.suggestions
-      }
-
-      // Add assistant response message
       const assistantMessage = {
-        id: data.message_id || `msg_${Date.now() + 1}`,
+        id: data.message?.id || data.message_id || `msg_${Date.now() + 1}`,
         role: 'assistant',
-        content: data.message || data.content || data.result?.output || 'I processed your request.',
-        timestamp: new Date().toISOString(),
+        content: formatContractContent(data),
+        timestamp: data.message?.timestamp || new Date().toISOString(),
+        contract: data.message?.contract || null,
         metadata: {
-          agent: data.agent || data.agent_target || null,
-          intent: data.intent || null,
-          confidence: data.confidence || null,
-          cost: data.cost || null,
-          model: data.model || null,
-          execution_time: data.execution_time_ms || null,
-          tokens_used: data.tokens_used || null,
+          agent: data.message?.metadata?.agent_used || null,
+          intent: data.message?.metadata?.intent || null,
+          cost: data.message?.metadata?.estimated_cost_usd ?? null,
+          model: data.message?.metadata?.model || null,
         },
       }
       messages.value.push(assistantMessage)
+
+      if (data.suggestions && Array.isArray(data.suggestions)) {
+        suggestions.value = data.suggestions
+      }
 
       // Update session in map
       if (currentSessionId.value) {

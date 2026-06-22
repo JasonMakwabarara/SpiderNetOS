@@ -33,6 +33,10 @@ class AtlasIntentCompiler
      * Order matters: more specific patterns should come first.
      */
     private const COMMAND_PATTERNS = [
+        '/^\/research\s+(.+)/i' => [
+            'intent'     => 'analyze_data',
+            'entity_key' => 'research_query',
+        ],
         // /create flow ... → create_flow
         '/^\/create\s+flow\s+(.+)/i' => [
             'intent'     => 'create_flow',

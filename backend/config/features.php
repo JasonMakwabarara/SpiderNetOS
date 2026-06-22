@@ -155,4 +155,16 @@ return [
      */
     'atlas.enhance_prompt' => env('FEATURE_ATLAS_ENHANCE_PROMPT', 'on'),
 
+    /**
+     * OpenJarvis local-first augmentation for Atlas AI (background only — not user-facing).
+     * @see docs/OPENJARVIS_INTEGRATION.md
+     */
+    'atlas.openjarvis' => env('FEATURE_ATLAS_OPENJARVIS', 'on'),
+
+    /** Growth+ — morning digest / operator briefing via Atlas outcomes loop. */
+    'atlas.jarvis.morning_digest' => env('FEATURE_ATLAS_JARVIS_MORNING_DIGEST', 'on'),
+
+    /** Enterprise — deep multi-hop research agent (background Atlas augmentation). */
+    'atlas.jarvis.deep_research' => env('FEATURE_ATLAS_JARVIS_DEEP_RESEARCH', 'on'),
+
 ];

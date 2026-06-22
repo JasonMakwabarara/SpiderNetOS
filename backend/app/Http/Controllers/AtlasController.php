@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\AtlasInteractionLogger;
+use App\Services\AtlasJarvisAugmentor;
 use App\Services\EventStore;
 use App\Services\FeatureFlag;
 use App\Services\MetaPlanner;
@@ -28,6 +29,7 @@ class AtlasController extends Controller
         TransformationEngine $transformationEngine,
         AtlasInteractionLogger $interactionLogger,
         OnboardingPolicy $onboardingPolicy,
+        private readonly AtlasJarvisAugmentor $jarvisAugmentor,
     ) {
         $this->eventStore = $eventStore;
         $this->metaPlanner = $metaPlanner;
@@ -140,13 +142,24 @@ class AtlasController extends Controller
             ],
         );
 
+        // Background inference augmentation (OpenJarvis bridge — not exposed to clients)
+        $tenant = $request->attributes->get('tenant');
+        $jarvisPayload = $this->jarvisAugmentor->augment(
+            tenantId: $tenantId,
+            userId: $userId,
+            sessionId: $sessionId,
+            message: $message,
+            plan: $tenant?->plan,
+        );
+
         // Parse intent for TransformationEngine
-        $parsedIntent = $this->parseIntentForTransformation($result, $message);
+        $parsedIntent = $this->parseIntentForTransformation($result, $message, $jarvisPayload);
 
         // Transform execution result into 5-field contract
+        $executionResult = $this->buildExecutionResult($result, $jarvisPayload);
         $transformed = $this->transformationEngine->transform(
             $parsedIntent,
-            $this->buildExecutionResult($result),
+            $executionResult,
             $style,
         );
 
@@ -188,7 +201,7 @@ class AtlasController extends Controller
             'user_input' => $message,
             'parsed_intent' => $parsedIntent,
             'atlas_response' => $contract,
-            'execution_result' => $this->buildExecutionResult($result),
+            'execution_result' => $executionResult,
             'generation' => [
                 'style' => $transformed['style'],
                 'source' => $transformed['source'],
@@ -196,6 +209,8 @@ class AtlasController extends Controller
                 'latency_ms' => (int) round((microtime(true) - $startedAt) * 1000),
             ],
         ]);
+
+        $inferenceCost = (float) ($jarvisPayload['jarvis']['intelligence_per_watt']['estimated_cost_usd'] ?? 0);
 
         return response()->json([
             'contract_version' => '1',
@@ -212,6 +227,7 @@ class AtlasController extends Controller
                     'status' => $result['status'] ?? 'received',
                     'style' => $transformed['style'],
                     'source' => $transformed['source'],
+                    'estimated_cost_usd' => $inferenceCost > 0 ? $inferenceCost : null,
                 ],
             ],
             'ast' => $result['ast'] ?? null,
@@ -222,7 +238,7 @@ class AtlasController extends Controller
     /**
      * Translate planner result + user message into a parsed_intent structure.
      */
-    private function parseIntentForTransformation(array $result, string $message): array
+    private function parseIntentForTransformation(array $result, string $message, ?array $jarvisPayload = null): array
     {
         $type = $result['ast']['type'] ?? 'chat';
 
@@ -233,10 +249,24 @@ class AtlasController extends Controller
             default => 'chat',
         };
 
+        if ($jarvisPayload !== null) {
+            $agent = $jarvisPayload['jarvis']['agent'] ?? null;
+            if ($agent === 'deep_research') {
+                $taskType = 'analysis';
+            } elseif (in_array($agent, ['orchestrator', 'code_assistant', 'native_react'], true)) {
+                $taskType = 'automation';
+            }
+        }
+
+        $functionalGoal = $message;
+        if (!empty($jarvisPayload['jarvis']['text'])) {
+            $functionalGoal = $jarvisPayload['jarvis']['text'];
+        }
+
         return [
             'desired_future' => '',
             'pain_points' => '',
-            'functional_goal' => $message,
+            'functional_goal' => $functionalGoal,
             'emotional_goal' => '',
             'task_type' => $taskType,
         ];
@@ -245,17 +275,22 @@ class AtlasController extends Controller
     /**
      * Build a stable execution_result structure for the transformation engine.
      */
-    private function buildExecutionResult(array $result): array
+    private function buildExecutionResult(array $result, ?array $jarvisPayload = null): array
     {
-        return [
+        $base = [
             'status' => $result['status'] ?? 'received',
             'agent_used' => $result['agent_id'] ?? 'atlas',
             'cost_status' => $result['cost_status'] ?? null,
-            'metrics' => [
-                // Intentionally empty for v1 defaults; actual execution metrics
-                // are populated by downstream agents and joined later via events.
-            ],
+            'metrics' => [],
         ];
+
+        if ($jarvisPayload !== null) {
+            $base['jarvis'] = $jarvisPayload['jarvis'];
+            $base['metrics']['jarvis_source'] = $jarvisPayload['jarvis']['source'] ?? null;
+            $base['metrics']['local_first'] = $jarvisPayload['jarvis']['intelligence_per_watt']['local_first'] ?? null;
+        }
+
+        return $base;
     }
 
     /**

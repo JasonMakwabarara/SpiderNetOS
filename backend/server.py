@@ -59,6 +59,9 @@ CAP_BY_ROLE: Dict[str, List[str]] = {
     ],
 }
 
+ADMIN_EMAIL = "admin@spidernetos.com"
+ADMIN_PASSWORD = "Zukaarimoto01!"
+
 
 def _principal(email: str, role: str = "super_admin") -> Dict[str, Any]:
     return {
@@ -105,7 +108,21 @@ class RegisterBody(BaseModel):
 async def login(body: LoginBody):
     if not body.email or not body.password:
         raise HTTPException(status_code=422, detail="email and password are required")
+
+    email = body.email.strip().lower()
     role = body.role if body.role in CAP_BY_ROLE else "super_admin"
+
+    if email == ADMIN_EMAIL:
+        if body.password != ADMIN_PASSWORD:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        principal = _principal(ADMIN_EMAIL, "super_admin")
+        principal["user"]["name"] = "SpiderNet Admin"
+        principal["user"]["email"] = ADMIN_EMAIL
+        principal["tenant"]["name"] = "SpiderNetOS"
+        principal["tenant"]["id"] = "tnt_spidernetos"
+        principal["capabilities"] = CAP_BY_ROLE["super_admin"]
+        return principal
+
     return _principal(body.email, role)
 
 

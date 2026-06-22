@@ -28,7 +28,7 @@ class PlatformController extends Controller
         $tenantCount = Tenant::count();
         $activeTenants = Tenant::where('status', 'active')->count();
         $userCount = User::count();
-        $eventsLast24h = Event::where('created_at', '>=', now()->subDay())->count();
+        $eventsLast24h = Event::where('occurred_at', '>=', now()->subDay())->count();
 
         // Usage snapshot from daily aggregates
         $today = now()->toDateString();

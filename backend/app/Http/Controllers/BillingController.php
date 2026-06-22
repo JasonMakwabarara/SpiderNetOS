@@ -47,6 +47,23 @@ class BillingController extends Controller
             $budget = DB::table('cost_budgets')->where('tenant_id', $tenantId)->first();
         }
 
+        $atlasInferenceDaily = 0.0;
+        $atlasInferenceMonthly = 0.0;
+
+        if (Schema::hasTable('usage_daily_aggregates')) {
+            $atlasInferenceDaily = (float) DB::table('usage_daily_aggregates')
+                ->where('tenant_id', $tenantId)
+                ->where('resource_type', 'atlas_inference')
+                ->whereDate('date', now()->toDateString())
+                ->sum('total_cost');
+
+            $atlasInferenceMonthly = (float) DB::table('usage_daily_aggregates')
+                ->where('tenant_id', $tenantId)
+                ->where('resource_type', 'atlas_inference')
+                ->whereBetween('date', [now()->copy()->startOfMonth()->toDateString(), now()->toDateString()])
+                ->sum('total_cost');
+        }
+
         return response()->json([
             'data' => [
                 'tenant_id' => $tenantId,
@@ -64,6 +81,8 @@ class BillingController extends Controller
                 'spend' => [
                     'daily_usd' => round($dailySpend, 4),
                     'monthly_usd' => round($monthlySpend, 4),
+                    'atlas_inference_daily_usd' => round($atlasInferenceDaily, 4),
+                    'atlas_inference_monthly_usd' => round($atlasInferenceMonthly, 4),
                 ],
                 'budget' => $budget ? [
                     'daily_limit' => (float) $budget->daily_limit,

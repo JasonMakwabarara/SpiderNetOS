@@ -45,6 +45,56 @@ export const useTracesStore = defineStore('traces', () => {
 
   // ── Actions ────────────────────────────────────────────────────────
 
+  function normalizeStatus(status) {
+    if (['ok', 'warn', 'error'].includes(status)) return status
+    if (['completed', 'success', 'succeeded'].includes(status)) return 'ok'
+    if (['failed', 'error'].includes(status)) return 'error'
+    if (['running', 'pending', 'queued'].includes(status)) return 'warn'
+    return 'ok'
+  }
+
+  function normalizeTrace(trace) {
+    const status = normalizeStatus(trace.status)
+    const id = String(trace.id || trace.dag_id || trace.execution?.id || '')
+
+    return {
+      ...trace,
+      id,
+      status,
+      kind: trace.kind || trace.event_type || 'flow.execution',
+      subject: trace.subject || trace.name || trace.flow_id || `Execution ${id.slice(0, 8)}`,
+      actor: trace.actor || trace.user_name || trace.user_id || 'system',
+      created_at: trace.created_at || trace.started_at || trace.occurred_at || trace.execution?.started_at,
+      duration_ms: trace.duration_ms ?? trace.latency_ms ?? null,
+      cost_usd: Number(trace.cost_usd ?? trace.cost ?? 0),
+      metadata: trace.metadata || trace.errors || {},
+      events: trace.events || [],
+    }
+  }
+
+  function normalizeTraceList(payload) {
+    const list = payload?.data || payload?.traces || payload || []
+    return Array.isArray(list) ? list.map(normalizeTrace) : []
+  }
+
+  function normalizeTraceDetail(payload) {
+    const trace = payload?.data || payload?.trace || payload || null
+    if (!trace) return null
+
+    if (trace.execution) {
+      return normalizeTrace({
+        ...trace.execution,
+        metadata: {
+          node_states: trace.node_states,
+          event_count: trace.event_count,
+        },
+        events: trace.events || [],
+      })
+    }
+
+    return normalizeTrace(trace)
+  }
+
   /**
    * Fetch all traces from the API.
    * @param {object} [filters] - Optional query filters.
@@ -55,9 +105,10 @@ export const useTracesStore = defineStore('traces', () => {
 
     try {
       const response = await api.get('/api/traces', { params: filters })
-      traces.value = response.data.data || response.data || []
+      traces.value = normalizeTraceList(response.data)
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch traces'
+      traces.value = []
     } finally {
       loading.value = false
     }
@@ -74,7 +125,7 @@ export const useTracesStore = defineStore('traces', () => {
 
     try {
       const response = await api.get(`/api/traces/${dagId}`)
-      const data = response.data.data || response.data
+      const data = normalizeTraceDetail(response.data)
       currentTrace.value = data
       traceEvents.value = data?.events || []
       return currentTrace.value

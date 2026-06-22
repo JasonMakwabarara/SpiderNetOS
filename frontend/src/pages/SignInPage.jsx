@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   KeyRound,
   Mail,
@@ -9,21 +9,45 @@ import {
   Smartphone,
   AlertCircle,
   Check,
+  Lock,
 } from 'lucide-react';
 import { Logo, Pill } from '../components/Atoms';
 import { api, auth } from '../lib/api';
 import NetworkGraph from '../components/NetworkGraph';
 
 const METHODS = [
+  { id: 'password', label: 'Email & password', icon: Lock, sub: 'Platform admin' },
   { id: 'sso', label: 'Enterprise SSO', icon: KeyRound, sub: 'OIDC / SAML' },
   { id: 'magic', label: 'Magic link', icon: Mail, sub: 'Email passwordless' },
   { id: 'webauthn', label: 'Passkey', icon: Fingerprint, sub: 'WebAuthn / U2F' },
   { id: 'totp', label: 'TOTP code', icon: Smartphone, sub: 'Authenticator app' },
 ];
 
+function cockpitRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get('return_to');
+  if (returnTo && returnTo.startsWith('/cockpit')) {
+    window.location.assign(returnTo);
+  } else {
+    window.location.assign('/cockpit/');
+  }
+}
+
+/** Laravel Sanctum is the canonical identity plane for cockpit business APIs. */
+async function establishCockpitSession(email, password) {
+  const { data: session } = await api.post('/auth/login', { email, password });
+  auth.saveSession({
+    access_token: session.access_token || session.token,
+    user: session.user,
+    tenant: session.tenant,
+    caps: session.caps || session.capabilities || session.user?.capabilities || [],
+  });
+}
+
 export default function SignInPage() {
-  const [method, setMethod] = useState('sso');
-  const [email, setEmail] = useState('');
+  const [method, setMethod] = useState('password');
+  const [email, setEmail] = useState('admin@spidernetos.com');
+  const [password, setPassword] = useState('');
   const [tenant, setTenant] = useState('');
   const [provider, setProvider] = useState('oidc-demo');
   const [code, setCode] = useState('');
@@ -31,7 +55,19 @@ export default function SignInPage() {
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(false);
   const [magicLinkPreview, setMagicLinkPreview] = useState(null);
-  const nav = useNavigate();
+
+  const doPassword = async () => {
+    setErr(null);
+    setLoading(true);
+    try {
+      await establishCockpitSession(email, password);
+      cockpitRedirect();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const doSSO = async () => {
     setErr(null);
@@ -44,7 +80,7 @@ export default function SignInPage() {
       // demo mode auto-completes
       if (res.data.completed) {
         auth.saveSession(res.data);
-        window.location.assign('/cockpit/');
+        cockpitRedirect();
       } else {
         window.location.href = res.data.authorization_url;
       }
@@ -76,7 +112,7 @@ export default function SignInPage() {
     try {
       const res = await api.post('/enterprise/auth/magic-link/verify', { token });
       auth.saveSession(res.data);
-      window.location.assign('/cockpit/');
+      cockpitRedirect();
     } catch (e) {
       setErr(e?.response?.data?.detail || 'Magic link invalid or expired');
     } finally {
@@ -90,7 +126,7 @@ export default function SignInPage() {
     try {
       const res = await api.post('/enterprise/auth/totp/login', { email, code });
       auth.saveSession(res.data);
-      window.location.assign('/cockpit/');
+      cockpitRedirect();
     } catch (e) {
       setErr(e?.response?.data?.detail || 'TOTP verification failed');
     } finally {
@@ -107,7 +143,7 @@ export default function SignInPage() {
         email: email || 'operator@acme.ops',
       });
       auth.saveSession(res.data);
-      window.location.assign('/cockpit/');
+      cockpitRedirect();
     } catch (e) {
       setErr(e?.response?.data?.detail || 'Passkey not registered for this user');
     } finally {
@@ -136,7 +172,12 @@ export default function SignInPage() {
             <h1 className="mt-4 text-3xl tracking-tight font-medium">
               Welcome back to <span className="text-accent-orange">SpiderNet</span>OS
             </h1>
-            <p className="mt-2 text-textc-secondary text-sm">
+            <p className="mt-2 text-textc-secondary text-sm leading-relaxed">
+              The operator console for your autonomous business. SpiderNetOS runs thousands of
+              decisions a day — agents, flows, governance, approvals — and hands you a 5-minute
+              weekly review. This is the cockpit.
+            </p>
+            <p className="mt-3 text-textc-muted text-xs">
               Choose your enterprise sign-in method.
             </p>
 
@@ -174,6 +215,44 @@ export default function SignInPage() {
               {msg && (
                 <div className="mb-4 flex items-center gap-2 text-sm text-feedback-success" data-testid="signin-msg">
                   <Check size={15} /> {msg}
+                </div>
+              )}
+
+              {method === 'password' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="mono text-xs uppercase tracking-wider text-textc-muted">Email</label>
+                    <input
+                      data-testid="password-email"
+                      type="email"
+                      className="input-field mt-1.5"
+                      placeholder="admin@spidernetos.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div>
+                    <label className="mono text-xs uppercase tracking-wider text-textc-muted">Password</label>
+                    <input
+                      data-testid="password-input"
+                      type="password"
+                      className="input-field mt-1.5"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      onKeyDown={(e) => e.key === 'Enter' && doPassword()}
+                    />
+                  </div>
+                  <button
+                    data-testid="password-submit"
+                    disabled={loading || !email || !password}
+                    onClick={doPassword}
+                    className="btn-primary w-full"
+                  >
+                    {loading ? 'Signing in…' : 'Sign in to Cockpit'} <ArrowRight size={15} />
+                  </button>
                 </div>
               )}
 

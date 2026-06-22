@@ -20,6 +20,9 @@ import Intelligence from '../views/Intelligence.vue'
 // Lazy user views
 const AgentBuilder  = () => import('../views/AgentBuilder.vue')
 const Billing       = () => import('../views/Billing.vue')
+const Outcomes      = () => import('../views/Outcomes.vue')
+const Communications = () => import('../views/Communications.vue')
+const FeaturePacks  = () => import('../views/FeaturePacks.vue')
 
 // Lazy financial views
 const FinancialDashboard = () => import('../views/financial/FinancialDashboard.vue')
@@ -71,6 +74,9 @@ const routes = [
   { path: '/approvals',     name: 'Approvals',     component: Approvals,   meta: { requiresAuth: true } },
   { path: '/traces',        name: 'Traces',        component: Traces,      meta: { requiresAuth: true } },
   { path: '/intelligence',  name: 'Intelligence',  component: Intelligence,meta: { requiresAuth: true } },
+  { path: '/outcomes',      name: 'Outcomes',      component: Outcomes,      meta: { requiresAuth: true } },
+  { path: '/communications', name: 'Communications', component: Communications, meta: { requiresAuth: true } },
+  { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },
   { path: '/usage',         name: 'Usage',         component: Usage,       meta: { requiresAuth: true } },
   { path: '/settings',      name: 'Settings',      component: Settings,    meta: { requiresAuth: true } },
@@ -143,14 +149,23 @@ router.beforeEach((to, _from, next) => {
   // Truly public routes (e.g. /share/trace/:token) bypass every gate.
   if (to.meta.public) return next()
 
-  // Public / guest routes
+  // Guest auth routes redirect to landing sign-in shell
   if (to.meta.guest) {
-    return auth.isAuthenticated ? next('/') : next()
+    if (auth.isAuthenticated) return next('/')
+    let hashPath = '#/'
+    if (typeof to.query.return_to === 'string' && to.query.return_to) {
+      const raw = to.query.return_to
+      hashPath = raw.startsWith('#') ? raw : `#${raw.startsWith('/') ? raw : `/${raw}`}`
+    }
+    window.location.assign(`/sign-in?return_to=${encodeURIComponent(`/cockpit/${hashPath}`)}`)
+    return false
   }
 
-  // Auth requirement
+  // Auth requirement — use landing sign-in UX (not in-cockpit Laravel-style login)
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return next({ path: '/login', query: { return_to: to.fullPath } })
+    const returnTo = `/cockpit/#${to.fullPath}`
+    window.location.assign(`/sign-in?return_to=${encodeURIComponent(returnTo)}`)
+    return false
   }
 
   // Phase 1: Onboarding gate — redirect to onboarding if incomplete

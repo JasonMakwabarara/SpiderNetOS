@@ -1,6 +1,7 @@
 metadata:
   id: financial-services
   version: 1.0.0
+  vertical: financial_services
   display_name: "Financial OS"
   description: >
     Comprehensive financial operating system for SpiderNetOS.

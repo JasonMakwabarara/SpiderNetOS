@@ -11,13 +11,16 @@ class MetaPlanner
 {
     private CostGovernor $costGovernor;
     private EventStore $eventStore;
+    private IntelligenceGateway $intelligenceGateway;
     
     public function __construct(
         CostGovernor $costGovernor,
-        EventStore $eventStore
+        EventStore $eventStore,
+        IntelligenceGateway $intelligenceGateway
     ) {
         $this->costGovernor = $costGovernor;
         $this->eventStore = $eventStore;
+        $this->intelligenceGateway = $intelligenceGateway;
     }
     
     /**
@@ -74,6 +77,20 @@ class MetaPlanner
         if ($flowId) {
             $dagId = $this->createDagExecution($tenantId, $flowId, $context);
         }
+
+        // Route through V2 semantic gateway before dispatch (non-blocking on failure)
+        $intelligence = $this->intelligenceGateway->evaluate(
+            [
+                'type' => 'agent_dispatch',
+                'agent_id' => $agentId,
+                'intent' => $intent,
+                'context' => $context,
+                'flow_id' => $flowId,
+                'dag_id' => $dagId,
+            ],
+            $tenantId
+        );
+        $context['intelligence'] = $intelligence;
         
         // Emit dispatch event (sole write target: event_log)
         $event = $this->eventStore->append(
@@ -88,6 +105,7 @@ class MetaPlanner
                 'flow_id' => $flowId,
                 'dag_id' => $dagId,
                 'cost_status' => $costStatus,
+                'intelligence' => $intelligence,
             ],
             metadata: [
                 'planner_version' => '3.2',
@@ -96,6 +114,7 @@ class MetaPlanner
                 'cost_estimate_source' => 'adaptive',
                 // Phase 1: explicit automation_level on agent.dispatched for STE / analytics
                 'automation_level' => $automationLevel,
+                'intelligence_route' => $intelligence['route'] ?? (($intelligence['ok'] ?? false) ? 'evaluated' : 'unavailable'),
             ]
         );
         
@@ -107,6 +126,7 @@ class MetaPlanner
             'intent' => $intent,
             'context' => $context,
             'dag_id' => $dagId,
+            'intelligence' => $intelligence,
         ]));
         
         return [
@@ -115,6 +135,7 @@ class MetaPlanner
             'dag_id' => $dagId,
             'cost_status' => $costStatus,
             'estimated_cost' => $estimatedCost,
+            'intelligence' => $intelligence,
         ];
     }
     
@@ -192,7 +213,9 @@ class MetaPlanner
     private function mapIntentToCapability(string $intent): string
     {
         return match ($intent) {
-            'process_command', 'chat' => 'chat',
+            'process_command' => 'nl_compilation',
+            'chat' => 'nl_compilation',
+            'health_check' => 'health_monitoring',
             'execute_flow' => 'flow_execution',
             'generate_content' => 'content_generation',
             'analyze_data' => 'data_analysis',
@@ -256,14 +279,14 @@ class MetaPlanner
         $query = DB::table('usage_records')->where('tenant_id', $tenantId);
 
         // Intent-aware filter from metadata JSON (best-effort)
-        $query->whereRaw("JSON_EXTRACT(metadata, '$.intent') = ?", [$intent]);
+        $query->where('metadata->intent', $intent);
 
         if ($agentId !== '') {
             $query->where('agent_id', $agentId);
         }
 
         if ($flowId !== '') {
-            $query->whereRaw("JSON_EXTRACT(metadata, '$.flow_id') = ?", [$flowId]);
+            $query->where('metadata->flow_id', $flowId);
         }
 
         $avg = (float) ($query->avg('cost_usd') ?? 0.0);

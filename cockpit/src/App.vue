@@ -317,6 +317,9 @@ const ic = {
   connectors: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M7 7V3M17 7V3M5 7h14v4a7 7 0 01-14 0V7zM12 18v3"/></svg>',
   aios:     '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>',
   shield:   '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z"/></svg>',
+  comms:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 12h8M8 16h5M4 6h16v12H4z"/></svg>',
+  packs:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 3l8 4v10l-8 4-8-4V7l8-4z"/></svg>',
+  outcomes: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 19h16M8 17V7m4 10V5m4 12V9"/></svg>',
 }
 
 // Grouped nav
@@ -324,6 +327,7 @@ const userNav = {
   label: 'Operate', items: [
     { key: 'dashboard', name: 'Dashboard', path: '/', exact: true, icon: ic.dashboard },
     { key: 'atlas', name: 'Atlas', path: '/atlas', icon: ic.atlas, badge: null },
+    { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
     { key: 'traces', name: 'Traces', path: '/traces', icon: ic.traces },
   ],
@@ -333,10 +337,12 @@ const buildNav = {
     { key: 'agents', name: 'Agents', path: '/agents', icon: ic.agents },
     { key: 'flows', name: 'Flows', path: '/flows', icon: ic.flows },
     { key: 'memory', name: 'Memory', path: '/memory', icon: ic.memory },
+    { key: 'feature-packs', name: 'Feature packs', path: '/feature-packs', icon: ic.packs },
   ],
 }
 const observeNav = {
   label: 'Observe', items: [
+    { key: 'outcomes', name: 'Weekly review', path: '/outcomes', icon: ic.outcomes },
     { key: 'usage', name: 'Usage', path: '/usage', icon: ic.usage },
     { key: 'intelligence', name: 'Intelligence', path: '/intelligence', icon: ic.intel },
   ],

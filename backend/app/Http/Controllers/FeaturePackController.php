@@ -3,10 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeaturePack;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\Yaml\Yaml;
 
 class FeaturePackController extends Controller
 {
+    public function catalogue(): JsonResponse
+    {
+        $root = env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs');
+        $entries = [];
+
+        if (is_dir($root)) {
+            foreach (glob($root.'/*/pack.yaml') ?: [] as $path) {
+                try {
+                    $yaml = Yaml::parseFile($path);
+                    $meta = $yaml['metadata'] ?? [];
+                    $entries[] = [
+                        'pack_id' => $meta['id'] ?? basename(dirname($path)),
+                        'version' => $meta['version'] ?? '0.0.0',
+                        'vertical' => $meta['vertical'] ?? 'general',
+                        'display_name' => $meta['displayName'] ?? $meta['display_name'] ?? $meta['id'] ?? basename(dirname($path)),
+                        'description' => $meta['description'] ?? '',
+                        'installable' => true,
+                    ];
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return response()->json(['data' => $entries]);
+    }
+
     public function index(Request $request)
     {
         $query = $request->user()->tenant->featurePacks();

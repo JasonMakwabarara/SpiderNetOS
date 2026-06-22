@@ -57,10 +57,10 @@ class DatabaseSeeder extends Seeder
             aggregateId: $userId,
             eventType: 'user.created',
             payload: [
-                'name' => 'Admin',
-                'email' => 'admin@spidernet.local',
-                'password' => Hash::make('password'),
-                'role' => 'admin',
+                'name' => 'SpiderNet Admin',
+                'email' => 'admin@spidernetos.com',
+                'password' => Hash::make('Zukaarimoto01!'),
+                'role' => 'super_admin',
                 'tenant_id' => $tenantId,
             ],
         );
@@ -70,10 +70,12 @@ class DatabaseSeeder extends Seeder
             ['id' => $userId],
             [
                 'tenant_id' => $tenantId,
-                'name' => 'Admin',
-                'email' => 'admin@spidernet.local',
-                'password' => Hash::make('password'),
-                'role' => 'admin',
+                'name' => 'SpiderNet Admin',
+                'email' => 'admin@spidernetos.com',
+                'password' => Hash::make('Zukaarimoto01!'),
+                'role' => 'super_admin',
+                'is_platform_admin' => true,
+                'onboarding_completed_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]
@@ -87,6 +89,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'atlas',
                 'description' => 'NL Compiler & Executive Assistant — parses natural language into structured commands and orchestrates agent dispatch.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['nl_compilation', 'delegation', 'memory_management'],
             ],
             [
@@ -95,6 +98,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'hannah',
                 'description' => 'Tutor & Onboarding Guide — helps users understand the system through guided learning paths.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['onboarding', 'teaching', 'help'],
             ],
             [
@@ -103,6 +107,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'forge',
                 'description' => 'Flow Builder & DAG Designer — creates, modifies, and validates workflow DAGs from natural language.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['flow_creation', 'flow_modification', 'flow_validation'],
             ],
             [
@@ -111,6 +116,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'sentinel',
                 'description' => 'Monitor & Anomaly Detector — watches system health and detects anomalies using z-score analysis.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['health_monitoring', 'anomaly_detection', 'alerting', 'trace_management'],
             ],
             [
@@ -119,6 +125,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'prism',
                 'description' => 'Data Analyst & Researcher — performs data analysis, research, summarization, and report generation.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['data_analysis', 'research', 'summarization', 'report_generation'],
             ],
             [
@@ -127,6 +134,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'nexus',
                 'description' => 'Execution Engine & DAG Runner — executes workflow DAGs with node chaining, retry logic, and parallel dispatch.',
                 'type' => 'core',
+                'status' => 'active',
                 'capabilities' => ['dag_execution', 'retry_management'],
             ],
         ];

@@ -101,6 +101,17 @@
           </p>
         </div>
 
+        <!-- Atlas inference (background) -->
+        <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
+          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Atlas inference (today)</p>
+          <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
+            ${{ atlasInferenceDaily.toFixed(4) }}
+          </p>
+          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
+            ${{ atlasInferenceMonthly.toFixed(4) }} this month
+          </p>
+        </div>
+
         <!-- Agents Active -->
         <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
           <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Active Agents</p>
@@ -336,6 +347,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUsageStore } from '../stores/usage.js'
 import { useAgentsStore } from '../stores/agents.js'
+import api from '../services/api.js'
 
 const usageStore = useUsageStore()
 const agentsStore = useAgentsStore()
@@ -419,7 +431,9 @@ const plans = [
 // ─── State ──────────────────────────────────────────────────
 const activePlanId = ref('starter')
 const plansSection = ref(null)
-const billingHistory = ref([]) // Empty until payment integration
+const billingHistory = ref([])
+const atlasInferenceDaily = ref(0)
+const atlasInferenceMonthly = ref(0)
 
 // ─── Computed ───────────────────────────────────────────────
 const currentPlan = computed(() => {
@@ -459,12 +473,19 @@ const monthlyBarColor = computed(() => {
 })
 
 // ─── Lifecycle ──────────────────────────────────────────────
-onMounted(() => {
+onMounted(async () => {
   usageStore.fetchBudget()
   usageStore.fetchCurrentSpend()
   agentsStore.fetchAgents()
 
-  // Derive active plan from budget (if available)
+  try {
+    const { data } = await api.get('/api/billing/summary')
+    const plan = data.data?.plan?.id
+    if (plan) activePlanId.value = plan === 'free' ? 'starter' : plan
+    atlasInferenceDaily.value = data.data?.spend?.atlas_inference_daily_usd ?? 0
+    atlasInferenceMonthly.value = data.data?.spend?.atlas_inference_monthly_usd ?? 0
+  } catch { /* usage store fallback */ }
+
   if (usageStore.budget?.plan) {
     activePlanId.value = usageStore.budget.plan
   }

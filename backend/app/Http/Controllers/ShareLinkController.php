@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -133,9 +134,34 @@ class ShareLinkController extends Controller
             }
         }
 
+        $durationMs = null;
+        if ($execution->started_at && $execution->completed_at) {
+            $durationMs = \Carbon\Carbon::parse($execution->started_at)
+                ->diffInMilliseconds(\Carbon\Carbon::parse($execution->completed_at));
+        }
+
         return response()->json([
             'kind' => 'trace',
             'expires_at' => $row->expires_at,
+            'data' => [
+                'id' => (string) $execution->id,
+                'kind' => 'flow.execution',
+                'status' => $this->normalizeStatus((string) $execution->status),
+                'subject' => (string) $execution->flow_id,
+                'actor' => 'system',
+                'created_at' => $execution->started_at,
+                'duration_ms' => $durationMs,
+                'cost_usd' => 0.0,
+                'metadata' => [
+                    'nodes' => $nodes,
+                    'edges' => $edges,
+                    'node_states' => $nodeStates,
+                    'event_count' => $eventCount,
+                    'errors' => $execution->errors,
+                    'results' => $execution->results,
+                ],
+                'events' => [],
+            ],
             'trace' => [
                 'execution' => $execution,
                 'nodes' => $nodes,
@@ -204,5 +230,15 @@ class ShareLinkController extends Controller
         }
 
         return $row;
+    }
+
+    private function normalizeStatus(string $status): string
+    {
+        return match ($status) {
+            'completed', 'success', 'succeeded', 'ok' => 'ok',
+            'failed', 'error' => 'error',
+            'running', 'pending', 'queued', 'warn' => 'warn',
+            default => 'ok',
+        };
     }
 }

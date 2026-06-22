@@ -18,8 +18,18 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 })
 
+function readAccessToken() {
+  return localStorage.getItem('token') || localStorage.getItem('sn_access_token')
+}
+
+function redirectToLandingSignIn() {
+  const hash = window.location.hash || '#/'
+  const returnTo = `/cockpit/${hash.startsWith('#') ? hash : `#/${hash.replace(/^\//, '')}`}`
+  window.location.href = `/sign-in?return_to=${encodeURIComponent(returnTo)}`
+}
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = readAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
 
   try {
@@ -34,10 +44,11 @@ api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      const here = window.location.pathname + window.location.search
-      if (!here.startsWith('/login')) {
-        window.location.href = `/login?return_to=${encodeURIComponent(here)}`
+      ;['token', 'sn_access_token', 'user', 'sn_user', 'tenant', 'sn_tenant', 'caps'].forEach((k) =>
+        localStorage.removeItem(k),
+      )
+      if (!window.location.pathname.startsWith('/sign-in')) {
+        redirectToLandingSignIn()
       }
     }
     if (err.response?.status === 429) {
@@ -52,11 +63,7 @@ api.interceptors.response.use(
 // axios directly keep working without refactor.
 axios.defaults.baseURL = api.defaults.baseURL
 axios.interceptors.request.use((config) => {
-  // If the call is absolute, leave it alone. Otherwise prepend baseURL.
-  if (!config.url?.startsWith('http')) {
-    // Already handled by baseURL
-  }
-  const token = localStorage.getItem('token')
+  const token = readAccessToken()
   if (token && !config.headers.Authorization) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -64,10 +71,11 @@ axios.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      const here = window.location.pathname + window.location.search
-      if (!here.startsWith('/login')) {
-        window.location.href = `/login?return_to=${encodeURIComponent(here)}`
+      ;['token', 'sn_access_token', 'user', 'sn_user', 'tenant', 'sn_tenant', 'caps'].forEach((k) =>
+        localStorage.removeItem(k),
+      )
+      if (!window.location.pathname.startsWith('/sign-in')) {
+        redirectToLandingSignIn()
       }
     }
     return Promise.reject(err)

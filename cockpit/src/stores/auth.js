@@ -138,7 +138,8 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await api.get('/api/auth/me')
       user.value = data.user
       tenant.value = data.tenant
-      capabilities.value = data.capabilities || CAP_BY_ROLE[data.user?.role] || []
+      capabilities.value =
+        data.capabilities || data.user?.capabilities || CAP_BY_ROLE[data.user?.role] || []
       persist()
     } catch {
       logout()
@@ -146,10 +147,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function applyPrincipal(data) {
-    token.value = data.token
+    token.value = data.token || data.access_token
     user.value = data.user
     tenant.value = data.tenant
-    capabilities.value = data.capabilities || CAP_BY_ROLE[data.user?.role] || []
+    capabilities.value =
+      data.capabilities || data.caps || CAP_BY_ROLE[data.user?.role] || []
     persist()
   }
 

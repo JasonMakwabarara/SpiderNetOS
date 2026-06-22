@@ -1,55 +1,115 @@
 # SpiderNetOS — Test credentials & demo paths
 
-Updated: 12 May 2026. Aligned with the React + FastAPI enterprise build.
+Updated: 17 Jun 2026. Aligned with the unified v3 stack (`docker-compose.unified.yml`).
 
-## Sign-in flows (all working end-to-end without external credentials)
+## Primary admin (Laravel + enterprise)
 
-### 1. Enterprise SSO — Demo IdP
-Path: `/sign-in` → pick **Enterprise SSO**
-- Tenant slug: `demo` (any value works; tenant is auto-created if missing)
-- Provider: **Demo IdP (OIDC, simulated)** or **Demo IdP (SAML 2.0)**
-- Click **Continue with SSO** → backend `POST /api/enterprise/auth/sso/start` returns `{completed: true, access_token, user, tenant}` and the UI redirects to `/cockpit`.
+| Field | Value |
+|---|---|
+| Email | `admin@spidernetos.com` |
+| Password | `Zukaarimoto01!` |
+| Role | `super_admin` |
+| Tenant ID | `00000000-0000-0000-0000-000000000001` |
 
-### 2. Magic link
-- Email: any value (e.g. `jane@acme.com`)
-- Click **Send magic link** → backend returns `dev_link.token` in the response so the UI surfaces a clickable "↗ /verify?token=…" button.
-- Click it to consume the token → session issued.
+## Sign-in flow (landing UI)
 
-### 3. TOTP
-- Email: any value
-- Code: `000000` (demo bypass) — verified by `POST /api/enterprise/auth/totp/login`.
+Path: **`http://localhost/sign-in`** (not `/cockpit/#/login`)
 
-### 4. WebAuthn (demo-stubbed)
-- Email: any value
-- Clicking **Use passkey** issues a session via `POST /api/enterprise/auth/webauthn/login` (real WebAuthn ceremony will replace this in P1 backlog).
+1. Choose **Email & password**
+2. Sign-in establishes **two sessions**:
+   - **Enterprise** — `POST /api/enterprise/auth/password/login` → FastAPI (Mongo)
+   - **Laravel** — `POST /api/auth/login` → Sanctum token for cockpit business APIs
+3. Redirect → **`http://localhost/cockpit/`**
 
-## Enterprise Registration Wizard
-Path: `/enterprise/register` — 10 steps, all functional. Use any org name + corporate-style email (`jane@acme.com`). Domain verification, tenant creation, SCIM token issuance, bundle generation, and deployment start are all real backend calls. SCIM token is shown once on step 6.
+Tokens are mirrored in localStorage: `sn_access_token` / `token`, `sn_user` / `user`, etc.
 
-## Bundle download (signed)
-- Generate in Cockpit → AIOS Downloads (or wizard step 9).
-- Backend: `GET /api/enterprise/aios/bundle/{bundle_id}/download` → real ZIP, headers:
-  - `X-SpiderNet-SHA256: <hex>`
-  - `X-SpiderNet-Signature: <ed25519 hex>`
-- Verify endpoint: `GET /api/enterprise/aios/bundle/{bundle_id}/verify` returns signature + public key.
+## API routing (nginx :80)
 
-## SCIM 2.0
-- Service provider config (no auth): `GET /api/scim/v2/ServiceProviderConfig`
-- Users (bearer required): `GET /api/scim/v2/Users` with `Authorization: Bearer <token>`
-- Token issued at wizard step 6 via `POST /api/enterprise/register/scim/generate`. The response field is `scim_token` (also used as the bearer). Hash stored in `db.scim_tokens`.
+| Path | Backend |
+|---|---|
+| `/api/enterprise/*`, `/api/scim/*` | FastAPI cockpit-api :8001 |
+| `/api/v2/intelligence/*` | Laravel :8000 (proxies to semantic-gateway) |
+| `/api/v2/*` (other) | semantic-gateway :8005 |
+| `/api/*` (agents, flows, atlas, auth, platform) | Laravel :8000 |
 
-## Env / infra
-- Frontend base URL: `https://aios-onboarding.preview.emergentagent.com`
-- Backend (same origin, `/api/*` routed to port 8001 internally).
-- Mongo: `mongodb://localhost:27017`, DB `spidernetos`.
+## Intelligence evaluate (Laravel proxy)
+
+Requires Sanctum bearer token. `event_payload` must be a **JSON object** (array), not a bare string.
+
+```http
+POST /api/v2/intelligence/evaluate
+Authorization: Bearer <laravel_token>
+Content-Type: application/json
+
+{
+  "event_payload": { "type": "verify", "source": "manual" },
+  "workspace_id": "00000000-0000-0000-0000-000000000001"
+}
+```
+
+`tenant_id` is accepted as an alias for `workspace_id`.
+
+MetaPlanner calls the same gateway on every `agent.dispatched` event (non-blocking on failure).
+
+## Command dispatch
+
+```http
+POST /api/command
+Authorization: Bearer <laravel_token>
+
+{ "command": "Analyze pipeline bottlenecks for this week" }
+```
+
+Routes through MetaPlanner → Atlas agent → V2 evaluate → Redis `agent:dispatch`.
+
+## Other sign-in flows (demo)
+
+### Enterprise SSO — Demo IdP
+- Tenant slug: `demo`
+- Provider: **Demo IdP (OIDC, simulated)**
+- `POST /api/enterprise/auth/sso/start` → `{ completed: true, access_token, ... }`
+
+### Magic link
+- Any email → `POST /api/enterprise/auth/magic-link/request`
+- Dev mode returns `dev_link.token` in the response
+
+### TOTP
+- Code: `000000` (demo bypass)
+
+### WebAuthn
+- Demo stub via `POST /api/enterprise/auth/webauthn/login`
+
+## Enterprise registration wizard
+
+Path: **`http://localhost/enterprise/register`** — 10 steps.
+
+## Local infrastructure
+
+| Service | URL |
+|---|---|
+| Landing + cockpit shell | http://localhost |
+| Laravel API (direct) | http://localhost:8000/api |
+| Enterprise API (direct) | http://localhost:8001/api |
+| V2 semantic gateway (direct) | http://localhost:8005 |
+| OpenJarvis bridge (direct) | http://localhost:8010 |
+| Postgres | `postgresql://postgres:postgres@localhost:5432/spidernet` |
+| Mongo (enterprise) | `mongodb://localhost:27017/spidernetos` |
+| Redis | `localhost:6379` |
+
+## Verify the stack
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify-unified.ps1
+```
 
 ## What's mocked vs real
+
 | Flow | Status |
 |---|---|
-| OIDC real provider (Okta/Entra) code exchange | UI captures issuer/client_id/secret; backend has demo path only. Replace with Authlib in P1. |
-| SAML real provider | Same as above — config fields plumbed; demo path only. |
-| WebAuthn ceremony | Demo-stub session. Use `fido2` lib in P1. |
-| Magic-link email send | Token returned in response body (`dev_link`); plug SendGrid/Resend in P1. |
-| TOTP | Real `pyotp` verify + demo `000000` bypass for testability. |
-| AIOS bundle | Real ZIP, real SHA-256, real Ed25519 signature (key generated in-process). |
-| SCIM Users | Real bearer-guarded SCIM 2.0 List+Create. `/Groups` + PATCH = P2. |
+| Laravel agents / flows / command / platform | **Real** (Postgres + event_log) |
+| Enterprise password login | **Real** (FastAPI + Mongo) |
+| V2 intelligence evaluate | **Real** (semantic-gateway + pgvector schema) |
+| OIDC/SAML real IdP exchange | Demo path only |
+| WebAuthn ceremony | Demo stub |
+| Magic-link email delivery | Token returned in API (`dev_link`) |
+| AIOS bundle signing | Real Ed25519 + SHA-256 (in-process key) |

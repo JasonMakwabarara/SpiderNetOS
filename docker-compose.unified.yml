@@ -1,0 +1,218 @@
+# SpiderNetOS unified stack — landing branch
+# V1 business logic (Laravel) + V2 intelligence layer + React landing shell
+#
+# Usage:
+#   docker compose -f docker-compose.unified.yml up -d --build
+#   open http://localhost
+
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spidernet
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: spidernet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-pgvector.sql:ro
+      - ./scripts/init-v2-schema.sql:/docker-entrypoint-initdb.d/02-v2-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spidernet"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spidernet
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - spidernet
+
+  # FastAPI — cockpit mocks + enterprise auth (landing → sign-in → cockpit)
+  cockpit-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/server.py:/app/server.py
+      - ./backend/enterprise_api.py:/app/enterprise_api.py
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: spidernetos
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-CHANGE-ME-in-prod-spidernetos}
+      INTELLIGENCE_GATEWAY_URL: http://semantic-gateway:8000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  # Laravel — V1 business logic (agents, flows, tenants, STE)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - api_vendor:/var/www/html/vendor
+      - ./packages:/var/www/packages:ro
+      - ./scripts/init-pgvector.sql:/docker-init/init-pgvector.sql:ro
+      - ./scripts/init-v2-schema.sql:/docker-init/init-v2-schema.sql:ro
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY:-base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      INTELLIGENCE_GATEWAY_URL: http://semantic-gateway:8000
+      DAG_COMPILER_URL: http://dag-compiler:8000
+      RUNTIME_GUARDIAN_URL: http://runtime-guardian:8000
+      OPENJARVIS_BRIDGE_URL: http://openjarvis-bridge:8000
+      OPENJARVIS_ENABLED: "true"
+      FEATURE_ATLAS_OPENJARVIS: "on"
+      INFERENCE_URL: http://inference:9000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RUN_DB_SEED: ${RUN_DB_SEED:-true}
+      RATE_LIMIT_AUTH: 60
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      semantic-gateway:
+        condition: service_started
+      openjarvis-bridge:
+        condition: service_started
+    networks:
+      - spidernet
+
+  # V2 intelligence microservices
+  atlas-perception:
+    build: ./services/atlas-perception
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - spidernet
+
+  dag-compiler:
+    build: ./services/dag-compiler
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - spidernet
+
+  atlas-rl:
+    build: ./services/atlas-rl
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - spidernet
+
+  runtime-guardian:
+    build: ./services/runtime-guardian
+    depends_on:
+      - postgres
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - spidernet
+
+  semantic-gateway:
+    build: ./services/semantic-gateway
+    ports:
+      - "8005:8000"
+    depends_on:
+      - postgres
+      - redis
+      - atlas-perception
+      - dag-compiler
+      - atlas-rl
+      - runtime-guardian
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - spidernet
+
+  # OpenJarvis bridge — internal only; set OPENJARVIS_URL to edge-node OpenJarvis for local inference
+  openjarvis-bridge:
+    build: ./services/openjarvis-bridge
+    # Dev-only host port — omit in production (bridge stays on spidernet network)
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./integrations/openjarvis/skills:/app/skills:ro
+    environment:
+      OPENJARVIS_URL: ${OPENJARVIS_URL:-}
+      OPENJARVIS_API_KEY: ${OPENJARVIS_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JARVIS_SKILLS_ROOT: /app/skills
+    networks:
+      - spidernet
+
+  # React landing + static Vue cockpit
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      cockpit-api:
+        condition: service_started
+      semantic-gateway:
+        condition: service_started
+    networks:
+      - spidernet
+
+volumes:
+  mongodata:
+  pgdata:
+  api_vendor:
+
+networks:
+  spidernet:
+    driver: bridge

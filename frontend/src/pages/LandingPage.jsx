@@ -35,6 +35,7 @@ import {
 import { BarChart3 } from 'lucide-react';
 import MarketingHeader from '../components/MarketingHeader';
 import NetworkGraph from '../components/NetworkGraph';
+import CockpitSignInPreview from '../components/CockpitSignInPreview';
 import { Pill, SectionEyebrow, Logo } from '../components/Atoms';
 
 const TRUST = [
@@ -221,6 +222,7 @@ export default function LandingPage() {
         <div className="hero-glow absolute inset-0 pointer-events-none" />
         <div className="grid-bg absolute inset-0 pointer-events-none" />
         <div className="container-x relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="max-w-3xl">
             <Pill tone="cyan" className="mb-6" icon={<CircleDot size={12} />}>
               AI Operating System
@@ -265,6 +267,11 @@ export default function LandingPage() {
                 <ChevronRight size={16} />
               </Link>
             </div>
+          </div>
+
+          <div className="hidden lg:block">
+            <CockpitSignInPreview />
+          </div>
           </div>
 
           {/* Trust bar */}

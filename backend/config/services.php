@@ -12,6 +12,20 @@ return [
         'url' => env('INFERENCE_URL', 'http://localhost:9000'),
     ],
 
+    'intelligence_gateway' => [
+        // Host dev: localhost:8005 maps to semantic-gateway container :8000
+        'url' => env('INTELLIGENCE_GATEWAY_URL', 'http://localhost:8005'),
+        'timeout' => (int) env('INTELLIGENCE_GATEWAY_TIMEOUT', 30),
+    ],
+
+    'dag_compiler' => [
+        'url' => env('DAG_COMPILER_URL', 'http://localhost:8002'),
+    ],
+
+    'runtime_guardian' => [
+        'url' => env('RUNTIME_GUARDIAN_URL', 'http://localhost:8004'),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY', ''),
     ],
@@ -37,6 +51,14 @@ return [
             'cognitive'     => (float) env('ATLAS_TS_W_COGNITIVE', 0.05),
             'leakage'       => (float) env('ATLAS_TS_W_LEAKAGE', 0.05),
         ],
+    ],
+
+    'openjarvis' => [
+        'enabled' => env('OPENJARVIS_ENABLED', true),
+        'url' => env('OPENJARVIS_BRIDGE_URL', 'http://openjarvis-bridge:8000'),
+        'timeout' => (int) env('OPENJARVIS_TIMEOUT', 60),
+        // Optional: full OpenJarvis server (local-first stack)
+        'server_url' => env('OPENJARVIS_URL', ''),
     ],
 
 ];

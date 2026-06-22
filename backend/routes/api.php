@@ -19,6 +19,10 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\FeaturePackController;
+use App\Http\Controllers\IntelligenceProxyController;
+use App\Http\Controllers\OutcomesController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\ShareLinkController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +34,20 @@ use App\Http\Controllers\FeaturePackController;
 
 // Health check (no auth required)
 Route::get('/health', [HealthController::class, 'index']);
+
+// Public, token-gated read-only share links.
+Route::get('/public/traces/{token}', [ShareLinkController::class, 'publicTrace']);
+Route::get('/public/approvals/{token}', [ShareLinkController::class, 'publicApproval']);
+
+// V2 intelligence layer — proxied through Laravel (Sanctum required except health)
+Route::prefix('v2/intelligence')->group(function () {
+    Route::get('/health', [IntelligenceProxyController::class, 'health']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/evaluate', [IntelligenceProxyController::class, 'evaluate']);
+        Route::post('/atlas/coordinate-cycle', [IntelligenceProxyController::class, 'coordinateCycle']);
+        Route::post('/compile', [IntelligenceProxyController::class, 'compileDag']);
+    });
+});
 
 // Voice AI — Telephony webhooks (no auth, Twilio-signed — Phase A hardened)
 // High throttle cap; signature verification is the real gate.
@@ -115,6 +133,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/traces/{dag_id}', [ObservabilityController::class, 'trace']);
     Route::get('/traces/{dag_id}/replay', [ObservabilityController::class, 'replay']);
     Route::get('/traces/{dag_id}/divergence', [ObservabilityController::class, 'divergence']);
+    Route::post('/traces/{id}/share', [ShareLinkController::class, 'mintTrace']);
     
     // Usage & Budget
     Route::get('/usage/budget', [ObservabilityController::class, 'budget']);
@@ -147,8 +166,22 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::post('/integrations/calendar/book',        [CalendarController::class, 'book']);
 
     // Feature Packs (Phase 3)
+    Route::get('/feature-packs/catalogue', [FeaturePackController::class, 'catalogue']);
     Route::get('/feature-packs', [FeaturePackController::class, 'index']);
     Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
+
+    // Billing & monetization
+    Route::get('/billing/summary', [BillingController::class, 'summary']);
+
+    // V2 outcome loop — weekly review surface
+    Route::prefix('outcomes')->group(function () {
+        Route::get('/weekly-review', [OutcomesController::class, 'weeklyReview']);
+        Route::get('/recommendations', [OutcomesController::class, 'recommendations']);
+        Route::patch('/recommendations/{id}/accept', [OutcomesController::class, 'accept']);
+        Route::patch('/recommendations/{id}/reject', [OutcomesController::class, 'reject']);
+        Route::get('/autonomy', [OutcomesController::class, 'autonomy']);
+        Route::put('/autonomy', [OutcomesController::class, 'updateAutonomy']);
+    });
 });
 
 // ─── Admin workspace (role:admin) ───────────────────────────────

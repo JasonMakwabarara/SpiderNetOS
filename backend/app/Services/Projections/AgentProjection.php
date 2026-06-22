@@ -35,20 +35,22 @@ class AgentProjection
     private function handleRegistered(Event $event): void
     {
         $payload = $event->payload;
-        
-        DB::table('agents')->insert([
-            'id' => $event->aggregate_id,
+
+        DB::table('agents')->updateOrInsert(
+            ['id' => $event->aggregate_id],
+            [
             'tenant_id' => $event->tenant_id,
             'name' => $payload['name'],
             'slug' => $payload['slug'],
             'description' => $payload['description'] ?? null,
             'type' => $payload['type'],
-            'status' => 'inactive',
+            'status' => $payload['status'] ?? 'inactive',
             'capabilities' => json_encode($payload['capabilities'] ?? []),
             'config' => json_encode($payload['config'] ?? []),
             'created_at' => $event->occurred_at,
             'updated_at' => $event->occurred_at,
-        ]);
+            ]
+        );
     }
     
     private function handleActivated(Event $event): void
@@ -77,8 +79,10 @@ class AgentProjection
         $agent = DB::table('agents')->where('id', $event->aggregate_id)->first();
         if (!$agent) return;
         
-        $capabilities = json_decode($agent->capabilities, true);
-        $capabilities[] = $event->payload['capability'];
+        $capabilities = json_decode($agent->capabilities, true) ?? [];
+        if (!in_array($event->payload['capability'], $capabilities, true)) {
+            $capabilities[] = $event->payload['capability'];
+        }
         
         DB::table('agents')
             ->where('id', $event->aggregate_id)
@@ -93,7 +97,7 @@ class AgentProjection
         $agent = DB::table('agents')->where('id', $event->aggregate_id)->first();
         if (!$agent) return;
         
-        $capabilities = json_decode($agent->capabilities, true);
+        $capabilities = json_decode($agent->capabilities, true) ?? [];
         $capabilities = array_diff($capabilities, [$event->payload['capability']]);
         
         DB::table('agents')

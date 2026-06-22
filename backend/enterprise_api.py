@@ -34,6 +34,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Primary platform admin (documented in memory/test_credentials.md)
+ADMIN_EMAIL = os.environ.get("SPIDERNET_ADMIN_EMAIL", "admin@spidernetos.com").strip().lower()
+ADMIN_PASSWORD = os.environ.get("SPIDERNET_ADMIN_PASSWORD", "Zukaarimoto01!")
+
+SUPER_ADMIN_CAPS = [
+    "platform.*", "tenant.*", "tenant.manage",
+    "flag.write", "impersonate", "rollout.cutover",
+    "ste.view", "ste.simulate", "audit.export",
+    "users.manage", "users.invite", "budget.edit",
+    "audit.view", "copy.manage", "approvals.manage",
+    "connectors.create", "connectors.manage",
+    "aios.request", "aios.download", "scim.configure",
+]
+
 # ─── DB SETUP ──────────────────────────────────────────────────────────
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "spidernetos")
@@ -154,6 +168,11 @@ class TotpLogin(BaseModel):
 
 class WebauthnLogin(BaseModel):
     email: EmailStr
+
+
+class PasswordLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class SsoStart(BaseModel):
@@ -549,7 +568,21 @@ async def cockpit_overview():
     }
 
 
-# ─── 8. AUTH: MAGIC LINK ───────────────────────────────────────────────
+# ─── 8. AUTH: EMAIL + PASSWORD ─────────────────────────────────────────
+@router.post("/auth/password/login")
+async def password_login(body: PasswordLogin):
+    email = body.email.strip().lower()
+    if email != ADMIN_EMAIL or body.password != ADMIN_PASSWORD:
+        raise HTTPException(401, "Invalid email or password")
+    sess = await _issue_session(ADMIN_EMAIL, tenant_slug="spidernetos")
+    sess["user"]["name"] = "SpiderNet Admin"
+    sess["user"]["role"] = "super_admin"
+    sess["caps"] = SUPER_ADMIN_CAPS
+    await audit(sess["tenant"]["id"], "auth.password.success", ADMIN_EMAIL, "")
+    return sess
+
+
+# ─── 9. AUTH: MAGIC LINK ───────────────────────────────────────────────
 @router.post("/auth/magic-link/request")
 async def magic_request(body: MagicReq, request: Request):
     token = magic_serializer.dumps({"email": body.email, "ts": int(time.time())})
@@ -660,14 +693,16 @@ async def _issue_session(email: str, tenant_slug: Optional[str] = None) -> Dict[
         tenant = await db.tenants.find_one({"slug": tenant_slug}, {"_id": 0})
     if not tenant:
         # find or create demo tenant
-        tenant = await db.tenants.find_one({"slug": "demo"}, {"_id": 0})
+        tenant = await db.tenants.find_one({"slug": tenant_slug or "demo"}, {"_id": 0})
+        slug = tenant_slug or "demo"
         if not tenant:
             tid = new_id("tnt")
+            is_platform = slug == "spidernetos"
             tenant = {
                 "id": tid,
-                "enterprise_id": "ent_demo",
-                "name": "Demo Tenant",
-                "slug": "demo",
+                "enterprise_id": "ent_spidernetos" if is_platform else "ent_demo",
+                "name": "SpiderNetOS" if is_platform else "Demo Tenant",
+                "slug": slug,
                 "region": "us-east-1",
                 "plan": "Enterprise",
                 "status": "live",
