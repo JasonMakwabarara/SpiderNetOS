@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-06-23 — Atlas inference plane + real flow execution
+
+### Inference (Gemma via Ollama)
+- `ollama` + `inference` services in `docker-compose.unified.yml` (inference on `:9000`)
+- `POST /v1/classify` on inference plane for `AtlasIntentCompiler`
+- `ATLAS_INTENT_CONFIDENCE=true` enables confidence-driven clarity gate
+- `SPIDERNET_PROMPT_ENHANCER_MODEL=gemma2:2b` for LLM contracts (`metadata.source: llm`)
+- One-time model pull: `docker compose exec ollama ollama pull gemma2:2b`
+
+### OpenJarvis bridge
+- Inference-plane fallback when `OPENJARVIS_URL` is unset (`INFERENCE_URL` on bridge)
+- Token/cost passthrough on bridge health (`inference_reachable`)
+
+### Real automation execution
+- `POST /api/flows/quick-create` — first-win templates with generated DAG
+- `DagExecutionService` wired to `FlowController::execute` via `NodeActionRunner`
+- `execution_dag_nodes` / `execution_dag_edges` tables for runtime DAG state
+- `ExecuteFlowJob` + `DispatchScheduledFlowsJob` with `schedule:work` scheduler
+- `AtlasController::executePlan()` creates flow + runs DAG execution
+- First-win wizard and Sales home use `quick-create` then `execute`
+
 ## 2026-06-22 — Customer-first AIOS (Phases 1–5)
 
 ### Pack growth loop

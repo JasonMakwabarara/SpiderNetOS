@@ -58,6 +58,15 @@ def route(request: InferenceRequest) -> RoutingDecision:
     if not candidates:
         raise ValueError("No models available for given constraints")
 
+    if request.model and request.model in MODEL_COST_TABLE:
+        fallbacks = [m for m in candidates if m != request.model]
+        return RoutingDecision(
+            primary=request.model,
+            fallbacks=fallbacks,
+            retry_count=2,
+            retry_delay_ms=500,
+        )
+
     return RoutingDecision(
         primary=candidates[0],
         fallbacks=candidates[1:],

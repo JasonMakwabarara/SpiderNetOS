@@ -70,15 +70,12 @@ async function runLeadCapture() {
     const list = Array.isArray(flows) ? flows : (flows.data || [])
     let flow = list.find((f) => /lead/i.test(f.name || f.slug || ''))
     if (!flow) {
-      const created = await api.post('/api/flows', {
-        name: 'Lead Capture',
-        description: 'Score and route incoming leads',
-        status: 'draft',
+      const created = await api.post('/api/flows/quick-create', {
+        template: 'followup',
+        who: 'sales team',
+        when: 'on new lead',
       })
       flow = created.data?.data || created.data
-      if (flow?.id) {
-        await api.post(`/api/flows/${flow.id}/publish`)
-      }
     }
     if (flow?.id) {
       await api.post(`/api/flows/${flow.id}/execute`, {})

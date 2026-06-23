@@ -160,7 +160,7 @@ class AtlasIntentCompiler
      */
     private function classifyWithLLM(string $message): array
     {
-        $inferenceUrl = config('services.inference_url');
+        $inferenceUrl = config('services.inference.url');
 
         if (empty($inferenceUrl)) {
             Log::warning('AtlasIntentCompiler: No inference URL configured, defaulting to chat intent');
@@ -168,10 +168,12 @@ class AtlasIntentCompiler
         }
 
         try {
-            $response = Http::timeout(10)
+            $model = (string) config('services.spidernet.prompt_enhancer_model', 'gemma2:2b');
+            $response = Http::timeout(60)
                 ->retry(2, 500)
                 ->post(rtrim($inferenceUrl, '/') . '/v1/classify', [
                     'message' => $message,
+                    'model' => $model,
                     'schema'  => [
                         'type'       => 'object',
                         'properties' => [

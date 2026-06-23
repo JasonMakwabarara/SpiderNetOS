@@ -412,7 +412,12 @@ export const useAtlasStore = defineStore('atlas', () => {
         role: 'system',
         content: data.message || `Plan ${planId} execution started.`,
         timestamp: new Date().toISOString(),
-        metadata: { type: 'plan_execution', planId },
+        metadata: {
+          type: 'plan_execution',
+          planId,
+          execution_id: data.execution_id || null,
+          flow_id: data.flow_id || null,
+        },
       })
 
       return { success: true, data }

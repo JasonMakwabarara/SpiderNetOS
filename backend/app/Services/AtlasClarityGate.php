@@ -297,7 +297,9 @@ class AtlasClarityGate
     private function inferenceConfigured(): bool
     {
         if (filter_var(env('ATLAS_INTENT_CONFIDENCE', false), FILTER_VALIDATE_BOOL)) {
-            return true;
+            $url = (string) config('services.inference.url', env('INFERENCE_URL', ''));
+
+            return $url !== '';
         }
 
         $url = (string) config('services.inference.url', env('INFERENCE_URL', ''));
@@ -306,8 +308,8 @@ class AtlasClarityGate
             return false;
         }
 
-        // Dev / stub inference planes should not drive clarify thresholds.
-        foreach (['localhost:9000', '127.0.0.1:9000', 'inference:9000'] as $stub) {
+        // Legacy dev stubs without explicit ATLAS_INTENT_CONFIDENCE
+        foreach (['localhost:9000', '127.0.0.1:9000'] as $stub) {
             if (str_contains($url, $stub)) {
                 return false;
             }

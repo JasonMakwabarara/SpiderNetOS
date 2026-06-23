@@ -45,29 +45,22 @@ const error = ref('')
 const success = ref('')
 const tracePath = ref('')
 
-const names = {
-  status: 'Daily Status Digest',
-  followup: 'Follow-up Reminder',
-  invoice: 'Invoice Reminder',
-}
-
 async function run() {
   running.value = true
   error.value = ''
   success.value = ''
   tracePath.value = ''
   try {
-    const name = names[template.value] || 'Quick Start Flow'
-    const { data: created } = await api.post('/api/flows', {
-      name,
-      description: `For: ${who.value || 'team'}. When: ${when.value}`,
-      status: 'draft',
+    const { data: created } = await api.post('/api/flows/quick-create', {
+      template: template.value,
+      who: who.value || 'team',
+      when: when.value || 'Every weekday morning',
     })
     const flow = created?.data || created
     if (!flow?.id) throw new Error('Could not create flow')
-    await api.post(`/api/flows/${flow.id}/publish`)
-    await api.post(`/api/flows/${flow.id}/execute`, {})
-    success.value = `"${name}" is running. Open Traces to see what happened.`
+    const exec = await api.post(`/api/flows/${flow.id}/execute`, {})
+    const status = exec.data?.status
+    success.value = `"${flow.name}" completed (${status || 'running'}). Open Traces to see what happened.`
     tracePath.value = '/traces'
   } catch (e) {
     error.value = e.response?.data?.message || e.message || 'Something went wrong.'

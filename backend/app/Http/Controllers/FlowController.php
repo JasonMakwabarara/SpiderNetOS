@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Services\EventStore;
 use App\Services\ReplayDivergenceService;
+use App\Services\DagExecutionService;
+use App\Services\FlowTemplateBuilder;
 use App\Models\Flow;
 use App\Models\FlowExecution;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
 class FlowController extends Controller
@@ -109,6 +110,69 @@ class FlowController extends Controller
             'event_id' => $event->id,
             'status' => 'draft',
             'message' => 'Flow created successfully.',
+        ], 201);
+    }
+
+    /**
+     * Quick-create a published flow from a first-win template.
+     */
+    public function quickCreate(Request $request, FlowTemplateBuilder $builder): JsonResponse
+    {
+        $validated = $request->validate([
+            'template' => 'required|string|in:status,followup,invoice',
+            'who' => 'nullable|string|max:255',
+            'when' => 'nullable|string|max:255',
+        ]);
+
+        $tenantId = $request->attributes->get('tenant_id');
+        $who = (string) ($validated['who'] ?? 'team');
+        $when = (string) ($validated['when'] ?? 'Every weekday morning');
+        $built = $builder->build($validated['template'], $who, $when);
+        $flowId = (string) Str::uuid();
+
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'flow',
+            aggregateId: $flowId,
+            eventType: 'flow.created',
+            payload: [
+                'name' => $built['name'],
+                'slug' => $built['slug'],
+                'description' => $built['description'],
+                'dag' => $built['dag'],
+                'triggers' => $built['triggers'],
+                'status' => 'published',
+                'source' => 'quick_create',
+            ],
+            metadata: ['user_id' => $request->user()?->id],
+        );
+
+        // FlowProjection inserts the row on flow.created; enrich DAG + schedule before publish.
+        DB::table('flows')->where('id', $flowId)->update([
+            'dag' => json_encode($built['dag']),
+            'description' => $built['description'],
+            'schedule_cron' => $built['schedule_cron'],
+            'schedule_timezone' => 'UTC',
+            'updated_at' => now(),
+        ]);
+
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'flow',
+            aggregateId: $flowId,
+            eventType: 'flow.published',
+            payload: ['name' => $built['name'], 'slug' => $built['slug']],
+            metadata: ['user_id' => $request->user()?->id],
+        );
+
+        return response()->json([
+            'data' => [
+                'id' => $flowId,
+                'name' => $built['name'],
+                'slug' => $built['slug'],
+                'status' => 'published',
+                'dag' => $built['dag'],
+            ],
         ], 201);
     }
 
@@ -275,73 +339,41 @@ class FlowController extends Controller
     }
 
     /**
-     * Execute a flow: create execution row, append event, push to Redis for Nexus agent.
+     * Execute a flow via DagExecutionService (real node execution).
      */
-    public function execute(Request $request, $id): JsonResponse
+    public function execute(Request $request, $id, DagExecutionService $dagExecution): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_id');
 
         $flow = DB::table('flows')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
-
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
-        $executionId = (string) Str::uuid();
-        $dag = json_decode($flow->dag, true);
+        if ($flow->status !== 'published') {
+            return response()->json(['error' => 'Flow must be published before execution.'], 422);
+        }
 
-        // Create flow_execution row (write model should be projection-driven)
-        DB::table('flow_executions')->insert([
-            'id' => $executionId,
-            'tenant_id' => $tenantId,
-            'flow_id' => $id,
-            'status' => 'running',
-            'context' => json_encode($request->input('context', [])),
-            'started_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $triggers = json_decode($flow->triggers ?? '[]', true);
+        if (! is_array($triggers)) {
+            $triggers = [];
+        }
 
-        // Hard Rule #1: All writes go through EventStore
-        $event = $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'flow_execution',
-            aggregateId: $executionId,
-            eventType: 'flow.execution_started',
-            payload: [
-                'flow_id' => $id,
-                'flow_name' => $flow->name,
-                'dag' => $dag,
-                'context' => $request->input('context', []),
-            ],
-            metadata: [
-                'user_id' => $request->user()?->id,
-            ]
+        $context = array_merge(
+            (array) ($triggers['context'] ?? []),
+            $request->input('context', []),
         );
 
-        // Push to Redis agent:dispatch queue for Nexus agent
-        Redis::publish('agent:dispatch', json_encode([
-            'event_id' => $event->id,
-            'tenant_id' => $tenantId,
-            'agent_id' => 'nexus',
-            'intent' => 'execute_flow',
-            'context' => [
-                'flow_id' => $id,
-                'execution_id' => $executionId,
-                'dag' => $dag,
-                'input' => $request->input('context', []),
-            ],
-        ]));
+        $result = $dagExecution->createExecution($tenantId, (string) $id, $context);
 
         return response()->json([
-            'execution_id' => $executionId,
+            'execution_id' => $result['execution_id'] ?? null,
             'flow_id' => $id,
-            'event_id' => $event->id,
-            'status' => 'running',
+            'status' => $result['status'] ?? 'running',
             'message' => 'Flow execution started.',
         ], 202);
     }

@@ -106,6 +106,9 @@ services:
       FEATURE_ATLAS_OPENJARVIS: "on"
       FEATURE_PACKS_ROOT: /var/www/packages/feature-packs
       INFERENCE_URL: http://inference:9000
+      SPIDERNET_PROMPT_ENHANCER_MODEL: ${SPIDERNET_PROMPT_ENHANCER_MODEL:-gemma2:2b}
+      ATLAS_INTENT_CONFIDENCE: ${ATLAS_INTENT_CONFIDENCE:-true}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RUN_DB_SEED: ${RUN_DB_SEED:-true}
       RATE_LIMIT_AUTH: 60
@@ -124,6 +127,100 @@ services:
         condition: service_started
       openjarvis-bridge:
         condition: service_started
+      inference:
+        condition: service_started
+    networks:
+      - spidernet
+
+  # Local model runtime (Gemma via Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollamadata:/root/.ollama
+    networks:
+      - spidernet
+    # One-time: docker compose exec ollama ollama pull gemma2:2b
+    # Override via SPIDERNET_PROMPT_ENHANCER_MODEL if you use a different local tag
+
+  # Inference plane — policy routing to Ollama / OpenAI
+  inference:
+    build: ./inference
+    ports:
+      - "9000:9000"
+    environment:
+      REDIS_URL: redis://redis:6379/1
+      OLLAMA_URL: http://ollama:11434
+      DEFAULT_OLLAMA_MODEL: ${SPIDERNET_PROMPT_ENHANCER_MODEL:-gemma2:2b}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEFAULT_COST_CEILING: ${COST_CEILING_DEFAULT:-50.0}
+    depends_on:
+      - redis
+      - ollama
+    networks:
+      - spidernet
+
+  # Queue worker for flow execution jobs
+  horizon:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: php artisan horizon
+    volumes:
+      - ./backend:/var/www/html
+      - api_vendor:/var/www/html/vendor
+      - ./packages:/var/www/packages:ro
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY:-base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      INFERENCE_URL: http://inference:9000
+      SPIDERNET_PROMPT_ENHANCER_MODEL: ${SPIDERNET_PROMPT_ENHANCER_MODEL:-gemma2:2b}
+      ATLAS_INTENT_CONFIDENCE: ${ATLAS_INTENT_CONFIDENCE:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - spidernet
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: php artisan schedule:work
+    volumes:
+      - ./backend:/var/www/html
+      - api_vendor:/var/www/html/vendor
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY:-base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     networks:
       - spidernet
 
@@ -188,7 +285,10 @@ services:
       OPENJARVIS_URL: ${OPENJARVIS_URL:-}
       OPENJARVIS_API_KEY: ${OPENJARVIS_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      INFERENCE_URL: http://inference:9000
       JARVIS_SKILLS_ROOT: /app/skills
+    depends_on:
+      - inference
     networks:
       - spidernet
 
@@ -213,6 +313,7 @@ volumes:
   mongodata:
   pgdata:
   api_vendor:
+  ollamadata:
 
 networks:
   spidernet:

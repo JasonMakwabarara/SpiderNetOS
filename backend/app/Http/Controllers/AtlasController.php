@@ -4,19 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Services\AtlasClarityGate;
 use App\Services\AtlasDiscoveryService;
-use App\Services\PackGrowthService;
+use App\Services\DagExecutionService;
+use App\Services\FlowTemplateBuilder;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
 use App\Services\EventStore;
 use App\Services\FeatureFlag;
 use App\Services\MetaPlanner;
 use App\Services\Onboarding\OnboardingPolicy;
+use App\Services\PackGrowthService;
 use App\Services\PromptEnhancer;
 use App\Services\TransformationEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AtlasController extends Controller
@@ -709,11 +712,18 @@ class AtlasController extends Controller
 
         // Parse to AST
         $ast = $this->metaPlanner->parseCommandToAst($request->input('message'));
+        $planId = (string) Str::uuid();
+
+        Cache::put("atlas_plan:{$tenantId}:{$planId}", [
+            'intent' => $ast['type'] ?? 'chat',
+            'message' => $request->input('message'),
+            'tasks' => $this->buildPlanTasks($ast),
+        ], 3600);
 
         return response()->json([
             'session_id' => $request->input('session_id'),
             'plan' => [
-                'id' => (string) Str::uuid(),
+                'id' => $planId,
                 'intent' => $ast['type'] ?? 'chat',
                 'status' => 'draft',
                 'tasks' => $this->buildPlanTasks($ast),
@@ -724,23 +734,64 @@ class AtlasController extends Controller
     }
 
     /**
-     * Execute an approved plan.
+     * Execute an approved plan via flow creation + DAG execution.
      */
-    public function executePlan(Request $request): JsonResponse
-    {
+    public function executePlan(
+        Request $request,
+        FlowTemplateBuilder $builder,
+        DagExecutionService $dagExecution,
+    ): JsonResponse {
         $request->validate([
             'plan_id' => 'required|string',
             'session_id' => 'required|string',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
-        $userId = $request->user()->id;
+        $planId = $request->input('plan_id');
+        $cached = Cache::get("atlas_plan:{$tenantId}:{$planId}");
 
-        // For now, dispatch the plan through MetaPlanner
+        if (! is_array($cached)) {
+            return response()->json(['message' => 'Plan not found or expired.'], 404);
+        }
+
+        $template = match ($cached['intent'] ?? 'chat') {
+            'create_flow' => 'followup',
+            'execute' => 'status',
+            default => 'status',
+        };
+
+        $built = $builder->build($template, 'operator', 'now');
+        $flowId = (string) Str::uuid();
+
+        DB::table('flows')->insert([
+            'id' => $flowId,
+            'tenant_id' => $tenantId,
+            'name' => $built['name'],
+            'slug' => $built['slug'],
+            'description' => (string) ($cached['message'] ?? $built['description']),
+            'dag' => json_encode($built['dag']),
+            'triggers' => json_encode($built['triggers']),
+            'status' => 'published',
+            'schedule_cron' => $built['schedule_cron'],
+            'schedule_timezone' => 'UTC',
+            'published_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = $dagExecution->createExecution($tenantId, $flowId, (array) ($built['triggers']['context'] ?? []));
+
         return response()->json([
-            'plan_id' => $request->input('plan_id'),
-            'status' => 'executing',
+            'plan_id' => $planId,
+            'flow_id' => $flowId,
+            'execution_id' => $result['execution_id'] ?? null,
+            'status' => $result['status'] ?? 'executing',
             'message' => 'Plan execution started',
+            'plan' => array_merge($cached, [
+                'id' => $planId,
+                'status' => 'executing',
+                'execution_id' => $result['execution_id'] ?? null,
+            ]),
         ]);
     }
 

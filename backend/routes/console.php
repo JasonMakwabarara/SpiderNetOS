@@ -27,5 +27,8 @@ Schedule::job(new \App\Jobs\ReplayDivergenceSweepJob)->everyTenMinutes()->withou
 // Fingerprint cache prune (every 15 minutes)
 Schedule::job(new \App\Jobs\PruneFingerprintCacheJob)->everyFifteenMinutes()->withoutOverlapping();
 
+// Scheduled flow dispatch (every minute)
+Schedule::job(new \App\Jobs\DispatchScheduledFlowsJob)->everyMinute()->withoutOverlapping();
+
 // Transformation Score computation (every 5 minutes) — B6
 Schedule::job(new \App\Jobs\ComputeTransformationScoreJob)->everyFiveMinutes()->withoutOverlapping();

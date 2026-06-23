@@ -2,16 +2,18 @@
 SpiderNet OS — Inference Plane (FastAPI)
 Policy-based model routing with cost-aware fallback cascade.
 """
+import json
+import re
 from typing import List, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from models import InferenceRequest, InferenceResponse, HealthResponse
 from policy_router import route_request
-from config import DEFAULT_COST_CEILING, OLLAMA_URL, EMBEDDING_MODEL, EMBEDDING_DIM
+from config import DEFAULT_COST_CEILING, DEFAULT_OLLAMA_MODEL, OLLAMA_URL, EMBEDDING_MODEL, EMBEDDING_DIM
 
 app = FastAPI(
     title="SpiderNet OS — Inference Plane",
@@ -62,6 +64,72 @@ async def generate(request: InferenceRequest):
         return await route_request(request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ClassifyRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=8000)
+    schema: Optional[dict] = None
+    system_prompt: Optional[str] = None
+    model: Optional[str] = None
+
+
+class ClassifyResponse(BaseModel):
+    intent: str
+    entities: dict = Field(default_factory=dict)
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+INTENT_ENUM = [
+    "create_flow", "execute_flow", "query_status", "analyze_data",
+    "teach", "monitor", "manage_agent", "chat",
+]
+
+
+@app.post("/v1/classify", response_model=ClassifyResponse)
+async def classify(request: ClassifyRequest):
+    """Structured intent classification for AtlasIntentCompiler."""
+    system = request.system_prompt or (
+        "Classify the user message into one intent and extract entities. "
+        "Respond with JSON only: {\"intent\": \"...\", \"entities\": {}, \"confidence\": 0.0-1.0}. "
+        f"Valid intents: {', '.join(INTENT_ENUM)}."
+    )
+    model = request.model or DEFAULT_OLLAMA_MODEL
+    try:
+        result = await route_request(InferenceRequest(
+            prompt=request.message,
+            system_prompt=system,
+            model=model,
+            temperature=0.1,
+            max_tokens=512,
+            cost_ceiling=DEFAULT_COST_CEILING,
+        ))
+        parsed = _extract_json_object(result.text)
+        intent = str(parsed.get("intent", "chat"))
+        if intent not in INTENT_ENUM:
+            intent = "chat"
+        confidence = float(parsed.get("confidence", 0.6))
+        confidence = max(0.0, min(1.0, confidence))
+        entities = parsed.get("entities", {})
+        if not isinstance(entities, dict):
+            entities = {}
+        return ClassifyResponse(intent=intent, entities=entities, confidence=confidence)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"classify_failed: {e}")
+
+
+def _extract_json_object(text: str) -> dict:
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+    return {"intent": "chat", "entities": {}, "confidence": 0.5}
 
 
 @app.post("/embed", response_model=EmbedResponse)

@@ -57,7 +57,24 @@ docker compose -f docker-compose.unified.yml up -d --build frontend
 | Business API (source of truth) | Laravel `api` | 8000 |
 | Enterprise auth / SCIM / AIOS | FastAPI `cockpit-api` | 8001 |
 | V2 intelligence | semantic-gateway + workers | 8005 |
+| Inference plane (Ollama/Gemma) | inference | 9000 |
 | OpenJarvis bridge | openjarvis-bridge | 8010 |
+
+### Inference plane
+
+Local-first Atlas responses use the `inference` service (`INFERENCE_URL=http://inference:9000`):
+
+1. Start stack: `docker compose -f docker-compose.unified.yml up -d --build`
+2. Pull model: `docker compose exec ollama ollama pull gemma2:2b` (or set `SPIDERNET_PROMPT_ENHANCER_MODEL` to another Ollama tag)
+3. Verify: `GET http://localhost:9000/health` and `POST http://localhost:9000/v1/classify`
+
+OpenJarvis bridge (`:8010`) proxies to an external OpenJarvis edge node when `OPENJARVIS_URL` is set; otherwise it falls back to the inference plane, then OpenAI, then templates.
+
+### Real flow execution
+
+- `POST /api/flows/quick-create` then `POST /api/flows/{id}/execute` runs a real DAG via `DagExecutionService` + `NodeActionRunner`
+- Completed executions appear in `GET /api/traces` with `status: completed`
+- Scheduled flows use `schedule_cron` on `flows` and `DispatchScheduledFlowsJob` (scheduler container)
 
 ### Nginx + Docker DNS
 

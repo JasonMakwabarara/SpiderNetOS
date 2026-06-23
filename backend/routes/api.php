@@ -100,6 +100,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     
     // Flows (DAG execution)
     Route::apiResource('flows', FlowController::class);
+    Route::post('/flows/quick-create', [FlowController::class, 'quickCreate']);
     Route::post('/flows/{flow}/execute', [FlowController::class, 'execute']);
     Route::post('/flows/{flow}/publish', [FlowController::class, 'publish']);
     Route::get('/flows/{flow}/executions', [FlowController::class, 'executions']);

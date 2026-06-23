@@ -7,6 +7,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 DEFAULT_COST_CEILING = float(os.getenv("DEFAULT_COST_CEILING", "50.0"))
+DEFAULT_OLLAMA_MODEL = os.getenv("DEFAULT_OLLAMA_MODEL", "gemma2:2b")
 
 # Embedding config
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
@@ -27,6 +28,7 @@ MODEL_COST_TABLE = {
     "gpt-4.1-mini": {"cost_per_1k_tokens": 0.0004, "latency_avg_ms": 2000, "provider": "openai"},
     # Gemma family (local Ollama — zero cost)
     "gemma4": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 3000, "provider": "ollama"},
+    "gemma2:2b": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2000, "provider": "ollama"},
     "gemma3:9b": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 800, "provider": "ollama"},
     "gemma3:27b": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2500, "provider": "ollama"},
     # Qwen family (local Ollama)

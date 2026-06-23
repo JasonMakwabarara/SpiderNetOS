@@ -25,6 +25,7 @@ app = FastAPI(title="SpiderNetOS OpenJarvis Bridge", version="1.0.0")
 OPENJARVIS_URL = os.getenv("OPENJARVIS_URL", "").rstrip("/")
 OPENJARVIS_API_KEY = os.getenv("OPENJARVIS_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+INFERENCE_URL = os.getenv("INFERENCE_URL", "").rstrip("/")
 SKILLS_ROOT = Path(os.getenv("JARVIS_SKILLS_ROOT", "/app/skills"))
 
 # OpenJarvis built-in agents mapped for Atlas AIOS operators
@@ -165,11 +166,50 @@ async def _proxy_openjarvis_chat(message: str, agent: str) -> Optional[dict[str,
                 .get("message", {})
                 .get("content", "")
             )
+            usage = data.get("usage", {})
+            total_tokens = int(usage.get("total_tokens", 0) or 0)
             return {
                 "text": content,
                 "source": "openjarvis",
                 "model": data.get("model", agent),
-                "usage": data.get("usage", {}),
+                "usage": usage,
+                "estimated_cost_usd": round(total_tokens * 0.0, 6),
+            }
+    except httpx.HTTPError:
+        return None
+
+
+async def _proxy_inference_chat(message: str, agent: str) -> Optional[dict[str, Any]]:
+    """Fallback to SpiderNetOS inference plane when no OpenJarvis edge node."""
+    if not INFERENCE_URL:
+        return None
+    system = (
+        f"You are Atlas augmented by OpenJarvis ({agent}). "
+        "Help AIOS operators with SpiderNetOS automations and outcomes."
+    )
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(
+                f"{INFERENCE_URL}/generate",
+                json={
+                    "prompt": message,
+                    "system_prompt": system,
+                    "model": os.getenv("SPIDERNET_PROMPT_ENHANCER_MODEL", "gemma4"),
+                    "temperature": 0.4,
+                    "max_tokens": 1024,
+                },
+            )
+            if resp.status_code >= 400:
+                return None
+            data = resp.json()
+            tokens = int(data.get("tokens_used", 0) or 0)
+            cost = float(data.get("cost", 0.0) or 0.0)
+            return {
+                "text": data.get("text", ""),
+                "source": "inference_plane",
+                "model": data.get("model", "gemma4"),
+                "usage": {"total_tokens": tokens},
+                "estimated_cost_usd": cost,
             }
     except httpx.HTTPError:
         return None
@@ -266,6 +306,7 @@ def _fallback_response(message: str, agent: str, skills: list[str]) -> dict[str,
 @app.get("/api/health")
 async def health():
     openjarvis_reachable = False
+    inference_reachable = False
     if OPENJARVIS_URL:
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
@@ -273,10 +314,19 @@ async def health():
                 openjarvis_reachable = r.status_code == 200
         except httpx.HTTPError:
             pass
+    if INFERENCE_URL:
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                r = await client.get(f"{INFERENCE_URL}/health")
+                inference_reachable = r.status_code == 200
+        except httpx.HTTPError:
+            pass
     return {
         "status": "ok",
         "openjarvis_url": OPENJARVIS_URL or None,
         "openjarvis_reachable": openjarvis_reachable,
+        "inference_url": INFERENCE_URL or None,
+        "inference_reachable": inference_reachable,
         "skills_loaded": len(_load_skills()),
         "agents": len(AGENT_CATALOG),
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -300,6 +350,8 @@ async def ask(body: AskRequest):
 
     result = await _proxy_openjarvis_chat(body.message, spec["openjarvis_agent"])
     if result is None:
+        result = await _proxy_inference_chat(body.message, spec["openjarvis_agent"])
+    if result is None:
         system = (
             f"You are Atlas augmented by OpenJarvis ({spec['display_name']}). "
             f"Help AIOS operators with SpiderNetOS. Route context to {spec['spidernet_route']} when executing."
@@ -314,8 +366,9 @@ async def ask(body: AskRequest):
         "spidernet_route": spec["spidernet_route"],
         "response": result,
         "intelligence_per_watt": {
-            "local_first": result.get("source") in ("openjarvis", "bridge_fallback"),
+            "local_first": result.get("source") in ("openjarvis", "bridge_fallback", "inference_plane"),
             "estimated_cost_usd": result.get("estimated_cost_usd", 0.0),
+            "tokens_used": (result.get("usage") or {}).get("total_tokens", 0),
         },
     }
 

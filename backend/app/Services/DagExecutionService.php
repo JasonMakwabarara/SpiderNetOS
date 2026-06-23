@@ -29,6 +29,7 @@ class DagExecutionService
         private readonly EventStore $eventStore,
         private readonly MetaPlanner $metaPlanner,
         private readonly ReplayDivergenceService $replayDivergence,
+        private readonly NodeActionRunner $nodeActionRunner,
     ) {}
 
     // ------------------------------------------------------------------ //
@@ -94,6 +95,7 @@ class DagExecutionService
             'status'     => 'running',
             'context'    => json_encode($context, JSON_THROW_ON_ERROR),
             'fingerprint'=> $fingerprint,
+            'started_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -136,7 +138,7 @@ class DagExecutionService
         $context   = json_decode($execution->context, true, 512, JSON_THROW_ON_ERROR);
 
         // Mark node as running.
-        DB::table('dag_nodes')
+        DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
@@ -164,7 +166,7 @@ class DagExecutionService
                 context: $context,
             );
 
-            DB::table('dag_nodes')
+            DB::table('execution_dag_nodes')
                 ->where('execution_id', $executionId)
                 ->where('node_id', $nodeId)
                 ->update([
@@ -191,6 +193,24 @@ class DagExecutionService
                     'immutable_state_hash' => $this->buildStateHash($executionId, $nodeId, $context),
                 ]
             );
+
+            return;
+        }
+
+        $nodeType = (string) $node->node_type;
+
+        if (in_array($nodeType, ['action', 'trigger', 'notify', 'webhook', 'log'], true)) {
+            try {
+                $result = $this->nodeActionRunner->run(
+                    $execution->tenant_id,
+                    $nodeType,
+                    $nodeConfig,
+                    $context,
+                );
+                $this->completeNode($executionId, $nodeId, $result);
+            } catch (\Throwable $e) {
+                $this->failNode($executionId, $nodeId, $e->getMessage());
+            }
 
             return;
         }
@@ -224,7 +244,7 @@ class DagExecutionService
      */
     public function completeNode(string $executionId, string $nodeId, array $result = []): void
     {
-        DB::table('dag_nodes')
+        DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
@@ -291,7 +311,7 @@ class DagExecutionService
 
         if ($retryCount < self::MAX_NODE_RETRIES) {
             // Retry: reset to pending and increment retry counter.
-            DB::table('dag_nodes')
+            DB::table('execution_dag_nodes')
                 ->where('execution_id', $executionId)
                 ->where('node_id', $nodeId)
                 ->update([
@@ -312,7 +332,7 @@ class DagExecutionService
         }
 
         // Retries exhausted — mark node and execution as failed.
-        DB::table('dag_nodes')
+        DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
@@ -324,8 +344,9 @@ class DagExecutionService
         DB::table('flow_executions')
             ->where('id', $executionId)
             ->update([
-                'status'     => 'failed',
-                'updated_at' => now(),
+                'status'       => 'failed',
+                'completed_at' => now(),
+                'updated_at'   => now(),
             ]);
 
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
@@ -374,7 +395,7 @@ class DagExecutionService
             throw new \InvalidArgumentException("Execution [{$executionId}] not found.");
         }
 
-        $nodes = DB::table('dag_nodes')
+        $nodes = DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->get()
             ->map(fn ($n) => [
@@ -390,7 +411,7 @@ class DagExecutionService
             ])
             ->toArray();
 
-        $edges = DB::table('dag_edges')
+        $edges = DB::table('execution_dag_edges')
             ->where('execution_id', $executionId)
             ->get()
             ->map(fn ($e) => [
@@ -425,7 +446,7 @@ class DagExecutionService
         $edges = $dag['edges'] ?? [];
 
         foreach ($nodes as $node) {
-            DB::table('dag_nodes')->insert([
+            DB::table('execution_dag_nodes')->insert([
                 'id'           => (string) Str::uuid(),
                 'execution_id' => $executionId,
                 'tenant_id'    => $tenantId,
@@ -441,7 +462,7 @@ class DagExecutionService
         }
 
         foreach ($edges as $edge) {
-            DB::table('dag_edges')->insert([
+            DB::table('execution_dag_edges')->insert([
                 'id'           => (string) Str::uuid(),
                 'execution_id' => $executionId,
                 'from_node_id' => $edge['from'],
@@ -457,20 +478,20 @@ class DagExecutionService
      */
     private function dispatchReadyNodes(string $executionId, string $tenantId): void
     {
-        $pendingNodes = DB::table('dag_nodes')
+        $pendingNodes = DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('status', 'pending')
             ->get();
 
         foreach ($pendingNodes as $node) {
-            $unmetDeps = DB::table('dag_edges')
-                ->join('dag_nodes', function ($join) use ($executionId) {
-                    $join->on('dag_edges.from_node_id', '=', 'dag_nodes.node_id')
-                         ->where('dag_nodes.execution_id', '=', $executionId);
+            $unmetDeps = DB::table('execution_dag_edges')
+                ->join('execution_dag_nodes', function ($join) use ($executionId) {
+                    $join->on('execution_dag_edges.from_node_id', '=', 'execution_dag_nodes.node_id')
+                         ->where('execution_dag_nodes.execution_id', '=', $executionId);
                 })
-                ->where('dag_edges.execution_id', $executionId)
-                ->where('dag_edges.to_node_id', $node->node_id)
-                ->where('dag_nodes.status', '!=', 'completed')
+                ->where('execution_dag_edges.execution_id', $executionId)
+                ->where('execution_dag_edges.to_node_id', $node->node_id)
+                ->where('execution_dag_nodes.status', '!=', 'completed')
                 ->count();
 
             if ($unmetDeps === 0) {
@@ -485,7 +506,7 @@ class DagExecutionService
      */
     private function checkExecutionCompletion(string $executionId): void
     {
-        $incomplete = DB::table('dag_nodes')
+        $incomplete = DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('status', '!=', 'completed')
             ->count();
@@ -494,8 +515,9 @@ class DagExecutionService
             DB::table('flow_executions')
                 ->where('id', $executionId)
                 ->update([
-                    'status'     => 'completed',
-                    'updated_at' => now(),
+                    'status'       => 'completed',
+                    'completed_at' => now(),
+                    'updated_at'   => now(),
                 ]);
 
             $execution = DB::table('flow_executions')->where('id', $executionId)->first();
@@ -560,7 +582,7 @@ class DagExecutionService
      */
     private function getNode(string $executionId, string $nodeId): ?object
     {
-        return DB::table('dag_nodes')
+        return DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->first();
