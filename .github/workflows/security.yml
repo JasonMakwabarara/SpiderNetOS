@@ -36,7 +36,7 @@ jobs:
           coverage: none
 
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
