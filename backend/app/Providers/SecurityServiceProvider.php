@@ -64,5 +64,11 @@ class SecurityServiceProvider extends ServiceProvider
             return Limit::perMinute((int) ($tiers['voice_webhook'] ?? 600))
                 ->by($request->ip());
         });
+
+        // ── Billing webhooks (Dodo — signature-verified, retried) ──────
+        RateLimiter::for('billing_webhook', function (Request $request) use ($tiers) {
+            return Limit::perMinute((int) ($tiers['billing_webhook'] ?? 120))
+                ->by($request->ip());
+        });
     }
 }

@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Services\Payments\DodoPaymentsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Billing & plan summary for the Cockpit (tenant-scoped).
+ * Checkout + cancellation run through Dodo Payments.
  */
 class BillingController extends Controller
 {
+    public function __construct(private readonly DodoPaymentsService $dodo)
+    {
+    }
     /**
      * GET /api/billing/summary
      */
@@ -90,6 +97,103 @@ class BillingController extends Controller
                     'alert_threshold' => (float) $budget->alert_threshold,
                     'action_at_limit' => $budget->action_at_limit,
                 ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/billing/plans — catalogue for the upgrade UI.
+     */
+    public function plans(): JsonResponse
+    {
+        $plans = collect((array) config('dodo.plans', []))
+            ->map(fn (array $plan, string $id) => [
+                'id' => $id,
+                'name' => $plan['label'],
+                'price_usd' => $plan['price_usd'],
+                'interval' => $plan['interval'],
+                'limits' => $plan['limits'],
+                'self_serve' => ($plan['product_id'] ?? '') !== '',
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => [
+                'gateway' => DodoPaymentsService::GATEWAY_CODE,
+                'enabled' => $this->dodo->enabled(),
+                'plans' => $plans,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/billing/checkout {plan} — returns a hosted Dodo checkout URL.
+     */
+    public function checkout(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'plan' => 'required|string|in:' . implode(',', array_keys((array) config('dodo.plans', []))),
+        ]);
+
+        if (! $this->dodo->enabled()) {
+            return response()->json([
+                'message' => 'Payments are not enabled on this environment.',
+            ], 503);
+        }
+
+        /** @var Tenant $tenant */
+        $tenant = $request->attributes->get('tenant');
+
+        try {
+            $session = $this->dodo->createCheckoutSession($tenant, $request->user(), $validated['plan']);
+        } catch (\RuntimeException $ex) {
+            Log::error('billing-> checkout(): ' . $ex->getMessage(), [
+                'tenant_id' => (string) $tenant->id,
+                'plan' => $validated['plan'],
+            ]);
+
+            return response()->json(['message' => 'Checkout could not be started. Try again shortly.'], 502);
+        }
+
+        return response()->json([
+            'data' => [
+                'checkout_url' => $session['checkout_url'],
+                'reference' => $session['reference'],
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/billing/cancel — schedule cancellation at period end.
+     */
+    public function cancel(Request $request): JsonResponse
+    {
+        /** @var Tenant $tenant */
+        $tenant = $request->attributes->get('tenant');
+
+        $subscription = Subscription::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('provider', DodoPaymentsService::GATEWAY_CODE)
+            ->where('status', 'active')
+            ->latest('created_at')
+            ->first();
+
+        if (! $subscription) {
+            return response()->json(['message' => 'No active subscription to cancel.'], 404);
+        }
+
+        try {
+            $this->dodo->cancelSubscription($subscription->provider_subscription_id);
+        } catch (\RuntimeException $ex) {
+            return response()->json(['message' => $ex->getMessage()], 502);
+        }
+
+        $subscription->fill(['cancelled_at' => now()])->save();
+
+        return response()->json([
+            'data' => [
+                'message' => 'Your subscription stays active until the end of the current billing period.',
+                'ends_at' => $subscription->current_period_end?->toIso8601String(),
             ],
         ]);
     }

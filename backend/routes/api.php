@@ -64,6 +64,10 @@ Route::prefix('voice')->middleware(['throttle:voice_webhook', 'voice.verify_twil
 Route::post('/voice/stream/connect', [VoiceStreamController::class, 'connect'])
     ->middleware('voice.verify_twilio');
 
+// Billing webhooks (no auth — Standard Webhooks signature is the gate)
+Route::post('/webhooks/dodo', [\App\Http\Controllers\Billing\DodoWebhookController::class, 'handle'])
+    ->middleware('throttle:billing_webhook');
+
 // Authentication — Tier 1 rate-limited (IP-keyed to resist credential-stuffing).
 Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -186,8 +190,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Universal compliance discovery
     Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 
-    // Billing & monetization
+    // Billing & monetization (Dodo Payments)
     Route::get('/billing/summary', [BillingController::class, 'summary']);
+    Route::get('/billing/plans', [BillingController::class, 'plans']);
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('role:admin');
+    Route::post('/billing/cancel', [BillingController::class, 'cancel'])->middleware(['role:admin', 'step.up']);
 
     // V2 outcome loop — weekly review surface
     Route::prefix('outcomes')->group(function () {

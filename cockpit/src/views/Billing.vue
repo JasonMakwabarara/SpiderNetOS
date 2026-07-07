@@ -238,9 +238,10 @@
             <button
               v-else-if="getPlanRank(plan.id) > getPlanRank(activePlanId)"
               @click="handleUpgrade(plan)"
+              :disabled="checkoutBusy === plan.id"
               class="dct-btn-primary w-full py-2.5 text-sm text-center"
             >
-              Upgrade to {{ plan.name }}
+              {{ checkoutBusy === plan.id ? 'Opening secure checkout…' : `Upgrade to ${plan.name}` }}
             </button>
             <button
               v-else
@@ -261,7 +262,15 @@
 
     <!-- ═══ Payment Section ═══ -->
     <div class="dct-card p-6 space-y-4">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Payment Method</h2>
+      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Payments</h2>
+
+      <div
+        v-if="checkoutError"
+        class="px-4 py-3 rounded-xl text-sm"
+        :style="{ background: 'color-mix(in srgb, var(--dusk-vivid) 10%, transparent)', color: 'var(--dusk-dark)' }"
+      >
+        {{ checkoutError }}
+      </div>
 
       <div
         class="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed"
@@ -271,33 +280,12 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
         <h3 class="text-lg font-semibold mb-1" :style="{ color: 'var(--text-primary)' }">
-          Coming Soon
+          Secure checkout by Dodo Payments
         </h3>
         <p class="text-sm text-center max-w-md" :style="{ color: 'var(--text-muted)' }">
-          Payment integration with <strong>Flutterwave</strong> and <strong>PayPal</strong> is coming in Sprint 9.
-          You'll be able to manage cards, view invoices, and set up auto-billing.
+          Upgrades open a hosted checkout handled by <strong>Dodo Payments</strong>, our merchant of record.
+          Cards, invoices, and local payment methods are managed there — nothing card-related touches SpiderNetOS servers.
         </p>
-
-        <div class="flex items-center gap-4 mt-6">
-          <div
-            class="flex items-center gap-2 px-4 py-2 rounded-xl"
-            :style="{ background: 'color-mix(in srgb, var(--charge-vivid) 10%, transparent)' }"
-          >
-            <svg class="w-5 h-5" :style="{ color: 'var(--charge-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span class="text-sm font-semibold" :style="{ color: 'var(--charge-dark)' }">Flutterwave</span>
-          </div>
-          <div
-            class="flex items-center gap-2 px-4 py-2 rounded-xl"
-            :style="{ background: 'color-mix(in srgb, var(--tealime-vivid) 10%, transparent)' }"
-          >
-            <svg class="w-5 h-5" :style="{ color: 'var(--tealime-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span class="text-sm font-semibold" :style="{ color: 'var(--tealime-dark)' }">PayPal</span>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -439,6 +427,8 @@ const plansSection = ref(null)
 const billingHistory = ref([])
 const atlasInferenceDaily = ref(0)
 const atlasInferenceMonthly = ref(0)
+const checkoutBusy = ref(null)
+const checkoutError = ref(null)
 
 // ─── Computed ───────────────────────────────────────────────
 const currentPlan = computed(() => {
@@ -506,15 +496,36 @@ function scrollToPlans() {
   plansSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function handleUpgrade(plan) {
-  // Placeholder — will integrate with Flutterwave/PayPal in Sprint 9
-  alert(`Upgrade to ${plan.name} (${plan.price}${plan.period}) — Payment integration coming soon!`)
+async function handleUpgrade(plan) {
+  checkoutError.value = null
+  checkoutBusy.value = plan.id
+  try {
+    const { data } = await api.post('/api/billing/checkout', { plan: plan.id })
+    const url = data.data?.checkout_url
+    if (url) {
+      window.location.assign(url)
+      return
+    }
+    checkoutError.value = 'Checkout could not be started. Please try again.'
+  } catch (err) {
+    checkoutError.value = err.response?.data?.message
+      || 'Checkout could not be started. Please try again.'
+  } finally {
+    checkoutBusy.value = null
+  }
 }
 
-function handleDowngrade(plan) {
-  if (confirm(`Are you sure you want to downgrade to ${plan.name}? This may reduce your agent and flow limits.`)) {
-    // Placeholder
-    alert(`Downgrade to ${plan.name} requested. This will take effect at the end of your current billing cycle.`)
+async function handleDowngrade(plan) {
+  if (!confirm(`Are you sure you want to downgrade to ${plan.name}? This may reduce your agent and flow limits.`)) {
+    return
+  }
+  checkoutError.value = null
+  try {
+    const { data } = await api.post('/api/billing/cancel')
+    alert(data.data?.message || 'Your change takes effect at the end of the current billing period.')
+  } catch (err) {
+    checkoutError.value = err.response?.data?.message
+      || 'The change could not be scheduled. Please try again.'
   }
 }
 </script>
