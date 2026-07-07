@@ -14,11 +14,17 @@ class BusinessProcess extends Model
         'tenant_id', 'system_id', 'name', 'goal',
         'owner_type', 'owner_user_id', 'owner_agent_id',
         'effort_size', 'status', 'position',
+        'flow_id', 'schedule_cron', 'last_execution_id', 'last_run_at',
+        'last_run_status', 'consecutive_failures', 'needs_attention',
+        'escalation_approval_id',
     ];
 
     protected $casts = [
         'effort_size' => 'integer',
         'position' => 'integer',
+        'consecutive_failures' => 'integer',
+        'needs_attention' => 'boolean',
+        'last_run_at' => 'datetime',
     ];
 
     /**

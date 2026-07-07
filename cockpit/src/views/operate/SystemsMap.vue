@@ -78,16 +78,60 @@
           <li
             v-for="p in system.processes"
             :key="p.id"
-            class="flex items-center justify-between text-sm rounded px-2 py-1.5"
+            class="text-sm rounded px-2 py-1.5 space-y-1"
             style="background: var(--surface-low);"
           >
-            <span style="color: var(--text-primary);">{{ p.name }}</span>
-            <span
-              class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded"
-              :style="ownerBadge(p.owner_type)"
-            >
-              {{ p.owner_type === 'founder' ? 'you' : p.owner_type }}
-            </span>
+            <div class="flex items-center justify-between">
+              <span style="color: var(--text-primary);">
+                <span
+                  v-if="p.flow_id"
+                  class="inline-block size-2 rounded-full mr-1.5"
+                  :style="{ background: runDot(p) }"
+                  :title="p.last_run_status ? `Last run: ${p.last_run_status}` : 'Not run yet'"
+                />{{ p.name }}
+              </span>
+              <span
+                class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                :style="ownerBadge(p.owner_type)"
+              >
+                {{ p.owner_type === 'founder' ? 'you' : p.owner_type }}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                v-if="p.has_published_sop && !p.flow_id"
+                type="button"
+                class="text-[11px] underline"
+                style="color: var(--accent);"
+                :disabled="busyProcess === p.id"
+                @click="automate(p)"
+              >
+                {{ busyProcess === p.id ? 'Compiling…' : 'Automate' }}
+              </button>
+              <button
+                v-if="p.flow_id && !p.needs_attention"
+                type="button"
+                class="text-[11px] underline"
+                style="color: var(--accent);"
+                :disabled="busyProcess === p.id"
+                @click="runNow(p)"
+              >
+                {{ busyProcess === p.id ? 'Running…' : 'Run now' }}
+              </button>
+              <button
+                v-if="p.needs_attention"
+                type="button"
+                class="text-[11px] underline font-semibold"
+                style="color: #FFAA00;"
+                @click="answerEscalation(p)"
+              >
+                Stuck — answer &amp; fix SOP
+              </button>
+              <span v-if="p.schedule_cron" class="text-[10px]" style="color: var(--text-muted);">
+                {{ p.schedule_cron.replace('_', ' ') }}
+              </span>
+            </div>
           </li>
         </ul>
 
@@ -117,6 +161,7 @@ const load = ref({ total_processes: 0, founder_owned: 0, delegated: 0, automated
 const snowball = ref({ queue: [], next_action: '' })
 const drafts = reactive({})
 const busy = ref(false)
+const busyProcess = ref(null)
 const error = ref('')
 
 function ownerBadge(ownerType) {
@@ -126,6 +171,53 @@ function ownerBadge(ownerType) {
     agent: { background: 'color-mix(in srgb, #3ddc97 15%, transparent)', color: '#3ddc97' },
   }
   return palette[ownerType] || palette.founder
+}
+
+function runDot(p) {
+  if (p.needs_attention) return '#ff6b6b'
+  if (p.last_run_status === 'passed') return '#3ddc97'
+  if (p.last_run_status === 'failed') return '#FFAA00'
+  return 'var(--text-muted)'
+}
+
+async function automate(p) {
+  busyProcess.value = p.id
+  error.value = ''
+  try {
+    await api.post(`/api/systemization/processes/${p.id}/automate`, { schedule: 'daily_morning' })
+    await refresh()
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Could not compile the runbook.'
+  } finally {
+    busyProcess.value = null
+  }
+}
+
+async function runNow(p) {
+  busyProcess.value = p.id
+  error.value = ''
+  try {
+    await api.post(`/api/systemization/processes/${p.id}/run`)
+    await refresh()
+  } catch (err) {
+    error.value = err.response?.data?.message || 'The run could not be started.'
+  } finally {
+    busyProcess.value = null
+  }
+}
+
+async function answerEscalation(p) {
+  const answer = prompt(
+    `"${p.name}" failed twice and its owner is stuck.\n\nWhat's the answer? It resolves the escalation AND becomes the next SOP revision, so this question never comes back.`,
+  )
+  if (!answer) return
+  error.value = ''
+  try {
+    await api.post(`/api/systemization/processes/${p.id}/resolve-escalation`, { answer })
+    await refresh()
+  } catch (err) {
+    error.value = err.response?.data?.message || 'The escalation could not be resolved.'
+  }
 }
 
 async function refresh() {

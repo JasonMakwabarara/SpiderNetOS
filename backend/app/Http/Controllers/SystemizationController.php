@@ -7,7 +7,11 @@ namespace App\Http\Controllers;
 use App\Models\BusinessProcess;
 use App\Models\BusinessSystem;
 use App\Models\Sop;
+use App\Services\ApprovalEngine;
+use App\Services\DagExecutionService;
 use App\Services\EventStore;
+use App\Services\Systemization\ProcessRunRecorder;
+use App\Services\Systemization\SopFlowCompiler;
 use App\Services\Systemization\SopInterviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,7 +77,10 @@ class SystemizationController extends Controller
 
         $systems = BusinessSystem::query()
             ->where('tenant_id', $tenantId)
-            ->with(['processes' => fn ($q) => $q->orderBy('position')->orderBy('effort_size')])
+            ->with(['processes' => fn ($q) => $q
+                ->orderBy('position')
+                ->orderBy('effort_size')
+                ->withExists(['sops as has_published_sop' => fn ($s) => $s->where('status', 'published')])])
             ->orderBy('function')
             ->get();
 
@@ -327,6 +334,214 @@ class SystemizationController extends Controller
         ]);
 
         return response()->json(['data' => $sop], 201);
+    }
+
+    /**
+     * POST /api/systemization/processes/{process}/automate
+     *
+     * Compiles the published SOP into an executable Flow (the runbook) and
+     * optionally puts it on a schedule. From here the process runs through
+     * the same dispatch path as every other flow — MetaPlanner, CostGovernor,
+     * approval gates included.
+     */
+    public function automate(Request $request, string $processId, SopFlowCompiler $compiler): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $process = BusinessProcess::query()->where('tenant_id', $tenantId)->find($processId);
+
+        if (! $process) {
+            return response()->json(['message' => 'Process not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'schedule' => ['nullable', Rule::in(SopFlowCompiler::SCHEDULES)],
+        ]);
+
+        $sop = Sop::query()
+            ->where('process_id', (string) $process->id)
+            ->where('status', 'published')
+            ->orderByDesc('version')
+            ->first();
+
+        if (! $sop) {
+            return response()->json([
+                'message' => 'Publish an SOP first — the runbook is compiled from it. An agent can only own what is documented.',
+            ], 422);
+        }
+
+        $schedule = $validated['schedule'] ?? 'manual';
+        $flow = $compiler->compile($process, $sop, $schedule);
+
+        $process->forceFill([
+            'flow_id' => (string) $flow->id,
+            'schedule_cron' => $schedule === 'manual' ? null : $schedule,
+        ])->save();
+
+        $this->eventStore->append(
+            $tenantId,
+            'systemization',
+            (string) $process->id,
+            'systemization.process.automated',
+            [
+                'process' => $process->name,
+                'flow_id' => (string) $flow->id,
+                'sop_version' => $sop->version,
+                'schedule' => $schedule,
+                'owner_agent_id' => $process->owner_agent_id,
+            ],
+        );
+
+        return response()->json([
+            'data' => [
+                'process' => $process->fresh(),
+                'flow' => ['id' => (string) $flow->id, 'name' => $flow->name, 'schedule' => $schedule],
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/systemization/processes/{process}/run
+     *
+     * Dispatches the compiled runbook now and feeds the result back into
+     * the process record (last run, failure streak, escalation).
+     */
+    public function run(
+        Request $request,
+        string $processId,
+        DagExecutionService $executions,
+        ProcessRunRecorder $recorder,
+    ): JsonResponse {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $process = BusinessProcess::query()->where('tenant_id', $tenantId)->find($processId);
+
+        if (! $process) {
+            return response()->json(['message' => 'Process not found.'], 404);
+        }
+
+        if (! $process->flow_id) {
+            return response()->json([
+                'message' => 'This process has no runbook yet — call automate first.',
+            ], 422);
+        }
+
+        try {
+            $status = $executions->createExecution($tenantId, (string) $process->flow_id, [
+                'process_id' => (string) $process->id,
+                'triggered_by' => 'systemization.run',
+            ]);
+        } catch (\Throwable $e) {
+            $status = ['execution_id' => null, 'status' => 'failed', 'errors' => [$e->getMessage()]];
+        }
+
+        $process = $recorder->record($process, $status);
+
+        return response()->json([
+            'data' => [
+                'process' => $process,
+                'execution' => [
+                    'id' => $status['execution_id'] ?? null,
+                    'status' => $status['status'] ?? 'unknown',
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/systemization/processes/{process}/resolve-escalation
+     *
+     * The human answers the stuck agent's question. The answer resolves the
+     * Approval AND becomes a new draft SOP revision — solved forever, per
+     * the method: SOP first, then the manager, then update the SOP.
+     */
+    public function resolveEscalation(Request $request, string $processId, ApprovalEngine $approvals): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $process = BusinessProcess::query()->where('tenant_id', $tenantId)->find($processId);
+
+        if (! $process) {
+            return response()->json(['message' => 'Process not found.'], 404);
+        }
+
+        if (! $process->needs_attention || ! $process->escalation_approval_id) {
+            return response()->json(['message' => 'This process has no open escalation.'], 422);
+        }
+
+        $validated = $request->validate([
+            'answer' => 'required|string|max:2000',
+        ]);
+
+        try {
+            $approvals->resolveApproval(
+                approvalId: (string) $process->escalation_approval_id,
+                approverId: (string) $request->user()->id,
+                approved: true,
+                response: $validated['answer'],
+            );
+        } catch (\LogicException) {
+            // Already resolved elsewhere — still fold the answer into the SOP.
+        }
+
+        $published = Sop::query()
+            ->where('process_id', (string) $process->id)
+            ->where('status', 'published')
+            ->orderByDesc('version')
+            ->first();
+
+        $revision = null;
+
+        if ($published) {
+            $version = (int) Sop::query()->where('process_id', (string) $process->id)->max('version') + 1;
+
+            $revision = Sop::create([
+                'tenant_id' => $tenantId,
+                'process_id' => (string) $process->id,
+                'version' => $version,
+                'title' => $published->title,
+                'purpose' => $published->purpose,
+                'trigger' => $published->trigger,
+                'tools' => $published->tools,
+                'steps' => $published->steps,
+                'quality_criteria' => $published->quality_criteria,
+                'notes' => [
+                    ...(array) ($published->notes ?? []),
+                    [
+                        'answer' => $validated['answer'],
+                        'source' => 'escalation',
+                        'answered_by' => (string) $request->user()->id,
+                        'answered_at' => now()->toIso8601String(),
+                    ],
+                ],
+                'status' => 'draft',
+                'created_by' => (string) $request->user()->id,
+            ]);
+        }
+
+        $process->forceFill([
+            'needs_attention' => false,
+            'consecutive_failures' => 0,
+            'escalation_approval_id' => null,
+        ])->save();
+
+        $this->eventStore->append(
+            $tenantId,
+            'systemization',
+            (string) $process->id,
+            'systemization.escalation.resolved',
+            [
+                'process' => $process->name,
+                'sop_revision' => $revision?->version,
+            ],
+        );
+
+        return response()->json([
+            'data' => [
+                'process' => $process->fresh(),
+                'sop_revision' => $revision,
+            ],
+        ]);
     }
 
     /**

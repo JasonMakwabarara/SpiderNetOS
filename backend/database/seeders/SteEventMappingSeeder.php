@@ -47,6 +47,15 @@ class SteEventMappingSeeder extends Seeder
             ['tenant.churned',                'tenant_lifecycle', null,                 'churned',           []],
             ['tenant.reactivated',            'tenant_lifecycle', 'churned',            'active',            ['re_activation' => true]],
 
+            // ---------------- process_ownership (business-systemization pack) ----------------
+            // founder_owned → documented → delegated/automated → needs_attention → automated
+            ['systemization.system.created',         'process_ownership', null,               'founder_owned',   []],
+            ['systemization.sop.published',          'process_ownership', null,               'documented',      []],
+            ['systemization.process.owner_assigned', 'process_ownership', null,               'delegated',       []],
+            ['systemization.process.automated',      'process_ownership', null,               'automated',       []],
+            ['systemization.process.escalated',      'process_ownership', 'automated',        'needs_attention', []],
+            ['systemization.escalation.resolved',    'process_ownership', 'needs_attention',  'automated',       ['sop_revised' => true]],
+
             // ---------------- usage aggregation bridge (Blocker A integration) ----------------
             // usage.aggregate.persisted is a systemic signal, not a user state change,
             // so it's intentionally unmapped. It will live in ste_unmapped_events until

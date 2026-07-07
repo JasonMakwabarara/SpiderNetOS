@@ -221,6 +221,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/snowball', [$controller, 'snowball']);
         Route::post('/processes/{process}/sops', [$controller, 'storeSop']);
         Route::post('/sops/{sop}/publish', [$controller, 'publishSop']);
+        // Accountable ownership: runbook compilation, execution, escalation
+        Route::post('/processes/{process}/automate', [$controller, 'automate']);
+        Route::post('/processes/{process}/run', [$controller, 'run']);
+        Route::post('/processes/{process}/resolve-escalation', [$controller, 'resolveEscalation']);
     });
 
     // V2 outcome loop — weekly review surface
