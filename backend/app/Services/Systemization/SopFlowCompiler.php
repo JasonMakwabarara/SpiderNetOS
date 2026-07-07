@@ -54,6 +54,12 @@ class SopFlowCompiler
         $edges = [];
         $previous = 'trigger';
 
+        // Agent-owned processes execute each step through the LLM runtime
+        // (agent_step → inference plane, or honest simulation offline);
+        // human-owned processes keep deterministic log steps — the runbook
+        // is their checklist, not their replacement.
+        $stepAction = $process->owner_type === 'agent' ? 'agent_step' : 'log';
+
         foreach ($steps as $i => $step) {
             $nodeId = 'step_' . ($i + 1);
             $nodes[] = [
@@ -61,7 +67,7 @@ class SopFlowCompiler
                 'type' => 'action',
                 'label' => Str::limit((string) $step, 60),
                 'config' => [
-                    'action' => 'log',
+                    'action' => $stepAction,
                     'instruction' => (string) $step,
                     'tools' => $sop->tools ?? [],
                     'agent_id' => $process->owner_agent_id,

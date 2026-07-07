@@ -118,8 +118,12 @@ class MetaPlanner
             ]
         );
         
-        // Publish to Redis for intelligence workers
-        Redis::publish('agent:dispatch', json_encode([
+        // Hand off to intelligence workers. They consume with BLPOP (a list),
+        // so LPUSH is the delivery mechanism — publish alone never reached
+        // them (pub/sub and lists are disjoint keyspaces). Publish is kept
+        // for passive observers. Best-effort: the durable record is the
+        // agent.dispatched event above.
+        $dispatchMessage = json_encode([
             'event_id' => $event->id,
             'tenant_id' => $tenantId,
             'agent_id' => $agentId,
@@ -127,7 +131,18 @@ class MetaPlanner
             'context' => $context,
             'dag_id' => $dagId,
             'intelligence' => $intelligence,
-        ]));
+        ]);
+
+        try {
+            Redis::lpush('agent:dispatch', $dispatchMessage);
+            Redis::publish('agent:dispatch', $dispatchMessage);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('MetaPlanner: Redis unavailable, dispatch not queued to workers', [
+                'tenant_id' => $tenantId,
+                'agent_id' => $agentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         return [
             'status' => 'dispatched',
