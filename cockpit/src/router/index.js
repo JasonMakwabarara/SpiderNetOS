@@ -24,6 +24,7 @@ const Outcomes      = () => import('../views/Outcomes.vue')
 const Communications = () => import('../views/Communications.vue')
 const FeaturePacks  = () => import('../views/FeaturePacks.vue')
 const OpsFirstWin     = () => import('../views/operate/OpsFirstWin.vue')
+const SystemsMap      = () => import('../views/operate/SystemsMap.vue')
 const SalesHome       = () => import('../views/sales/SalesHome.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 
@@ -81,6 +82,7 @@ const routes = [
   { path: '/communications', name: 'Communications', component: Communications, meta: { requiresAuth: true } },
   { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
   { path: '/operate/first-win', name: 'OpsFirstWin', component: OpsFirstWin, meta: { requiresAuth: true } },
+  { path: '/operate/systems-map', name: 'SystemsMap', component: SystemsMap, meta: { requiresAuth: true } },
   { path: '/sales', name: 'SalesHome', component: SalesHome, meta: { requiresAuth: true } },
   { path: '/compliance', name: 'ComplianceHome', component: ComplianceHome, meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },

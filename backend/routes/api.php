@@ -209,6 +209,20 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('role:admin');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->middleware(['role:admin', 'step.up']);
 
+    // Business Systemization pack — systems map, ownership, snowball, SOPs
+    Route::prefix('systemization')->group(function () {
+        $controller = \App\Http\Controllers\SystemizationController::class;
+
+        Route::post('/bootstrap', [$controller, 'bootstrap']);
+        Route::get('/map', [$controller, 'map']);
+        Route::post('/systems', [$controller, 'storeSystem']);
+        Route::post('/systems/{system}/processes', [$controller, 'storeProcess']);
+        Route::patch('/processes/{process}', [$controller, 'updateProcess']);
+        Route::get('/snowball', [$controller, 'snowball']);
+        Route::post('/processes/{process}/sops', [$controller, 'storeSop']);
+        Route::post('/sops/{sop}/publish', [$controller, 'publishSop']);
+    });
+
     // V2 outcome loop — weekly review surface
     Route::prefix('outcomes')->group(function () {
         Route::get('/weekly-review', [OutcomesController::class, 'weeklyReview']);

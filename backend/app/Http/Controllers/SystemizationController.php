@@ -1,0 +1,365 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Models\BusinessProcess;
+use App\Models\BusinessSystem;
+use App\Models\Sop;
+use App\Services\EventStore;
+use App\Services\Systemization\SopInterviewService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+/**
+ * Business Systemization pack — systems map, one-owner-per-process,
+ * snowball delegation queue, and interviewed SOPs.
+ */
+class SystemizationController extends Controller
+{
+    public function __construct(
+        private readonly EventStore $eventStore,
+        private readonly SopInterviewService $interview,
+    ) {
+    }
+
+    /**
+     * POST /api/systemization/bootstrap — seed the six core functions.
+     */
+    public function bootstrap(Request $request): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $defaults = [
+            'marketing' => 'Generate qualified leads',
+            'sales' => 'Turn leads into customers',
+            'operations' => 'Deliver the product or service',
+            'finance' => 'Manage cash flow and profitability',
+            'recruitment' => 'Attract and hire the right people',
+            'management' => 'Keep every system owned, measured, and improving',
+        ];
+
+        $created = [];
+
+        foreach ($defaults as $function => $goal) {
+            $system = BusinessSystem::query()->firstOrCreate(
+                ['tenant_id' => $tenantId, 'function' => $function, 'name' => ucfirst($function)],
+                ['goal' => $goal, 'status' => 'active'],
+            );
+
+            if ($system->wasRecentlyCreated) {
+                $created[] = $function;
+                $this->eventStore->append(
+                    $tenantId,
+                    'systemization',
+                    (string) $system->id,
+                    'systemization.system.created',
+                    ['function' => $function, 'name' => $system->name, 'source' => 'bootstrap'],
+                );
+            }
+        }
+
+        return response()->json(['data' => ['created' => $created]]);
+    }
+
+    /**
+     * GET /api/systemization/map — the full systems map plus founder load.
+     */
+    public function map(Request $request): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $systems = BusinessSystem::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['processes' => fn ($q) => $q->orderBy('position')->orderBy('effort_size')])
+            ->orderBy('function')
+            ->get();
+
+        $allProcesses = $systems->flatMap->processes;
+        $founderOwned = $allProcesses->where('owner_type', 'founder');
+
+        return response()->json([
+            'data' => [
+                'functions' => BusinessSystem::FUNCTIONS,
+                'systems' => $systems,
+                'founder_load' => [
+                    'total_processes' => $allProcesses->count(),
+                    'founder_owned' => $founderOwned->count(),
+                    'delegated' => $allProcesses->where('owner_type', 'team')->count(),
+                    'automated' => $allProcesses->where('owner_type', 'agent')->count(),
+                    'founder_owned_pct' => $allProcesses->count() > 0
+                        ? (int) round($founderOwned->count() / $allProcesses->count() * 100)
+                        : 0,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/systemization/systems
+     */
+    public function storeSystem(Request $request): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $validated = $request->validate([
+            'function' => ['required', Rule::in(BusinessSystem::FUNCTIONS)],
+            'name' => 'required|string|max:120',
+            'goal' => 'nullable|string|max:500',
+        ]);
+
+        $system = BusinessSystem::create([
+            'tenant_id' => $tenantId,
+            ...$validated,
+        ]);
+
+        $this->eventStore->append(
+            $tenantId,
+            'systemization',
+            (string) $system->id,
+            'systemization.system.created',
+            ['function' => $system->function, 'name' => $system->name],
+        );
+
+        return response()->json(['data' => $system], 201);
+    }
+
+    /**
+     * POST /api/systemization/systems/{system}/processes
+     */
+    public function storeProcess(Request $request, string $systemId): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $system = BusinessSystem::query()
+            ->where('tenant_id', $tenantId)
+            ->find($systemId);
+
+        if (! $system) {
+            return response()->json(['message' => 'System not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:160',
+            'goal' => 'nullable|string|max:500',
+            'effort_size' => 'nullable|integer|min:1|max:5',
+        ]);
+
+        $process = BusinessProcess::create([
+            'tenant_id' => $tenantId,
+            'system_id' => (string) $system->id,
+            'name' => $validated['name'],
+            'goal' => $validated['goal'] ?? null,
+            'effort_size' => $validated['effort_size'] ?? 3,
+            'owner_type' => 'founder',
+            'status' => 'founder_owned',
+        ]);
+
+        return response()->json(['data' => $process], 201);
+    }
+
+    /**
+     * PATCH /api/systemization/processes/{process} — assign ownership etc.
+     * One owner per process: setting an owner clears the other owner kind.
+     */
+    public function updateProcess(Request $request, string $processId): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $process = BusinessProcess::query()
+            ->where('tenant_id', $tenantId)
+            ->find($processId);
+
+        if (! $process) {
+            return response()->json(['message' => 'Process not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:160',
+            'goal' => 'sometimes|nullable|string|max:500',
+            'effort_size' => 'sometimes|integer|min:1|max:5',
+            'position' => 'sometimes|integer|min:0',
+            'owner_type' => ['sometimes', Rule::in(['founder', 'team', 'agent'])],
+            'owner_user_id' => 'sometimes|nullable|uuid',
+            'owner_agent_id' => 'sometimes|nullable|uuid',
+        ]);
+
+        $ownershipChanged = false;
+
+        if (array_key_exists('owner_type', $validated)) {
+            $ownershipChanged = true;
+            $process->owner_type = $validated['owner_type'];
+
+            // Exactly one owner. Everybody/somebody/anybody/nobody is how
+            // tasks die — the model makes ambiguity unrepresentable.
+            $process->owner_user_id = $validated['owner_type'] === 'team'
+                ? ($validated['owner_user_id'] ?? null)
+                : null;
+            $process->owner_agent_id = $validated['owner_type'] === 'agent'
+                ? ($validated['owner_agent_id'] ?? null)
+                : null;
+
+            $process->status = match ($validated['owner_type']) {
+                'team' => 'delegated',
+                'agent' => 'automated',
+                default => 'founder_owned',
+            };
+        }
+
+        foreach (['name', 'goal', 'effort_size', 'position'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $process->{$field} = $validated[$field];
+            }
+        }
+
+        $process->save();
+
+        if ($ownershipChanged) {
+            $this->eventStore->append(
+                $tenantId,
+                'systemization',
+                (string) $process->id,
+                'systemization.process.owner_assigned',
+                [
+                    'process' => $process->name,
+                    'owner_type' => $process->owner_type,
+                    'owner_user_id' => $process->owner_user_id,
+                    'owner_agent_id' => $process->owner_agent_id,
+                ],
+            );
+        }
+
+        return response()->json(['data' => $process->fresh()]);
+    }
+
+    /**
+     * GET /api/systemization/snowball — founder-owned processes smallest
+     * first: systematize + delegate in this order to compound freed time.
+     */
+    public function snowball(Request $request): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $queue = BusinessProcess::query()
+            ->where('tenant_id', $tenantId)
+            ->where('owner_type', 'founder')
+            ->with('system:id,function,name')
+            ->orderBy('effort_size')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (BusinessProcess $p) => [
+                'id' => (string) $p->id,
+                'name' => $p->name,
+                'goal' => $p->goal,
+                'effort_size' => $p->effort_size,
+                'function' => $p->system?->function,
+                'system' => $p->system?->name,
+                'has_published_sop' => $p->sops()->where('status', 'published')->exists(),
+            ]);
+
+        $next = $queue->first();
+
+        return response()->json([
+            'data' => [
+                'queue' => $queue,
+                'next_action' => $next
+                    ? "Systematize \"{$next['name']}\" next — it's your smallest owned process. Write its SOP, then hand it to a teammate or agent."
+                    : 'Nothing on your plate. Every process has an owner that isn\'t you — the business runs without you.',
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/systemization/processes/{process}/sops
+     *
+     * Runs the clarification interview. Incomplete answers return 422 with
+     * the follow-up questions; complete answers create the next draft version.
+     */
+    public function storeSop(Request $request, string $processId): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $process = BusinessProcess::query()
+            ->where('tenant_id', $tenantId)
+            ->find($processId);
+
+        if (! $process) {
+            return response()->json(['message' => 'Process not found.'], 404);
+        }
+
+        $answers = $request->validate([
+            'title' => 'required|string|max:160',
+            'purpose' => 'nullable|string|max:2000',
+            'trigger' => 'nullable|string|max:500',
+            'tools' => 'nullable|array',
+            'tools.*' => 'string|max:120',
+            'steps' => 'nullable|array',
+            'steps.*' => 'string|max:2000',
+            'quality_criteria' => 'nullable|array',
+            'quality_criteria.*' => 'string|max:500',
+        ]);
+
+        $review = $this->interview->evaluate($answers);
+
+        if (! $review['complete']) {
+            return response()->json([
+                'message' => 'The SOP is not followable yet — answer these first.',
+                'questions' => $review['questions'],
+            ], 422);
+        }
+
+        $version = (int) Sop::query()->where('process_id', (string) $process->id)->max('version') + 1;
+
+        $sop = Sop::create([
+            'tenant_id' => $tenantId,
+            'process_id' => (string) $process->id,
+            'version' => $version,
+            'title' => $answers['title'],
+            'purpose' => $answers['purpose'] ?? null,
+            'trigger' => $answers['trigger'] ?? null,
+            'tools' => $answers['tools'] ?? [],
+            'steps' => $answers['steps'] ?? [],
+            'quality_criteria' => $answers['quality_criteria'] ?? [],
+            'status' => 'draft',
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return response()->json(['data' => $sop], 201);
+    }
+
+    /**
+     * POST /api/systemization/sops/{sop}/publish
+     */
+    public function publishSop(Request $request, string $sopId): JsonResponse
+    {
+        $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $sop = Sop::query()
+            ->where('tenant_id', $tenantId)
+            ->find($sopId);
+
+        if (! $sop) {
+            return response()->json(['message' => 'SOP not found.'], 404);
+        }
+
+        // Latest published version wins; prior ones are archived.
+        Sop::query()
+            ->where('process_id', $sop->process_id)
+            ->where('status', 'published')
+            ->update(['status' => 'archived']);
+
+        $sop->forceFill(['status' => 'published'])->save();
+
+        $this->eventStore->append(
+            $tenantId,
+            'systemization',
+            (string) $sop->id,
+            'systemization.sop.published',
+            ['process_id' => $sop->process_id, 'version' => $sop->version, 'title' => $sop->title],
+        );
+
+        return response()->json(['data' => $sop->fresh()]);
+    }
+}
