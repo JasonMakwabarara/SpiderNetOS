@@ -48,40 +48,40 @@ const TRUST = [
 
 const PILLARS = [
   {
+    icon: Workflow,
+    title: 'Map your systems',
+    desc: 'Every task in marketing, sales, operations, and finance gets a goal, a function, and a place in the map — so you can finally see what your business actually runs on.',
+    outcome: 'Clarity in one screen',
+  },
+  {
     icon: ShieldCheck,
-    title: 'Governed AIOS',
-    desc: 'AI agents operate inside tenant, role, policy, and audit boundaries — never outside them.',
-    outcome: 'Safe enterprise adoption',
-  },
-  {
-    icon: Network,
-    title: 'Business-system integration',
-    desc: 'Connect ERP, CRM, IAM, BI, data lakes, and internal APIs through governed connectors.',
-    outcome: 'AI works where data lives',
-  },
-  {
-    icon: Terminal,
-    title: 'Cockpit control plane',
-    desc: 'Admins manage tenants, users, RBAC, provisioning, downloads, logs, and health from one console.',
-    outcome: 'Centralized operations',
-  },
-  {
-    icon: Package,
-    title: 'Secure deployment',
-    desc: 'AIOS bundles are signed, checksummed, scoped to a tenant, and lifecycle-managed.',
-    outcome: 'Reduced deployment risk',
+    title: 'Give everything an owner',
+    desc: 'One owner per process — a teammate or a governed AI agent operating inside role, policy, and audit boundaries. No more "everybody thought somebody would do it."',
+    outcome: 'Nothing lands back on you',
   },
   {
     icon: ScanSearch,
-    title: 'Observability-first',
-    desc: 'Every action, connector, agent, and pipeline is logged and monitored with anomaly detection.',
-    outcome: 'Debuggable, compliant operations',
+    title: 'Close the feedback loop',
+    desc: 'Every system reports input → process → output → result. Weekly reviews show what worked, what stalled, and what the platform recommends changing.',
+    outcome: 'Improves while you sleep',
   },
   {
-    icon: Workflow,
-    title: 'Enterprise onboarding',
-    desc: 'Guided registration, domain verification, SCIM provisioning, and installer workflow.',
-    outcome: 'Faster rollout',
+    icon: Network,
+    title: 'Works where your data lives',
+    desc: 'ERP, CRM, IAM, BI, calendars, and internal APIs connect through governed connectors — agents act on the systems you already run, not a copy of them.',
+    outcome: 'No rip-and-replace',
+  },
+  {
+    icon: Terminal,
+    title: 'Ten minutes a week',
+    desc: 'The Cockpit gives you one console for approvals, spend, agents, and outcomes. Set budgets and autonomy levels; the CostGovernor enforces them.',
+    outcome: 'Run the business, not the tools',
+  },
+  {
+    icon: Package,
+    title: 'Safe to switch on',
+    desc: 'Signed deployments, tenant isolation, audit-ready logs, and human approval gates on anything irreversible. Autonomy is a dial, not a leap.',
+    outcome: 'Trustworthy automation',
   },
 ];
 
@@ -231,20 +231,20 @@ export default function LandingPage() {
               data-testid="hero-headline"
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tighter font-medium leading-[1.02]"
             >
-              The AI{' '}
+              Your business,{' '}
               <span className="bg-orange-cyan bg-clip-text text-transparent">
-                Operating System
-              </span>{' '}
-              for business automation.
+                running without you
+              </span>
+              .
             </h1>
             <p
               data-testid="hero-subcopy"
               className="mt-6 text-lg md:text-xl text-textc-secondary max-w-2xl leading-relaxed"
             >
-              Connect your people, data, applications, and AI agents through one operating layer.
-              Deploy AIOS components into any environment — startups, teams, or enterprises —
-              with signed bundles, identity, RBAC, observability, and lifecycle controls built
-              in.
+              SpiderNetOS maps every task in your company into systems with clear owners, puts
+              governed AI agents to work on the repetitive ones, and reports back in a
+              ten-minute weekly review. You set the direction. The operating system does the
+              running — with identity, audit, and spend limits built in.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3">
               <Link
@@ -295,19 +295,20 @@ export default function LandingPage() {
           <div>
             <SectionEyebrow>The problem</SectionEyebrow>
             <h2 className="section-title mt-3">
-              Most AI projects stall when identity, data, and deployment live in different
-              systems.
+              You built the SOPs and the automations. Everything still comes back to you.
             </h2>
           </div>
           <div className="text-textc-secondary text-lg leading-relaxed space-y-4">
             <p>
-              The hardest part of putting AI into a business isn't picking the model. It's
-              connecting it to the data, the people, the tools, and the policies that already
-              run the company — and keeping that connection observable and reversible.
+              Systems don't fail because they're badly documented. They fail because nobody
+              owns them — so every question, every exception, and every decision lands back
+              on the founder's desk. Documents don't run a business. Owners and feedback
+              loops do.
             </p>
             <p>
-              SpiderNetOS collapses that surface into one operating layer that scales from a
-              two-person team to a 50,000-seat enterprise.
+              SpiderNetOS gives every process in your company an owner — a person or a
+              governed AI agent — a measurable goal, and a feedback loop that improves it
+              every week. From a two-person team to a 50,000-seat enterprise.
             </p>
           </div>
         </div>
@@ -318,7 +319,8 @@ export default function LandingPage() {
         <div className="container-x">
           <SectionEyebrow>Platform</SectionEyebrow>
           <h2 className="section-title mt-3 max-w-3xl">
-            One operating layer. Six pillars. Built for real business work.
+            Map it. Own it. Improve it. The operating system for a business that scales
+            without burning you out.
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
             {PILLARS.map((p, i) => (
