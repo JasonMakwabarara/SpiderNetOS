@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Event;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Schema;
 
 class CostGovernor
 {
@@ -69,13 +71,21 @@ class CostGovernor
         $today = now()->toDateString();
         $month = now()->format('Y-m');
         
-        // Atomic increment in Redis
-        Redis::incrbyfloat(sprintf(self::REDIS_KEY_DAILY, $tenantId, $today), $cost);
-        Redis::incrbyfloat(sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month), $cost);
-        
-        // Set expiry on Redis keys (30 days for daily, 2 years for monthly)
-        Redis::expire(sprintf(self::REDIS_KEY_DAILY, $tenantId, $today), 86400 * 30);
-        Redis::expire(sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month), 86400 * 730);
+        // Atomic increment in Redis — best-effort. The event_log append below
+        // is the durable record; Redis is the hot-path counter.
+        try {
+            Redis::incrbyfloat(sprintf(self::REDIS_KEY_DAILY, $tenantId, $today), $cost);
+            Redis::incrbyfloat(sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month), $cost);
+
+            // Set expiry on Redis keys (30 days for daily, 2 years for monthly)
+            Redis::expire(sprintf(self::REDIS_KEY_DAILY, $tenantId, $today), 86400 * 30);
+            Redis::expire(sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month), 86400 * 730);
+        } catch (\Throwable $e) {
+            Log::warning('CostGovernor: Redis unavailable, counters not incremented', [
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         // Emit event for projection
         $eventStore = app(EventStore::class);
@@ -161,14 +171,42 @@ class CostGovernor
     
     private function getDailySpend(string $tenantId, string $date): float
     {
-        $key = sprintf(self::REDIS_KEY_DAILY, $tenantId, $date);
-        return (float) Redis::get($key) ?: 0;
+        try {
+            $key = sprintf(self::REDIS_KEY_DAILY, $tenantId, $date);
+            return (float) Redis::get($key) ?: 0;
+        } catch (\Throwable $e) {
+            // A Redis outage must degrade to the DB projection, not 500 every
+            // request via EnforcePlanLimits (budget guard, not a security gate).
+            return $this->aggregateSpendFallback($tenantId, $date, $date);
+        }
     }
-    
+
     private function getMonthlySpend(string $tenantId, string $month): float
     {
-        $key = sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month);
-        return (float) Redis::get($key) ?: 0;
+        try {
+            $key = sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month);
+            return (float) Redis::get($key) ?: 0;
+        } catch (\Throwable $e) {
+            $start = $month . '-01';
+            $end = now()->toDateString();
+            return $this->aggregateSpendFallback($tenantId, $start, $end);
+        }
+    }
+
+    private function aggregateSpendFallback(string $tenantId, string $from, string $to): float
+    {
+        try {
+            if (! Schema::hasTable('usage_daily_aggregates')) {
+                return 0.0;
+            }
+
+            return (float) DB::table('usage_daily_aggregates')
+                ->where('tenant_id', $tenantId)
+                ->whereBetween('date', [$from, $to])
+                ->sum('total_cost');
+        } catch (\Throwable) {
+            return 0.0;
+        }
     }
     
     private function estimateModelCost(string $model): float

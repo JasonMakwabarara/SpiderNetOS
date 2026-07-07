@@ -35,6 +35,8 @@ jobs:
       - run: composer install --prefer-dist --no-progress --no-interaction
       - name: Pint (code style)
         run: vendor/bin/pint --test --format=checkstyle | cs2pr
+      - name: Larastan (static analysis, baseline-gated)
+        run: php vendor/bin/phpstan.phar analyse --memory-limit=1G --no-progress --error-format=github
 
   backend-test-ci-fast:
     name: backend — PHPUnit (CiFast)

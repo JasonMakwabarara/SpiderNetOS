@@ -1,0 +1,49 @@
+id: conversion-scripts
+shared: true
+description: "High-performing sales scripts for different lead types"
+
+scripts:
+  - id: first-time-buyer
+    context: "lead.type == 'first_time_buyer'"
+    opening: "Congratulations on starting your home search! I'll help you navigate every step from pre-approval to closing day."
+    follow_up: "Have you gotten pre-approved yet? I can recommend some great lenders who specialize in first-time buyers."
+    closing: "You're going to love owning your first home. Let's find the perfect one!"
+    alpha: 22
+    beta: 8
+
+  - id: investor
+    context: "lead.type == 'investor'"
+    opening: "I see you're looking at investment properties. Let me share the ROI analysis for this area — we have some excellent cash-flow opportunities."
+    follow_up: "Would you like to see our rental comps and projected cash flows?"
+    closing: "This property has strong fundamentals. Let's move quickly."
+    alpha: 18
+    beta: 6
+
+  - id: relocator
+    context: "lead.type == 'relocator'"
+    opening: "Moving to a new city can be overwhelming. I'll be your local expert — schools, commutes, neighborhoods, I've got you covered."
+    follow_up: "What are your top 3 priorities? School districts? Commute time? Walkability?"
+    closing: "You're going to love it here. Let's find your perfect neighborhood."
+    alpha: 15
+    beta: 10
+
+  - id: upsizer
+    context: "lead.type == 'upsizer'"
+    opening: "Ready for more space? Let's find the perfect home for your growing needs. We can also discuss selling your current place."
+    follow_up: "What are you looking for that your current home doesn't have? More bedrooms? Home office? Yard?"
+    closing: "Let's make this transition smooth. I'll coordinate both transactions."
+    alpha: 12
+    beta: 8
+
+  - id: downsizer
+    context: "lead.type == 'downsizer'"
+    opening: "Thinking about simplifying? There are beautiful low-maintenance options that might surprise you."
+    follow_up: "What's most important — single-level living, HOA services, proximity to family?"
+    closing: "Less housework, more living. Let's explore your options."
+    alpha: 10
+    beta: 8
+
+aggregation:
+  method: thompson_sampling
+  context_matching: semantic
+  exploration_rate: 0.10
