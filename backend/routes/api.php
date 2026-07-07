@@ -68,6 +68,19 @@ Route::post('/voice/stream/connect', [VoiceStreamController::class, 'connect'])
 Route::post('/webhooks/dodo', [\App\Http\Controllers\Billing\DodoWebhookController::class, 'handle'])
     ->middleware('throttle:billing_webhook');
 
+// Enterprise self-serve registration funnel (public, heavily throttled,
+// kill-switched via config('enterprise.self_serve_enabled')).
+Route::prefix('enterprise/register')->middleware('throttle:enterprise_register')->group(function () {
+    $controller = \App\Http\Controllers\Enterprise\EnterpriseRegistrationController::class;
+
+    Route::post('/start', [$controller, 'start']);
+    Route::post('/verify-domain', [$controller, 'verifyDomain']);
+    Route::post('/create-tenant', [$controller, 'createTenant']);
+    Route::post('/scim/generate', [$controller, 'scimGenerate']);
+    Route::post('/bundle/create', [$controller, 'bundleCreate']);
+    Route::post('/deploy/start', [$controller, 'deployStart']);
+});
+
 // Authentication — Tier 1 rate-limited (IP-keyed to resist credential-stuffing).
 Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
