@@ -25,10 +25,17 @@ class InferencePlaneClient
         float $costCeiling = 0.50,
         int $maxTokens = 2048,
     ): array {
-        $response = Http::baseUrl($this->baseUrl())
+        $request = Http::baseUrl($this->baseUrl())
             ->timeout($this->timeoutSeconds())
-            ->acceptJson()
-            ->post('/generate', [
+            ->acceptJson();
+
+        // Remote inference planes sit behind an nginx bearer gate.
+        $token = (string) config('services.inference.token', '');
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+
+        $response = $request->post('/generate', [
                 'prompt' => $prompt,
                 'system_prompt' => $systemPrompt,
                 'tenant_tier' => $tenantTier,
