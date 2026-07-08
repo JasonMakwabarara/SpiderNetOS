@@ -10,7 +10,15 @@ from typing import List
 import httpx
 
 from models import InferenceRequest, InferenceResponse
-from config import MODEL_COST_TABLE, OLLAMA_URL, OPENAI_API_KEY
+from config import (
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_BASE_URL,
+    MODEL_COST_TABLE,
+    MODELARK_MODEL_MAP,
+    OLLAMA_ENABLED,
+    OLLAMA_URL,
+    OPENAI_API_KEY,
+)
 from cost import record_usage
 from metrics import record_success, record_failure, get_success_rates
 
@@ -32,6 +40,12 @@ def rank_models(cost_ceiling: float, latency_max: float | None, tenant_tier: str
             continue
 
         if info["provider"] == "openai" and not OPENAI_API_KEY:
+            continue
+
+        if info["provider"] == "modelark" and not DEEPSEEK_API_KEY:
+            continue
+
+        if info["provider"] == "ollama" and not OLLAMA_ENABLED:
             continue
 
         candidates.append((model_name, info))
@@ -98,17 +112,28 @@ async def call_model(model: str, request: InferenceRequest) -> InferenceResponse
             text = data.get("response", "")
             tokens = data.get("eval_count", len(text.split()))
 
-        elif info["provider"] == "openai":
+        elif info["provider"] in ("openai", "modelark"):
             messages = []
             if request.system_prompt:
                 messages.append({"role": "system", "content": request.system_prompt})
             messages.append({"role": "user", "content": request.prompt})
 
+            if info["provider"] == "modelark":
+                # BytePlus ModelArk is OpenAI-compatible but addresses models
+                # by its own model/endpoint IDs (Hannah's endpoint-map pattern).
+                url = f"{DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
+                api_key = DEEPSEEK_API_KEY
+                wire_model = MODELARK_MODEL_MAP.get(model, model)
+            else:
+                url = "https://api.openai.com/v1/chat/completions"
+                api_key = OPENAI_API_KEY
+                wire_model = model
+
             resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                url,
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": model,
+                    "model": wire_model,
                     "messages": messages,
                     "temperature": request.temperature,
                     "max_tokens": request.max_tokens,

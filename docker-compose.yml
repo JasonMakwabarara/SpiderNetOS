@@ -414,7 +414,11 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/1
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://ark.ap-southeast.bytepluses.com/api/v3}
+      DEEPSEEK_ARK_MODEL: ${DEEPSEEK_ARK_MODEL:-deepseek-v3-250324}
       DEFAULT_COST_CEILING: ${COST_CEILING_DEFAULT}
     depends_on:
       redis:
