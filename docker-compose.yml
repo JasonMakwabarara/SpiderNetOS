@@ -418,7 +418,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://ark.ap-southeast.bytepluses.com/api/v3}
-      DEEPSEEK_ARK_MODEL: ${DEEPSEEK_ARK_MODEL:-deepseek-v3-250324}
+      DEEPSEEK_ARK_MODEL_FLASH: ${DEEPSEEK_ARK_MODEL_FLASH:-deepseek-v4-flash}
+      DEEPSEEK_ARK_MODEL_PRO: ${DEEPSEEK_ARK_MODEL_PRO:-deepseek-v4-pro}
       DEFAULT_COST_CEILING: ${COST_CEILING_DEFAULT}
     depends_on:
       redis:

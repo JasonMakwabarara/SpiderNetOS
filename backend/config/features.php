@@ -16,6 +16,24 @@
 return [
 
     // -----------------------------------------------------------------------
+    // Inference plane — model selection (editable at runtime from the
+    // platform dashboard: Platform -> Feature Flags, or `php artisan
+    // feature:set inference.model <value>`)
+    // -----------------------------------------------------------------------
+
+    // Routing-table key sent to the inference plane. DeepSeek V4 pair:
+    // flash = fast/cheap default, pro = heavier reasoning.
+    'inference.model' => env('FEATURE_INFERENCE_MODEL', 'deepseek-v4-flash'),
+    'inference.model.heavy' => env('FEATURE_INFERENCE_MODEL_HEAVY', 'deepseek-v4-pro'),
+
+    // Explicit BytePlus ModelArk model/endpoint IDs. When set, these override
+    // the plane's static map per request (Hannah's endpoint-map pattern) —
+    // rotate Ark endpoints without touching the inference server.
+    'inference.ark_model_id' => env('FEATURE_INFERENCE_ARK_MODEL_ID', ''),
+    'inference.ark_model_id.heavy' => env('FEATURE_INFERENCE_ARK_MODEL_ID_HEAVY', ''),
+
+
+    // -----------------------------------------------------------------------
     // Blocker A — usage aggregate v2 rollout gates
     // -----------------------------------------------------------------------
 

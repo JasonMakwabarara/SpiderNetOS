@@ -15,6 +15,10 @@ class InferenceRequest(BaseModel):
     tenant_tier: str = Field(default="starter", description="Tenant subscription tier")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=2048, ge=1, le=32768)
+    # Explicit provider-side model/endpoint ID (e.g. a BytePlus ModelArk
+    # endpoint ID). Overrides the static MODELARK_MODEL_MAP translation —
+    # set from the Laravel admin dashboard via feature flags.
+    provider_model_id: Optional[str] = None
 
 
 class InferenceResponse(BaseModel):

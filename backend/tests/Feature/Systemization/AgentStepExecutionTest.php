@@ -169,7 +169,8 @@ class AgentStepExecutionTest extends TestCase
             ->assertJsonPath('data.process.last_run_status', 'passed');
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/generate')
-            && str_contains((string) $request['prompt'], 'Google Calendar'));
+            && str_contains((string) $request['prompt'], 'Google Calendar')
+            && $request['model'] === 'deepseek-v4-flash');
 
         $stepResult = json_decode((string) DB::table('execution_dag_nodes')
             ->where('node_id', 'step_1')
@@ -184,6 +185,24 @@ class AgentStepExecutionTest extends TestCase
             'tenant_id' => (string) $this->tenant->id,
             'event_type' => 'usage.recorded',
         ]);
+    }
+
+    public function test_admin_flag_overrides_model_and_ark_endpoint(): void
+    {
+        $this->inferenceFake('Step completed.');
+
+        // What a platform admin sets via Platform → Feature Flags.
+        config()->set('features', array_merge((array) config('features'), [
+            'inference.model' => 'deepseek-v4-pro',
+            'inference.ark_model_id' => 'ep-custom-arkendpoint-123',
+        ]));
+
+        $this->publishSopAndAssignAgent();
+        $this->postJson("/api/systemization/processes/{$this->process->id}/run")->assertOk();
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/generate')
+            && $request['model'] === 'deepseek-v4-pro'
+            && $request['provider_model_id'] === 'ep-custom-arkendpoint-123');
     }
 
     public function test_blocked_agent_fails_the_run(): void

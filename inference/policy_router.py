@@ -123,7 +123,7 @@ async def call_model(model: str, request: InferenceRequest) -> InferenceResponse
                 # by its own model/endpoint IDs (Hannah's endpoint-map pattern).
                 url = f"{DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
                 api_key = DEEPSEEK_API_KEY
-                wire_model = MODELARK_MODEL_MAP.get(model, model)
+                wire_model = request.provider_model_id or MODELARK_MODEL_MAP.get(model, model)
             else:
                 url = "https://api.openai.com/v1/chat/completions"
                 api_key = OPENAI_API_KEY

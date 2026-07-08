@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Inference;
 
+use App\Services\FeatureFlag;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -12,6 +13,11 @@ use Illuminate\Support\Facades\Http;
  * The plane does its own policy routing (cost ceiling, latency, tenant tier,
  * provider fallback chains); this client only speaks the request contract
  * and normalizes the response.
+ *
+ * Model selection is admin-configurable at runtime via feature flags
+ * (Platform → Feature Flags in the cockpit, or `php artisan feature:set`):
+ *   inference.model / inference.model.heavy        — routing-table key
+ *   inference.ark_model_id / …ark_model_id.heavy   — explicit Ark endpoint ID
  */
 class InferencePlaneClient
 {
@@ -24,6 +30,7 @@ class InferencePlaneClient
         string $tenantTier = 'starter',
         float $costCeiling = 0.50,
         int $maxTokens = 2048,
+        bool $heavy = false,
     ): array {
         $request = Http::baseUrl($this->baseUrl())
             ->timeout($this->timeoutSeconds())
@@ -35,14 +42,27 @@ class InferencePlaneClient
             $request = $request->withToken($token);
         }
 
-        $response = $request->post('/generate', [
-                'prompt' => $prompt,
-                'system_prompt' => $systemPrompt,
-                'tenant_tier' => $tenantTier,
-                'cost_ceiling' => $costCeiling,
-                'max_tokens' => $maxTokens,
-                'temperature' => 0.2, // runbook steps want precision, not creativity
-            ]);
+        $model = trim((string) FeatureFlag::value($heavy ? 'inference.model.heavy' : 'inference.model'));
+        $arkModelId = trim((string) FeatureFlag::value($heavy ? 'inference.ark_model_id.heavy' : 'inference.ark_model_id'));
+
+        $payload = [
+            'prompt' => $prompt,
+            'system_prompt' => $systemPrompt,
+            'tenant_tier' => $tenantTier,
+            'cost_ceiling' => $costCeiling,
+            'max_tokens' => $maxTokens,
+            'temperature' => 0.2, // runbook steps want precision, not creativity
+        ];
+
+        if ($model !== '' && $model !== 'off') {
+            $payload['model'] = $model;
+        }
+
+        if ($arkModelId !== '' && $arkModelId !== 'off') {
+            $payload['provider_model_id'] = $arkModelId;
+        }
+
+        $response = $request->post('/generate', $payload);
 
         if ($response->failed()) {
             throw new \RuntimeException(

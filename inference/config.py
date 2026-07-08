@@ -18,7 +18,8 @@ DEFAULT_OLLAMA_MODEL = os.getenv("DEFAULT_OLLAMA_MODEL", "gemma2:2b")
 # endpoint ID; DEEPSEEK_ARK_MODEL carries whichever your Ark account uses.
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://ark.ap-southeast.bytepluses.com/api/v3")
-DEEPSEEK_ARK_MODEL = os.getenv("DEEPSEEK_ARK_MODEL", "deepseek-v3-250324")
+DEEPSEEK_ARK_MODEL_FLASH = os.getenv("DEEPSEEK_ARK_MODEL_FLASH", "deepseek-v4-flash")
+DEEPSEEK_ARK_MODEL_PRO = os.getenv("DEEPSEEK_ARK_MODEL_PRO", "deepseek-v4-pro")
 
 # Embedding config
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
@@ -46,15 +47,17 @@ MODEL_COST_TABLE = {
     "qwen3": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2000, "provider": "ollama"},
     # MedGemma (medical domain — local Ollama)
     "medgemma": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2800, "provider": "ollama"},
-    # DeepSeek via BytePlus ModelArk (primary hosted provider)
-    "deepseek-v3": {"cost_per_1k_tokens": 0.0007, "latency_avg_ms": 1500, "provider": "modelark"},
-    "deepseek-r1": {"cost_per_1k_tokens": 0.0022, "latency_avg_ms": 6000, "provider": "modelark"},
+    # DeepSeek V4 via BytePlus ModelArk (primary hosted provider):
+    # flash = fast/cheap default, pro = heavier reasoning fallback.
+    "deepseek-v4-flash": {"cost_per_1k_tokens": 0.0004, "latency_avg_ms": 900, "provider": "modelark"},
+    "deepseek-v4-pro": {"cost_per_1k_tokens": 0.0016, "latency_avg_ms": 2500, "provider": "modelark"},
 }
 
 # Table key → Ark model/endpoint ID (ModelArk addresses models by its own
-# IDs, mirroring Hannah's deepseek_endpoint_map). deepseek-v3 follows
-# DEEPSEEK_ARK_MODEL; override the reasoner via DEEPSEEK_ARK_MODEL_R1.
+# IDs, mirroring Hannah's deepseek_endpoint_map). Per-request overrides are
+# possible via InferenceRequest.provider_model_id, which the Laravel admin
+# dashboard controls through the inference.* feature flags.
 MODELARK_MODEL_MAP = {
-    "deepseek-v3": DEEPSEEK_ARK_MODEL,
-    "deepseek-r1": os.getenv("DEEPSEEK_ARK_MODEL_R1", "deepseek-r1-250528"),
+    "deepseek-v4-flash": DEEPSEEK_ARK_MODEL_FLASH,
+    "deepseek-v4-pro": DEEPSEEK_ARK_MODEL_PRO,
 }
