@@ -139,6 +139,17 @@ class EnterpriseRegistrationTest extends TestCase
         $this->assertDatabaseHas('aios_deployments', ['bundle_id' => $bundleId]);
     }
 
+    public function test_start_without_domain_falls_back_to_email_domain(): void
+    {
+        $response = $this->postJson('/api/enterprise/register/start', [
+            'org_name' => 'No Domain Co',
+            'contact_email' => 'ops@nodomain-co.test',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('nodomain-co.test', $response->json('domain'));
+    }
+
     public function test_kill_switch_disables_funnel(): void
     {
         config()->set('enterprise.self_serve_enabled', false);

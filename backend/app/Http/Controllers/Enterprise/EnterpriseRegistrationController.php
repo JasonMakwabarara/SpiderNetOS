@@ -57,7 +57,7 @@ class EnterpriseRegistrationController extends Controller
             'domain' => 'nullable|string|max:190',
         ]);
 
-        $domain = strtolower(trim($validated['domain'] ?: Str::after($validated['contact_email'], '@')));
+        $domain = strtolower(trim(($validated['domain'] ?? '') ?: Str::after($validated['contact_email'], '@')));
         $id = 'ent_' . Str::lower(Str::random(20));
         $domainToken = 'sn_' . Str::random(24);
 
