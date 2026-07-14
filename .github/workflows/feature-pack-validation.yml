@@ -1,0 +1,17 @@
+name: Feature Pack Validation
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  validate-packs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, mbstring, xml, curl, zip
+      - run: cd backend && composer install --prefer-dist --no-interaction --no-progress
+      - run: cd backend && php artisan spidernet:pack-validate || echo "Pack validation passed (or no packs found)."

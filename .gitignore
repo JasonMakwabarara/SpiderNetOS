@@ -1,92 +1,86 @@
-# Environment
-.env
-.env.*
-!.env.example
+# Backend
+backend/.env
+backend/.env.*
+backend/storage/*.log
+backend/storage/framework/*
+backend/storage/app/*
+backend/vendor/
+backend/.idea/
+backend/.vscode/
+backend/.phpunit.cache
+backend/composer.lock
+backend/node_modules/
+backend/bootstrap/cache/*.php
+backend/public/storage
+backend/.env.backup
+backend/.phpunit.result.cache
+backend/Homestead.json
+backend/Homestead.yaml
+backend/.env
+backend/.env.testing
+backend/.env.local
+backend/.env.production
 
-# Dependencies
-node_modules/
-vendor/
-
-# Build outputs
-dist/
-build/
-*.log
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-docker-compose.override.yml
+# Frontend
+cockpit/node_modules/
+cockpit/.vite/
+cockpit/dist/
+cockpit/.env
+cockpit/.env.local
+cockpit/.env.production
+cockpit/.cache/
+cockpit/.idea/
+cockpit/.vscode/
+cockpit/*.log
+cockpit/package-lock.json
 
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
+intelligence/__pycache__/
+inference/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
 *.egg-info/
+dist/
+build/
 
-# Database
+# General
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
 *.sqlite
-*.db
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-.gitnexus
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
+*.sqlite-journal
+docker-compose.override.yml
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vercel
+.netlify
+.sass-cache/
+*.css.map
+*.js.map
+
+# Testing
+coverage/
+.phpunit.cache/
+.phpunit.result.cache
+.whitesource
+.jest/
+*.test.js
+*.spec.js
+*Test.php

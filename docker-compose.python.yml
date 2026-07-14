@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile.intelligence
+    ports:
+      - "8002:8000"
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    ports:
+      - "9000:9000"
