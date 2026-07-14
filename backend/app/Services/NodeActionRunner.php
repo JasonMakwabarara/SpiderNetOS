@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Inference\InferencePlaneClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Executes deterministic flow node actions (digest, reminder, notify, log, webhook).
+ * Executes deterministic flow node actions (digest, reminder, notify, log,
+ * webhook) plus LLM-backed agent steps (agent_step) via the inference plane.
  */
 class NodeActionRunner
 {
+    public function __construct(
+        private readonly InferencePlaneClient $inference,
+        private readonly CostGovernor $costGovernor,
+    ) {
+    }
+
     /**
      * @param  array<string, mixed>  $nodeConfig
      * @param  array<string, mixed>  $context
@@ -29,9 +37,92 @@ class NodeActionRunner
             'notify' => $this->runNotify($nodeConfig, $context),
             'webhook' => $this->runWebhook($nodeConfig, $context),
             'trigger' => $this->runTrigger($nodeConfig, $context),
+            'agent_step' => $this->runAgentStep($tenantId, $nodeConfig, $context),
             'log' => $this->runLog($nodeConfig, $context),
             default => $this->runLog($nodeConfig, $context),
         };
+    }
+
+    /**
+     * Execute one SOP step through the owning agent's LLM runtime.
+     *
+     * Modes (config spidernet.agent_step_execution):
+     *   inference — call the inference plane; a failure throws, which fails
+     *               the node → the run records "failed" → two in a row
+     *               escalate to a human. Accountability by design.
+     *   simulate  — deterministic offline result, explicitly marked
+     *               simulated:true. Default when no inference URL is set,
+     *               so runs are never silently fake.
+     *
+     * @param  array<string, mixed>  $nodeConfig
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function runAgentStep(string $tenantId, array $nodeConfig, array $context): array
+    {
+        $instruction = trim((string) ($nodeConfig['instruction'] ?? ''));
+
+        if ($instruction === '') {
+            throw new \RuntimeException('agent_step node has no instruction.');
+        }
+
+        $mode = (string) config('spidernet.agent_step_execution', 'auto');
+        if ($mode === 'auto') {
+            $mode = $this->inference->configured() ? 'inference' : 'simulate';
+        }
+
+        if ($mode === 'simulate') {
+            return [
+                'action' => 'agent_step',
+                'simulated' => true,
+                'instruction' => $instruction,
+                'output' => 'Simulated: "' . Str::limit($instruction, 80) . '" acknowledged by '
+                    . ($nodeConfig['agent_id'] ?? 'owning agent') . '. Configure INFERENCE_URL for real execution.',
+                'executed_at' => now()->toIso8601String(),
+            ];
+        }
+
+        $tools = array_filter((array) ($nodeConfig['tools'] ?? []));
+        $quality = array_filter((array) ($context['quality_criteria'] ?? []));
+
+        $systemPrompt = 'You are an operations agent executing one step of a Standard Operating Procedure for a business. '
+            . 'Perform the step using the tools available to you and report exactly what you did. '
+            . 'If the step cannot be completed, start your reply with "BLOCKED:" and state precisely what is missing.'
+            . ($tools !== [] ? ' Tools available: ' . implode(', ', $tools) . '.' : '')
+            . ($quality !== [] ? ' Success criteria for this SOP: ' . implode(' | ', $quality) . '.' : '');
+
+        $result = $this->inference->generate(
+            prompt: $instruction,
+            systemPrompt: $systemPrompt,
+            tenantTier: (string) ($context['tenant_tier'] ?? 'starter'),
+            costCeiling: (float) config('spidernet.agent_step_cost_ceiling', 0.25),
+        );
+
+        if ($result['cost'] > 0) {
+            $this->costGovernor->recordUsage($tenantId, 'agent_step', $result['cost'], [
+                'model' => $result['model'],
+                'provider' => $result['provider'],
+                'sop_step' => $nodeConfig['sop_step'] ?? null,
+            ]);
+        }
+
+        // The agent saying it is blocked is a failed step, not a passed one —
+        // silently marking blocked work "done" would corrupt the feedback loop.
+        if (str_starts_with(ltrim($result['text']), 'BLOCKED:')) {
+            throw new \RuntimeException('Agent reported blocked: ' . Str::limit(ltrim($result['text']), 300));
+        }
+
+        return [
+            'action' => 'agent_step',
+            'simulated' => false,
+            'instruction' => $instruction,
+            'output' => $result['text'],
+            'model' => $result['model'],
+            'provider' => $result['provider'],
+            'tokens_used' => $result['tokens_used'],
+            'cost_usd' => $result['cost'],
+            'executed_at' => now()->toIso8601String(),
+        ];
     }
 
     /**

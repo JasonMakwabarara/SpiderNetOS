@@ -1,6 +1,12 @@
 # Auxiliary scripts inventory
 
 SpiderNet OS ships automation that lives **outside** the core `backend/`, `cockpit/`, `intelligence/`, and `inference/` planes. Treat these as operator / R&D tooling — they are documented here so newcomers are not overwhelmed by repository root clutter.
+> **2026-07-07 reorganization:** operator/R&D scripts formerly at the repo
+> root now live in [`ops/`](../../ops/) (fix-*, mechanic-*, tunnel helpers,
+> Hermes setup, site generators, cert/backup helpers). Loose spec documents
+> and superseded self-review reports moved to [`docs/archive/`](../archive/).
+> Update any muscle-memory paths accordingly — filenames are unchanged.
+
 
 ## Core product entry points
 

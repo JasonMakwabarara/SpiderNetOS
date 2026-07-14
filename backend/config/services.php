@@ -10,6 +10,8 @@ return [
 
     'inference' => [
         'url' => env('INFERENCE_URL', 'http://localhost:9000'),
+        'token' => env('INFERENCE_TOKEN', ''),
+        'timeout' => (int) env('INFERENCE_TIMEOUT', 60),
     ],
 
     'intelligence_gateway' => [

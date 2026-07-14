@@ -1,0 +1,588 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Console/Commands/BackfillUsageAggregates.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Console/Commands/VerifyEventChain.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/VerifyEventChain.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 4
+			path: app/Console/Commands/VoiceSmokeTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$automation_level\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Http/Controllers/Admin/OnboardingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OnboardingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 12
+			path: app/Http/Controllers/Admin/OnboardingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$onboarding\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OnboardingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$onboarding_completed_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/OnboardingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Offset ''config'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/AgentController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$automation_level\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$onboarding\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Offset ''ast'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Offset ''mode'' on array\{mode\: string, question\?\: string, questions\?\: array\<int, string\>, pending_action\?\: array\<string, mixed\>, consequence\?\: array\<string, mixed\>, confidence\?\: float\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Offset ''mode'' on array\{mode\: string, questions\?\: array\<int, string\>, suggested_next\?\: array\<string, mixed\>, profile_pct\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>automation_level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>onboarding" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AtlasController.php
+
+		-
+			message: '#^Cannot access property \$impressions on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/AtlasCopyController.php
+
+		-
+			message: '#^Cannot access property \$predicted_ts on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/AtlasCopyController.php
+
+		-
+			message: '#^Cannot access property \$sum_reward on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/AtlasCopyController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Http/Controllers/AtlasCopyController.php
+
+		-
+			message: '#^Unknown parameter \$forcedAgent in call to method App\\Services\\AtlasJarvisAugmentor\:\:augment\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Http/Controllers/AtlasJarvisController.php
+
+		-
+			message: '#^Unknown parameter \$skills in call to method App\\Services\\AtlasJarvisAugmentor\:\:augment\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Http/Controllers/AtlasJarvisController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$automation_level\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$onboarding_completed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Offset ''reference'' does not exist on array\{checkout_url\: string, session_id\: string\|null\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Controllers/BillingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/FeaturePackController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:featurePacks\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/FeaturePackController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/FeaturePackController.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of method App\\Services\\FeaturePackInstaller\:\:install\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/FeaturePackController.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Financial\\ReportingService\:\:getAgingReport\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Financial/FinancialController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Http/Controllers/Financial/FinancialController.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\TenantKeyManager\:\:getSecret\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Integrations/CalendarController.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\TenantKeyManager\:\:storeSecret\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Integrations/IntegrationsController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Http/Controllers/ObservabilityController.php
+
+		-
+			message: '#^Property App\\Http\\Controllers\\VoiceController\:\:\$costGovernor is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/VoiceController.php
+
+		-
+			message: '#^Property App\\Http\\Controllers\\VoiceController\:\:\$metaPlanner is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/VoiceController.php
+
+		-
+			message: '#^Relation ''summary'' is not found in App\\Models\\VoiceCall model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/VoiceController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/VoiceController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Middleware/VerifyTwilioSignature.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Jobs/AggregateUsageJob.php
+
+		-
+			message: '#^Method App\\Models\\FlowExecution\:\:durationMs\(\) should return int\|null but returns float\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/FlowExecution.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 3
+			path: app/Services/AtlasClarityGate.php
+
+		-
+			message: '#^Offset ''confidence'' on array\{intent\: string, entities\: array, confidence\: float, agent_target\: string\|null, requires_planning\: bool, raw_input\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AtlasClarityGate.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<60, max\> and 60 is always false\.$#'
+			identifier: smaller.alwaysFalse
+			count: 1
+			path: app/Services/AtlasDiscoveryService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/AtlasDiscoveryService.php
+
+		-
+			message: '#^Offset ''entity_key'' on array\{intent\: ''analyze_data'', entity_key\: ''analysis_target''\|''research_query''\}\|array\{intent\: ''create_flow'', entity_key\: ''flow_definition''\}\|array\{intent\: ''execute_flow'', entity_key\: ''flow_target''\}\|array\{intent\: ''manage_agent'', entity_key\: ''action''\}\|array\{intent\: ''monitor''\|''query_status'', entity_key\: ''target''\}\|array\{intent\: ''teach'', entity_key\: ''topic''\} in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/AtlasIntentCompiler.php
+
+		-
+			message: '#^Offset ''atlas_response'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AtlasInteractionLogger.php
+
+		-
+			message: '#^Offset ''execution_result'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AtlasInteractionLogger.php
+
+		-
+			message: '#^Offset ''interaction_id'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AtlasInteractionLogger.php
+
+		-
+			message: '#^Offset ''parsed_intent'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AtlasInteractionLogger.php
+
+		-
+			message: '#^Variable \$numbers in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Services/AtlasResponseFormatter.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Services/CostGovernor.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/EventStore.php
+
+		-
+			message: '#^Unsafe access to private constant App\\Services\\FeatureFlag\:\:TTL through static\:\:\.$#'
+			identifier: staticClassAccess.privateConstant
+			count: 1
+			path: app/Services/FeatureFlag.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\FeatureFlag\:\:resolve\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Services/FeatureFlag.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\FeatureFlag\:\:tryRedis\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Services/FeatureFlag.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/FeaturePackInstaller.php
+
+		-
+			message: '#^Comparison operation "\<\=" between 0\|1 and 5 is always true\.$#'
+			identifier: smallerOrEqual.alwaysTrue
+			count: 1
+			path: app/Services/Financial/FinancialGovernor.php
+
+		-
+			message: '#^Property App\\Services\\Financial\\FinancialGovernor\:\:\$eventStore is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Financial/FinancialGovernor.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Financial/FinancialGovernor.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Financial/InvoiceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Financial/InvoiceService.php
+
+		-
+			message: '#^Parameter \#2 \$amount of method App\\Models\\FinancialAccount\:\:decrement\(\) expects float\|int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Financial/LedgerService.php
+
+		-
+			message: '#^Parameter \#2 \$amount of method App\\Models\\FinancialAccount\:\:increment\(\) expects float\|int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Financial/LedgerService.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\Invoice\:\:markAsPaid\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Financial/PaymentService.php
+
+		-
+			message: '#^Called ''sum'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 3
+			path: app/Services/Financial/ReportingService.php
+
+		-
+			message: '#^Method App\\Services\\Integrations\\CalendarAdapter\:\:make\(\) should return static\(App\\Services\\Integrations\\CalendarAdapter\) but returns App\\Services\\Integrations\\CalComAdapter\|App\\Services\\Integrations\\GoogleCalendarAdapter\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Integrations/CalendarAdapter.php
+
+		-
+			message: """
+				#^PHPDoc tag @param has invalid value \\(array\\{\r
+				  date\\: string,          YYYY\\-MM\\-DD\r
+				  time\\: string,          HH\\:MM \\(24h\\)\r
+				  duration_minutes\\: int,\r
+				  attendee_name\\: string,\r
+				  attendee_phone\\: string,\r
+				  attendee_email\\: string\\|null,\r
+				  description\\: string\\|null,\r
+				  calendar_id\\: string\\|null,\r
+				\\} \\$event\\)\\: Unexpected token "time", expected '\\}' at offset 118 on line 6$#
+			"""
+			identifier: phpDoc.parseError
+			count: 1
+			path: app/Services/Integrations/CalendarAdapter.php
+
+		-
+			message: '#^Method App\\Services\\Integrations\\CrmAdapter\:\:make\(\) should return static\(App\\Services\\Integrations\\CrmAdapter\) but returns App\\Services\\Integrations\\HubspotAdapter\|App\\Services\\Integrations\\SalesforceAdapter\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Integrations/CrmAdapter.php
+
+		-
+			message: '#^Offset ''phone'' on array\{name\: string, phone\: string, email\: string\|null, metadata\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/HubspotAdapter.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/HubspotAdapter.php
+
+		-
+			message: '#^Offset ''phone'' on array\{name\: string, phone\: string, email\: string\|null, metadata\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/SalesforceAdapter.php
+
+		-
+			message: '#^Call to static method constructEvent\(\) on an unknown class Stripe\\Webhook\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Integrations/StripeAdapter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pack_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/JarvisTierGate.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vertical\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/JarvisTierGate.php
+
+		-
+			message: '#^Call to static method client\(\) on an unknown class OpenAI\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/LLMService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/LLMService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>automation_level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/MetaPlanner.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/MetaPlanner.php
+
+		-
+			message: '#^Offset ''product_id'' on array\{label\: string, product_id\: string, price_usd\: float\|null, interval\: string, limits\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Payments/DodoPaymentsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Payments/DodoSubscriptionFulfiller.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Services/Projections/StateTransitionProjection.php
+
+		-
+			message: '#^Offset ''status'' on array\{status\: ''completed''\|''running'', result\?\: mixed\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/ReplayDivergenceService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/TenantKeyManager.php
+
+		-
+			message: '#^Offset 1 on array\{list\<string\>, list\<non\-empty\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/TransformationScore.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of static method App\\Services\\UnifiedAuthSession\:\:tenantPayload\(\) expects App\\Models\\Tenant\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/UnifiedAuthSession.php
+
+		-
+			message: '#^Property App\\Services\\VoiceSafetyGuard\:\:\$featureFlag is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/VoiceSafetyGuard.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>approval_policy" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/VoiceSafetyGuard.php
+
+		-
+			message: '#^Parameter \#2 \$score_or_options of static method Redis\:\:zAdd\(\) expects array\|float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WebSocketThrottler.php

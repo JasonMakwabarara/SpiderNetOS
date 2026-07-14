@@ -62,6 +62,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.sqlite
+<<<<<<< HEAD
 *.sqlite-journal
 docker-compose.override.yml
 .env.local
@@ -84,3 +85,66 @@ coverage/
 *.test.js
 *.spec.js
 *Test.php
+=======
+*.db
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+.gitnexus
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+
+# Laravel runtime artifacts (generated)
+backend/storage/framework/views/*.php
+backend/storage/app/feature-packs/
+backend/.env
+>>>>>>> 322fbcebbda24e965b4572c721e1821221088217

@@ -27,7 +27,7 @@ class StripeAdapter
     ): array {
         $response = Http::withToken($this->apiKey)
             ->asForm()
-            ->post('https://api.stripe.com/v1/payment_intentions', [
+            ->post('https://api.stripe.com/v1/payment_intents', [
                 'amount' => (int) ($amount * 100),
                 'currency' => $currency,
                 'customer' => $customerId,

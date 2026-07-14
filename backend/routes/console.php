@@ -32,3 +32,9 @@ Schedule::job(new \App\Jobs\DispatchScheduledFlowsJob)->everyMinute()->withoutOv
 
 // Transformation Score computation (every 5 minutes) — B6
 Schedule::job(new \App\Jobs\ComputeTransformationScoreJob)->everyFiveMinutes()->withoutOverlapping();
+
+// DAG node watchdog — no node may stay `running` forever (every 10 minutes)
+Schedule::job(new \App\Jobs\FailStaleExecutionNodesJob)->everyTenMinutes()->withoutOverlapping();
+
+// Systemization write-back for scheduled runs (every 5 minutes)
+Schedule::job(new \App\Jobs\SystemizationRunSweepJob)->everyFiveMinutes()->withoutOverlapping();

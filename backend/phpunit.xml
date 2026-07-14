@@ -13,6 +13,11 @@
         <!-- PR CI: deterministic pure tests — no Postgres pgvector migrations, no Redis -->
         <testsuite name="CiFast">
             <directory suffix="Test.php">./tests/Unit/Ste</directory>
+            <directory suffix="Test.php">./tests/Unit/Services/Payments</directory>
+            <directory suffix="Test.php">./tests/Feature/Billing</directory>
+            <directory suffix="Test.php">./tests/Feature/Enterprise</directory>
+            <directory suffix="Test.php">./tests/Feature/Systemization</directory>
+            <file>./tests/Feature/TenantIsolationTest.php</file>
         </testsuite>
     </testsuites>
 
@@ -27,6 +32,7 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="CACHE_DRIVER" value="array"/>
+        <env name="CACHE_STORE" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="REDIS_CLIENT" value="predis"/>
