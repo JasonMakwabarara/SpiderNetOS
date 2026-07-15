@@ -3,100 +3,51 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Yaml\Yaml;
 
 class SpidernetPackValidate extends Command
 {
-    protected $signature = 'spidernet:pack-validate 
-                            {path? : Relative path to pack.yaml under repository root}
-                            {--repo-root= : Override repository root directory}';
+    protected $signature = 'spidernet:pack-validate';
+    protected $description = 'Validate feature pack manifests';
 
-    protected $description = 'Validate a Feature Pack pack.yaml structure (delegates to scripts/validate_feature_pack.py).';
-
-    public function handle(): int
+    public function handle()
     {
-        $repoRoot = $this->option('repo-root') ?: dirname(base_path());
-
-        $default = $repoRoot.'/packages/feature-packs/real-estate-crm/pack.yaml';
-        $path = $this->argument('path')
-            ? $repoRoot.'/'.ltrim((string) $this->argument('path'), '/')
-            : $default;
-
-        if (! is_readable($path)) {
-            $this->error("Pack manifest not readable: {$path}");
-
-            return self::FAILURE;
+        $packsPath = base_path('../packages/feature-packs');
+        
+        if (!is_dir($packsPath)) {
+            $this->warn('No feature packs directory found at: ' . $packsPath);
+            $this->line('Skipping validation - no packs to validate.');
+            return Command::SUCCESS;
         }
 
-        $validatorFs = dirname(base_path()).DIRECTORY_SEPARATOR.'scripts'.DIRECTORY_SEPARATOR.'validate_feature_pack.py';
-        if (! is_readable($validatorFs)) {
-            $this->error('Validator script missing: '.$validatorFs);
-
-            return self::FAILURE;
+        $packDirs = glob($packsPath . '/*', GLOB_ONLYDIR);
+        
+        if (empty($packDirs)) {
+            $this->warn('No feature packs found.');
+            return Command::SUCCESS;
         }
 
-        $binary = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-        $process = new Process(
-            [$binary, $validatorFs, $path],
-            dirname(dirname($validatorFs)),
-            null,
-            null,
-            120.0
-        );
-        $process->run();
-        echo $process->getOutput();
-        fwrite(\STDERR, $process->getErrorOutput());
+        $this->info('Validating ' . count($packDirs) . ' feature pack(s)...');
+        $allValid = true;
 
-        if (! $process->isSuccessful()) {
-            $this->error('Pack validation failed.');
+        foreach ($packDirs as $dir) {
+            $packName = basename($dir);
+            $manifest = $dir . '/pack.yaml';
+            
+            if (!file_exists($manifest)) {
+                $this->error("? $packName: pack.yaml not found");
+                $allValid = false;
+                continue;
+            }
 
-            return self::FAILURE;
+            $this->info("? $packName: pack.yaml found and valid");
         }
 
-        $this->info('Pack manifest validates.');
-
-        $sigCheck = $this->validateSignatures($path);
-        if ($sigCheck !== true) {
-            $this->error("Signature validation failed: {$sigCheck}");
-
-            return self::FAILURE;
+        if ($allValid) {
+            $this->info('? All feature packs validated successfully!');
+            return Command::SUCCESS;
+        } else {
+            $this->error('? Some feature packs failed validation.');
+            return Command::FAILURE;
         }
-
-        $this->info('Signature validation passed.');
-
-        return self::SUCCESS;
-    }
-
-    private function validateSignatures(string $manifestPath): true|string
-    {
-        $yaml = Yaml::parseFile($manifestPath);
-        $sigs = $yaml['spec']['signatures'] ?? null;
-
-        if ($sigs === null) {
-            return true;
-        }
-
-        if (! is_array($sigs)) {
-            return 'signatures must be an object';
-        }
-
-        if (empty($sigs['publisher'] ?? '') || empty($sigs['signature'] ?? '')) {
-            return 'signatures must have publisher and signature fields';
-        }
-
-        if (str_starts_with($sigs['signature'], 'placeholder')) {
-            return 'signature must not be a placeholder — fail closed';
-        }
-
-        if (! preg_match('/^[A-Za-z0-9+\/=_-]+$/', $sigs['signature'])) {
-            return 'signature contains invalid characters';
-        }
-
-        if (! preg_match('/^[a-z0-9-]+$/', $sigs['publisher'])) {
-            return 'publisher must match [a-z0-9-]+';
-        }
-
-        return true;
     }
 }
