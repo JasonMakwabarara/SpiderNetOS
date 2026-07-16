@@ -1,0 +1,47 @@
+{
+  "_comment": "Canonical v2 API response fixture for cockpit store tests",
+  "contract_version": "2",
+  "daily_usage": {
+    "breakdown": [
+      {
+        "date": "2026-04-17",
+        "resource_type": "inference",
+        "total_calls": 1234,
+        "total_tokens": 98765,
+        "total_cost": 12.345678,
+        "calculated_at": "2026-04-18T00:05:11Z"
+      },
+      {
+        "date": "2026-04-17",
+        "resource_type": "embedding",
+        "total_calls": 88,
+        "total_tokens": 4400,
+        "total_cost": 0.44,
+        "calculated_at": "2026-04-18T00:05:11Z"
+      },
+      {
+        "date": "2026-04-16",
+        "resource_type": "inference",
+        "total_calls": 900,
+        "total_tokens": 72000,
+        "total_cost": 9.00,
+        "calculated_at": "2026-04-17T00:04:55Z"
+      }
+    ],
+    "daily_totals": [
+      {
+        "date": "2026-04-16",
+        "total_calls": 900,
+        "total_tokens": 72000,
+        "total_cost": 9.0
+      },
+      {
+        "date": "2026-04-17",
+        "total_calls": 1322,
+        "total_tokens": 103165,
+        "total_cost": 12.785678
+      }
+    ],
+    "period_days": 30
+  }
+}
