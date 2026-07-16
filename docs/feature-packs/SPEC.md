@@ -68,6 +68,30 @@ spec:
         goal: "<= 5m"
         baseline: 30m
         
+  # Future-state org chart (optional): maps each provides.dynamic_agents id
+  # to a repeatable operating role, surfaced by GET /api/operating/org-chart.
+  roles:
+    growth: head_of_growth
+    crm: general_manager
+    retention: head_of_delight
+
+  # Discovery interview backbone (optional): consumed by a pack agent to
+  # draft an artifact (e.g. a sales script) before go-live. See
+  # packages/feature-packs/sales-crm/interview/questions.yaml for the
+  # question-file schema (sections -> questions, each with id/prompt/
+  # absorbs_to/followup_hint).
+  interview:
+    file: interview/questions.yaml
+
+  # Purchase price (optional): if present, FeaturePackInstaller requires an
+  # active pack_entitlements row for the tenant before install proceeds
+  # (HTTP 402 + checkout_hint otherwise). Omit entirely for free packs.
+  pricing:
+    model: one_time            # one_time | subscription
+    amount: 149
+    currency: USD
+    dodo_product_key: sales-crm  # maps to config('services.dodo.products.<key>')
+
   config:
     # Pack-scoped defaults
     default_automation_level: assisted
@@ -77,6 +101,8 @@ spec:
     publisher: "spidernet-official"  # Key ID from registry
     signature: "base64-encoded-sig"  # Signed manifest hash
 ```
+
+**Note on nesting:** `roles`, `interview`, `pricing`, `config`, and `signatures` are all siblings of `requires`/`provides` under `spec:` — not top-level manifest keys. `targets` is nested one level deeper, under `spec.provides.targets` alongside `dynamic_agents`/`flows`/`ste_chains`. Code reading the manifest (e.g. `OperatingController`) must match these paths exactly; a mismatch fails silently (returns an empty array) rather than erroring, so it's easy to miss in review — see `docs/internal/awareness-list.md` for two bugs of exactly this kind.
 
 ## 3. Directory Structure
 
@@ -153,6 +179,18 @@ VALUES (?, 'real-estate-crm', '0.1.0', NOW(), 'active');
 INSERT INTO atlas_copy_variants (pack_id, variant_id, surface, alpha, beta, ...)
 VALUES ('real-estate-crm', 'followup-morning', 'whatsapp', 12.0, 4.0, ...);
 ```
+
+## 4a. Purchase & Entitlement Gating
+
+Packs with a `spec.pricing` block require an active `pack_entitlements` row (`tenant_id`, `pack_id`, `status = 'active'`) before `spidernet:pack-install` / `POST /api/feature-packs/{id}/install` will proceed — see `App\Services\FeaturePackInstaller::assertEntitled()`. Without one, install throws `EntitlementRequiredException`, surfaced over HTTP as `402 Payment Required` with `checkout_hint: true`.
+
+**Purchase flow** (Dodo Payments, merchant of record — platform-level credentials, not per-tenant):
+
+1. `POST /api/feature-packs/{id}/checkout` creates a `pending` entitlement and a Dodo checkout session, metadata-tagged with `{tenant_id, pack_id, entitlement_id}`.
+2. `POST /api/webhooks/dodo` (signature-verified via the Standard Webhooks spec — `App\Services\Integrations\DodoPaymentsAdapter::verifyWebhook()`) flips the entitlement to `active` on `payment.succeeded`, idempotent per `webhook-id`.
+3. Install then proceeds normally.
+
+**Ops/dev override:** `php artisan spidernet:pack-install <pack> --grant` creates a `source: granted` active entitlement before installing, bypassing purchase for local/staging use.
 
 ## 5. Isolation Rules
 

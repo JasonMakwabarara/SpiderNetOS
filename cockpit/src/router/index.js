@@ -25,7 +25,12 @@ const Communications = () => import('../views/Communications.vue')
 const FeaturePacks  = () => import('../views/FeaturePacks.vue')
 const OpsFirstWin     = () => import('../views/operate/OpsFirstWin.vue')
 const SalesHome       = () => import('../views/sales/SalesHome.vue')
+const SalesLeads      = () => import('../views/sales/Leads.vue')
+const FunnelSetup     = () => import('../views/sales/FunnelSetup.vue')
+const ScriptStudio    = () => import('../views/sales/ScriptStudio.vue')
+const SalesInbox      = () => import('../views/sales/Inbox.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
+const Operating       = () => import('../views/operating/Operating.vue')
 
 // Lazy financial views
 const FinancialDashboard = () => import('../views/financial/FinancialDashboard.vue')
@@ -82,7 +87,12 @@ const routes = [
   { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
   { path: '/operate/first-win', name: 'OpsFirstWin', component: OpsFirstWin, meta: { requiresAuth: true } },
   { path: '/sales', name: 'SalesHome', component: SalesHome, meta: { requiresAuth: true } },
+  { path: '/sales/leads', name: 'SalesLeads', component: SalesLeads, meta: { requiresAuth: true } },
+  { path: '/sales/funnel-setup', name: 'FunnelSetup', component: FunnelSetup, meta: { requiresAuth: true } },
+  { path: '/sales/script-studio', name: 'ScriptStudio', component: ScriptStudio, meta: { requiresAuth: true } },
+  { path: '/sales/inbox', name: 'SalesInbox', component: SalesInbox, meta: { requiresAuth: true } },
   { path: '/compliance', name: 'ComplianceHome', component: ComplianceHome, meta: { requiresAuth: true } },
+  { path: '/operating', name: 'Operating', component: Operating, meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },
   { path: '/usage',         name: 'Usage',         component: Usage,       meta: { requiresAuth: true } },
   { path: '/settings',      name: 'Settings',      component: Settings,    meta: { requiresAuth: true } },

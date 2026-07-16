@@ -1,0 +1,23 @@
+id: channel-preferences
+shared: true
+description: "Which channel converts best per sequence step, learned across tenants"
+
+variants:
+  - id: email_first
+    description: "Lead's first touch on email, WhatsApp for follow-ups"
+    step_pattern: [email, whatsapp, whatsapp, email]
+    success_rate: 0.22
+    alpha: 22
+    beta: 78
+
+  - id: whatsapp_first
+    description: "Lead's first touch on WhatsApp, email for longer-form follow-ups"
+    step_pattern: [whatsapp, whatsapp, email, whatsapp]
+    success_rate: 0.27
+    alpha: 27
+    beta: 73
+
+aggregation:
+  method: thompson_sampling
+  exploration_rate: 0.15
+  update_frequency: daily

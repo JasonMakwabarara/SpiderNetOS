@@ -218,7 +218,7 @@ class ApprovalEngine
 
         // Transition the node from waiting_approval back to pending so the
         // DAG scheduler can pick it up.
-        DB::table('dag_nodes')
+        DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->where('status', 'waiting_approval')

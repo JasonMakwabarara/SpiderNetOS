@@ -13,6 +13,7 @@
         <!-- PR CI: deterministic pure tests — no Postgres pgvector migrations, no Redis -->
         <testsuite name="CiFast">
             <directory suffix="Test.php">./tests/Unit/Ste</directory>
+            <directory suffix="Test.php">./tests/Unit/Payments</directory>
         </testsuite>
     </testsuites>
 
@@ -26,7 +27,9 @@
         <env name="APP_ENV" value="testing"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
-        <env name="CACHE_DRIVER" value="array"/>
+        <!-- config/cache.php reads CACHE_STORE (Laravel 11), not CACHE_DRIVER —
+             the old name was a silent no-op that left tests hitting real Redis. -->
+        <env name="CACHE_STORE" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="REDIS_CLIENT" value="predis"/>

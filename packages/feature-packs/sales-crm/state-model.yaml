@@ -1,0 +1,125 @@
+# Sales CRM State Model
+# Chains: pack.sales-crm.lead_lifecycle, pack.sales-crm.funnel_setup
+
+chains:
+  - id: lead_lifecycle
+    namespace: pack.sales-crm
+    description: "Lead state progression from initial capture through won or lost"
+
+    states:
+      - captured        # Initial form submission / import
+      - qualified        # Scored and prioritized
+      - engaged          # Lead has replied on email or WhatsApp
+      - meeting_booked    # Discovery call / demo scheduled
+      - proposal          # Proposal or quote sent
+      - won               # Deal closed
+      - lost              # Opportunity ended without close
+      - recycled          # Re-entered nurture after being lost
+
+    transitions:
+      # Entry points
+      - event: lead.form.submitted
+        from: null
+        to: captured
+
+      - event: lead.imported
+        from: null
+        to: captured
+
+      # Forward progression
+      - event: lead.score.calculated
+        from: captured
+        to: qualified
+
+      - event: conversation.message.received
+        from: qualified
+        to: engaged
+
+      - event: conversation.message.received
+        from: captured
+        to: engaged
+
+      - event: meeting.booked
+        from: engaged
+        to: meeting_booked
+
+      - event: proposal.sent
+        from: [meeting_booked, engaged]
+        to: proposal
+
+      - event: deal.won
+        from: [proposal, meeting_booked, engaged]
+        to: won
+
+      # Exit points
+      - event: deal.lost
+        from: [captured, qualified, engaged, meeting_booked, proposal]
+        to: lost
+        tags:
+          extract:
+            - reason: "payload.loss_reason"
+            - stage: "from_state"
+
+      # Re-activation
+      - event: lead.re_engaged
+        from: lost
+        to: recycled
+
+      - event: conversation.message.received
+        from: recycled
+        to: engaged
+
+  - id: funnel_setup
+    namespace: pack.sales-crm
+    description: "Discovery interview -> script draft -> owner approval -> go-live for a tenant's funnel"
+
+    states:
+      - purchased          # Bundle entitlement active, not yet configured
+      - interviewing        # Funnel Architect is asking discovery questions
+      - script_drafted       # A sales_scripts row has been drafted
+      - awaiting_approval    # Script submitted to ApprovalEngine
+      - approved             # Owner granted the go-ahead
+      - live                 # Pack agents active, funnel running
+      - paused               # Temporarily halted by the owner
+      - rejected              # Owner rejected the draft; back to interviewing/drafting
+
+    transitions:
+      - event: pack.sales-crm.funnel_setup.purchased
+        from: null
+        to: purchased
+
+      - event: pack.sales-crm.funnel_setup.interview.started
+        from: purchased
+        to: interviewing
+
+      - event: pack.sales-crm.funnel_setup.script.drafted
+        from: interviewing
+        to: script_drafted
+
+      - event: pack.sales-crm.funnel_setup.approval.requested
+        from: script_drafted
+        to: awaiting_approval
+
+      - event: pack.sales-crm.funnel_setup.approval.granted
+        from: awaiting_approval
+        to: approved
+
+      - event: pack.sales-crm.funnel_setup.approval.rejected
+        from: awaiting_approval
+        to: rejected
+
+      - event: pack.sales-crm.funnel_setup.script.revision_requested
+        from: [awaiting_approval, rejected]
+        to: interviewing
+
+      - event: pack.sales-crm.funnel_setup.went_live
+        from: approved
+        to: live
+
+      - event: pack.sales-crm.funnel_setup.paused
+        from: live
+        to: paused
+
+      - event: pack.sales-crm.funnel_setup.resumed
+        from: paused
+        to: live

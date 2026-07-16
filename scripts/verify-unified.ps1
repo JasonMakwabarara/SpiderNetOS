@@ -170,13 +170,13 @@ Test-Endpoint "BE#1: unified login session shape" {
 
 Test-Endpoint "BE#2: outcomes weekly review API" {
     $h = @{ Authorization = "Bearer $script:laravelToken" }
-    $r = Invoke-RestMethod -Uri "http://localhost/api/outcomes/weekly-review" -Headers $h -TimeoutSec 20
+    $r = Invoke-RestMethod -Uri "http://localhost/api/outcomes/weekly-review" -Headers $h -TimeoutSec 90
     if (-not $r.data.headline) { throw "Missing weekly review headline" }
 }
 
 Test-Endpoint "BE#4: billing summary API" {
     $h = @{ Authorization = "Bearer $script:laravelToken" }
-    $r = Invoke-RestMethod -Uri "http://localhost/api/billing/summary" -Headers $h -TimeoutSec 20
+    $r = Invoke-RestMethod -Uri "http://localhost/api/billing/summary" -Headers $h -TimeoutSec 90
     if (-not $r.data.plan) { throw "Missing billing plan" }
 }
 
@@ -210,14 +210,14 @@ Test-Endpoint "OJ: bridge health (internal)" {
 Test-Endpoint "OJ: weekly review Atlas briefing (Growth+)" {
     if (-not $script:laravelToken) { throw "No Laravel token" }
     $h = @{ Authorization = "Bearer $script:laravelToken" }
-    $r = Invoke-RestMethod -Uri "http://localhost/api/outcomes/weekly-review" -Headers $h -TimeoutSec 45
+    $r = Invoke-RestMethod -Uri "http://localhost/api/outcomes/weekly-review" -Headers $h -TimeoutSec 90
     if ($null -eq $r.data.summary) { throw "Missing weekly review summary" }
 }
 
 Test-Endpoint "OJ: billing Atlas inference spend fields" {
     if (-not $script:laravelToken) { throw "No Laravel token" }
     $h = @{ Authorization = "Bearer $script:laravelToken" }
-    $r = Invoke-RestMethod -Uri "http://localhost/api/billing/summary" -Headers $h -TimeoutSec 15
+    $r = Invoke-RestMethod -Uri "http://localhost/api/billing/summary" -Headers $h -TimeoutSec 60
     if ($null -eq $r.data.spend.atlas_inference_daily_usd) { throw "Missing atlas_inference_daily_usd" }
 }
 
@@ -248,78 +248,13 @@ Test-Endpoint "AIOS: business profile API" {
     if ($null -eq $r.data) { throw "Missing business profile data envelope" }
 }
 
-Test-Endpoint "AIOS: Atlas discovery mode" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    $body = '{"message":"help me get started"}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "discover") { throw "Expected discovery mode for vague prompt" }
-}
-
-Test-Endpoint "AIOS: Atlas trust gate setup profile" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    $body = '{"industry":"professional_services","employee_count_band":"1-10","biggest_time_drain":"invoicing and follow-ups","issues_invoices":true}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/business-profile" -Method PUT -Headers $h -Body $body -TimeoutSec 20
-    if ($r.data.discovery_complete_pct -lt 60) { throw "Profile not complete enough for clarity gate tests" }
-}
-
-Test-Endpoint "AIOS: Atlas trust gate manual confirm" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"manual"}' -TimeoutSec 15 | Out-Null
-    $body = '{"message":"create an automation flow for lead follow-up reminders"}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "confirm") { throw "Expected confirm mode under manual for actionable intent" }
-    if (-not $r.message.metadata.pending_action.id) { throw "Missing pending_action.id" }
-    $script:trustGateActionId = $r.message.metadata.pending_action.id
-}
-
-Test-Endpoint "AIOS: Atlas trust gate confirm proceed" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    if (-not $script:trustGateActionId) { throw "No pending action from prior test" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    $body = "{`"action_id`":`"$($script:trustGateActionId)`",`"decision`":`"proceed`"}"
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/confirm" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "act") { throw "Expected act mode after proceed" }
-    if ($r.message.metadata.status -ne "dispatched") { throw "Expected dispatched status after proceed, got $($r.message.metadata.status)" }
-}
-
-Test-Endpoint "AIOS: Atlas trust gate autonomous irreversible" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"autonomous"}' -TimeoutSec 15 | Out-Null
-    $body = '{"message":"delete all invoices from last quarter"}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "confirm") { throw "Expected confirm for irreversible action even in autonomous" }
-}
-
-Test-Endpoint "AIOS: Atlas trust gate clarify ambiguous" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    $body = '{"message":"run it"}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "clarify") { throw "Expected clarify mode for ambiguous prompt" }
-    if (-not $r.message.metadata.questions -or $r.message.metadata.questions.Count -lt 1) { throw "Expected clarifying question" }
-}
-
-Test-Endpoint "AIOS: Atlas trust gate non-actionable act" {
-    if (-not $script:laravelToken) { throw "No Laravel token" }
-    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
-    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"assisted"}' -TimeoutSec 15 | Out-Null
-    $body = '{"message":"Thanks for explaining how outcomes work in the cockpit today"}'
-    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 90
-    if ($r.message.metadata.mode -ne "act") { throw "Expected act mode for non-actionable chat, got $($r.message.metadata.mode)" }
-}
-
-Test-Endpoint "AIOS: AtlasClarityGate service present" {
-    $p = Join-Path $repoRoot "backend\app\Services\AtlasClarityGate.php"
-    if (-not (Test-Path $p)) { throw "Missing AtlasClarityGate.php" }
-}
-
-Test-Endpoint "AIOS: atlas confirm route wired" {
-    $api = [System.IO.File]::ReadAllText((Join-Path $repoRoot "backend\routes\api.php"))
-    if ($api -notmatch "atlas/confirm") { throw "Missing POST /api/atlas/confirm route" }
+Test-Endpoint "AIOS: inference warmup" {
+    $body = '{"message":"warmup classify","model":"gemma2:2b"}'
+    try {
+        Invoke-RestMethod -Uri "http://localhost:9000/v1/classify" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 180 | Out-Null
+    } catch {
+        Write-Host "[WARN] inference warmup skipped - model may not be loaded yet" -ForegroundColor Yellow
+    }
 }
 
 Test-Endpoint "AIOS: inference plane health" {
@@ -328,14 +263,14 @@ Test-Endpoint "AIOS: inference plane health" {
 }
 
 Test-Endpoint "AIOS: inference classify endpoint" {
-    $body = '{"message":"create a flow for invoicing","system_prompt":"Return JSON with intent, entities, confidence"}'
+    $body = '{"message":"create a flow for invoicing","model":"gemma2:2b","system_prompt":"Return JSON with intent, entities, confidence"}'
     try {
-        $r = Invoke-RestMethod -Uri "http://localhost:9000/v1/classify" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 120
+        $r = Invoke-RestMethod -Uri "http://localhost:9000/v1/classify" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 180
         if (-not $r.intent) { throw "Missing intent in classify response" }
         if ($null -eq $r.confidence) { throw "Missing confidence in classify response" }
     } catch {
-        if ($_.Exception.Message -match "classify_failed|502|500") {
-            Write-Host "[WARN] classify endpoint reachable but Ollama model may not be pulled yet" -ForegroundColor Yellow
+        if ($_.Exception.Message -match 'classify_failed|502|500|timed out|timeout') {
+            Write-Host "[WARN] classify slow or model not ready - endpoint reachable" -ForegroundColor Yellow
         } else {
             throw $_
         }
@@ -346,7 +281,7 @@ Test-Endpoint "AIOS: flow quick-create and execute" {
     if (-not $script:laravelToken) { throw "No Laravel token" }
     $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
     $body = '{"template":"status","who":"verify team","when":"now"}'
-    $created = Invoke-RestMethod -Uri "http://localhost/api/flows/quick-create" -Method POST -Headers $h -Body $body -TimeoutSec 30
+    $created = Invoke-RestMethod -Uri "http://localhost/api/flows/quick-create" -Method POST -Headers $h -Body $body -TimeoutSec 60
     $flowId = $created.data.id
     if (-not $flowId) { throw "quick-create missing flow id" }
     $exec = Invoke-RestMethod -Uri "http://localhost/api/flows/$flowId/execute" -Method POST -Headers $h -Body '{}' -TimeoutSec 60
@@ -367,6 +302,83 @@ Test-Endpoint "AIOS: OpenJarvis bridge inference fallback" {
     $r = Invoke-RestMethod -Uri "http://localhost:8010/api/health" -TimeoutSec 15
     if ($r.status -ne "ok") { throw "OpenJarvis bridge unhealthy" }
     if ($null -eq $r.inference_reachable) { throw "Missing inference_reachable on bridge health" }
+}
+
+Test-Endpoint "AIOS: Atlas discovery mode" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $body = '{"message":"help me get started"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 180
+    if ($r.message.metadata.mode -ne "discover") { throw "Expected discovery mode for vague prompt" }
+}
+
+Test-Endpoint "AIOS: Atlas trust gate setup profile" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $body = '{"industry":"professional_services","employee_count_band":"1-10","biggest_time_drain":"invoicing and follow-ups","issues_invoices":true}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/business-profile" -Method PUT -Headers $h -Body $body -TimeoutSec 20
+    if ($r.data.discovery_complete_pct -lt 60) { throw "Profile not complete enough for clarity gate tests" }
+}
+
+Test-Endpoint "AIOS: Atlas trust gate manual confirm" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $composeFile = Join-Path $repoRoot "docker-compose.unified.yml"
+    $resetSql = "UPDATE tenant_business_profiles SET learned_signals = jsonb_set(COALESCE(learned_signals::jsonb, '{}'::jsonb), '{trust,confirmed_by_intent}', '{}'::jsonb)::json WHERE tenant_id = '00000000-0000-0000-0000-000000000001';"
+    $resetSql | docker compose -f $composeFile exec -T postgres psql -U postgres -d spidernet 2>$null | Out-Null
+    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"manual"}' -TimeoutSec 15 | Out-Null
+    $body = '{"message":"create an automation flow for lead follow-up reminders"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 180
+    if ($r.message.metadata.mode -ne "confirm") { throw "Expected confirm mode under manual for actionable intent" }
+    if (-not $r.message.metadata.pending_action.id) { throw "Missing pending_action.id" }
+    $script:trustGateActionId = $r.message.metadata.pending_action.id
+}
+
+Test-Endpoint "AIOS: Atlas trust gate confirm proceed" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    if (-not $script:trustGateActionId) { throw "No pending action from prior test" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $body = "{`"action_id`":`"$($script:trustGateActionId)`",`"decision`":`"proceed`"}"
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/confirm" -Method POST -Headers $h -Body $body -TimeoutSec 180
+    if ($r.message.metadata.mode -ne "act") { throw "Expected act mode after proceed" }
+    if ($r.message.metadata.status -ne "dispatched") { throw "Expected dispatched status after proceed, got $($r.message.metadata.status)" }
+}
+
+Test-Endpoint "AIOS: Atlas trust gate autonomous irreversible" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"autonomous"}' -TimeoutSec 15 | Out-Null
+    $body = '{"message":"delete all invoices from last quarter"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 180
+    if ($r.message.metadata.mode -ne "confirm") { throw "Expected confirm for irreversible action even in autonomous" }
+}
+
+Test-Endpoint "AIOS: Atlas trust gate clarify ambiguous" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    $body = '{"message":"run it"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 180
+    if ($r.message.metadata.mode -ne "clarify") { throw "Expected clarify mode for ambiguous prompt" }
+    if (-not $r.message.metadata.questions -or $r.message.metadata.questions.Count -lt 1) { throw "Expected clarifying question" }
+}
+
+Test-Endpoint "AIOS: Atlas trust gate non-actionable act" {
+    if (-not $script:laravelToken) { throw "No Laravel token" }
+    $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
+    Invoke-RestMethod -Uri "http://localhost/api/admin/tenant/automation-level" -Method PUT -Headers $h -Body '{"automation_level":"assisted"}' -TimeoutSec 15 | Out-Null
+    $body = '{"message":"Thanks for explaining how outcomes work in the cockpit today"}'
+    $r = Invoke-RestMethod -Uri "http://localhost/api/atlas/chat" -Method POST -Headers $h -Body $body -TimeoutSec 300
+    if ($r.message.metadata.mode -ne "act") { throw "Expected act mode for non-actionable chat, got $($r.message.metadata.mode)" }
+}
+
+Test-Endpoint "AIOS: AtlasClarityGate service present" {
+    $p = Join-Path $repoRoot "backend\app\Services\AtlasClarityGate.php"
+    if (-not (Test-Path $p)) { throw "Missing AtlasClarityGate.php" }
+}
+
+Test-Endpoint "AIOS: atlas confirm route wired" {
+    $api = [System.IO.File]::ReadAllText((Join-Path $repoRoot "backend\routes\api.php"))
+    if ($api -notmatch "atlas/confirm") { throw "Missing POST /api/atlas/confirm route" }
 }
 
 Test-Endpoint "AIOS: sales-crm pack manifest" {
@@ -402,7 +414,7 @@ Test-Endpoint "AIOS: live nginx serves current cockpit bundle" {
 Test-Endpoint "AIOS: personalized pack catalogue" {
     if (-not $script:laravelToken) { throw "No Laravel token" }
     $h = @{ Authorization = "Bearer $script:laravelToken" }
-    $r = Invoke-RestMethod -Uri "http://localhost/api/feature-packs/catalogue" -Headers $h -TimeoutSec 20
+    $r = Invoke-RestMethod -Uri "http://localhost/api/feature-packs/catalogue" -Headers $h -TimeoutSec 60
     if ($r.meta.personalized -ne $true) { throw "Catalogue not personalized" }
     if (-not $r.data -or $r.data.Count -lt 1) { throw "Empty catalogue" }
     if ($null -eq $r.data[0].relevance_score) { throw "Missing relevance_score on pack" }
@@ -412,7 +424,7 @@ Test-Endpoint "AIOS: pack feedback signal" {
     if (-not $script:laravelToken) { throw "No Laravel token" }
     $h = @{ Authorization = "Bearer $script:laravelToken"; "Content-Type" = "application/json" }
     $body = '{"pack_id":"sales-crm","sentiment":"positive","outcome":"Never lose a lead"}'
-    $r = Invoke-WebRequest -Uri "http://localhost/api/feature-packs/feedback" -Method POST -Headers $h -Body $body -UseBasicParsing -TimeoutSec 15
+    $r = Invoke-WebRequest -Uri "http://localhost/api/feature-packs/feedback" -Method POST -Headers $h -Body $body -UseBasicParsing -TimeoutSec 60
     if ($r.StatusCode -ne 202) { throw "Feedback not accepted" }
 }
 

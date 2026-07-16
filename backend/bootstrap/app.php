@@ -37,6 +37,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'step.up'           => \App\Http\Middleware\RequireStepUp::class,
             // Onboarding (Phase 1)
             'onboarding.required' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+            // Backend-internal routes called by Python intelligence workers
+            'internal.key'      => \App\Http\Middleware\VerifyInternalKey::class,
+            // Dodo Payments webhooks
+            'dodo.verify_signature' => \App\Http\Middleware\VerifyDodoSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

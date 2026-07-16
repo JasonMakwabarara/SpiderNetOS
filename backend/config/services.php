@@ -61,4 +61,25 @@ return [
         'server_url' => env('OPENJARVIS_URL', ''),
     ],
 
+    // Shared secret for Python intelligence workers calling back into
+    // Laravel's /api/internal/* routes (see App\Http\Middleware\VerifyInternalKey
+    // and intelligence/agents/*.py BACKEND_URL / BACKEND_INTERNAL_KEY).
+    'internal' => [
+        'key' => env('BACKEND_INTERNAL_KEY', ''),
+    ],
+
+    // Dodo Payments — merchant of record for purchasable feature packs
+    // (platform-level credentials; packs are sold BY SpiderNetOS, not via
+    // per-tenant Stripe-Connect-style accounts). See
+    // App\Services\Integrations\DodoPaymentsAdapter.
+    'dodo' => [
+        'api_key' => env('DODO_API_KEY', ''),
+        'webhook_secret' => env('DODO_WEBHOOK_SECRET', ''),
+        'environment' => env('DODO_ENVIRONMENT', 'test'), // test | live
+        // pack_id => Dodo product_id, so pack.yaml manifests stay environment-agnostic.
+        'products' => [
+            'sales-crm' => env('DODO_PRODUCT_SALES_CRM', ''),
+        ],
+    ],
+
 ];

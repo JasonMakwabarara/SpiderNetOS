@@ -1,0 +1,110 @@
+id: deal-pipeline
+description: "Track deals from proposal to close"
+displayName: "Deal Pipeline"
+
+nodes:
+  # Entry
+  - id: proposal_sent
+    type: trigger
+    event: proposal.sent
+    description: "Proposal or quote sent to lead"
+
+  - id: log_proposal
+    type: agent
+    agent: crm
+    action: log_proposal_details
+
+  - id: notify_owner
+    type: notification
+    recipient: owner
+    message: "Proposal sent: {{proposal.amount}} to {{lead.name}}"
+
+  # Await response
+  - id: await_response
+    type: wait
+    timeout: 72h
+    on_timeout: send_reminder
+
+  - id: send_reminder
+    type: agent
+    agent: crm
+    action: send_proposal_reminder
+
+  # Outcome branch
+  - id: evaluate_outcome
+    type: decision
+    branches:
+      - id: accepted
+        condition: outcome == 'accepted'
+      - id: negotiating
+        condition: outcome == 'negotiating'
+      - id: declined
+        condition: outcome == 'declined'
+
+  - id: mark_won
+    type: agent
+    agent: crm
+    action: close_deal_won
+    condition: accepted
+
+  - id: prepare_counter
+    type: agent
+    agent: crm
+    action: prepare_counter_terms
+    condition: negotiating
+
+  - id: mark_lost
+    type: agent
+    agent: crm
+    action: close_deal_lost
+    condition: declined
+
+  # Post-close
+  - id: request_review
+    type: agent
+    agent: retention
+    action: request_testimonial
+    delay: "7d"
+    condition: accepted
+
+  - id: schedule_win_back
+    type: agent
+    agent: retention
+    action: schedule_win_back
+    delay: "30d"
+    condition: declined
+
+edges:
+  - from: proposal_sent
+    to: log_proposal
+
+  - from: log_proposal
+    to: notify_owner
+
+  - from: notify_owner
+    to: await_response
+
+  - from: await_response
+    to: evaluate_outcome
+
+  - from: evaluate_outcome
+    to: mark_won
+    condition: accepted
+
+  - from: evaluate_outcome
+    to: prepare_counter
+    condition: negotiating
+
+  - from: evaluate_outcome
+    to: mark_lost
+    condition: declined
+
+  - from: mark_won
+    to: request_review
+
+  - from: mark_lost
+    to: schedule_win_back
+
+on_error:
+  action: notify_admin
+  message: "Deal pipeline stalled for {{deal.id}}"

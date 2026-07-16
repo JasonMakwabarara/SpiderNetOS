@@ -22,6 +22,20 @@ class PlatformController extends Controller
 {
     // ─── Overview ────────────────────────────────────────────────────────────
 
+    /**
+     * GET /api/platform/readiness
+     *
+     * Infra/env gaps for standing up this instance — replicates Hannah's
+     * guidance pattern (intelligence/agents/hannah_agent.py + cockpit
+     * HannahGuidancePanel.vue) as a deterministic checklist rather than a
+     * chat agent, since these are objective facts (is DODO_API_KEY set?),
+     * not open-ended questions. See App\Services\DeploymentReadinessService.
+     */
+    public function readiness(Request $request, \App\Services\DeploymentReadinessService $readiness): JsonResponse
+    {
+        return response()->json(['data' => $readiness->platformChecks()]);
+    }
+
     /** GET /api/platform/overview */
     public function overview(Request $request): JsonResponse
     {

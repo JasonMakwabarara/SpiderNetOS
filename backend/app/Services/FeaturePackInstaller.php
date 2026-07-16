@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\FeaturePack;
+use App\Models\PackEntitlement;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -48,6 +49,8 @@ class FeaturePackInstaller
         $manifest = Yaml::parseFile($manifestPath);
         $meta = $manifest['metadata'] ?? [];
 
+        $this->assertEntitled($tenant, $id, $manifest);
+
         $pack = FeaturePack::updateOrCreate(
             [
                 'tenant_id' => $tenant->id,
@@ -76,6 +79,31 @@ class FeaturePackInstaller
         ];
     }
 
+    /**
+     * @param array<string, mixed> $manifest
+     *
+     * @throws EntitlementRequiredException
+     */
+    private function assertEntitled(Tenant $tenant, string $packId, array $manifest): void
+    {
+        $pricing = $manifest['spec']['pricing'] ?? null;
+        if (! $pricing) {
+            return; // Free pack — no entitlement required.
+        }
+
+        $hasActiveEntitlement = PackEntitlement::forTenant($tenant->id)
+            ->where('pack_id', $packId)
+            ->active()
+            ->exists();
+
+        if ($hasActiveEntitlement) {
+            return;
+        }
+
+        $amountCents = (int) round((float) ($pricing['amount'] ?? 0) * 100);
+        throw new EntitlementRequiredException($packId, $amountCents, (string) ($pricing['currency'] ?? 'USD'));
+    }
+
     private function entryPathForPack(string $packId): string
     {
         return match ($packId) {
@@ -97,7 +125,10 @@ class FeaturePackInstaller
                 continue;
             }
 
-            $slug = Str::slug((string) $agentId, '_');
+            // Namespaced per docs/feature-packs/SPEC.md isolation rule #3, so
+            // packs that reuse common agent ids (e.g. "growth", "crm") never
+            // collide when a tenant installs more than one pack.
+            $slug = Str::slug($packId, '_').'_'.Str::slug((string) $agentId, '_');
 
             $exists = DB::table('agents')
                 ->where('tenant_id', $tenant->id)

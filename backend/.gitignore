@@ -8,6 +8,9 @@ yarn-error.log
 /.env.backup
 /.env.production
 .phpunit.result.cache
+
+# Runtime state (regenerated; not source)
+/storage/app/feature-packs/
 Homestead.json
 Homestead.yaml
 auth.json

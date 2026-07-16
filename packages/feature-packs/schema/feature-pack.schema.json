@@ -152,6 +152,28 @@
             "signature": { "type": "string" }
           }
         },
+        "roles": {
+          "type": "object",
+          "description": "Maps dynamic_agents ids to a repeatable operating role (Priestley future-state org chart), e.g. { crm: general_manager }",
+          "additionalProperties": { "type": "string" }
+        },
+        "interview": {
+          "type": "object",
+          "description": "Discovery interview backbone consumed by a pack agent to draft an artifact (e.g. a sales script) before go-live.",
+          "properties": {
+            "file": { "type": "string", "description": "Path, relative to the pack root, to the interview questions YAML." }
+          }
+        },
+        "pricing": {
+          "type": "object",
+          "description": "Purchase price for the pack, charged via the platform payment provider before install is permitted.",
+          "properties": {
+            "model": { "type": "string", "enum": ["one_time", "subscription"] },
+            "amount": { "type": "number" },
+            "currency": { "type": "string" },
+            "dodo_product_key": { "type": "string" }
+          }
+        },
         "migrations": {
           "type": "array",
           "items": {

@@ -3,14 +3,14 @@ kind: FeaturePack
 
 metadata:
   id: sales-crm
-  version: 0.1.0
+  version: 0.2.0
   vertical: sales
-  displayName: "Sales & CRM OS"
-  display_name: "Sales & CRM OS"
-  description: "Lead capture, pipeline management, and follow-up automation for any sales team"
+  displayName: "Lead-to-Sale Funnel"
+  description: "Discovery interview, an owner-approved sales script, and an automated lead-to-sale funnel over email and WhatsApp"
   customer_outcomes:
     - "Never lose a lead because follow-up was late"
-    - "See your pipeline and what needs action today"
+    - "Get a sales script written for your business, not a generic template"
+    - "Approve the script once — the funnel runs itself after that"
     - "Win back customers before they churn"
 
 spec:
@@ -23,24 +23,34 @@ spec:
       - id: growth
         displayName: "Growth Agent"
         capabilities: [landing_pages, ad_campaigns, lead_generation, a_b_testing]
+
       - id: crm
         displayName: "CRM Agent"
-        capabilities: [pipeline_management, lead_scoring, follow_ups, deal_tracking]
+        capabilities: [pipeline_management, lead_scoring, follow_ups, deal_tracking, conversation_handling]
+
       - id: retention
         displayName: "Retention Agent"
         capabilities: [churn_detection, re_engagement, win_back]
+
+      - id: funnel_architect
+        displayName: "Funnel Architect"
+        capabilities: [discovery_interview, script_drafting, funnel_configuration]
 
     flows:
       - id: lead-capture
         description: "Capture and qualify incoming leads"
       - id: deal-pipeline
         description: "Track deals from proposal to close"
-      - id: demo-scheduler
-        description: "Automated demo and meeting coordination"
+      - id: funnel-go-live
+        description: "Activate the funnel once the owner approves the drafted script"
 
     ste_chains:
-      - id: deal_lifecycle
-        description: "Deal state progression from capture to close"
+      - id: lead_lifecycle
+        description: "Lead state progression from capture to won or lost"
+        states: [captured, qualified, engaged, meeting_booked, proposal, won, lost, recycled]
+      - id: funnel_setup
+        description: "Discovery interview through owner approval to go-live"
+        states: [purchased, interviewing, script_drafted, awaiting_approval, approved, live, paused, rejected]
 
     targets:
       - metric: lead_conversion_rate
@@ -49,6 +59,30 @@ spec:
       - metric: response_time_p50
         goal: "<= 5m"
         baseline: 30m
+      - metric: cac_ltv_ratio
+        goal: "<= 0.33"
+        baseline: 0.5
+
+  # Future-state org chart (Priestley Five A's — Alignment / Accountability):
+  # each dynamic agent maps to a repeatable operating role. Surfaced by
+  # GET /api/operating/org-chart (see docs/internal/operating-model.md).
+  roles:
+    growth: head_of_growth
+    crm: general_manager
+    retention: head_of_delight
+    funnel_architect: funnel_architect
+
+  # Discovery interview backbone consumed by the funnel_architect agent.
+  interview:
+    file: interview/questions.yaml
+
+  # Purchase pricing (Dodo Payments). See docs/feature-packs/SPEC.md and
+  # backend/app/Services/Integrations/DodoPaymentsAdapter.php.
+  pricing:
+    model: one_time
+    amount: 149
+    currency: USD
+    dodo_product_key: sales-crm
 
   config:
     default_automation_level: assisted

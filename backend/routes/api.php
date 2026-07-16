@@ -41,6 +41,12 @@ Route::get('/health', [HealthController::class, 'index']);
 Route::get('/public/traces/{token}', [ShareLinkController::class, 'publicTrace']);
 Route::get('/public/approvals/{token}', [ShareLinkController::class, 'publicApproval']);
 
+// Public lead capture — embedded on the tenant's own external site/landing
+// page, so it is intentionally unauthenticated. {tenant} is a tenant UUID,
+// not a secret (same trust model as e.g. a public form/portal id).
+Route::post('/public/lead-capture/{tenant}', [\App\Http\Controllers\Sales\PublicLeadController::class, 'store'])
+    ->middleware('throttle:lead_capture');
+
 // V2 intelligence layer — proxied through Laravel (Sanctum required except health)
 Route::prefix('v2/intelligence')->group(function () {
     Route::get('/health', [IntelligenceProxyController::class, 'health']);
@@ -59,6 +65,18 @@ Route::prefix('voice')->middleware(['throttle:voice_webhook', 'voice.verify_twil
     Route::post('/status',    [VoiceController::class, 'status'])->withoutMiddleware(['voice.feature_flag']);
     Route::post('/recording', [VoiceController::class, 'recording'])->withoutMiddleware(['voice.feature_flag']);
 });
+
+// WhatsApp — Twilio Messages webhooks (no auth, Twilio-signed). Reuses
+// voice.verify_twilio: the Twilio HMAC-SHA1 signature scheme is identical
+// across products (URL + sorted POST params), not voice-specific.
+Route::prefix('whatsapp')->middleware(['throttle:voice_webhook', 'voice.verify_twilio'])->group(function () {
+    Route::post('/inbound', [\App\Http\Controllers\WhatsAppController::class, 'inbound']);
+    Route::post('/status', [\App\Http\Controllers\WhatsAppController::class, 'status']);
+});
+
+// Dodo Payments — purchase webhooks (no auth, signature-verified)
+Route::post('/webhooks/dodo', [\App\Http\Controllers\Webhooks\DodoWebhookController::class, 'handle'])
+    ->middleware(['throttle:payment_webhook', 'dodo.verify_signature']);
 
 // Voice AI — WebSocket streaming (Phase C) — Twilio-signed only, no feature flag needed at transport layer
 Route::post('/voice/stream/connect', [VoiceStreamController::class, 'connect'])
@@ -176,7 +194,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::post('/feature-packs/signals', [FeaturePackController::class, 'recordSignal']);
     Route::post('/feature-packs/feedback', [FeaturePackController::class, 'feedback']);
     Route::get('/feature-packs', [FeaturePackController::class, 'index']);
+    Route::get('/feature-packs/entitlements', [FeaturePackController::class, 'entitlements']);
     Route::post('/feature-packs/{id}/install', [FeaturePackController::class, 'install']);
+    Route::post('/feature-packs/{id}/checkout', [FeaturePackController::class, 'checkout']);
     Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
 
     // Business profile (Atlas discovery learning loop)
@@ -188,6 +208,19 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
 
     // Billing & monetization
     Route::get('/billing/summary', [BillingController::class, 'summary']);
+
+    // Priestley Five A's operating rhythm (Alignment/Awareness/Accountability/Activity/Assets)
+    Route::prefix('operating')->group(function () {
+        Route::get('/alignment', [\App\Http\Controllers\Operating\OperatingController::class, 'showAlignment']);
+        Route::put('/alignment', [\App\Http\Controllers\Operating\OperatingController::class, 'updateAlignment']);
+        Route::get('/org-chart', [\App\Http\Controllers\Operating\OperatingController::class, 'orgChart']);
+        Route::get('/scoreboard', [\App\Http\Controllers\Operating\OperatingController::class, 'scoreboard']);
+        Route::get('/awareness', [\App\Http\Controllers\Operating\OperatingController::class, 'awareness']);
+        Route::post('/awareness', [\App\Http\Controllers\Operating\OperatingController::class, 'raiseAwareness']);
+        Route::post('/awareness/{id}/resolve', [\App\Http\Controllers\Operating\OperatingController::class, 'resolveAwareness']);
+        Route::get('/weekly-rhythm', [\App\Http\Controllers\Operating\OperatingController::class, 'weeklyRhythm']);
+        Route::get('/assets', [\App\Http\Controllers\Operating\OperatingController::class, 'assets']);
+    });
 
     // V2 outcome loop — weekly review surface
     Route::prefix('outcomes')->group(function () {
@@ -230,6 +263,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'role:admin', 'throttle:admin'])->p
 // ─── Platform workspace (role:super_admin) ──────────────────────
 Route::middleware(['auth:sanctum', 'role:super_admin', 'throttle:platform'])->prefix('platform')->group(function () {
         Route::get('/overview', [PlatformController::class, 'overview']);
+        Route::get('/readiness', [PlatformController::class, 'readiness']);
 
         // Feature flags
         Route::get('/feature-flags',              [PlatformController::class, 'listFlags']);
@@ -312,6 +346,41 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/portfolios/{id}/update-prices', [\App\Http\Controllers\Financial\PortfolioController::class, 'updatePrices']);
         Route::get('/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'trades']);
     });
+
+// ─── Sales & CRM OS (Lead-to-Sale Funnel — sales-crm pack) ─────────────
+Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
+    ->prefix('sales')
+    ->group(function () {
+        Route::get('/leads', [\App\Http\Controllers\Sales\LeadController::class, 'index']);
+        Route::get('/leads/pipeline-summary', [\App\Http\Controllers\Sales\LeadController::class, 'pipelineSummary']);
+        Route::get('/leads/{id}', [\App\Http\Controllers\Sales\LeadController::class, 'show']);
+        Route::post('/leads', [\App\Http\Controllers\Sales\LeadController::class, 'store']);
+        Route::post('/leads/{id}/stage', [\App\Http\Controllers\Sales\LeadController::class, 'updateStage']);
+
+        // Discovery interview -> script draft -> approval -> go-live
+        Route::get('/readiness', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'readiness']);
+        Route::get('/funnel-setup', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'show']);
+        Route::post('/funnel-setup/start', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'start']);
+        Route::post('/funnel-setup/answer', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'answer']);
+        Route::post('/funnel-setup/draft-script', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'draftScript']);
+        Route::post('/funnel-setup/request-revision', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'requestRevision']);
+        Route::post('/scripts/{scriptId}/submit', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'submitScript']);
+        Route::post('/scripts/{scriptId}/revise', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'reviseScript']);
+
+        // Inbox — conversations across email + WhatsApp
+        Route::get('/conversations', [\App\Http\Controllers\Sales\ConversationController::class, 'index']);
+        Route::get('/conversations/{id}', [\App\Http\Controllers\Sales\ConversationController::class, 'show']);
+        Route::post('/conversations/{id}/reply', [\App\Http\Controllers\Sales\ConversationController::class, 'reply']);
+    });
+
+// Backend-internal — called by Python intelligence workers only (never the
+// cockpit). Shared-key auth via X-Internal-Key, tenant scope via X-Tenant-Id.
+Route::prefix('internal')->middleware('internal.key')->group(function () {
+    Route::post('/sales/leads/{id}/stage', [\App\Http\Controllers\Internal\SalesController::class, 'updateStage']);
+    Route::post('/sales/leads/{id}/score', [\App\Http\Controllers\Internal\SalesController::class, 'updateScore']);
+    Route::post('/sales/leads/{id}/message', [\App\Http\Controllers\Internal\SalesController::class, 'sendMessage']);
+    Route::post('/sales/leads/{id}/enroll', [\App\Http\Controllers\Internal\SalesController::class, 'enrollInSequence']);
+});
 
 // ─── State Transition Engine (STE) — read-first, super_admin only ──────────
 Route::middleware(['auth:sanctum', 'role:super_admin', 'can.do:ste.view'])

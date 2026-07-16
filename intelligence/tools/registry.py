@@ -149,6 +149,13 @@ class ToolRegistry:
         for tool_id, handler in VOICE_TOOLS.items():
             self.register(tool_id, handler)
 
+        # Sales CRM pack tools (packages/feature-packs/sales-crm)
+        self.register("score_lead", _tool_score_lead)
+        self.register("update_lead_stage", _tool_update_lead_stage)
+        self.register("send_email", _tool_send_email)
+        self.register("send_whatsapp", _tool_send_whatsapp)
+        self.register("enroll_in_sequence", _tool_enroll_in_sequence)
+
 
 # ---------------------------------------------------------------------------
 # Default tool implementations
@@ -396,6 +403,144 @@ async def _tool_web_search(context: Any, params: Dict[str, Any]) -> Dict[str, An
         "error": "Web search service not configured.",
         "query": query,
     }
+
+
+async def _tool_score_lead(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recompute a lead's score and persist it via the Laravel internal API.
+
+    The initial score is already set synchronously by
+    App\\Services\\Sales\\LeadService::heuristicScore() at lead creation; this
+    tool lets the crm dynamic agent re-score a lead as part of a DAG flow
+    (e.g. packages/feature-packs/sales-crm/flows/lead-capture.dag.yaml).
+    """
+    lead_id = params.get("lead_id")
+    score = params.get("score")
+    tenant_id = getattr(context, "tenant_id", None) or params.get("tenant_id")
+
+    if not lead_id or score is None or not tenant_id:
+        return {"success": False, "error": "lead_id, score, and tenant_id are required."}
+
+    import httpx, os
+
+    backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
+    api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{backend_url}/api/internal/sales/leads/{lead_id}/score",
+                json={"score": int(score)},
+                headers={"X-Internal-Key": api_key, "X-Tenant-Id": str(tenant_id)},
+            )
+            if resp.status_code == 200:
+                return {"success": True, **resp.json().get("data", {})}
+            return {"success": False, "error": f"backend returned {resp.status_code}"}
+    except Exception as e:
+        logger.error("score_lead failed: %s", str(e))
+        return {"success": False, "error": str(e)}
+
+
+async def _tool_update_lead_stage(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transition a lead to a new stage via the Laravel internal API, which
+    appends the matching pack.sales-crm.lead_lifecycle event to the event log
+    (see App\\Services\\Sales\\LeadService::transitionStage()).
+    """
+    lead_id = params.get("lead_id")
+    stage = params.get("stage")
+    tenant_id = getattr(context, "tenant_id", None) or params.get("tenant_id")
+
+    if not lead_id or not stage or not tenant_id:
+        return {"success": False, "error": "lead_id, stage, and tenant_id are required."}
+
+    import httpx, os
+
+    backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
+    api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{backend_url}/api/internal/sales/leads/{lead_id}/stage",
+                json={"stage": stage, "context": params.get("context", {})},
+                headers={"X-Internal-Key": api_key, "X-Tenant-Id": str(tenant_id)},
+            )
+            if resp.status_code == 200:
+                return {"success": True, **resp.json().get("data", {})}
+            return {"success": False, "error": f"backend returned {resp.status_code}"}
+    except Exception as e:
+        logger.error("update_lead_stage failed: %s", str(e))
+        return {"success": False, "error": str(e)}
+
+
+async def _send_lead_message(context: Any, params: Dict[str, Any], channel: str) -> Dict[str, Any]:
+    lead_id = params.get("lead_id")
+    tenant_id = getattr(context, "tenant_id", None) or params.get("tenant_id")
+
+    if not lead_id or not tenant_id:
+        return {"success": False, "error": "lead_id and tenant_id are required."}
+    if not params.get("template_key") and not params.get("body"):
+        return {"success": False, "error": "Provide either template_key or body."}
+
+    import httpx, os
+
+    backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
+    api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
+    payload = {"channel": channel, "sent_by": getattr(context, "agent_id", "crm")}
+    for key in ("template_key", "body", "subject"):
+        if params.get(key):
+            payload[key] = params[key]
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{backend_url}/api/internal/sales/leads/{lead_id}/message",
+                json=payload,
+                headers={"X-Internal-Key": api_key, "X-Tenant-Id": str(tenant_id)},
+            )
+            data = resp.json().get("data", {}) if resp.content else {}
+            return {"success": resp.status_code == 200, **data}
+    except Exception as e:
+        logger.error("send_%s failed: %s", channel, str(e))
+        return {"success": False, "error": str(e)}
+
+
+async def _tool_send_email(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Send an email to a lead — either a message_templates key or a raw body."""
+    return await _send_lead_message(context, params, "email")
+
+
+async def _tool_send_whatsapp(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Send a WhatsApp message to a lead — either a message_templates key or a raw body."""
+    return await _send_lead_message(context, params, "whatsapp")
+
+
+async def _tool_enroll_in_sequence(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Enroll a lead in the pack's nurture sequence (medium-score branch of lead-capture.dag.yaml)."""
+    lead_id = params.get("lead_id")
+    tenant_id = getattr(context, "tenant_id", None) or params.get("tenant_id")
+
+    if not lead_id or not tenant_id:
+        return {"success": False, "error": "lead_id and tenant_id are required."}
+
+    import httpx, os
+
+    backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
+    api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{backend_url}/api/internal/sales/leads/{lead_id}/enroll",
+                json={"sequence_key": params.get("sequence_key", "nurture-sequence")},
+                headers={"X-Internal-Key": api_key, "X-Tenant-Id": str(tenant_id)},
+            )
+            data = resp.json().get("data", {}) if resp.content else {}
+            return {"success": resp.status_code in (200, 201), **data}
+    except Exception as e:
+        logger.error("enroll_in_sequence failed: %s", str(e))
+        return {"success": False, "error": str(e)}
 
 
 async def _tool_document_parse(context: Any, params: Dict[str, Any]) -> Dict[str, Any]:

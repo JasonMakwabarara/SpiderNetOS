@@ -32,3 +32,10 @@ Schedule::job(new \App\Jobs\DispatchScheduledFlowsJob)->everyMinute()->withoutOv
 
 // Transformation Score computation (every 5 minutes) — B6
 Schedule::job(new \App\Jobs\ComputeTransformationScoreJob)->everyFiveMinutes()->withoutOverlapping();
+
+// Sales-crm pack: nurture sequence steps (email/WhatsApp follow-ups) — every minute
+Schedule::job(new \App\Jobs\ProcessSequenceStepsJob)->everyMinute()->withoutOverlapping();
+
+// Priestley "Activity" A — perfect repeatable week (Monday priorities, Friday check-in)
+Schedule::job(new \App\Jobs\WeeklyRhythmJob('priorities'))->weeklyOn(1, '06:30');
+Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');

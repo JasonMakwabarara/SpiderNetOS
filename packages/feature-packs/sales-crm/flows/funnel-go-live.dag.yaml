@@ -1,0 +1,31 @@
+id: funnel-go-live
+description: "Activate the funnel once the owner approves the drafted sales script"
+displayName: "Funnel Go-Live"
+
+nodes:
+  - id: approved
+    type: trigger
+    event: pack.sales-crm.funnel_setup.approval.granted
+    description: "Owner granted final go-ahead on the drafted sales script"
+
+  - id: activate
+    type: agent
+    agent: funnel_architect
+    action: activate_funnel
+    description: "Activate pack agents, publish templates from the approved script, register assets"
+
+  - id: notify_owner
+    type: notification
+    recipient: owner
+    message: "Your lead-to-sale funnel is live and working leads on email and WhatsApp."
+
+edges:
+  - from: approved
+    to: activate
+
+  - from: activate
+    to: notify_owner
+
+on_error:
+  action: notify_admin
+  message: "Funnel go-live failed for funnel_setup {{funnel_setup.id}}"

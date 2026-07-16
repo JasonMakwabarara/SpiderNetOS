@@ -86,7 +86,7 @@ class AtlasClarityGate
         }
 
         if ($level === 'assisted') {
-            if ($confidence !== null && $confidence < self::LOW_CONFIDENCE_THRESHOLD) {
+            if ($consequence['actionable'] && $confidence !== null && $confidence < self::LOW_CONFIDENCE_THRESHOLD) {
                 $question = $this->clarifyingQuestion($message, $consequence);
 
                 return [

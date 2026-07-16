@@ -1,0 +1,45 @@
+# Not a DAG — consumed by ProcessSequenceStepsJob (see backend/app/Jobs), which
+# has no equivalent time-based wait primitive in the DAG executor. Each step
+# renders a message_templates row (seeded from the approved sales script) and
+# sends it on the given channel, then waits `wait_days` before the next step.
+
+id: nurture-sequence
+description: "Default multi-day follow-up sequence for medium-score leads"
+displayName: "Nurture Sequence"
+
+steps:
+  - step: 1
+    wait_days: 0
+    channel: email
+    template_key: nurture.step1.opener
+    stop_on_reply: true
+
+  - step: 2
+    wait_days: 2
+    channel: whatsapp
+    template_key: nurture.step2.check_in
+    stop_on_reply: true
+
+  - step: 3
+    wait_days: 4
+    channel: email
+    template_key: nurture.step3.proof
+    stop_on_reply: true
+
+  - step: 4
+    wait_days: 7
+    channel: whatsapp
+    template_key: nurture.step4.offer
+    stop_on_reply: true
+
+  - step: 5
+    wait_days: 12
+    channel: email
+    template_key: nurture.step5.breakup
+    stop_on_reply: true
+    on_complete: mark_recycled
+
+quiet_hours:
+  start: "20:00"
+  end: "08:00"
+  timezone: tenant_default

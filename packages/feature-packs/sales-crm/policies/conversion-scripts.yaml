@@ -1,0 +1,45 @@
+id: conversion-scripts
+shared: true
+description: >
+  Cross-tenant script priors by lead-type context. The Funnel Architect agent
+  uses these as a starting point, then adapts wording to the tenant's brand
+  voice and interview answers before drafting the tenant-specific
+  sales_scripts row that the owner reviews and approves.
+
+scripts:
+  - id: cold-inbound
+    context: "lead.source == 'landing_page' or lead.source == 'ad'"
+    opening: "Thanks for reaching out — I'd love to understand what you're trying to solve before I suggest anything."
+    follow_up: "Quick one: what's the main thing that made you look into this today?"
+    closing: "Based on what you've shared, I think we can help. Want to grab 15 minutes this week?"
+    alpha: 20
+    beta: 10
+
+  - id: referral
+    context: "lead.source == 'referral'"
+    opening: "{{referrer_name}} mentioned you might be a great fit — happy to walk you through how we helped them."
+    follow_up: "What's most important to you — the same outcome {{referrer_name}} got, or something different?"
+    closing: "Let's get you the same result. I'll send a time that works."
+    alpha: 24
+    beta: 6
+
+  - id: warm-demo-request
+    context: "lead.source == 'demo_request'"
+    opening: "Great — let's get you a demo tailored to what you're actually trying to do, not a generic tour."
+    follow_up: "Before the call: what does success look like for you in the next 90 days?"
+    closing: "Looking forward to showing you exactly that."
+    alpha: 22
+    beta: 8
+
+  - id: price-sensitive
+    context: "lead.tags contains 'price_objection'"
+    opening: "Totally fair to ask about price up front — let me show you the ROI math first."
+    follow_up: "What are you currently spending (in time or money) on this problem today?"
+    closing: "Compared to that, this pays for itself in {{payback_period}}. Ready to move forward?"
+    alpha: 14
+    beta: 9
+
+aggregation:
+  method: thompson_sampling
+  context_matching: semantic
+  exploration_rate: 0.10

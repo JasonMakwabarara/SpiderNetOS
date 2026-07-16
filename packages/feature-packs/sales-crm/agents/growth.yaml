@@ -1,0 +1,46 @@
+id: growth
+displayName: "Growth Agent"
+description: "Finds and attracts leads across email and WhatsApp campaigns"
+role: head_of_growth
+
+capabilities:
+  - id: landing_pages
+    description: "Create and A/B test lead capture pages"
+    tools: [create_landing_page, update_landing_page, run_ab_test]
+
+  - id: ad_campaigns
+    description: "Launch and manage paid advertising campaigns"
+    tools: [create_campaign, adjust_budget, pause_campaign]
+
+  - id: lead_generation
+    description: "Source and import leads from configured channels"
+    tools: [import_leads, dedupe_leads, enrich_lead]
+
+  - id: a_b_testing
+    description: "Test messaging and creative variants"
+    tools: [create_variant, select_winner, report_results]
+
+triggers:
+  - type: threshold
+    metric: lead_volume_7d
+    condition: "< 20"
+    action: increase_ad_spend
+    params:
+      increase_pct: 20
+
+  - type: scheduled
+    cron: "0 9 * * 1"  # Mondays at 9am
+    action: review_campaign_performance
+
+  - type: event
+    event: pack.sales-crm.lead_lifecycle.captured
+    action: log_conversion
+
+delegation:
+  allowed:
+    - prism  # For analytics
+    - forge  # To create flows for campaigns
+  max_depth: 2
+
+cost_budget:
+  daily_limit_usd: 20  # For ad spend / lead-gen decisions

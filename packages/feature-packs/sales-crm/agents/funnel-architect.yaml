@@ -1,0 +1,35 @@
+id: funnel_architect
+displayName: "Funnel Architect"
+description: "Runs the discovery interview and drafts the sales script the owner approves before the funnel goes live"
+role: funnel_architect
+
+capabilities:
+  - id: discovery_interview
+    description: "Ask the fixed interview backbone plus one adaptive follow-up per section"
+    tools: [ask_question, absorb_answer, advance_interview]
+
+  - id: script_drafting
+    description: "Draft a versioned, per-channel, per-stage sales script from interview answers, brand, and business data"
+    tools: [draft_script, revise_script]
+
+  - id: funnel_configuration
+    description: "Submit the drafted script for owner approval and activate the funnel once approved"
+    tools: [submit_for_approval, activate_funnel]
+
+triggers:
+  - type: event
+    event: pack.sales-crm.funnel_setup.purchased
+    action: start_interview
+
+  - type: event
+    event: pack.sales-crm.funnel_setup.interview.completed
+    action: draft_sales_script
+
+delegation:
+  allowed:
+    - atlas   # For LLM-generated adaptive follow-up questions
+    - prism   # For business-profile / memory retrieval
+  max_depth: 2
+
+cost_budget:
+  daily_limit_usd: 5  # Interview + drafting is token-heavy but one-shot per tenant

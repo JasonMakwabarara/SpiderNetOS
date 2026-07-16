@@ -37,6 +37,16 @@
     </div>
 
     <section class="sn-card p-5 mt-6">
+      <h2 class="font-medium mb-2" style="color: var(--text-primary);">Sales inbox</h2>
+      <p class="text-sm mb-3" style="color: var(--text-secondary);">
+        Email and WhatsApp conversations from the Lead-to-Sale Funnel bundle live in their own inbox.
+      </p>
+      <RouterLink to="/sales/inbox" class="sn-btn-outline px-3 py-1.5 rounded-lg text-sm font-medium inline-block">
+        Open sales inbox →
+      </RouterLink>
+    </section>
+
+    <section class="sn-card p-5 mt-6">
       <h2 class="font-medium mb-2" style="color: var(--text-primary);">Channels roadmap</h2>
       <p class="text-sm" style="color: var(--text-secondary);">
         Hermes multi-channel adapter (15+ platforms) routes through MetaPlanner dispatch with approvals,
@@ -80,5 +90,10 @@ onMounted(async () => {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+.sn-btn-outline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
 }
 </style>

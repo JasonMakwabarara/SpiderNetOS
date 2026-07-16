@@ -87,15 +87,18 @@ class ApprovalController extends Controller
             ]
         );
 
-        // Update approval projection
+        // Update approval projection. Columns must match the actual
+        // `approvals` schema (2024_01_01_000008_create_approvals_table.php):
+        // approver_id / responded_at — NOT resolved_by / resolved_at, which
+        // do not exist and previously made this UPDATE fail on every call.
         DB::table('approvals')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
             ->update([
                 'status' => 'approved',
-                'resolved_by' => $request->user()?->id,
-                'resolved_at' => now(),
-                'reason' => $request->input('reason'),
+                'approver_id' => $request->user()?->id,
+                'response' => $request->input('reason'),
+                'responded_at' => now(),
                 'updated_at' => now(),
             ]);
 
@@ -107,6 +110,12 @@ class ApprovalController extends Controller
                 $approval->dag_node_id,
                 $event->id,
             );
+        }
+
+        // Resource-type hooks: some resources activate a downstream workflow
+        // when their approval is granted, rather than resuming a paused DAG.
+        if ($approval->resource_type === 'sales_script') {
+            app(\App\Services\Sales\FunnelSetupService::class)->activateFromApproval($tenantId, $approval->resource_id);
         }
 
         return response()->json([
@@ -161,15 +170,15 @@ class ApprovalController extends Controller
             ]
         );
 
-        // Update approval projection
+        // Update approval projection (see approve() for the column-name note).
         DB::table('approvals')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
             ->update([
                 'status' => 'rejected',
-                'resolved_by' => $request->user()?->id,
-                'resolved_at' => now(),
-                'reason' => $request->input('reason'),
+                'approver_id' => $request->user()?->id,
+                'response' => $request->input('reason'),
+                'responded_at' => now(),
                 'updated_at' => now(),
             ]);
 
@@ -182,6 +191,10 @@ class ApprovalController extends Controller
                 $request->input('reason'),
                 $event->id,
             );
+        }
+
+        if ($approval->resource_type === 'sales_script') {
+            app(\App\Services\Sales\FunnelSetupService::class)->rejectFromApproval($tenantId, $approval->resource_id, $request->input('reason'));
         }
 
         return response()->json([

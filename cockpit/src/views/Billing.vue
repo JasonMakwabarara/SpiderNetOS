@@ -345,6 +345,34 @@
         </table>
       </div>
     </div>
+
+    <!-- ═══ Purchased Feature Packs ═══ -->
+    <div class="dct-card p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Purchased packs</h2>
+        <RouterLink to="/feature-packs" class="text-sm underline" style="color: var(--accent);">Browse packs →</RouterLink>
+      </div>
+      <p v-if="!entitlements.length" class="text-sm" :style="{ color: 'var(--text-secondary)' }">
+        No purchased packs yet.
+      </p>
+      <ul v-else class="divide-y" :style="{ borderColor: 'var(--border)' }">
+        <li v-for="e in entitlements" :key="e.id" class="py-3 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">{{ e.pack_id }}</p>
+            <p class="text-xs" :style="{ color: 'var(--text-muted)' }">
+              {{ (e.amount_cents / 100).toFixed(2) }} {{ e.currency }} · {{ e.source }}
+              <span v-if="e.purchased_at"> · {{ new Date(e.purchased_at).toLocaleDateString() }}</span>
+            </p>
+          </div>
+          <span
+            class="text-xs px-2 py-1 rounded-full"
+            :class="e.status === 'active' ? 'dct-pill-lime' : e.status === 'pending' ? 'dct-pill-cyan' : 'dct-pill-pink'"
+          >
+            {{ e.status }}
+          </span>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -439,6 +467,7 @@ const plansSection = ref(null)
 const billingHistory = ref([])
 const atlasInferenceDaily = ref(0)
 const atlasInferenceMonthly = ref(0)
+const entitlements = ref([])
 
 // ─── Computed ───────────────────────────────────────────────
 const currentPlan = computed(() => {
@@ -494,6 +523,11 @@ onMounted(async () => {
   if (usageStore.budget?.plan) {
     activePlanId.value = usageStore.budget.plan
   }
+
+  try {
+    const { data } = await api.get('/api/feature-packs/entitlements')
+    entitlements.value = data?.data || []
+  } catch { /* leave empty */ }
 })
 
 // ─── Methods ────────────────────────────────────────────────

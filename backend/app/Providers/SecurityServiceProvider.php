@@ -64,5 +64,17 @@ class SecurityServiceProvider extends ServiceProvider
             return Limit::perMinute((int) ($tiers['voice_webhook'] ?? 600))
                 ->by($request->ip());
         });
+
+        // ── Public lead capture (unauthenticated, embedded on tenant sites) ─
+        RateLimiter::for('lead_capture', function (Request $request) use ($tiers) {
+            return Limit::perMinute((int) ($tiers['lead_capture'] ?? 20))
+                ->by($request->ip());
+        });
+
+        // ── Payment provider webhooks (already signature-verified) ─────
+        RateLimiter::for('payment_webhook', function (Request $request) use ($tiers) {
+            return Limit::perMinute((int) ($tiers['payment_webhook'] ?? 300))
+                ->by($request->ip());
+        });
     }
 }

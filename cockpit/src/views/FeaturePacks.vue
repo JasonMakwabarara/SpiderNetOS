@@ -56,6 +56,7 @@
             </div>
           </div>
           <span class="sn-pill sn-pill-success shrink-0" v-if="isInstalled(pack.pack_id)">Installed</span>
+          <span class="sn-pill shrink-0" v-else-if="pack.pricing && !pack.entitled">{{ formatPrice(pack.pricing) }}</span>
           <span class="sn-pill shrink-0" v-else>Available</span>
         </div>
 
@@ -74,7 +75,16 @@
 
         <div class="mt-4 flex flex-wrap gap-2">
           <button
-            v-if="!isInstalled(pack.pack_id)"
+            v-if="!isInstalled(pack.pack_id) && pack.pricing && !pack.entitled"
+            type="button"
+            class="sn-btn-primary text-sm px-4 py-2 rounded-lg disabled:opacity-50"
+            :disabled="installing === pack.pack_id"
+            @click="checkoutPack(pack)"
+          >
+            {{ installing === pack.pack_id ? 'Starting checkout…' : `Buy ${formatPrice(pack.pricing)}` }}
+          </button>
+          <button
+            v-else-if="!isInstalled(pack.pack_id)"
             type="button"
             class="sn-btn-primary text-sm px-4 py-2 rounded-lg disabled:opacity-50"
             :disabled="installing === pack.pack_id"
@@ -103,10 +113,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api.js'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(true)
 const error = ref(null)
 const catalogue = ref([])
@@ -195,7 +206,60 @@ async function installPack(pack) {
   }
 }
 
-onMounted(() => load({ recordViews: true }))
+function formatPrice(pricing) {
+  if (!pricing) return ''
+  const amount = Number(pricing.amount || 0)
+  const currency = pricing.currency || 'USD'
+  return `${amount % 1 === 0 ? amount : amount.toFixed(2)} ${currency}`
+}
+
+async function checkoutPack(pack) {
+  installing.value = pack.pack_id
+  installMessage.value[pack.pack_id] = ''
+  try {
+    const { data } = await api.post(`/api/feature-packs/${pack.pack_id}/checkout`)
+    const checkoutUrl = data?.data?.checkout_url
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl
+    } else {
+      installMessage.value[pack.pack_id] = 'Could not start checkout — try again shortly.'
+      installing.value = null
+    }
+  } catch (e) {
+    installMessage.value[pack.pack_id] = e.response?.data?.message || 'Could not start checkout.'
+    installing.value = null
+  }
+}
+
+async function handlePurchaseReturn() {
+  const { purchase, pack: packId } = route.query
+  if (purchase === 'cancelled') {
+    installMessage.value[packId] = 'Checkout cancelled — no charge was made.'
+  } else if (purchase === 'success' && packId) {
+    installMessage.value[packId] = 'Payment received — activating your pack…'
+    await load()
+    try {
+      const { data } = await api.post(`/api/feature-packs/${packId}/install`)
+      const result = data?.data || data
+      installMessage.value[packId] = `Installed — ${result.agents_provisioned ?? 0} agent(s) ready.`
+      await load()
+      if (result.entry_path) {
+        setTimeout(() => router.push(result.entry_path), 800)
+      }
+    } catch (e) {
+      // Webhook may not have landed yet — the pack still shows as
+      // purchasable and the owner can retry the install button.
+      installMessage.value[packId] = e.response?.data?.message || 'Payment received — finishing setup, refresh in a moment.'
+    }
+  }
+}
+
+onMounted(async () => {
+  await load({ recordViews: true })
+  if (route.query.purchase) {
+    await handlePurchaseReturn()
+  }
+})
 </script>
 
 <style scoped>

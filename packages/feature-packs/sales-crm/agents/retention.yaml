@@ -1,0 +1,41 @@
+id: retention
+displayName: "Retention Agent"
+description: "Maintains relationships with won customers and win-back on lost deals"
+role: head_of_delight
+
+capabilities:
+  - id: churn_detection
+    description: "Identify at-risk relationships"
+    tools: [analyze_engagement, score_churn_risk, flag_for_attention]
+
+  - id: re_engagement
+    description: "Send personalized re-engagement campaigns"
+    tools: [create_campaign, personalize_message, schedule_send]
+
+  - id: win_back
+    description: "Special offers for lost opportunities"
+    tools: [generate_offer, send_offer, track_response]
+
+triggers:
+  - type: threshold
+    metric: days_since_contact
+    condition: "> 90"
+    action: send_check_in
+
+  - type: event
+    event: pack.sales-crm.lead_lifecycle.won
+    action: schedule_delight_touch
+
+  - type: event
+    event: pack.sales-crm.lead_lifecycle.lost
+    action: schedule_win_back
+    delay: "30d"
+
+delegation:
+  allowed:
+    - prism      # For churn prediction
+    - growth     # For referral campaigns
+  max_depth: 2
+
+cost_budget:
+  daily_limit_usd: 5  # For retention campaigns

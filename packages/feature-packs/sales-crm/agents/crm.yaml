@@ -1,0 +1,49 @@
+id: crm
+displayName: "CRM Agent"
+description: "Manages the lead pipeline, conversations, and follow-ups across email and WhatsApp"
+role: general_manager
+
+capabilities:
+  - id: lead_scoring
+    description: "Score leads by conversion probability"
+    tools: [calculate_score, update_profile, add_tags]
+
+  - id: follow_ups
+    description: "Time and send follow-up messages"
+    tools: [schedule_followup, send_message, track_response]
+
+  - id: deal_tracking
+    description: "Track deals from proposal to close"
+    tools: [log_deal, update_deal_stage, notify_parties]
+
+  - id: conversation_handling
+    description: "Respond to inbound lead replies using the approved sales script"
+    tools: [send_email, send_whatsapp, draft_reply, book_meeting]
+
+triggers:
+  - type: event
+    event: pack.sales-crm.lead_lifecycle.captured
+    action: score_and_route
+
+  - type: threshold
+    metric: response_time_p50
+    condition: "> 5m"
+    action: escalate_to_alerts
+
+  - type: scheduled
+    cron: "0 8,14 * * *"  # Twice daily
+    action: process_pending_followups
+
+  - type: event
+    event: conversation.message.received
+    action: handle_inbound_message
+
+delegation:
+  allowed:
+    - prism      # For lead scoring models
+    - nexus      # For execution
+    - atlas      # For escalation to executive
+  max_depth: 3
+
+cost_budget:
+  daily_limit_usd: 10  # For email/WhatsApp send costs

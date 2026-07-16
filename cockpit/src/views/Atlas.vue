@@ -79,7 +79,10 @@ onMounted(async () => {
   if (showHannahBootstrap.value && key && typeof sessionStorage !== 'undefined') {
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, '1')
-      await atlasStore.sendMessage('Help me get started after onboarding.')
+      // ?prefill lets other guidance panels (e.g. the go-live readiness
+      // checklist) seed a specific question instead of the generic
+      // onboarding kickoff — same "ask Hannah" mechanic, different source.
+      await atlasStore.sendMessage(route.query.prefill || 'Help me get started after onboarding.')
     }
   }
 })

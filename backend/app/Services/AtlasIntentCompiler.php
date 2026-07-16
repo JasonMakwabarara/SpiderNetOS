@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Cache;
  */
 class AtlasIntentCompiler
 {
+    /** @var array<string, mixed>|null Per-request compile cache (clarity gate + Jarvis share one classify). */
+    private ?array $requestCache = null;
+
     /**
      * Mapping of intents to their designated agent targets.
      */
@@ -104,8 +107,12 @@ class AtlasIntentCompiler
     {
         $message = trim($message);
 
+        if ($this->requestCache !== null && ($this->requestCache['raw_input'] ?? '') === $message) {
+            return $this->requestCache;
+        }
+
         if (empty($message)) {
-            return $this->buildResult('chat', [], 1.0, $message);
+            return $this->rememberResult($this->buildResult('chat', [], 1.0, $message));
         }
 
         // Phase 1: Pattern matching (free, no tokens)
@@ -115,11 +122,22 @@ class AtlasIntentCompiler
                 'intent'  => $patternResult['intent'],
                 'message' => $message,
             ]);
-            return $patternResult;
+            return $this->rememberResult($patternResult);
         }
 
         // Phase 2: LLM fallback for ambiguous/complex natural language
-        return $this->classifyWithLLM($message);
+        return $this->rememberResult($this->classifyWithLLM($message));
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function rememberResult(array $result): array
+    {
+        $this->requestCache = $result;
+
+        return $result;
     }
 
     /**

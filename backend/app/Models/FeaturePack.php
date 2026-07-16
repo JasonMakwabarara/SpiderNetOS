@@ -6,6 +6,20 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string $tenant_id
+ * @property string $pack_id
+ * @property string $version
+ * @property string $vertical
+ * @property string $display_name
+ * @property string|null $description
+ * @property array|null $manifest
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $installed_at
+ * @property-read array $agents
+ * @property-read array $flows
+ */
 class FeaturePack extends Model
 {
     use HasUuids;

@@ -82,7 +82,17 @@ class FeaturePackController extends Controller
 
         $installed = $request->user()->tenant->featurePacks()->pluck('pack_id')->all();
 
+        $entitledPackIds = \App\Models\PackEntitlement::forTenant($tenantId)->active()->pluck('pack_id')->all();
+
         $entries = $growth->personalizeCatalogue($tenantId, $this->loadCatalogueEntries(), $installed);
+
+        foreach ($entries as &$entry) {
+
+            $entry['entitled'] = empty($entry['pricing']) || in_array($entry['pack_id'], $entitledPackIds, true);
+
+        }
+
+        unset($entry);
 
 
 
@@ -370,6 +380,16 @@ class FeaturePackController extends Controller
 
             return response()->json(['message' => $e->getMessage()], 422);
 
+        } catch (\App\Services\EntitlementRequiredException $e) {
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'checkout_hint' => true,
+                'pack_id' => $e->packId,
+                'amount_cents' => $e->amountCents,
+                'currency' => $e->currency,
+            ], 402);
+
         } catch (\RuntimeException $e) {
 
             return response()->json(['message' => $e->getMessage()], 404);
@@ -386,7 +406,75 @@ class FeaturePackController extends Controller
 
     }
 
+    /**
+     * POST /api/feature-packs/{id}/checkout
+     * Creates a pending entitlement + a Dodo Payments checkout session for a priced pack.
+     */
+    public function checkout(Request $request, string $id): JsonResponse
+    {
+        $tenant = $request->user()->tenant;
 
+        $manifestPath = $this->packsRoot().'/'.$id.'/pack.yaml';
+        if (! is_readable($manifestPath)) {
+            return response()->json(['message' => 'Pack not found.'], 404);
+        }
+
+        $manifest = Yaml::parseFile($manifestPath);
+        $pricing = $manifest['spec']['pricing'] ?? null;
+        if (! $pricing) {
+            return response()->json(['message' => 'This pack is free — install it directly.'], 422);
+        }
+
+        $productKey = $pricing['dodo_product_key'] ?? $id;
+        $productId = (string) config("services.dodo.products.{$productKey}", '');
+        if ($productId === '') {
+            return response()->json(['message' => 'Pack is not configured for purchase yet.'], 500);
+        }
+
+        $entitlement = \App\Models\PackEntitlement::create([
+            'tenant_id' => $tenant->id,
+            'pack_id' => $id,
+            'source' => 'purchase',
+            'provider' => 'dodo',
+            'status' => 'pending',
+            'amount_cents' => (int) round((float) ($pricing['amount'] ?? 0) * 100),
+            'currency' => (string) ($pricing['currency'] ?? 'USD'),
+        ]);
+
+        try {
+            $adapter = new \App\Services\Integrations\DodoPaymentsAdapter((array) config('services.dodo'));
+            $session = $adapter->createCheckoutSession(
+                $productId,
+                ['tenant_id' => $tenant->id, 'pack_id' => $id, 'entitlement_id' => $entitlement->id],
+                url("/feature-packs?purchase=success&pack={$id}"),
+                url('/feature-packs?purchase=cancelled'),
+            );
+        } catch (\Throwable $e) {
+            $entitlement->update(['status' => 'revoked']);
+
+            return response()->json(['message' => 'Could not start checkout: '.$e->getMessage()], 502);
+        }
+
+        return response()->json(['data' => [
+            'entitlement_id' => $entitlement->id,
+            'checkout_url' => $session['checkout_url'] ?? null,
+            'session_id' => $session['session_id'] ?? null,
+        ]]);
+    }
+
+    /**
+     * GET /api/feature-packs/entitlements
+     */
+    public function entitlements(Request $request): JsonResponse
+    {
+        $tenant = $request->user()->tenant;
+
+        $entitlements = \App\Models\PackEntitlement::forTenant($tenant->id)
+            ->orderByDesc('created_at')
+            ->get(['id', 'pack_id', 'source', 'status', 'amount_cents', 'currency', 'purchased_at', 'expires_at']);
+
+        return response()->json(['data' => $entitlements]);
+    }
 
     /**
 
@@ -449,6 +537,8 @@ class FeaturePackController extends Controller
                     'customer_outcomes' => $meta['customer_outcomes'] ?? self::PACK_OUTCOMES[$packId] ?? [],
 
                     'entry_path' => $this->entryPath($packId),
+
+                    'pricing' => $yaml['spec']['pricing'] ?? null,
 
                 ];
 

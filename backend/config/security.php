@@ -95,6 +95,10 @@ return [
         'atlas_chat'    => (int) env('RATE_LIMIT_ATLAS_CHAT', 30),
         // Voice webhooks are signed by Twilio; throttling happens upstream.
         'voice_webhook' => (int) env('RATE_LIMIT_VOICE_WEBHOOK', 600),
+        // Public, unauthenticated lead-capture form embedded on tenant sites.
+        'lead_capture'  => (int) env('RATE_LIMIT_LEAD_CAPTURE', 20),
+        // Payment provider webhooks (Dodo Payments) — signature verification is the real gate.
+        'payment_webhook' => (int) env('RATE_LIMIT_PAYMENT_WEBHOOK', 300),
     ],
 
     /*

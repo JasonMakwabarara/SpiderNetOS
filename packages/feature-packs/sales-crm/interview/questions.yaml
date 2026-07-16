@@ -1,0 +1,97 @@
+# Discovery interview backbone for the Funnel Architect agent.
+#
+# Fixed questions are asked in order, one section at a time. After each
+# section, the agent may ask ONE LLM-generated follow-up (see
+# `followup_hint`) before moving on — never more, to keep the interview
+# short and CostGovernor-friendly. Answers persist to `funnel_setups`
+# .interview_answers keyed by question `id`; fields with `absorbs_to` are
+# also mirrored into `tenant_business_profiles` via
+# AtlasDiscoveryService::absorbAnswer() so pack recommendations keep learning.
+
+sections:
+  - id: alignment
+    title: "Alignment — origin, mission, vision"
+    description: "Feeds the tenant's alignment profile (Priestley Five A's: Alignment)."
+    questions:
+      - id: origin_story
+        prompt: "In a sentence or two, why did you start this business?"
+        absorbs_to: null
+        followup_hint: "If vague, ask what specific moment or frustration triggered starting it."
+
+      - id: mission
+        prompt: "What's the one thing your business must get right, every single day, for customers?"
+        absorbs_to: null
+        followup_hint: "If generic, ask for a concrete example from the last month."
+
+      - id: vision
+        prompt: "Where do you want this business to be in 3 years?"
+        absorbs_to: null
+        followup_hint: "If purely financial, ask what would be different for customers by then."
+
+      - id: ninety_day_target
+        prompt: "What's the single most important result you want from this funnel in the next 90 days? (e.g. '20 qualified calls/month', '$50k new revenue')"
+        absorbs_to: null
+        followup_hint: "Ask for a number, not just a direction."
+
+  - id: offer
+    title: "Offer & pricing"
+    description: "Feeds script opener/closing and objection handling."
+    questions:
+      - id: core_offer
+        prompt: "In one sentence, what do you sell and to whom?"
+        absorbs_to: industry
+        followup_hint: null
+
+      - id: pricing_model
+        prompt: "How is it priced — one-time, subscription, or custom quote? Roughly what range?"
+        absorbs_to: null
+        followup_hint: null
+
+      - id: proof_points
+        prompt: "What's your strongest proof it works — a result, a review, a case study?"
+        absorbs_to: pain_points
+        followup_hint: null
+
+  - id: icp
+    title: "Ideal customer"
+    description: "Feeds lead scoring and script personalization."
+    questions:
+      - id: ideal_customer
+        prompt: "Describe your best customer — who are they, and what problem were they trying to solve?"
+        absorbs_to: biggest_time_drain
+        followup_hint: "If broad, ask for the profile of their most recent great customer specifically."
+
+      - id: disqualifiers
+        prompt: "Who is NOT a good fit for what you offer?"
+        absorbs_to: null
+        followup_hint: null
+
+  - id: objections
+    title: "Objections"
+    description: "Feeds the script's objection-handling section."
+    questions:
+      - id: common_objection
+        prompt: "What's the #1 reason a good-fit lead says no or goes quiet?"
+        absorbs_to: null
+        followup_hint: "Ask how they currently handle that objection, if at all."
+
+  - id: channels_tone
+    title: "Channels & tone"
+    description: "Feeds brand voice for email/WhatsApp templates."
+    questions:
+      - id: preferred_tone
+        prompt: "How should the funnel sound — formal and professional, warm and casual, or something else?"
+        absorbs_to: null
+        followup_hint: null
+
+      - id: response_ownership
+        prompt: "When a lead replies, should the system draft a reply for you to approve, or send automatically?"
+        absorbs_to: null
+        followup_hint: null
+
+      - id: team_size
+        prompt: "Roughly how many people are on your team today?"
+        absorbs_to: employee_count_band
+        followup_hint: null
+
+max_llm_followups_per_section: 1
