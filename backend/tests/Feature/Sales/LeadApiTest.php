@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Sales;
 
 use App\Models\Lead;
+use App\Models\PackEntitlement;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +23,7 @@ class LeadApiTest extends TestCase
 
     private function createTenant(): Tenant
     {
-        return Tenant::create([
+        $tenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Test Tenant',
             'slug' => 'test-tenant-'.Str::lower(Str::random(8)),
@@ -30,6 +31,19 @@ class LeadApiTest extends TestCase
             'plan' => 'pro',
             'onboarding_completed_at' => now(),
         ]);
+
+        // /api/sales/* is gated by pack.entitled:sales-crm — grant the pack so
+        // the authenticated sales routes are reachable in tests.
+        PackEntitlement::create([
+            'tenant_id' => $tenant->id,
+            'pack_id' => 'sales-crm',
+            'source' => 'grant',
+            'provider' => 'manual',
+            'status' => 'active',
+            'purchased_at' => now(),
+        ]);
+
+        return $tenant;
     }
 
     private function createUser(Tenant $tenant): User

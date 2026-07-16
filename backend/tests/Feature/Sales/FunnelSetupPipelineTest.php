@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Sales;
 
+use App\Models\PackEntitlement;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,7 +26,7 @@ class FunnelSetupPipelineTest extends TestCase
 
     private function createTenant(): Tenant
     {
-        return Tenant::create([
+        $tenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Pipeline Test Co',
             'slug' => 'pipeline-test-'.Str::lower(Str::random(8)),
@@ -33,6 +34,18 @@ class FunnelSetupPipelineTest extends TestCase
             'plan' => 'pro',
             'onboarding_completed_at' => now(),
         ]);
+
+        // /api/sales/* is gated by pack.entitled:sales-crm.
+        PackEntitlement::create([
+            'tenant_id' => $tenant->id,
+            'pack_id' => 'sales-crm',
+            'source' => 'grant',
+            'provider' => 'manual',
+            'status' => 'active',
+            'purchased_at' => now(),
+        ]);
+
+        return $tenant;
     }
 
     private function createUser(Tenant $tenant): User

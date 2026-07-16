@@ -51,9 +51,13 @@ class LeadService
                 'source' => $source,
                 'stage' => 'captured',
                 'score' => $this->heuristicScore($data),
+                // Consent must be explicit: opt-ins default to false so cold
+                // captures (PublicLeadController landing-page forms, imports)
+                // are never auto-subscribed. Callers with real consent pass
+                // the flags through (e.g. a ticked opt-in checkbox).
                 'consent' => [
-                    'email_opt_in' => (bool) ($data['email_opt_in'] ?? true),
-                    'whatsapp_opt_in' => (bool) ($data['whatsapp_opt_in'] ?? true),
+                    'email_opt_in' => (bool) ($data['email_opt_in'] ?? false),
+                    'whatsapp_opt_in' => (bool) ($data['whatsapp_opt_in'] ?? false),
                     'opted_out_at' => null,
                 ],
                 'custom' => $data['custom'] ?? [],

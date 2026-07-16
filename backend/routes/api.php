@@ -348,7 +348,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     });
 
 // ─── Sales & CRM OS (Lead-to-Sale Funnel — sales-crm pack) ─────────────
-Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
+// pack.entitled:sales-crm gates the whole group so the monetized pack's API
+// requires an active purchase (or a free manifest), not just onboarding.
+Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboarding.required', 'cost.limit', 'throttle:api'])
     ->prefix('sales')
     ->group(function () {
         Route::get('/leads', [\App\Http\Controllers\Sales\LeadController::class, 'index']);

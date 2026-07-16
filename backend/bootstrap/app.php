@@ -41,6 +41,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'internal.key'      => \App\Http\Middleware\VerifyInternalKey::class,
             // Dodo Payments webhooks
             'dodo.verify_signature' => \App\Http\Middleware\VerifyDodoSignature::class,
+            // Feature-pack runtime entitlement gate (pack.entitled:{pack_id})
+            'pack.entitled'     => \App\Http\Middleware\RequirePackEntitlement::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
