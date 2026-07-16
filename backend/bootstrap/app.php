@@ -43,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'dodo.verify_signature' => \App\Http\Middleware\VerifyDodoSignature::class,
             // Feature-pack runtime entitlement gate (pack.entitled:{pack_id})
             'pack.entitled'     => \App\Http\Middleware\RequirePackEntitlement::class,
+            // Plan countable-quota gate on create routes (plan.quota:agents|flows|seats)
+            'plan.quota'        => \App\Http\Middleware\EnforcePlanQuota::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

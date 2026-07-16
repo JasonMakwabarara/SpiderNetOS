@@ -116,9 +116,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Gated by feature flag `atlas.enhance_prompt`.
     Route::post('/atlas/enhance-prompt', [AtlasController::class, 'enhancePrompt']);
     
-    // Flows (DAG execution)
-    Route::apiResource('flows', FlowController::class);
-    Route::post('/flows/quick-create', [FlowController::class, 'quickCreate']);
+    // Flows (DAG execution). Gate creation on the plan's flow quota; the
+    // store action is split out of the resource so the quota middleware
+    // sits only on create, never on reads.
+    Route::apiResource('flows', FlowController::class)->except(['store']);
+    Route::post('/flows', [FlowController::class, 'store'])->middleware('plan.quota:flows')->name('flows.store');
+    Route::post('/flows/quick-create', [FlowController::class, 'quickCreate'])->middleware('plan.quota:flows');
     Route::post('/flows/{flow}/execute', [FlowController::class, 'execute']);
     Route::post('/flows/{flow}/publish', [FlowController::class, 'publish']);
     Route::get('/flows/{flow}/executions', [FlowController::class, 'executions']);
@@ -128,7 +131,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     
     // Agents — CRUD + management
     Route::get('/agents', [AgentController::class, 'index']);
-    Route::post('/agents', [AgentController::class, 'store']);
+    Route::post('/agents', [AgentController::class, 'store'])->middleware('plan.quota:agents');
     Route::get('/agents/templates', [AgentController::class, 'templates']);
     Route::get('/agents/graph/delegation', [AgentController::class, 'delegationGraph']);
     Route::get('/agents/{agent}', [AgentController::class, 'show']);
@@ -239,8 +242,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'role:admin', 'throttle:admin'])->p
         // Users
         Route::get('/users', [AdminController::class, 'listUsers']);
         // Both invite and standard POST alias
-        Route::post('/users',         [AdminController::class, 'inviteUser'])->middleware('step.up');
-        Route::post('/users:invite',  [AdminController::class, 'inviteUser'])->middleware('step.up');
+        Route::post('/users',         [AdminController::class, 'inviteUser'])->middleware(['step.up', 'plan.quota:seats']);
+        Route::post('/users:invite',  [AdminController::class, 'inviteUser'])->middleware(['step.up', 'plan.quota:seats']);
         Route::patch('/users/{id}',   [AdminController::class, 'updateUser'])->middleware('step.up');
         Route::delete('/users/{id}',  [AdminController::class, 'deleteUser'])->middleware('step.up');
 
