@@ -10,8 +10,11 @@ jobs:
   validate-packs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: |
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check feature packs
+        run: |
           echo "=== Feature Pack Validation ==="
           if [ -d "packages/feature-packs" ]; then
             echo "? Feature packs directory found"

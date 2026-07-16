@@ -10,9 +10,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: cd cockpit && npm ci || npm install
-      - run: cd cockpit && npm run build || echo "Build skipped"
+
+      - name: Install dependencies
+        run: |
+          cd cockpit
+          npm install || npm ci
+
+      - name: Build
+        run: |
+          cd cockpit
+          npm run build || echo "Build skipped"

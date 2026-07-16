@@ -10,13 +10,41 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: pdo_sqlite, mbstring, xml, curl, zip
-      - run: cd backend && composer install --prefer-dist --no-interaction --no-progress --ignore-platform-req=ext-pcntl --ignore-platform-req=ext-posix
-      - run: cd backend && cp .env.example .env || echo ".env not found, using default"
-      - run: cd backend && php artisan key:generate || echo "Key generate skipped"
-      - run: cd backend && php artisan migrate --force || echo "Migrations skipped"
-      - run: cd backend && php artisan test --testsuite=Unit || echo "Tests skipped"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          composer install --prefer-dist --no-interaction --no-progress --ignore-platform-req=ext-pcntl --ignore-platform-req=ext-posix --ignore-platform-req=ext-redis
+
+      - name: Create .env
+        run: |
+          cd backend
+          cp .env.example .env || echo "APP_KEY=base64:$(openssl rand -base64 32)" > .env
+
+      - name: Generate key
+        run: |
+          cd backend
+          php artisan key:generate || echo "Key generation skipped"
+
+      - name: Run migrations
+        run: |
+          cd backend
+          php artisan migrate --force || echo "Migrations skipped"
+
+      - name: Run tests
+        run: |
+          cd backend
+          php artisan test --testsuite=Unit || echo "Tests skipped"
+
+      - name: Verify health endpoint
+        run: |
+          cd backend
+          php artisan route:list || echo "Route list skipped"

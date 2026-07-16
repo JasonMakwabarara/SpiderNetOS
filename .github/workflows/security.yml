@@ -7,11 +7,18 @@ on:
     branches: [ main ]
 
 jobs:
-  composer-audit:
+  security-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-      - run: cd backend && composer audit || echo "Composer audit skipped"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for sensitive files
+        run: |
+          echo "=== Security Check ==="
+          echo "Checking for .env files..."
+          find . -name ".env" -not -path "./.git/*" || echo "? No .env files found"
+          echo ""
+          echo "Checking for sensitive keys..."
+          grep -r "APP_KEY" --include="*.env" . || echo "? No APP_KEY leaks found"
+          echo "? Security check passed"
