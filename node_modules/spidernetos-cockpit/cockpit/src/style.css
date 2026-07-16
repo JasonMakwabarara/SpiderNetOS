@@ -1,0 +1,322 @@
+/* Geist + JetBrains Mono — must precede @tailwind per PostCSS */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SpiderNetOS — Cockpit design tokens (aligned with marketing/landing) */
+/* Dark navy + electric cyan + SpiderNet orange. */
+:root {
+  --bg:            #070A12;
+  --bg-subtle:     #0A0F1C;
+  --bg-card:       #0E1422;
+  --bg-elevated:   #121A2B;
+  --surface-low:   #0E1422;
+  --surface-high:  #172033;
+
+  --text-primary:   #F4F7FB;
+  --text-secondary: #A8B3C7;
+  --text-muted:     #6B7693;
+
+  --border:         rgba(255,255,255,0.08);
+  --border-active:  rgba(0,214,201,0.40);
+  --divider:        rgba(255,255,255,0.04);
+
+  --accent:         #00D6C9;
+  --accent-weak:    rgba(0,214,201,0.14);
+  --accent-stronger:#17DFC3;
+  --accent-warm:    #FF6B2C;
+  --amber:          #F5B84B;
+  --success:        #31D67B;
+  --warn:           #F5B84B;
+  --danger:         #F05D5E;
+
+  --glass-panel: rgba(14,20,34,0.72);
+  --glass-card:  rgba(18,26,43,0.78);
+
+  --shadow-card:       0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 40px rgba(0,0,0,0.45);
+  --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 60px rgba(0,0,0,0.55);
+
+  /* Kept for legacy; remapped to a restrained cyan ramp (no rainbow). */
+  --gradient-brand: linear-gradient(135deg, #00E5C8 0%, #03B8A1 100%);
+  --gradient-hero:
+    radial-gradient(1200px 600px at 20% -10%, rgba(0,229,200,0.12), transparent 60%),
+    radial-gradient(800px 400px at 100% 100%, rgba(0,229,200,0.08), transparent 55%),
+    linear-gradient(180deg, #05070A, #0A0D12);
+}
+
+/* Force dark regardless of .dark toggle — dark is the product. */
+html, body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+}
+
+/* Geist + JetBrains Mono via Google Fonts (non-blocking fallback chain) */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Geist', 'Inter', system-ui, sans-serif;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* Selection / caret in accent tone */
+  ::selection { background: var(--accent-weak); color: var(--text-primary); }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  hr { border-color: var(--border); }
+}
+
+/* ─────────── Component layer ─────────── */
+@layer components {
+  .sn-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .sn-card:hover {
+    border-color: rgba(0,229,200,0.22);
+  }
+
+  .sn-panel {
+    background: var(--glass-card);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .sn-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.9rem; border-radius: 8px;
+    font-size: 0.875rem; font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+  .sn-btn:hover { border-color: var(--border-active); background: var(--surface-high); }
+
+  .sn-btn-primary {
+    background: var(--accent);
+    color: #05070A;
+    border: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  .sn-btn-primary:hover {
+    background: var(--accent-stronger);
+    border-color: var(--accent-stronger);
+    box-shadow: 0 0 0 3px rgba(0,229,200,0.18);
+  }
+  .sn-btn-danger {
+    background: transparent;
+    border: 1px solid rgba(255,90,122,0.35);
+    color: var(--danger);
+  }
+  .sn-btn-danger:hover { background: rgba(255,90,122,0.12); }
+
+  .sn-input, input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="search"], textarea, select {
+    background: var(--surface-low);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    width: 100%;
+  }
+  .sn-input:focus, input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,200,0.12);
+  }
+
+  .sn-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 500; line-height: 1.3;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+  .sn-pill-accent {
+    background: var(--accent-weak);
+    color: var(--accent);
+    border-color: rgba(0,229,200,0.30);
+  }
+  .sn-pill-warn {
+    background: rgba(245,165,36,0.12);
+    color: var(--amber);
+    border-color: rgba(245,165,36,0.30);
+  }
+  .sn-pill-danger {
+    background: rgba(255,90,122,0.12);
+    color: var(--danger);
+    border-color: rgba(255,90,122,0.30);
+  }
+  .sn-pill-success {
+    background: rgba(34,211,155,0.12);
+    color: var(--success);
+    border-color: rgba(34,211,155,0.30);
+  }
+
+  /* Gradient text — restrained cyan, not rainbow */
+  .sn-grad-text {
+    background: linear-gradient(90deg, #ECF2F5 0%, #00E5C8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Sidebar nav link */
+  .sn-nav-link {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.87rem;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+  .sn-nav-link:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+  .sn-nav-link.active {
+    background: var(--accent-weak);
+    color: var(--accent);
+  }
+  .sn-nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: -0.75rem; top: 20%; bottom: 20%;
+    width: 2px; border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .sn-nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 0.75rem 0.7rem 0.35rem;
+  }
+
+  /* Kbd chip */
+  .sn-kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+
+  /* ────── LEGACY CLASS SHIMS (dct-*) — repoint to flight deck ────── */
+  .dct-card          { @apply sn-card; }
+  .dct-btn-primary   { @apply sn-btn-primary; }
+  .dct-grad-text     { @apply sn-grad-text; }
+  .dct-pill-pink     { @apply sn-pill-accent; }
+  .dct-pill-lime     { @apply sn-pill-success; }
+  .dct-pill-cyan     { @apply sn-pill-accent; }
+  .dct-nav-link      { @apply sn-nav-link; }
+}
+
+/* Subtle grid background helper */
+.sn-grid-bg {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.06);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,229,200,0.28); background-clip: padding-box; }
+
+/* Shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sn-shimmer, .dct-shimmer {
+  background: linear-gradient(90deg, var(--bg-card) 25%, rgba(0,229,200,0.10) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
+
+/* Line clamp */
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Motion */
+@media (prefers-reduced-motion: no-preference) {
+  .sn-fade-in { animation: fadeIn 0.25s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+}
+
+/* Form label default */
+label { color: var(--text-secondary); font-size: 0.82rem; }
+
+/* Tables (dark) */
+table { border-collapse: collapse; width: 100%; }
+thead th {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+tbody td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-primary);
+  font-size: 0.87rem;
+}
+tbody tr:hover { background: var(--bg-elevated); }
+
+/* ─────────── Legacy light-mode shims ─────────── */
+/* Map literal hardcoded light utilities to flight-deck dark equivalents. */
+.bg-white            { background-color: var(--bg-card) !important; }
+.hover\:bg-gray-50:hover   { background-color: var(--bg-elevated) !important; }
+.hover\:bg-gray-100:hover  { background-color: var(--bg-elevated) !important; }
+.hover\:bg-gray-200:hover  { background-color: var(--surface-high) !important; }
+.text-white          { color: #ECF2F5 !important; }
+.bg-black\/10        { background-color: rgba(255,255,255,0.06) !important; }
+.bg-black\/20        { background-color: rgba(255,255,255,0.10) !important; }
+
+/* Connection dot pulse */
+@keyframes pulseDot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,200,0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,229,200,0); }
+}
+.sn-dot-live { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulseDot 2.2s infinite; }
+.sn-dot-off  { background: var(--text-muted); }

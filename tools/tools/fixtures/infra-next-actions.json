@@ -1,0 +1,49 @@
+[
+  {
+    "id": "laravel-api-plane",
+    "title": "Provision Laravel /api (replace mock plane)",
+    "status": "ready",
+    "env_cockpit": {
+      "VITE_API_URL": "http://localhost:8000"
+    },
+    "env_backend": {
+      "APP_URL": "http://localhost:8000",
+      "DB_CONNECTION": "pgsql",
+      "SANCTUM_STATEFUL_DOMAINS": "localhost,localhost:5173,127.0.0.1,127.0.0.1:5173",
+      "CORS_ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173"
+    },
+    "commands": [
+      "cd backend && php artisan migrate --force",
+      "cd backend && php artisan db:seed",
+      "cd backend && php artisan serve --host=0.0.0.0 --port=8000"
+    ],
+    "cleanup": [
+      "Remove any ad-hoc mock HTTP shim if your environment still ships one (e.g. legacy app/backend/server.py referenced in some pods)."
+    ]
+  },
+  {
+    "id": "soketi-broadcast",
+    "title": "Provision Soketi (Pusher-compatible) for Echo",
+    "status": "ready",
+    "env_root": {
+      "BROADCAST_DRIVER": "pusher",
+      "PUSHER_APP_ID": "spidernet",
+      "PUSHER_APP_KEY": "spidernet-key",
+      "PUSHER_APP_SECRET": "spidernet-secret",
+      "PUSHER_HOST": "websocket",
+      "PUSHER_PORT": "6001",
+      "PUSHER_SCHEME": "http"
+    },
+    "env_cockpit": {
+      "VITE_PUSHER_APP_KEY": "spidernet-key",
+      "VITE_WS_HOST": "localhost",
+      "VITE_WS_PORT": "6001",
+      "VITE_WS_SCHEME": "http",
+      "VITE_WS_URL": "ws://localhost:6001"
+    },
+    "commands": [
+      "docker compose up -d websocket",
+      "Match PUSHER_* in backend .env to the Soketi app definition"
+    ]
+  }
+]

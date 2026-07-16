@@ -1,0 +1,65 @@
+# Traefik Static Configuration
+# SpiderNet OS - API Gateway
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+  insecure: true  # Remove in production
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: spidernet
+  file:
+    filename: "/etc/traefik/dynamic.yml"
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+  traefik:
+    address: ":8080"
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@spidernet.os
+      storage: /certs/acme.json
+      httpChallenge:
+        entryPoint: web
+
+metrics:
+  prometheus:
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+tracing:
+  jaeger:
+    samplingServerURL: http://jaeger:14268/api/traces?server=0.1
+    localAgentHostPort: jaeger:6831

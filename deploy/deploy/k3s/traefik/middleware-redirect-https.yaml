@@ -1,0 +1,13 @@
+---
+# Force HTTPS scheme at the edge. Attached to the HTTP entrypoint of
+# every public ingress. Twilio webhooks also hit HTTPS only.
+
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: spidernet
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

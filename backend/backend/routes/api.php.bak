@@ -1,0 +1,26 @@
+﻿<?php
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\FlowController;
+use App\Http\Controllers\AtlasController;
+
+// Auth routes
+Route::post('/login', [AuthController::class, 'login']);
+
+// Atlas routes
+Route::post('/atlas/chat', [AtlasController::class, 'chat']);
+
+// Agent routes
+Route::get('/agents', [AgentController::class, 'index']);
+Route::post('/agents', [AgentController::class, 'store']);
+Route::delete('/agents/{id}', [AgentController::class, 'destroy']);
+
+// Flow routes
+Route::get('/flows', [FlowController::class, 'index']);
+Route::post('/flows', [FlowController::class, 'store']);
+Route::get('/flows/{id}', [FlowController::class, 'show']);
+Route::put('/flows/{id}', [FlowController::class, 'update']);
+Route::delete('/flows/{id}', [FlowController::class, 'destroy']);
+Route::post('/flows/{id}/execute', [FlowController::class, 'execute']);
+Route::post('/flows/{id}/publish', [FlowController::class, 'publish']);

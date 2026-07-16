@@ -1,0 +1,129 @@
+name: Training Data Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - "**/sft.jsonl"
+      - "**/preference.jsonl"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/sft.jsonl"
+      - "**/preference.jsonl"
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      bundle_dirs: ${{ steps.detect.outputs.bundle_dirs }}
+      has_bundles: ${{ steps.detect.outputs.has_bundles }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Detect changed bundle directories
+        id: detect
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags --prune --depth=1 origin "${{ github.base_ref }}"
+            CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD || true)
+          fi
+
+          BUNDLES=$(echo "$CHANGED" | awk '/(sft\.jsonl|preference\.jsonl)$/ {print $0}' | xargs -r -n1 dirname | sort -u || true)
+          if [[ -z "$BUNDLES" ]]; then
+            echo "bundle_dirs=[]" >> "$GITHUB_OUTPUT"
+            echo "has_bundles=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          JSON=$(printf '%s\n' "$BUNDLES" | python -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          echo "bundle_dirs=$JSON" >> "$GITHUB_OUTPUT"
+          echo "has_bundles=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run gates for changed bundles
+        if: steps.detect.outputs.has_bundles == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          bundle_dirs = json.loads(r'''${{ steps.detect.outputs.bundle_dirs }}''')
+          failures = 0
+
+          for d in bundle_dirs:
+            sft = Path(d) / "sft.jsonl"
+            pref = Path(d) / "preference.jsonl"
+            if not sft.exists() or not pref.exists():
+              print(f"Skipping {d}: both sft.jsonl and preference.jsonl are required")
+              continue
+
+            cmd = [
+              "python",
+              "scripts/eval_training_data_quality.py",
+              "--sft", str(sft),
+              "--preference", str(pref),
+              "--min-quality", "2",
+              "--min-sft-rows", "20",
+              "--min-preference-rows", "20",
+              "--min-distinct-preference-ratio", "0.95",
+            ]
+            result = subprocess.run(cmd)
+            if result.returncode != 0:
+              failures += 1
+
+          raise SystemExit(1 if failures else 0)
+          PY
+
+  upload-quality-reports:
+    needs: gate
+    if: always() && needs.gate.outputs.has_bundles == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Recompute quality reports
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          bundle_dirs = json.loads(r'''${{ needs.gate.outputs.bundle_dirs }}''')
+          for d in bundle_dirs:
+            sft = Path(d) / "sft.jsonl"
+            pref = Path(d) / "preference.jsonl"
+            if not sft.exists() or not pref.exists():
+              continue
+            subprocess.run([
+              "python",
+              "scripts/eval_training_data_quality.py",
+              "--sft", str(sft),
+              "--preference", str(pref),
+            ], check=False)
+          PY
+
+      - name: Upload quality gate artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-reports-${{ github.run_id }}
+          path: "**/quality_gate.json"
+          if-no-files-found: warn

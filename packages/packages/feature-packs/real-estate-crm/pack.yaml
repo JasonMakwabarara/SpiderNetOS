@@ -1,0 +1,57 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: real-estate-crm
+  version: 0.1.0
+  vertical: real_estate
+  displayName: "Real Estate CRM"
+  description: "Lead capture, viewing scheduling, and offer management for real estate professionals"
+
+spec:
+  requires:
+    core_agents: [atlas, forge, hannah]
+    min_spidernet_version: 3.2.0
+
+  provides:
+    dynamic_agents:
+      - id: growth
+        displayName: "Growth Agent"
+        capabilities: [landing_pages, ad_campaigns, a_b_testing]
+      - id: crm
+        displayName: "CRM Agent"
+        capabilities: [pipeline_management, lead_scoring, follow_ups, viewing_coordination, offer_tracking]
+      - id: retention
+        displayName: "Retention Agent"
+        capabilities: [churn_detection, re_engagement, win_back]
+
+    flows:
+      - id: lead-capture
+        description: "Capture and qualify incoming leads"
+      - id: viewing-scheduler
+        description: "Automated property viewing coordination"
+      - id: offer-pipeline
+        description: "Track offers from submission to close"
+
+    ste_chains:
+      - id: lead_lifecycle
+        description: "Lead state progression from capture to close"
+
+    targets:
+      - metric: lead_conversion_rate
+        goal: ">= 0.25"
+        baseline: 0.15
+      - metric: response_time_p50
+        goal: "<= 5m"
+        baseline: 30m
+      - metric: days_to_close
+        goal: "<= 45d"
+        baseline: 60d
+
+  config:
+    default_automation_level: assisted
+    enable_cross_tenant_learning: true
+
+  signatures:
+    publisher: "spidernet-official"
+    signature: "placeholder-signature-to-be-generated"

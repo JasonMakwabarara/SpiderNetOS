@@ -1,0 +1,80 @@
+version: 2
+
+updates:
+  # ─── PHP / Laravel backend ─────────────────────────────────────────
+  - package-ecosystem: composer
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    labels: [dependencies, backend]
+    groups:
+      laravel:
+        patterns:
+          - "laravel/*"
+          - "illuminate/*"
+      dev-deps:
+        dependency-type: development
+
+  # ─── Node / cockpit (Vue SPA) ───────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /cockpit
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    labels: [dependencies, cockpit]
+    groups:
+      vue:
+        patterns:
+          - "vue*"
+          - "@vue/*"
+          - "@vitejs/*"
+
+  # ─── Python planes ─────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /intelligence
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: [dependencies, intelligence]
+
+  - package-ecosystem: pip
+    directory: /inference
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: [dependencies, inference]
+
+  # ─── GitHub Actions ────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, ci]
+
+  # ─── Docker base images ────────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /cockpit
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /inference
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /intelligence
+    schedule:
+      interval: weekly

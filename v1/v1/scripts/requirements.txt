@@ -1,0 +1,10 @@
+# CommandOS — Core dependencies (required)
+aiogram>=3.4
+claude-agent-sdk>=0.1
+python-dotenv>=1.0
+markdown>=3.5
+
+# Optional — install separately based on scoping:
+# pip install openai        # Voice notes (Whisper transcription)
+# pip install weasyprint    # PDF report generation
+# pip install matplotlib    # Chart/data visualization

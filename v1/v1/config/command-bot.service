@@ -1,0 +1,23 @@
+[Unit]
+Description=CommandOS — Telegram AI Command Bot
+After=network.target
+
+[Service]
+Type=simple
+# CHANGE: your username
+User=__USERNAME__
+# CHANGE: path to your workspace root
+WorkingDirectory=__WORKSPACE_ROOT__
+# CHANGE: path to Python in your virtual environment
+ExecStart=__VENV_PYTHON__ -m apps.command.main
+Restart=always
+RestartSec=5
+StandardOutput=append:__WORKSPACE_ROOT__/data/command.stdout.log
+StandardError=append:__WORKSPACE_ROOT__/data/command.stderr.log
+
+# Environment
+Environment=HOME=/home/__USERNAME__
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

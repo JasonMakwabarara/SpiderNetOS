@@ -1,0 +1,59 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: sales-crm
+  version: 0.1.0
+  vertical: sales
+  displayName: "Sales & CRM OS"
+  display_name: "Sales & CRM OS"
+  description: "Lead capture, pipeline management, and follow-up automation for any sales team"
+  customer_outcomes:
+    - "Never lose a lead because follow-up was late"
+    - "See your pipeline and what needs action today"
+    - "Win back customers before they churn"
+
+spec:
+  requires:
+    core_agents: [atlas, forge, hannah]
+    min_spidernet_version: 3.2.0
+
+  provides:
+    dynamic_agents:
+      - id: growth
+        displayName: "Growth Agent"
+        capabilities: [landing_pages, ad_campaigns, lead_generation, a_b_testing]
+      - id: crm
+        displayName: "CRM Agent"
+        capabilities: [pipeline_management, lead_scoring, follow_ups, deal_tracking]
+      - id: retention
+        displayName: "Retention Agent"
+        capabilities: [churn_detection, re_engagement, win_back]
+
+    flows:
+      - id: lead-capture
+        description: "Capture and qualify incoming leads"
+      - id: deal-pipeline
+        description: "Track deals from proposal to close"
+      - id: demo-scheduler
+        description: "Automated demo and meeting coordination"
+
+    ste_chains:
+      - id: deal_lifecycle
+        description: "Deal state progression from capture to close"
+
+    targets:
+      - metric: lead_conversion_rate
+        goal: ">= 0.25"
+        baseline: 0.15
+      - metric: response_time_p50
+        goal: "<= 5m"
+        baseline: 30m
+
+  config:
+    default_automation_level: assisted
+    enable_cross_tenant_learning: true
+
+  signatures:
+    publisher: "spidernet-official"
+    signature: "placeholder-signature-to-be-generated"
