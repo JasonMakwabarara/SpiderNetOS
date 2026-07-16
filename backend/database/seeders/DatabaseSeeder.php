@@ -231,6 +231,9 @@ class DatabaseSeeder extends Seeder
         // ─── STE event-type mappings ─────────────────────────
         $this->call(SteEventMappingSeeder::class);
 
-        $this->command->info('Seeded: 1 tenant, 1 user, 6 core agents, 6 delegation edges, 1 cost budget, tenant signing secrets, STE event mappings');
+        // ─── Platform plan catalog (Launch/Growth/Enterprise) ─
+        $this->call(PlanCatalogSeeder::class);
+
+        $this->command->info('Seeded: 1 tenant, 1 user, 6 core agents, 6 delegation edges, 1 cost budget, tenant signing secrets, STE event mappings, plan catalog');
     }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Plan;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
+use App\Services\Billing\UsageBilling;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +16,28 @@ use Illuminate\Support\Facades\Schema;
  */
 class BillingController extends Controller
 {
+    /**
+     * GET /api/billing/plans — the public plan catalog.
+     */
+    public function plans(): JsonResponse
+    {
+        $plans = Plan::active()->orderBy('sort')->get()->map(fn (Plan $p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'tagline' => $p->tagline,
+            'monthly_fee_cents' => $p->monthly_fee_cents,
+            'monthly_fee' => round($p->monthly_fee_cents / 100, 2),
+            'included_usage_cents' => $p->included_usage_cents,
+            'included_usage' => round($p->included_usage_cents / 100, 2),
+            'currency' => $p->currency,
+            'usage_margin_pct' => $p->usage_margin_pct,
+            'is_custom' => $p->is_custom,
+            'entitlements' => $p->entitlements,
+        ]);
+
+        return response()->json(['data' => $plans]);
+    }
+
     /**
      * GET /api/billing/summary
      */
@@ -64,6 +89,43 @@ class BillingController extends Controller
                 ->sum('total_cost');
         }
 
+        // Platform subscription + usage-vs-allowance (new billing model). Left
+        // null for tenants not yet migrated onto a tenant_subscriptions row.
+        $subscription = null;
+        $usageAllowance = null;
+
+        if (Schema::hasTable('tenant_subscriptions')) {
+            $sub = TenantSubscription::forTenant($tenantId)->live()->latest()->first();
+
+            if ($sub) {
+                $plan = Plan::find($sub->plan_id);
+                $subscription = [
+                    'plan_id' => $sub->plan_id,
+                    'plan_name' => $plan?->name,
+                    'status' => $sub->status,
+                    'in_trial' => $sub->inTrial(),
+                    'trial_ends_at' => $sub->trial_ends_at?->toIso8601String(),
+                    'current_period_end' => $sub->current_period_end?->toIso8601String(),
+                    'cancel_at_period_end' => $sub->cancel_at_period_end,
+                    'entitlements' => $plan?->entitlements,
+                ];
+
+                if ($plan) {
+                    $meteredCents = (int) round($monthlySpend * 100);
+                    $projectedCents = UsageBilling::projectToMonthEnd($meteredCents, (int) now()->day, (int) now()->daysInMonth);
+
+                    $usageAllowance = [
+                        'platform_fee_cents' => $plan->monthly_fee_cents,
+                        'included_usage_cents' => $plan->included_usage_cents,
+                        'metered_usage_cents' => $meteredCents,
+                        'projected_usage_cents' => $projectedCents,
+                        'projected_overage_cents' => UsageBilling::overageCents($projectedCents, $plan->included_usage_cents, $plan->usage_margin_pct),
+                        'usage_margin_pct' => $plan->usage_margin_pct,
+                    ];
+                }
+            }
+        }
+
         return response()->json([
             'data' => [
                 'tenant_id' => $tenantId,
@@ -90,6 +152,8 @@ class BillingController extends Controller
                     'alert_threshold' => (float) $budget->alert_threshold,
                     'action_at_limit' => $budget->action_at_limit,
                 ] : null,
+                'subscription' => $subscription,
+                'usage_allowance' => $usageAllowance,
             ],
         ]);
     }

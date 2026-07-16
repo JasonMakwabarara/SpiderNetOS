@@ -207,6 +207,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 
     // Billing & monetization
+    Route::get('/billing/plans', [BillingController::class, 'plans']);
     Route::get('/billing/summary', [BillingController::class, 'summary']);
 
     // Priestley Five A's operating rhythm (Alignment/Awareness/Accountability/Activity/Assets)

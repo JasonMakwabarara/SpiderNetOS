@@ -14,6 +14,7 @@
         <testsuite name="CiFast">
             <directory suffix="Test.php">./tests/Unit/Ste</directory>
             <directory suffix="Test.php">./tests/Unit/Payments</directory>
+            <directory suffix="Test.php">./tests/Unit/Billing</directory>
         </testsuite>
     </testsuites>
 
