@@ -123,6 +123,39 @@ class DodoPaymentsAdapterTest extends TestCase
         ]));
     }
 
+    public function test_stale_timestamp_rejected(): void
+    {
+        $secretBytes = 'raw-secret-bytes-for-test';
+        $adapter = $this->adapter('whsec_'.base64_encode($secretBytes));
+
+        $body = json_encode(['type' => 'payment.succeeded']);
+        $id = 'msg_7';
+        // Timestamp well outside the ±300s replay window but otherwise valid.
+        $ts = (string) (time() - 3600);
+        $sig = $this->sign($secretBytes, $id, $ts, $body);
+
+        $this->assertFalse($adapter->verifyWebhook($body, [
+            'webhook-id' => $id,
+            'webhook-timestamp' => $ts,
+            'webhook-signature' => "v1,{$sig}",
+        ]));
+    }
+
+    public function test_nonnumeric_timestamp_rejected(): void
+    {
+        $secretBytes = 'raw-secret-bytes-for-test';
+        $adapter = $this->adapter('whsec_'.base64_encode($secretBytes));
+
+        $body = json_encode(['type' => 'payment.succeeded']);
+        $sig = $this->sign($secretBytes, 'msg_8', 'not-a-timestamp', $body);
+
+        $this->assertFalse($adapter->verifyWebhook($body, [
+            'webhook-id' => 'msg_8',
+            'webhook-timestamp' => 'not-a-timestamp',
+            'webhook-signature' => "v1,{$sig}",
+        ]));
+    }
+
     public function test_missing_api_key_throws(): void
     {
         $this->expectException(\RuntimeException::class);

@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Http;
  */
 class DodoPaymentsAdapter
 {
+    /** Standard Webhooks replay window: reject deliveries whose timestamp is older/newer than this. */
+    private const WEBHOOK_TOLERANCE_SECONDS = 300;
+
     private string $baseUrl;
     private string $apiKey;
     private string $webhookSecret;
@@ -102,6 +105,14 @@ class DodoPaymentsAdapter
         $signatureHeader = $headers['webhook-signature'] ?? null;
 
         if (! $id || ! $timestamp || ! $signatureHeader) {
+            return false;
+        }
+
+        // Replay defense (Standard Webhooks): reject timestamps outside the
+        // tolerance window even if the signature is otherwise valid, so a
+        // captured delivery cannot be replayed indefinitely.
+        $ts = filter_var($timestamp, FILTER_VALIDATE_INT);
+        if ($ts === false || abs(time() - $ts) > self::WEBHOOK_TOLERANCE_SECONDS) {
             return false;
         }
 

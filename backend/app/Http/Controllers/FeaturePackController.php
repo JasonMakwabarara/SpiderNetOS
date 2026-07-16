@@ -431,15 +431,36 @@ class FeaturePackController extends Controller
             return response()->json(['message' => 'Pack is not configured for purchase yet.'], 500);
         }
 
-        $entitlement = \App\Models\PackEntitlement::create([
-            'tenant_id' => $tenant->id,
-            'pack_id' => $id,
-            'source' => 'purchase',
-            'provider' => 'dodo',
-            'status' => 'pending',
-            'amount_cents' => (int) round((float) ($pricing['amount'] ?? 0) * 100),
-            'currency' => (string) ($pricing['currency'] ?? 'USD'),
-        ]);
+        // Already owned — don't start a second checkout (a duplicate active
+        // entitlement would later collide on the partial-unique index).
+        if (\App\Models\PackEntitlement::forTenant($tenant->id)->where('pack_id', $id)->active()->exists()) {
+            return response()->json(['message' => 'You already own this pack.'], 409);
+        }
+
+        $amountCents = (int) round((float) ($pricing['amount'] ?? 0) * 100);
+        $currency = (string) ($pricing['currency'] ?? 'USD');
+
+        // Reuse an existing pending entitlement for this pack rather than
+        // accumulating an orphan row each time the customer reopens checkout.
+        $entitlement = \App\Models\PackEntitlement::forTenant($tenant->id)
+            ->where('pack_id', $id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($entitlement) {
+            $entitlement->update(['amount_cents' => $amountCents, 'currency' => $currency, 'provider' => 'dodo']);
+        } else {
+            $entitlement = \App\Models\PackEntitlement::create([
+                'tenant_id' => $tenant->id,
+                'pack_id' => $id,
+                'source' => 'purchase',
+                'provider' => 'dodo',
+                'status' => 'pending',
+                'amount_cents' => $amountCents,
+                'currency' => $currency,
+            ]);
+        }
 
         try {
             $adapter = new \App\Services\Integrations\DodoPaymentsAdapter((array) config('services.dodo'));

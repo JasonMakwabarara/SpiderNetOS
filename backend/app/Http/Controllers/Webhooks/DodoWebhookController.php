@@ -8,6 +8,7 @@ use App\Services\EventStore;
 use App\Services\Sales\FunnelSetupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -32,34 +33,69 @@ class DodoWebhookController extends Controller
             return response()->json(['received' => true]);
         }
 
-        $entitlement = PackEntitlement::find($entitlementId);
-        if (! $entitlement) {
-            Log::warning('dodo.webhook.unknown_entitlement', ['entitlement_id' => $entitlementId]);
+        // Serialise concurrent retries on this entitlement so the
+        // read-check-write of the webhook-id dedup below is atomic; without
+        // the row lock two duplicate deliveries can both pass the `in_array`
+        // gate and double-apply the state transition.
+        $result = DB::transaction(function () use ($entitlementId, $webhookId, $type, $data, $eventStore, $funnelSetupService) {
+            /** @var PackEntitlement|null $entitlement */
+            $entitlement = PackEntitlement::whereKey($entitlementId)->lockForUpdate()->first();
+            if (! $entitlement) {
+                Log::warning('dodo.webhook.unknown_entitlement', ['entitlement_id' => $entitlementId]);
 
-            return response()->json(['received' => true]);
-        }
+                return ['received' => true];
+            }
 
-        // Idempotency: a webhook-id we've already recorded on this
-        // entitlement's raw_payload history is a retried delivery.
-        $seen = (array) ($entitlement->raw_payload['webhook_ids'] ?? []);
-        if (in_array($webhookId, $seen, true)) {
-            return response()->json(['received' => true, 'duplicate' => true]);
-        }
-        $seen[] = $webhookId;
+            // Idempotency: a webhook-id we've already recorded on this
+            // entitlement's raw_payload history is a retried delivery.
+            $seen = (array) ($entitlement->raw_payload['webhook_ids'] ?? []);
+            if (in_array($webhookId, $seen, true)) {
+                return ['received' => true, 'duplicate' => true];
+            }
+            $seen[] = $webhookId;
 
-        match ($type) {
-            'payment.succeeded' => $this->activate($entitlement, $data, $seen, $eventStore, $funnelSetupService),
-            'payment.failed' => $entitlement->update(['status' => 'revoked', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
-            'refund.succeeded' => $entitlement->update(['status' => 'refunded', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
-            'subscription.cancelled' => $entitlement->update(['status' => 'expired', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
-            default => $entitlement->update(['raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
-        };
+            match ($type) {
+                'payment.succeeded' => $this->activate($entitlement, $data, $seen, $eventStore, $funnelSetupService),
+                'payment.failed' => $entitlement->update(['status' => 'revoked', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
+                'refund.succeeded' => $entitlement->update(['status' => 'refunded', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
+                'subscription.cancelled' => $entitlement->update(['status' => 'expired', 'raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
+                default => $entitlement->update(['raw_payload' => ['webhook_ids' => $seen, 'last_event' => $data]]),
+            };
 
-        return response()->json(['received' => true]);
+            return ['received' => true];
+        });
+
+        return response()->json($result);
     }
 
     private function activate(PackEntitlement $entitlement, array $data, array $seenWebhookIds, EventStore $eventStore, FunnelSetupService $funnelSetupService): void
     {
+        // Guard the partial-unique index (one active row per tenant+pack): if
+        // this entitlement is already active, or a different active one exists
+        // for the same tenant+pack (e.g. a duplicate re-purchase), record the
+        // webhook and no-op rather than creating a second active row — which
+        // would throw on the unique index and make Dodo retry the webhook
+        // forever. A duplicate purchase is flagged for manual reconciliation.
+        if ($entitlement->status !== 'active') {
+            $conflict = PackEntitlement::query()
+                ->where('tenant_id', $entitlement->tenant_id)
+                ->where('pack_id', $entitlement->pack_id)
+                ->where('status', 'active')
+                ->whereKeyNot($entitlement->getKey())
+                ->exists();
+
+            if ($conflict) {
+                Log::warning('dodo.webhook.duplicate_active_entitlement', [
+                    'tenant_id' => $entitlement->tenant_id,
+                    'pack_id' => $entitlement->pack_id,
+                    'entitlement_id' => $entitlement->id,
+                ]);
+                $entitlement->update(['raw_payload' => ['webhook_ids' => $seenWebhookIds, 'last_event' => $data]]);
+
+                return;
+            }
+        }
+
         $entitlement->update([
             'status' => 'active',
             'provider_payment_id' => $data['payment_id'] ?? $data['id'] ?? null,
