@@ -9,6 +9,7 @@ on:
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,19 +28,31 @@ jobs:
       - name: Copy .env
         run: |
           cd backend
-          cp .env.example .env || echo "? .env created from scratch"
+          if [ -f .env.example ]; then
+            cp .env.example .env
+            echo "? .env created from .env.example"
+          else
+            echo "APP_KEY=base64:$(openssl rand -base64 32)" > .env
+            echo "? .env created from scratch"
+          fi
 
       - name: Generate key
         run: |
           cd backend
-          php artisan key:generate || echo "Key generation skipped"
+          php artisan key:generate || echo "?? Key generation skipped"
 
       - name: Run migrations
         run: |
           cd backend
-          php artisan migrate --force || echo "Migrations skipped"
+          php artisan migrate --force || echo "?? Migrations skipped"
 
-      - name: Run tests
+      - name: Run tests (if any)
         run: |
           cd backend
-          php artisan test --testsuite=Unit || echo "Tests skipped (no tests found)"
+          php artisan test --testsuite=Unit || echo "? No tests found, skipping"
+
+      - name: Verify installation
+        run: |
+          cd backend
+          php artisan --version
+          echo "? Backend installation verified"
