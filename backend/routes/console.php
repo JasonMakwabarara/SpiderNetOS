@@ -39,3 +39,6 @@ Schedule::job(new \App\Jobs\ProcessSequenceStepsJob)->everyMinute()->withoutOver
 // Priestley "Activity" A — perfect repeatable week (Monday priorities, Friday check-in)
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('priorities'))->weeklyOn(1, '06:30');
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');
+
+// Platform billing: close the previous month into invoices (fee + overage), 1st at 03:00 UTC
+Schedule::command('spidernet:billing:generate-invoices')->monthlyOn(1, '03:00')->withoutOverlapping();
