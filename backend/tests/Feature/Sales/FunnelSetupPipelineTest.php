@@ -45,6 +45,12 @@ class FunnelSetupPipelineTest extends TestCase
             'purchased_at' => now(),
         ]);
 
+        // Install the pack so its dynamic agents are provisioned (inactive);
+        // funnel go-live then flips them to active. Mirrors the real
+        // buy -> install -> funnel flow; install() requires the entitlement
+        // granted above.
+        app(\App\Services\FeaturePackInstaller::class)->install($tenant, 'sales-crm', true);
+
         return $tenant;
     }
 
