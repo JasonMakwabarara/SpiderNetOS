@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Models\PackEntitlement;
+use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Services\EventStore;
 use App\Services\Sales\FunnelSetupService;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +16,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Dodo Payments webhook — signature verified by VerifyDodoSignature
  * middleware. Idempotent on webhook-id (Standard Webhooks spec) so retried
- * deliveries never double-activate an entitlement.
+ * deliveries never double-apply. Routes two flows by metadata:
+ *   - entitlement_id           → one-time feature-pack purchases
+ *   - tenant_subscription_id   → recurring platform-plan subscriptions
  */
 class DodoWebhookController extends Controller
 {
@@ -26,9 +30,16 @@ class DodoWebhookController extends Controller
         $data = (array) ($payload['data'] ?? $payload['object'] ?? []);
         $metadata = (array) ($data['metadata'] ?? []);
 
+        // Platform-plan subscription events carry tenant_subscription_id (or are
+        // subscription.* without an entitlement) → subscription flow.
+        if (! empty($metadata['tenant_subscription_id'])
+            || (str_starts_with($type, 'subscription.') && empty($metadata['entitlement_id']))) {
+            return response()->json($this->handleSubscription($type, $data, $metadata, $webhookId, $eventStore));
+        }
+
         $entitlementId = $metadata['entitlement_id'] ?? null;
         if (! $entitlementId) {
-            Log::info('dodo.webhook.no_entitlement_metadata', ['type' => $type, 'webhook_id' => $webhookId]);
+            Log::info('dodo.webhook.unrouted', ['type' => $type, 'webhook_id' => $webhookId]);
 
             return response()->json(['received' => true]);
         }
@@ -115,5 +126,88 @@ class DodoWebhookController extends Controller
             // ready the moment the tenant opens /sales/funnel-setup.
             $funnelSetupService->getOrCreate($entitlement->tenant_id);
         }
+    }
+
+    /**
+     * Recurring platform-plan subscription lifecycle. Reconciles by the local
+     * tenant_subscription_id (set at checkout) or the Dodo subscription id.
+     * Idempotent via meta.webhook_ids under a row lock; each row is the single
+     * live subscription for its tenant (subscribe() reuses one row).
+     *
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private function handleSubscription(string $type, array $data, array $metadata, string $webhookId, EventStore $eventStore): array
+    {
+        $localId = $metadata['tenant_subscription_id'] ?? null;
+        $dodoSubId = $data['subscription_id'] ?? $data['id'] ?? null;
+
+        return DB::transaction(function () use ($type, $data, $webhookId, $localId, $dodoSubId, $eventStore) {
+            $query = TenantSubscription::query()->lockForUpdate();
+            $sub = $localId
+                ? $query->find($localId)
+                : ($dodoSubId ? $query->where('dodo_subscription_id', $dodoSubId)->first() : null);
+
+            if (! $sub) {
+                Log::warning('dodo.webhook.unknown_subscription', [
+                    'local_id' => $localId, 'dodo_sub_id' => $dodoSubId, 'type' => $type,
+                ]);
+
+                return ['received' => true];
+            }
+
+            $seen = (array) ($sub->meta['webhook_ids'] ?? []);
+            if (in_array($webhookId, $seen, true)) {
+                return ['received' => true, 'duplicate' => true];
+            }
+            $seen[] = $webhookId;
+
+            $status = match ($type) {
+                'subscription.active', 'subscription.renewed' => 'active',
+                'subscription.on_hold', 'subscription.failed' => 'past_due',
+                'subscription.cancelled', 'subscription.expired' => 'cancelled',
+                default => $sub->status,
+            };
+
+            $updates = [
+                'status' => $status,
+                'meta' => array_merge($sub->meta ?? [], ['webhook_ids' => $seen, 'last_event' => $data]),
+            ];
+            if ($dodoSubId && ! $sub->dodo_subscription_id) {
+                $updates['dodo_subscription_id'] = $dodoSubId;
+            }
+            if (! empty($data['customer']['customer_id'])) {
+                $updates['dodo_customer_id'] = $data['customer']['customer_id'];
+            }
+            if (! empty($data['previous_billing_date'])) {
+                $updates['current_period_start'] = $data['previous_billing_date'];
+            }
+            if (! empty($data['next_billing_date'])) {
+                $updates['current_period_end'] = $data['next_billing_date'];
+            }
+            if ($status === 'cancelled') {
+                $updates['cancelled_at'] = now();
+            }
+
+            $sub->update($updates);
+
+            // Mirror the plan onto the tenant so legacy tenants.plan reads and
+            // the billing summary reflect the live plan.
+            if ($status === 'active') {
+                Tenant::whereKey($sub->tenant_id)->update([
+                    'plan' => $sub->plan_id,
+                    'subscribed_at' => now(),
+                ]);
+            }
+
+            $eventStore->append(
+                $sub->tenant_id, 'tenant_subscription', $sub->id,
+                'platform.'.$type,
+                ['plan_id' => $sub->plan_id, 'status' => $status],
+            );
+
+            return ['received' => true];
+        });
     }
 }

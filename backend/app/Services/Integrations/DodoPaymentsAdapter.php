@@ -86,6 +86,90 @@ class DodoPaymentsAdapter
     }
 
     /**
+     * Start a recurring subscription checkout for a platform plan.
+     *
+     * @param array<string, mixed> $metadata carries tenant_id + tenant_subscription_id so the webhook can reconcile.
+     * @return array{subscription_id?: string, checkout_url?: string, payment_link?: string}
+     */
+    public function createSubscriptionCheckout(string $productId, array $metadata, string $returnUrl, string $cancelUrl): array
+    {
+        $response = Http::withToken($this->apiKey)
+            ->post($this->baseUrl.'/subscriptions', [
+                'product_id' => $productId,
+                'quantity' => 1,
+                'payment_link' => true,
+                'return_url' => $returnUrl,
+                'cancel_url' => $cancelUrl,
+                'metadata' => $metadata,
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Dodo Payments subscription error: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Cancel a subscription — at period end by default, immediately if $atPeriodEnd is false.
+     */
+    public function cancelSubscription(string $subscriptionId, bool $atPeriodEnd = true): array
+    {
+        $response = Http::withToken($this->apiKey)
+            ->patch($this->baseUrl.'/subscriptions/'.$subscriptionId, [
+                'status' => $atPeriodEnd ? 'cancel_at_next_billing_date' : 'cancelled',
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Dodo Payments cancel error: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Switch an active subscription to a different plan/product (upgrade or downgrade).
+     */
+    public function changePlan(string $subscriptionId, string $newProductId): array
+    {
+        $response = Http::withToken($this->apiKey)
+            ->post($this->baseUrl.'/subscriptions/'.$subscriptionId.'/change-plan', [
+                'product_id' => $newProductId,
+                'quantity' => 1,
+                'proration_billing_mode' => 'prorated_immediately',
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Dodo Payments change-plan error: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * One-off charge against a saved payment method (used to collect metered
+     * usage overage at the end of a billing period).
+     *
+     * @param array<string, mixed> $metadata
+     */
+    public function chargeOverage(string $customerId, int $amountCents, string $currency, array $metadata): array
+    {
+        $response = Http::withToken($this->apiKey)
+            ->post($this->baseUrl.'/payments', [
+                'customer' => ['customer_id' => $customerId],
+                'amount' => $amountCents,
+                'currency' => $currency,
+                'metadata' => $metadata,
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Dodo Payments overage charge error: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Verify a webhook per the Standard Webhooks spec:
      *   signed_content = "{id}.{timestamp}.{raw_body}"
      *   expected       = base64(hmac_sha256(secret_bytes, signed_content))
