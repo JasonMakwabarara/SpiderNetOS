@@ -1,6 +1,3 @@
-# ============================================================
-# Backend CI - Simplified
-# ============================================================
 name: Backend CI
 
 on:
@@ -10,56 +7,53 @@ on:
     branches: [ main ]
 
 jobs:
-  check:
+  laravel-tests:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spidernet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Verify backend exists
-        run: |
-          echo "=== Checking backend directory ==="
-          ls -la
-          if [ -d "backend" ]; then
-            echo "? backend directory found"
-            ls -la backend/
-          else
-            echo "? backend directory NOT found"
-            exit 1
-          fi
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql, mbstring, xml, curl, zip, bcmath
 
-      - name: Verify PHP is available
-        run: |
-          php -v
-          echo "? PHP installed"
-
-      - name: Verify composer is available
-        run: |
-          composer --version
-          echo "? Composer installed"
-
-      - name: Check composer.json
+      - name: Install dependencies
         run: |
           cd backend
-          if [ -f "composer.json" ]; then
-            echo "? composer.json found"
-          else
-            echo "? composer.json NOT found"
-            exit 1
-          fi
+          composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Check if .env.example exists
+      - name: Setup .env
         run: |
           cd backend
-          if [ -f ".env.example" ]; then
-            echo "? .env.example found"
-          else
-            echo "?? .env.example not found - creating one"
-            echo "APP_KEY=base64:xxxxxxxxxxxxxxxxxx" > .env.example
-            echo "? .env.example created"
-          fi
+          cp .env.example .env
+          sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env
+          sed -i 's/DB_DATABASE=.*/DB_DATABASE=spidernet_test/' .env
+          sed -i 's/DB_USERNAME=.*/DB_USERNAME=postgres/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/' .env
 
-      - name: Verify Laravel installation
+      - name: Generate key and migrate
         run: |
-          echo "? Backend CI check completed successfully"
-          exit 0
+          cd backend
+          php artisan key:generate
+          php artisan migrate --force
+
+      - name: Run PHPUnit tests
+        run: |
+          cd backend
+          php artisan test --testsuite=Unit
