@@ -215,6 +215,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/business-profile', [BusinessProfileController::class, 'show']);
     Route::put('/business-profile', [BusinessProfileController::class, 'update']);
 
+    // Messaging channels (provisioned numbers + supported channels)
+    Route::get('/messaging/channels', [\App\Http\Controllers\MessagingController::class, 'channels']);
+
     // Universal compliance discovery
     Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 

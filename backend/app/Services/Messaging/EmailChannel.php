@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-class EmailChannel
+class EmailChannel implements ChannelContract
 {
-    public function send(Lead $lead, string $subject, string $body): array
+    public function send(Lead $lead, string $body, array $options = []): array
     {
+        $subject = (string) ($options['subject'] ?? 'A message from your team');
+
         if (empty($lead->email)) {
             return ['success' => false, 'error' => 'Lead has no email.'];
         }

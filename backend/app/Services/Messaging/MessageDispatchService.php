@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Messaging;
 
+use App\Models\ConsentRecord;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
 use App\Models\Lead;
@@ -21,6 +22,7 @@ class MessageDispatchService
     public function __construct(
         private readonly EmailChannel $emailChannel,
         private readonly WhatsAppChannel $whatsAppChannel,
+        private readonly SmsChannel $smsChannel,
         private readonly EventStore $eventStore,
     ) {}
 
@@ -58,6 +60,13 @@ class MessageDispatchService
             return ['success' => false, 'error' => "Lead is not opted in to {$channel}."];
         }
 
+        // Hard block on an explicit consent opt-out for this subject/channel,
+        // independent of the per-lead flag (audit-trail source of truth).
+        $subjectAddr = $this->subjectFor($lead, $channel);
+        if ($subjectAddr && ConsentRecord::hasOptOut($lead->tenant_id, $subjectAddr, $channel)) {
+            return ['success' => false, 'error' => "Subject has opted out of {$channel}."];
+        }
+
         $conversation = Conversation::forTenant($lead->tenant_id)
             ->where('lead_id', $lead->id)
             ->where('channel', $channel)
@@ -83,8 +92,9 @@ class MessageDispatchService
         ]);
 
         $result = match ($channel) {
-            'email' => $this->emailChannel->send($lead, $subject ?? 'A message from your team', $body),
+            'email' => $this->emailChannel->send($lead, $body, ['subject' => $subject ?? 'A message from your team']),
             'whatsapp' => $this->whatsAppChannel->send($lead, $body),
+            'sms' => $this->smsChannel->send($lead, $body),
             default => ['success' => false, 'error' => "Unsupported channel: {$channel}"],
         };
 
@@ -107,6 +117,17 @@ class MessageDispatchService
         );
 
         return array_merge($result, ['message' => $message]);
+    }
+
+    /** The subject identifier (phone/email) for a channel, for consent lookups. */
+    private function subjectFor(Lead $lead, string $channel): ?string
+    {
+        return match ($channel) {
+            'whatsapp' => $lead->whatsapp_number,
+            'sms' => $lead->phone,
+            'email' => $lead->email,
+            default => null,
+        };
     }
 
     private function render(string $template, Lead $lead, array $extra): string

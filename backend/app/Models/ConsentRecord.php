@@ -59,4 +59,21 @@ class ConsentRecord extends Model
 
         return $latest?->status === 'granted';
     }
+
+    /**
+     * True only when there is an EXPLICIT opt-out on record (latest status is
+     * not granted). Absence of any record is not an opt-out — callers fall back
+     * to their own opt-in signal. Used as a hard block on outbound sends.
+     */
+    public static function hasOptOut(string $tenantId, string $subject, string $channel): bool
+    {
+        $latest = self::forTenant($tenantId)
+            ->where('subject', $subject)
+            ->where('channel', $channel)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
+
+        return $latest !== null && $latest->status !== 'granted';
+    }
 }
