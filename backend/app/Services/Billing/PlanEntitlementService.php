@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Billing;
 
+use App\Models\PackEntitlement;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
@@ -69,6 +70,29 @@ class PlanEntitlementService
     public function includedUsageCents(string $tenantId): int
     {
         return $this->planFor($tenantId)->included_usage_cents;
+    }
+
+    /**
+     * Does the tenant's plan cover installing $packId without a separate
+     * purchase? pack_slots = -1 → all packs; otherwise the pack is included if
+     * it's already entitled or the tenant is under their included-pack count.
+     */
+    public function packIncluded(string $tenantId, string $packId): bool
+    {
+        $slots = $this->limit($tenantId, 'pack_slots');
+        if ($slots < 0) {
+            return true;
+        }
+        if ($slots === 0) {
+            return false;
+        }
+
+        $active = PackEntitlement::forTenant($tenantId)->active();
+        if ((clone $active)->where('pack_id', $packId)->exists()) {
+            return true;
+        }
+
+        return (clone $active)->distinct()->count('pack_id') < $slots;
     }
 
     private function resolve(string $tenantId): Plan

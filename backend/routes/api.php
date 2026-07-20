@@ -208,6 +208,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/feature-packs/entitlements', [FeaturePackController::class, 'entitlements']);
     Route::post('/feature-packs/{id}/install', [FeaturePackController::class, 'install']);
     Route::post('/feature-packs/{id}/checkout', [FeaturePackController::class, 'checkout']);
+    Route::delete('/feature-packs/{id}', [FeaturePackController::class, 'uninstall']);
     Route::get('/feature-packs/{id}', [FeaturePackController::class, 'show']);
 
     // Business profile (Atlas discovery learning loop)

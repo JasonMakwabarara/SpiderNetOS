@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\FeaturePack;
 use App\Models\PackEntitlement;
 use App\Models\Tenant;
+use App\Services\Billing\PlanEntitlementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -49,6 +50,7 @@ class FeaturePackInstaller
         $manifest = Yaml::parseFile($manifestPath);
         $meta = $manifest['metadata'] ?? [];
 
+        $this->verifySignature($manifest, $id);
         $this->assertEntitled($tenant, $id, $manifest);
 
         $pack = FeaturePack::updateOrCreate(
@@ -100,8 +102,71 @@ class FeaturePackInstaller
             return;
         }
 
+        // Covered by the tenant's plan (included pack slots) → auto-grant an
+        // included entitlement instead of demanding a separate purchase.
+        if (app(PlanEntitlementService::class)->packIncluded($tenant->id, $packId)) {
+            PackEntitlement::firstOrCreate(
+                ['tenant_id' => $tenant->id, 'pack_id' => $packId, 'status' => 'active'],
+                ['source' => 'included_in_plan', 'provider' => 'plan', 'amount_cents' => 0, 'purchased_at' => now()],
+            );
+
+            return;
+        }
+
         $amountCents = (int) round((float) ($pricing['amount'] ?? 0) * 100);
         throw new EntitlementRequiredException($packId, $amountCents, (string) ($pricing['currency'] ?? 'USD'));
+    }
+
+    /**
+     * Ed25519 signature verification (RFC 8032) over the canonicalised manifest
+     * minus its signatures block, against a configured publisher key. Skipped
+     * for unsigned/placeholder packs unless feature_packs.require_signed is on.
+     *
+     * @param array<string, mixed> $manifest
+     */
+    private function verifySignature(array $manifest, string $packId): void
+    {
+        $requireSigned = (bool) config('feature_packs.require_signed', false);
+        $block = $manifest['spec']['signatures'] ?? $manifest['signatures'] ?? null;
+
+        $publisher = is_array($block) ? ($block['publisher'] ?? null) : null;
+        $sig = is_array($block) ? ($block['signature'] ?? null) : null;
+        $pubKey = $publisher ? config("feature_packs.publishers.{$publisher}") : null;
+
+        $unverifiable = ! $block || ! $sig || ! $pubKey || $sig === 'placeholder-signature-to-be-generated';
+        if ($unverifiable) {
+            if ($requireSigned) {
+                throw new \RuntimeException("Feature pack '{$packId}' is unsigned or its signature is not verifiable.");
+            }
+
+            return; // dev / unsigned allowed
+        }
+
+        $payload = $this->canonicalManifest($manifest);
+        $ok = sodium_crypto_sign_verify_detached(base64_decode($sig, true) ?: '', $payload, base64_decode($pubKey, true) ?: '');
+        if (! $ok) {
+            throw new \RuntimeException("Feature pack '{$packId}' signature verification failed.");
+        }
+    }
+
+    /** Deterministic bytes signed by publishers: manifest sans signatures, keys sorted. */
+    private function canonicalManifest(array $manifest): string
+    {
+        unset($manifest['signatures']);
+        if (isset($manifest['spec']['signatures'])) {
+            unset($manifest['spec']['signatures']);
+        }
+        $sort = function (&$node) use (&$sort) {
+            if (is_array($node)) {
+                ksort($node);
+                foreach ($node as &$v) {
+                    $sort($v);
+                }
+            }
+        };
+        $sort($manifest);
+
+        return json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '';
     }
 
     private function entryPathForPack(string $packId): string

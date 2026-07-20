@@ -410,6 +410,24 @@ class FeaturePackController extends Controller
      * POST /api/feature-packs/{id}/checkout
      * Creates a pending entitlement + a Dodo Payments checkout session for a priced pack.
      */
+    public function uninstall(Request $request, string $id): JsonResponse
+    {
+        $tenant = $request->user()->tenant;
+        $pack = $tenant->featurePacks()->where('pack_id', $id)->first();
+        if (! $pack) {
+            return response()->json(['message' => 'Pack is not installed.'], 404);
+        }
+
+        \Illuminate\Support\Facades\DB::table('agents')
+            ->where('tenant_id', $tenant->id)
+            ->where('config->pack_id', $id)
+            ->delete();
+
+        $pack->delete();
+
+        return response()->json(['data' => ['pack_id' => $id, 'uninstalled' => true]]);
+    }
+
     public function checkout(Request $request, string $id): JsonResponse
     {
         $tenant = $request->user()->tenant;
