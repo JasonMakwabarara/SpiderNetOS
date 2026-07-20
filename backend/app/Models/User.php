@@ -36,6 +36,7 @@ class User extends Model implements AuthenticatableContract
     protected $hidden = [
         'password',
         'remember_token',
+        'totp_secret',
     ];
 
     protected $casts = [
@@ -49,7 +50,15 @@ class User extends Model implements AuthenticatableContract
         'onboarding_completed_at' => 'datetime',
         'is_platform_admin' => 'boolean',
         'password' => 'hashed',
+        'totp_secret' => 'encrypted',
+        'totp_confirmed_at' => 'datetime',
     ];
+
+    /** True once the user has confirmed a TOTP authenticator (real second factor). */
+    public function hasMfaEnrolled(): bool
+    {
+        return $this->totp_confirmed_at !== null && ! empty($this->totp_secret);
+    }
 
     /** Role hierarchy (lowest → highest). */
     public const ROLE_HIERARCHY = [

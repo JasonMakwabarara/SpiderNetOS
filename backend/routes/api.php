@@ -90,6 +90,14 @@ Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
     // Role-split frontend: MFA/password re-verify for sensitive ops
     Route::post('/step-up', [AuthController::class, 'stepUp'])->middleware('auth:sanctum');
+
+    // TOTP MFA enrollment + management
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/mfa/enroll', [AuthController::class, 'mfaEnroll']);
+        Route::post('/mfa/confirm', [AuthController::class, 'mfaConfirm']);
+        Route::post('/mfa/disable', [AuthController::class, 'mfaDisable'])->middleware('step.up');
+        Route::post('/mfa/recovery-codes', [AuthController::class, 'mfaRecoveryCodes'])->middleware('step.up');
+    });
 });
 
 // Protected routes (require authentication + tenant resolution + onboarding complete + global api throttle)
