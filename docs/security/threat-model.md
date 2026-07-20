@@ -106,7 +106,7 @@ Trust boundaries (numbered in the STRIDE table):
 | T2 | Replay / reorder of event_log rows | B4 | Hash-chained events (`previous_hash` + `sequence_num` UNIQUE) | Low |
 | T3 | Projector compromise rewrites materialised state | B4 | Projections are reproducible from event_log via `EventStore::rebuildProjection()`; divergence caught by `ReplayDivergenceService` | Low |
 | T4 | Man-in-the-middle on cockpit ↔ API | B2 | HSTS + HTTPS-only in prod (Batch B); HttpOnly cookies; CSP frame-ancestors=none | Low |
-| T5 | Parameter tampering on platform routes | B9 | `role:super_admin` + `step.up` MFA required on all mutating routes (already enforced) | Low |
+| T5 | Parameter tampering on platform routes | B9 | `role:super_admin` + `step.up` re-auth on all mutating routes; step-up requires a real TOTP second factor once the user enrols (RFC 6238, `MfaService`), password-only otherwise. Enforcing enrolment for platform admins is a policy follow-up. | Low |
 | T6 | Cross-tenant data write via smuggled tenant_id | B2 | `ResolveTenant` middleware fixes tenant from authenticated user; all queries scoped | Low. **Verify at pen-test time.** |
 | T7 | Prompt-injection in LLM input alters downstream actions | B7 | Approval engine requires HIL for destructive actions; tool allowlist per agent | Medium. Tier 3 will add output-constraint classifier. |
 

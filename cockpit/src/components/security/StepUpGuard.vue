@@ -15,22 +15,31 @@
             {{ reason || 'This action changes platform configuration. Verify it is you.' }}
           </p>
 
-          <div class="mt-3 flex items-center gap-2">
+          <div class="mt-3 space-y-2">
             <input
+              v-model="password"
+              type="password"
+              autocomplete="current-password"
+              class="w-full max-w-xs px-3 py-1.5 border border-amber-300 rounded"
+              placeholder="Your password"
+              @keyup.enter="verify"
+              aria-label="Password"
+            />
+            <input
+              v-if="mfaEnrolled"
               v-model="code"
               type="text"
               inputmode="numeric"
               autocomplete="one-time-code"
-              maxlength="6"
-              class="w-36 px-3 py-1.5 border border-amber-300 rounded font-mono text-lg tracking-widest"
-              placeholder="123 456"
+              maxlength="10"
+              class="w-full max-w-xs px-3 py-1.5 border border-amber-300 rounded font-mono text-lg tracking-widest"
+              placeholder="Authenticator code"
               @keyup.enter="verify"
-              :aria-invalid="!!verifyError"
-              aria-label="One-time verification code"
+              aria-label="Authenticator or recovery code"
             />
             <button
               class="px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
-              :disabled="submitting || code.length < 4"
+              :disabled="submitting || !password"
               @click="verify"
             >
               {{ submitting ? 'Verifying…' : 'Verify' }}
@@ -45,30 +54,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import axios from 'axios'
+import { ref, computed } from 'vue'
+import api from '../../services/api.js'
 import { useAuthStore } from '../../stores/auth.js'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const props = defineProps({
   reason: { type: String, default: '' },
 })
 
 const auth        = useAuthStore()
+const password    = ref('')
 const code        = ref('')
 const submitting  = ref(false)
 const verifyError = ref('')
+
+const mfaEnrolled = computed(() => !!auth.user?.mfa_enrolled)
 
 async function verify() {
   verifyError.value = ''
   submitting.value  = true
   try {
-    await axios.post(`${API_URL}/api/auth/step-up`, { code: code.value })
+    await api.post('/api/auth/step-up', { password: password.value, mfa_code: code.value || undefined })
     auth.markStepUp()
+    password.value = ''
     code.value = ''
   } catch (err) {
-    verifyError.value = err.response?.data?.message || 'Invalid code. Try again.'
+    const data = err.response?.data
+    verifyError.value = data?.errors?.mfa_code?.[0] || data?.errors?.password?.[0] || data?.message || 'Verification failed. Try again.'
   } finally {
     submitting.value = false
   }
