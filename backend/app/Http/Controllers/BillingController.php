@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Models\PlatformInvoice;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
 use App\Services\Billing\UsageBilling;
@@ -157,6 +158,23 @@ class BillingController extends Controller
                 'usage_allowance' => $usageAllowance,
             ],
         ]);
+    }
+
+    /**
+     * GET /api/billing/invoices — this tenant's platform invoices, newest first.
+     */
+    public function invoices(Request $request): JsonResponse
+    {
+        /** @var Tenant $tenant */
+        $tenant = $request->attributes->get('tenant');
+
+        $invoices = PlatformInvoice::forTenant($tenant->id)
+            ->orderByDesc('period_start')
+            ->limit(24)
+            ->get(['id', 'plan_id', 'period_start', 'period_end', 'platform_fee_cents',
+                'metered_usage_cents', 'overage_cents', 'total_cents', 'currency', 'status', 'issued_at', 'paid_at']);
+
+        return response()->json(['data' => $invoices]);
     }
 
     /**

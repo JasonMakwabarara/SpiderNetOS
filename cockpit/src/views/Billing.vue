@@ -2,7 +2,7 @@
   <div class="billing p-6 space-y-6" :style="{ background: 'var(--bg)' }">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">Billing & Plans</h1>
+      <h1 class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">Billing &amp; Plans</h1>
       <p class="text-sm mt-1" :style="{ color: 'var(--text-secondary)' }">
         Your SpiderNetOS platform plan and AI usage — not your business invoices or ledger.
       </p>
@@ -13,331 +13,187 @@
       </p>
     </div>
 
+    <!-- Return-from-checkout banner -->
+    <div v-if="banner" class="dct-card p-4 flex items-center gap-3"
+      :style="{ borderLeft: `3px solid ${banner.ok ? 'var(--charge-vivid)' : 'var(--dusk-vivid)'}` }">
+      <span class="text-sm" :style="{ color: 'var(--text-primary)' }">{{ banner.text }}</span>
+    </div>
+
+    <!-- Step-up required notice -->
+    <div v-if="stepUpNeeded" class="dct-card p-4"
+      :style="{ borderLeft: '3px solid var(--dusk-vivid)' }">
+      <p class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">Re-authentication required</p>
+      <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">
+        Changing your plan is a protected action. Please re-enter your password from the security prompt, then try again.
+      </p>
+    </div>
+
     <!-- ═══ Current Plan Card ═══ -->
     <div class="dct-card p-6">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div
-            class="w-14 h-14 rounded-2xl flex items-center justify-center"
-            :style="{ background: currentPlanAccent }"
-          >
-            <svg class="w-7 h-7" :style="{ color: currentPlanIcon }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center"
+            :style="{ background: 'color-mix(in srgb, var(--charge-vivid) 15%, transparent)' }">
+            <svg class="w-7 h-7" :style="{ color: 'var(--charge-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
           <div>
             <p class="text-sm font-medium" :style="{ color: 'var(--text-muted)' }">Current Plan</p>
-            <h2 class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-              {{ currentPlan.name }}
-              <span
-                class="ml-2 text-sm font-semibold"
-                :class="currentPlan.id === 'starter' ? 'dct-pill-cyan' : currentPlan.id === 'growth' ? 'dct-pill-lime' : 'dct-pill-pink'"
-              >
-                {{ currentPlan.id === 'starter' ? 'Free' : currentPlan.price }}
+            <h2 class="text-xl font-bold flex items-center gap-2" :style="{ color: 'var(--text-primary)' }">
+              {{ currentPlan?.name || 'No plan' }}
+              <span v-if="currentPlan" class="text-sm font-semibold dct-pill-lime">
+                {{ currentPlan.is_custom ? 'Custom' : money(currentPlan.monthly_fee_cents, currentPlan.currency) + '/mo' }}
               </span>
+              <span v-if="subscription?.in_trial" class="text-xs dct-pill-cyan">Trial</span>
             </h2>
+            <p v-if="subscription?.cancel_at_period_end" class="text-xs mt-1" :style="{ color: 'var(--dusk-vivid)' }">
+              Cancels at period end{{ subscription.current_period_end ? ' · ' + fmtDate(subscription.current_period_end) : '' }}
+            </p>
           </div>
         </div>
-        <div v-if="currentPlan.id !== 'enterprise'" class="flex-shrink-0">
-          <button @click="scrollToPlans" class="dct-btn-primary px-6 py-2.5">
-            Upgrade Plan
+        <div class="flex-shrink-0 flex gap-2">
+          <button @click="scrollToPlans" class="dct-btn-primary px-6 py-2.5">Change plan</button>
+          <button v-if="subscription && !subscription.cancel_at_period_end" @click="onCancel"
+            class="px-4 py-2.5 rounded-xl text-sm border"
+            :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
+            Cancel
           </button>
-        </div>
-      </div>
-
-      <!-- Current plan features -->
-      <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div
-          v-for="feature in currentPlan.highlights"
-          :key="feature.label"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl"
-          :style="{ background: 'var(--surface-low)' }"
-        >
-          <svg class="w-5 h-5 flex-shrink-0" :style="{ color: 'var(--charge-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <span class="text-sm" :style="{ color: 'var(--text-primary)' }">{{ feature.label }}</span>
         </div>
       </div>
     </div>
 
-    <!-- ═══ Usage Overview ═══ -->
+    <!-- ═══ Usage this month (allowance + overage) ═══ -->
     <div class="dct-card p-6 space-y-5">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Usage Overview</h2>
-
+      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Usage this month</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Daily Spend -->
         <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
-          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Daily Spend</p>
+          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Platform fee</p>
           <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-            ${{ usageStore.currentSpend.daily.toFixed(2) }}
+            {{ allowance ? money(allowance.platform_fee_cents, cur) : '—' }}
+          </p>
+          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">per month</p>
+        </div>
+        <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
+          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">AI usage · included</p>
+          <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
+            {{ allowance ? money(allowance.metered_usage_cents, cur) : '$' + usageStore.currentSpend.monthly.toFixed(2) }}
           </p>
           <div class="mt-2 h-1.5 rounded-full overflow-hidden" :style="{ background: 'var(--border)' }">
-            <div
-              class="h-full rounded-full transition-all"
-              :style="{
-                width: `${Math.min(usageStore.dailyPercentUsed, 100)}%`,
-                background: dailyBarColor
-              }"
-            />
+            <div class="h-full rounded-full transition-all" :style="{ width: allowancePct + '%', background: allowanceBarColor }" />
           </div>
           <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
-            of ${{ usageStore.budget?.daily_limit?.toFixed(2) || '10.00' }} limit
+            of {{ allowance ? money(allowance.included_usage_cents, cur) : '—' }} included
           </p>
         </div>
-
-        <!-- Monthly Spend -->
         <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
-          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Monthly Spend</p>
+          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Projected overage</p>
           <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-            ${{ usageStore.currentSpend.monthly.toFixed(2) }}
+            {{ allowance ? money(allowance.projected_overage_cents, cur) : '—' }}
           </p>
-          <div class="mt-2 h-1.5 rounded-full overflow-hidden" :style="{ background: 'var(--border)' }">
-            <div
-              class="h-full rounded-full transition-all"
-              :style="{
-                width: `${Math.min(usageStore.monthlyPercentUsed, 100)}%`,
-                background: monthlyBarColor
-              }"
-            />
-          </div>
           <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
-            of ${{ usageStore.budget?.monthly_limit?.toFixed(2) || '100.00' }} limit
+            usage over allowance, +{{ allowance?.usage_margin_pct ?? 15 }}%
           </p>
         </div>
-
-        <!-- Atlas inference (background) -->
         <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
-          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Atlas inference (today)</p>
-          <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-            ${{ atlasInferenceDaily.toFixed(4) }}
+          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Projected total</p>
+          <p class="text-xl font-bold dct-grad-text">
+            {{ allowance ? money(allowance.platform_fee_cents + allowance.projected_overage_cents, cur) : '—' }}
           </p>
-          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
-            ${{ atlasInferenceMonthly.toFixed(4) }} this month
-          </p>
-        </div>
-
-        <!-- Agents Active -->
-        <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
-          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Active Agents</p>
-          <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-            {{ agentsStore.activeAgents.length }}
-          </p>
-          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
-            of {{ currentPlan.limits.agents }} allowed
-          </p>
-        </div>
-
-        <!-- Flows -->
-        <div class="rounded-xl p-4" :style="{ background: 'var(--surface-low)' }">
-          <p class="text-xs font-medium uppercase tracking-wider mb-1" :style="{ color: 'var(--text-muted)' }">Budget Status</p>
-          <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
-            {{ usageStore.isNearLimit ? 'Near Limit' : usageStore.isDegraded ? 'Degraded' : 'Healthy' }}
-          </p>
-          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
-            {{ usageStore.budget?.action_at_limit || 'degrade' }} at limit
-          </p>
+          <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">this month, est.</p>
         </div>
       </div>
     </div>
 
     <!-- ═══ Plan Comparison ═══ -->
     <div ref="plansSection" class="space-y-4">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Choose Your Plan</h2>
-
+      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Choose your plan</h2>
+      <div v-if="billing.isLoading && !billing.plans.length" class="text-sm" :style="{ color: 'var(--text-muted)' }">
+        Loading plans…
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div
-          v-for="plan in plans"
-          :key="plan.id"
+        <div v-for="(plan, idx) in billing.plans" :key="plan.id"
           class="dct-card p-6 flex flex-col relative"
-          :class="{ 'ring-2': plan.id === activePlanId }"
-          :style="plan.id === activePlanId ? { '--tw-ring-color': 'var(--dusk-vivid)' } : {}"
-        >
-          <!-- Popular badge -->
-          <div
-            v-if="plan.popular"
-            class="absolute -top-3 left-1/2 -translate-x-1/2"
-          >
-            <span class="dct-pill-lime px-3 py-1 text-xs font-bold uppercase tracking-wider">
-              Most Popular
-            </span>
+          :class="{ 'ring-2': plan.id === currentPlanId }"
+          :style="plan.id === currentPlanId ? { '--tw-ring-color': 'var(--dusk-vivid)' } : {}">
+          <div v-if="idx === 1" class="absolute -top-3 left-1/2 -translate-x-1/2">
+            <span class="dct-pill-lime px-3 py-1 text-xs font-bold uppercase tracking-wider">Most Popular</span>
+          </div>
+          <div v-if="plan.id === currentPlanId" class="absolute -top-3 right-4">
+            <span class="dct-pill-pink px-3 py-1 text-xs font-bold uppercase tracking-wider">Current</span>
           </div>
 
-          <!-- Current badge -->
-          <div
-            v-if="plan.id === activePlanId"
-            class="absolute -top-3 right-4"
-          >
-            <span class="dct-pill-pink px-3 py-1 text-xs font-bold uppercase tracking-wider">
-              Current
-            </span>
-          </div>
-
-          <!-- Plan Header -->
           <div class="mb-6">
             <h3 class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">{{ plan.name }}</h3>
             <div class="mt-2 flex items-baseline gap-1">
-              <span class="text-3xl font-extrabold dct-grad-text">{{ plan.price }}</span>
-              <span v-if="plan.period" class="text-sm" :style="{ color: 'var(--text-muted)' }">{{ plan.period }}</span>
+              <span class="text-3xl font-extrabold dct-grad-text">
+                {{ plan.is_custom ? 'Custom' : money(plan.monthly_fee_cents, plan.currency) }}
+              </span>
+              <span v-if="!plan.is_custom" class="text-sm" :style="{ color: 'var(--text-muted)' }">/mo</span>
             </div>
             <p class="mt-2 text-sm" :style="{ color: 'var(--text-secondary)' }">{{ plan.tagline }}</p>
           </div>
 
-          <!-- Features -->
           <ul class="space-y-3 mb-6 flex-1">
-            <li
-              v-for="(feature, fi) in plan.features"
-              :key="fi"
-              class="flex items-start gap-2"
-            >
-              <svg
-                class="w-5 h-5 flex-shrink-0 mt-0.5"
-                :style="{ color: feature.included ? 'var(--charge-vivid)' : 'var(--text-muted)' }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  v-if="feature.included"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-                <path
-                  v-else
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
+            <li v-for="(f, fi) in planFeatures(plan)" :key="fi" class="flex items-start gap-2">
+              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" :style="{ color: 'var(--charge-vivid)' }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span
-                class="text-sm"
-                :style="{ color: feature.included ? 'var(--text-primary)' : 'var(--text-muted)' }"
-              >
-                {{ feature.text }}
-              </span>
+              <span class="text-sm" :style="{ color: 'var(--text-primary)' }">{{ f }}</span>
             </li>
           </ul>
 
-          <!-- CTA Button -->
           <div class="mt-auto">
-            <button
-              v-if="plan.id === activePlanId"
-              disabled
+            <button v-if="plan.id === currentPlanId" disabled
               class="w-full py-2.5 rounded-xl font-semibold text-sm border"
-              :style="{
-                borderColor: 'var(--border-active)',
-                color: 'var(--text-muted)',
-                background: 'var(--surface-low)'
-              }"
-            >
+              :style="{ borderColor: 'var(--border-active)', color: 'var(--text-muted)', background: 'var(--surface-low)' }">
               Current Plan
             </button>
-            <button
-              v-else-if="getPlanRank(plan.id) > getPlanRank(activePlanId)"
-              @click="handleUpgrade(plan)"
-              class="dct-btn-primary w-full py-2.5 text-sm text-center"
-            >
-              Upgrade to {{ plan.name }}
+            <button v-else-if="plan.is_custom" @click="contactSales"
+              class="w-full py-2.5 rounded-xl font-semibold text-sm border"
+              :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
+              Contact sales
             </button>
-            <button
-              v-else
-              @click="handleDowngrade(plan)"
-              class="w-full py-2.5 rounded-xl font-semibold text-sm border transition-colors"
-              :style="{
-                borderColor: 'var(--border)',
-                color: 'var(--text-secondary)',
-                background: 'var(--surface-low)'
-              }"
-            >
-              Downgrade
+            <button v-else @click="choosePlan(plan)" :disabled="subscribing === plan.id"
+              class="dct-btn-primary w-full py-2.5 text-sm text-center">
+              {{ subscribing === plan.id ? 'Starting…' : (currentPlanId ? 'Switch to ' + plan.name : 'Choose ' + plan.name) }}
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ═══ Payment Section ═══ -->
+    <!-- ═══ Invoices ═══ -->
     <div class="dct-card p-6 space-y-4">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Payment Method</h2>
-
-      <div
-        class="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed"
-        :style="{ borderColor: 'var(--border)', background: 'var(--surface-low)' }"
-      >
-        <svg class="w-16 h-16 mb-4" :style="{ color: 'var(--text-muted)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-        <h3 class="text-lg font-semibold mb-1" :style="{ color: 'var(--text-primary)' }">
-          Coming Soon
-        </h3>
-        <p class="text-sm text-center max-w-md" :style="{ color: 'var(--text-muted)' }">
-          Payment integration with <strong>Flutterwave</strong> and <strong>PayPal</strong> is coming in Sprint 9.
-          You'll be able to manage cards, view invoices, and set up auto-billing.
-        </p>
-
-        <div class="flex items-center gap-4 mt-6">
-          <div
-            class="flex items-center gap-2 px-4 py-2 rounded-xl"
-            :style="{ background: 'color-mix(in srgb, var(--charge-vivid) 10%, transparent)' }"
-          >
-            <svg class="w-5 h-5" :style="{ color: 'var(--charge-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span class="text-sm font-semibold" :style="{ color: 'var(--charge-dark)' }">Flutterwave</span>
-          </div>
-          <div
-            class="flex items-center gap-2 px-4 py-2 rounded-xl"
-            :style="{ background: 'color-mix(in srgb, var(--tealime-vivid) 10%, transparent)' }"
-          >
-            <svg class="w-5 h-5" :style="{ color: 'var(--tealime-vivid)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span class="text-sm font-semibold" :style="{ color: 'var(--tealime-dark)' }">PayPal</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ Billing History (Placeholder) ═══ -->
-    <div class="dct-card p-6 space-y-4">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Billing History</h2>
-
+      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Billing history</h2>
       <div class="overflow-x-auto">
         <table class="min-w-full">
           <thead>
             <tr :style="{ borderBottom: '1px solid var(--border)' }">
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Date</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Description</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Amount</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Period</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Plan</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Fee</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Overage</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Total</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Status</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="billingHistory.length === 0">
-              <td colspan="4" class="px-4 py-8 text-center text-sm" :style="{ color: 'var(--text-muted)' }">
-                No billing history yet. Invoices will appear here once payment is configured.
+            <tr v-if="!billing.invoices.length">
+              <td colspan="6" class="px-4 py-8 text-center text-sm" :style="{ color: 'var(--text-muted)' }">
+                No invoices yet. Your first invoice is generated at the end of the billing month.
               </td>
             </tr>
-            <tr
-              v-for="record in billingHistory"
-              :key="record.id"
-              :style="{ borderBottom: '1px solid var(--border)' }"
-            >
-              <td class="px-4 py-3 text-sm" :style="{ color: 'var(--text-primary)' }">{{ record.date }}</td>
-              <td class="px-4 py-3 text-sm" :style="{ color: 'var(--text-secondary)' }">{{ record.description }}</td>
-              <td class="px-4 py-3 text-sm font-semibold" :style="{ color: 'var(--text-primary)' }">{{ record.amount }}</td>
+            <tr v-for="inv in billing.invoices" :key="inv.id" :style="{ borderBottom: '1px solid var(--border)' }">
+              <td class="px-4 py-3 text-sm" :style="{ color: 'var(--text-primary)' }">{{ fmtDate(inv.period_start) }} – {{ fmtDate(inv.period_end) }}</td>
+              <td class="px-4 py-3 text-sm capitalize" :style="{ color: 'var(--text-secondary)' }">{{ inv.plan_id }}</td>
+              <td class="px-4 py-3 text-sm" :style="{ color: 'var(--text-secondary)' }">{{ money(inv.platform_fee_cents, inv.currency) }}</td>
+              <td class="px-4 py-3 text-sm" :style="{ color: 'var(--text-secondary)' }">{{ money(inv.overage_cents, inv.currency) }}</td>
+              <td class="px-4 py-3 text-sm font-semibold" :style="{ color: 'var(--text-primary)' }">{{ money(inv.total_cents, inv.currency) }}</td>
               <td class="px-4 py-3">
-                <span
-                  :class="{
-                    'dct-pill-lime': record.status === 'paid',
-                    'dct-pill-pink': record.status === 'failed',
-                    'dct-pill-cyan': record.status === 'pending'
-                  }"
-                >
-                  {{ record.status }}
+                <span :class="{ 'dct-pill-lime': inv.status === 'paid', 'dct-pill-pink': inv.status === 'void', 'dct-pill-cyan': inv.status === 'open' || inv.status === 'draft' }">
+                  {{ inv.status }}
                 </span>
               </td>
             </tr>
@@ -352,22 +208,18 @@
         <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Purchased packs</h2>
         <RouterLink to="/feature-packs" class="text-sm underline" style="color: var(--accent);">Browse packs →</RouterLink>
       </div>
-      <p v-if="!entitlements.length" class="text-sm" :style="{ color: 'var(--text-secondary)' }">
-        No purchased packs yet.
-      </p>
+      <p v-if="!entitlements.length" class="text-sm" :style="{ color: 'var(--text-secondary)' }">No purchased packs yet.</p>
       <ul v-else class="divide-y" :style="{ borderColor: 'var(--border)' }">
         <li v-for="e in entitlements" :key="e.id" class="py-3 flex items-center justify-between">
           <div>
             <p class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">{{ e.pack_id }}</p>
             <p class="text-xs" :style="{ color: 'var(--text-muted)' }">
               {{ (e.amount_cents / 100).toFixed(2) }} {{ e.currency }} · {{ e.source }}
-              <span v-if="e.purchased_at"> · {{ new Date(e.purchased_at).toLocaleDateString() }}</span>
+              <span v-if="e.purchased_at"> · {{ fmtDate(e.purchased_at) }}</span>
             </p>
           </div>
-          <span
-            class="text-xs px-2 py-1 rounded-full"
-            :class="e.status === 'active' ? 'dct-pill-lime' : e.status === 'pending' ? 'dct-pill-cyan' : 'dct-pill-pink'"
-          >
+          <span class="text-xs px-2 py-1 rounded-full"
+            :class="e.status === 'active' ? 'dct-pill-lime' : e.status === 'pending' ? 'dct-pill-cyan' : 'dct-pill-pink'">
             {{ e.status }}
           </span>
         </li>
@@ -378,177 +230,123 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useBillingStore } from '../stores/billing.js'
 import { useUsageStore } from '../stores/usage.js'
-import { useAgentsStore } from '../stores/agents.js'
 import api from '../services/api.js'
 
+const route = useRoute()
+const billing = useBillingStore()
 const usageStore = useUsageStore()
-const agentsStore = useAgentsStore()
 
-// ─── Plan definitions ───────────────────────────────────────
-const plans = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 'Free',
-    period: '',
-    tagline: 'For individuals exploring AI agents and automation.',
-    popular: false,
-    limits: { agents: 3, flows: 5, dailyBudget: 1 },
-    features: [
-      { text: 'Up to 3 active agents', included: true },
-      { text: '5 published flows', included: true },
-      { text: '$1/day usage budget', included: true },
-      { text: 'Community support', included: true },
-      { text: 'Basic usage analytics', included: true },
-      { text: 'Custom model endpoints', included: false },
-      { text: 'Team collaboration', included: false },
-      { text: 'Priority support', included: false }
-    ],
-    highlights: [
-      { label: '3 agents included' },
-      { label: '5 flows max' },
-      { label: 'Community support' }
-    ]
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    price: '$29',
-    period: '/mo',
-    tagline: 'For teams building production agent workflows.',
-    popular: true,
-    limits: { agents: 25, flows: 50, dailyBudget: 10 },
-    features: [
-      { text: 'Up to 25 active agents', included: true },
-      { text: '50 published flows', included: true },
-      { text: '$10/day usage budget', included: true },
-      { text: 'Email support (24h SLA)', included: true },
-      { text: 'Advanced analytics & traces', included: true },
-      { text: 'Custom model endpoints', included: true },
-      { text: 'Team collaboration (5 seats)', included: true },
-      { text: 'Priority support', included: false }
-    ],
-    highlights: [
-      { label: '25 agents included' },
-      { label: '50 flows, advanced traces' },
-      { label: '5 team seats' }
-    ]
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: '$99',
-    period: '/mo',
-    tagline: 'For organizations running mission-critical agent fleets.',
-    popular: false,
-    limits: { agents: 999, flows: 999, dailyBudget: 100 },
-    features: [
-      { text: 'Unlimited agents', included: true },
-      { text: 'Unlimited flows', included: true },
-      { text: '$100/day usage budget (configurable)', included: true },
-      { text: 'Priority support (4h SLA)', included: true },
-      { text: 'Full observability & intelligence', included: true },
-      { text: 'Custom model endpoints', included: true },
-      { text: 'Unlimited team seats', included: true },
-      { text: 'SSO & audit logs', included: true }
-    ],
-    highlights: [
-      { label: 'Unlimited agents & flows' },
-      { label: 'SSO & audit logs' },
-      { label: 'Priority support (4h SLA)' }
-    ]
-  }
-]
-
-// ─── State ──────────────────────────────────────────────────
-const activePlanId = ref('starter')
 const plansSection = ref(null)
-const billingHistory = ref([])
-const atlasInferenceDaily = ref(0)
-const atlasInferenceMonthly = ref(0)
 const entitlements = ref([])
+const subscribing = ref(null)
+const stepUpNeeded = ref(false)
+const banner = ref(null)
 
-// ─── Computed ───────────────────────────────────────────────
-const currentPlan = computed(() => {
-  return plans.find(p => p.id === activePlanId.value) || plans[0]
+const subscription = computed(() => billing.summary?.subscription || null)
+const allowance = computed(() => billing.summary?.usage_allowance || null)
+const cur = computed(() => allowance.value?.currency || 'USD')
+
+const currentPlanId = computed(() => subscription.value?.plan_id || billing.summary?.plan?.id || null)
+const currentPlan = computed(() => billing.plans.find(p => p.id === currentPlanId.value) || null)
+
+const allowancePct = computed(() => {
+  if (!allowance.value || !allowance.value.included_usage_cents) return 0
+  return Math.min(100, (allowance.value.metered_usage_cents / allowance.value.included_usage_cents) * 100)
 })
-
-const currentPlanAccent = computed(() => {
-  const accents = {
-    starter: 'color-mix(in srgb, var(--tealime-vivid) 15%, transparent)',
-    growth: 'color-mix(in srgb, var(--charge-vivid) 15%, transparent)',
-    enterprise: 'color-mix(in srgb, var(--dusk-vivid) 15%, transparent)'
-  }
-  return accents[activePlanId.value] || accents.starter
-})
-
-const currentPlanIcon = computed(() => {
-  const icons = {
-    starter: 'var(--tealime-vivid)',
-    growth: 'var(--charge-vivid)',
-    enterprise: 'var(--dusk-vivid)'
-  }
-  return icons[activePlanId.value] || icons.starter
-})
-
-const dailyBarColor = computed(() => {
-  const pct = usageStore.dailyPercentUsed
-  if (pct >= 90) return 'var(--dusk-vivid)'
-  if (pct >= 70) return '#FFAA00'
+const allowanceBarColor = computed(() => {
+  const p = allowancePct.value
+  if (p >= 100) return 'var(--dusk-vivid)'
+  if (p >= 80) return '#FFAA00'
   return 'var(--charge-vivid)'
 })
 
-const monthlyBarColor = computed(() => {
-  const pct = usageStore.monthlyPercentUsed
-  if (pct >= 90) return 'var(--dusk-vivid)'
-  if (pct >= 70) return '#FFAA00'
-  return 'var(--charge-vivid)'
-})
+function money(cents, currency = 'USD') {
+  const v = (cents || 0) / 100
+  const sym = currency === 'USD' ? '$' : (currency + ' ')
+  return sym + (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2))
+}
+function fmtDate(d) {
+  try { return new Date(d).toLocaleDateString() } catch { return d }
+}
+function ent(v, noun) {
+  return v < 0 ? `Unlimited ${noun}` : `${v} ${noun}`
+}
+function planFeatures(plan) {
+  const e = plan.entitlements || {}
+  const out = [
+    ent(e.agents ?? 0, 'active agents'),
+    ent(e.flows ?? 0, 'flows'),
+    ent(e.seats ?? 0, 'team seats'),
+    (e.pack_slots < 0 ? 'All feature packs' : `${e.pack_slots ?? 0} feature pack${e.pack_slots === 1 ? '' : 's'} included`),
+  ]
+  if (!plan.is_custom) {
+    out.push(`${money(plan.included_usage_cents, plan.currency)} AI usage included`)
+    out.push(`then usage at cost + ${plan.usage_margin_pct}%`)
+  } else {
+    out.push('Pooled/custom usage', 'SSO & priority support')
+  }
+  return out
+}
 
-// ─── Lifecycle ──────────────────────────────────────────────
+function scrollToPlans() {
+  plansSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+function contactSales() {
+  window.location.href = 'mailto:sales@apexsynchronia.com?subject=SpiderNetOS Enterprise plan'
+}
+
+async function choosePlan(plan) {
+  subscribing.value = plan.id
+  stepUpNeeded.value = false
+  try {
+    const res = await billing.subscribe(plan.id)
+    if (res?.checkout_url) {
+      window.location.href = res.checkout_url
+      return
+    }
+    if (res?.changed) {
+      banner.value = { ok: true, text: `Plan switched to ${plan.name}.` }
+      await billing.fetchAll()
+    }
+  } catch (err) {
+    if (err.response?.status === 428) {
+      stepUpNeeded.value = true
+    } else if (err.response?.status === 409) {
+      banner.value = { ok: true, text: 'You are already on this plan.' }
+    } else {
+      banner.value = { ok: false, text: err.response?.data?.message || 'Could not start checkout.' }
+    }
+  } finally {
+    subscribing.value = null
+  }
+}
+
+async function onCancel() {
+  if (!confirm('Cancel your subscription at the end of the current period?')) return
+  try {
+    await billing.cancel()
+    banner.value = { ok: true, text: 'Subscription will cancel at period end.' }
+    await billing.fetchAll()
+  } catch (err) {
+    if (err.response?.status === 428) stepUpNeeded.value = true
+    else banner.value = { ok: false, text: err.response?.data?.message || 'Could not cancel.' }
+  }
+}
+
 onMounted(async () => {
+  if (route.query.subscribe === 'success') banner.value = { ok: true, text: 'Subscription confirmed — welcome aboard.' }
+  else if (route.query.subscribe === 'cancelled') banner.value = { ok: false, text: 'Checkout cancelled — no changes made.' }
+
   usageStore.fetchBudget()
   usageStore.fetchCurrentSpend()
-  agentsStore.fetchAgents()
-
-  try {
-    const { data } = await api.get('/api/billing/summary')
-    const plan = data.data?.plan?.id
-    if (plan) activePlanId.value = plan === 'free' ? 'starter' : plan
-    atlasInferenceDaily.value = data.data?.spend?.atlas_inference_daily_usd ?? 0
-    atlasInferenceMonthly.value = data.data?.spend?.atlas_inference_monthly_usd ?? 0
-  } catch { /* usage store fallback */ }
-
-  if (usageStore.budget?.plan) {
-    activePlanId.value = usageStore.budget.plan
-  }
+  await billing.fetchAll()
 
   try {
     const { data } = await api.get('/api/feature-packs/entitlements')
     entitlements.value = data?.data || []
   } catch { /* leave empty */ }
 })
-
-// ─── Methods ────────────────────────────────────────────────
-function getPlanRank(planId) {
-  const ranks = { starter: 0, growth: 1, enterprise: 2 }
-  return ranks[planId] ?? 0
-}
-
-function scrollToPlans() {
-  plansSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function handleUpgrade(plan) {
-  // Placeholder — will integrate with Flutterwave/PayPal in Sprint 9
-  alert(`Upgrade to ${plan.name} (${plan.price}${plan.period}) — Payment integration coming soon!`)
-}
-
-function handleDowngrade(plan) {
-  if (confirm(`Are you sure you want to downgrade to ${plan.name}? This may reduce your agent and flow limits.`)) {
-    // Placeholder
-    alert(`Downgrade to ${plan.name} requested. This will take effect at the end of your current billing cycle.`)
-  }
-}
 </script>

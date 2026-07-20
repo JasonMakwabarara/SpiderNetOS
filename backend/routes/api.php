@@ -212,6 +212,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Billing & monetization
     Route::get('/billing/plans', [BillingController::class, 'plans']);
     Route::get('/billing/summary', [BillingController::class, 'summary']);
+    Route::get('/billing/invoices', [BillingController::class, 'invoices']);
     Route::post('/billing/subscribe', [BillingController::class, 'subscribe'])->middleware('step.up');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->middleware('step.up');
 
