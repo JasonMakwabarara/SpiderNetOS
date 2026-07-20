@@ -217,6 +217,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Universal compliance discovery
     Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 
+    // GDPR data-subject requests + audit export (admin; erasure/export step-up gated)
+    Route::post('/compliance/dsar', [ComplianceController::class, 'createDsar'])->middleware(['role:admin', 'step.up']);
+    Route::get('/compliance/dsar/{id}', [ComplianceController::class, 'showDsar'])->middleware('role:admin');
+    Route::get('/compliance/dsar/{id}/download', [ComplianceController::class, 'downloadDsar'])->middleware('role:admin');
+    Route::get('/compliance/audit-log/export', [ComplianceController::class, 'auditExport'])->middleware('role:admin');
+
     // Billing & monetization
     Route::get('/billing/plans', [BillingController::class, 'plans']);
     Route::get('/billing/summary', [BillingController::class, 'summary']);

@@ -55,6 +55,10 @@ class WhatsAppController extends Controller
         if ($this->isOptOut($body)) {
             $lead->update(['consent' => array_merge($lead->consent ?? [], ['whatsapp_opt_in' => false, 'opted_out_at' => now()->toIso8601String()])]);
             SequenceEnrollment::forTenant($tenantId)->where('lead_id', $lead->id)->where('status', 'active')->update(['status' => 'cancelled']);
+            // Audit-trail the opt-out for compliance evidence.
+            if ($from) {
+                \App\Models\ConsentRecord::log($tenantId, $from, 'whatsapp', 'stopped', 'inbound_stop', ['lead_id' => $lead->id]);
+            }
 
             return response('', 200)->header('Content-Type', 'text/xml');
         }
