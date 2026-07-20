@@ -69,7 +69,7 @@ class DsarTest extends TestCase
 
         $download = $this->actingAs($admin, 'sanctum')->get("/api/compliance/dsar/{$id}/download");
         $download->assertOk();
-        $body = $download->streamedContent();
+        $body = $download->getContent();
         $this->assertStringContainsString('jane@example.test', $body);
         $this->assertStringContainsString('interested in a demo', $body);
     }

@@ -48,10 +48,13 @@ class ConsentRecord extends Model
      */
     public static function isAllowed(string $tenantId, string $subject, string $channel): bool
     {
+        // Ordered UUIDs (HasUuids) encode insertion time, so id is a
+        // deterministic tiebreaker when created_at collides at second precision.
         $latest = self::forTenant($tenantId)
             ->where('subject', $subject)
             ->where('channel', $channel)
-            ->latest()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->first();
 
         return $latest?->status === 'granted';
