@@ -1,0 +1,13 @@
+{
+  "name": "SpiderNetOS Cockpit",
+  "short_name": "SpiderNetOS",
+  "description": "The operator console for your autonomous business.",
+  "start_url": "/cockpit/",
+  "scope": "/cockpit/",
+  "display": "standalone",
+  "background_color": "#05070A",
+  "theme_color": "#05070A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

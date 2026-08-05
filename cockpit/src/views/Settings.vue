@@ -134,6 +134,7 @@
           </button>
 
           <MfaSettings />
+          <NotificationSettings />
         </div>
 
         <!-- API Keys -->
@@ -198,6 +199,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import MfaSettings from '../components/security/MfaSettings.vue'
+import NotificationSettings from '../components/security/NotificationSettings.vue'
 
 const tabs = [
   { id: 'general', name: 'General' },

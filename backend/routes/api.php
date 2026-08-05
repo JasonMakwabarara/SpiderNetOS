@@ -218,6 +218,13 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Messaging channels (provisioned numbers + supported channels)
     Route::get('/messaging/channels', [\App\Http\Controllers\MessagingController::class, 'channels']);
 
+    // Web-push notifications (PWA)
+    Route::get('/notifications/vapid-key', [\App\Http\Controllers\NotificationController::class, 'vapidKey']);
+    Route::post('/notifications/push/subscribe', [\App\Http\Controllers\NotificationController::class, 'subscribe']);
+    Route::post('/notifications/push/unsubscribe', [\App\Http\Controllers\NotificationController::class, 'unsubscribe']);
+    Route::get('/notifications/preferences', [\App\Http\Controllers\NotificationController::class, 'preferences']);
+    Route::put('/notifications/preferences', [\App\Http\Controllers\NotificationController::class, 'updatePreferences']);
+
     // Universal compliance discovery
     Route::get('/compliance/obligations', [ComplianceController::class, 'obligations']);
 
