@@ -1,2 +1,0 @@
-// Add to $middlewareGroups['api']:
-\Illuminate\Routing\Middleware\ThrottleRequests::class.':60,1',
