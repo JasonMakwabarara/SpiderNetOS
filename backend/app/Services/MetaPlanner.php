@@ -301,7 +301,10 @@ class MetaPlanner
         // Intent-aware filter from metadata JSON (best-effort)
         $query->where('metadata->intent', $intent);
 
-        if ($agentId !== '') {
+        // agent_id is a uuid column; dispatch callers may pass slugs. A slug
+        // can never match a uuid row, and binding it throws on Postgres — so
+        // the filter only applies to uuid-shaped identifiers.
+        if ($agentId !== '' && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $agentId)) {
             $query->where('agent_id', $agentId);
         }
 
