@@ -16,11 +16,16 @@ import api from '../services/api.js'
 const DEFAULT_ROLE = 'super_admin'
 
 const CAP_BY_ROLE = {
-  user: ['self.flows', 'self.agents', 'self.usage'],
+  user: [
+    'self.flows', 'self.agents', 'self.usage',
+    'finance.view', 'expenses.submit',
+  ],
   admin: [
     'tenant.view', 'users.invite', 'users.manage',
     'budget.edit', 'audit.view', 'copy.manage',
     'approvals.manage',
+    'finance.view', 'expenses.submit', 'expenses.approve',
+    'ap.view', 'ap.manage', 'ap.pay', 'accounting.manage',
   ],
   super_admin: [
     'platform.*', 'tenant.*', 'tenant.manage',
@@ -28,6 +33,8 @@ const CAP_BY_ROLE = {
     'ste.view', 'audit.export', 'copy.manage',
     'users.manage', 'budget.edit', 'audit.view',
     'approvals.manage',
+    'finance.view', 'expenses.submit', 'expenses.approve',
+    'ap.view', 'ap.manage', 'ap.pay', 'accounting.manage',
   ],
 }
 

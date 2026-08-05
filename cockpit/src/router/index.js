@@ -39,6 +39,9 @@ const FinancialLedger    = () => import('../views/financial/FinancialLedger.vue'
 const Invoices           = () => import('../views/financial/Invoices.vue')
 const Payments           = () => import('../views/financial/Payments.vue')
 const Portfolios         = () => import('../views/financial/Portfolios.vue')
+const ExpenseList        = () => import('../views/financial/expenses/ExpenseList.vue')
+const ExpenseNew         = () => import('../views/financial/expenses/ExpenseNew.vue')
+const ExpenseDetail      = () => import('../views/financial/expenses/ExpenseDetail.vue')
 
 // Lazy shell / shared
 const Forbidden     = () => import('../views/Forbidden.vue')
@@ -103,11 +106,15 @@ const routes = [
   { path: '/billing',       name: 'Billing',       component: Billing,     meta: { requiresAuth: true } },
 
   // ---------------- FINANCIAL OS ----------------
-  { path: '/financial',           name: 'FinancialDashboard', component: FinancialDashboard, meta: { requiresAuth: true } },
-  { path: '/financial/ledger',    name: 'FinancialLedger',    component: FinancialLedger,    meta: { requiresAuth: true } },
-  { path: '/financial/invoices',  name: 'Invoices',           component: Invoices,           meta: { requiresAuth: true } },
-  { path: '/financial/payments',  name: 'Payments',           component: Payments,           meta: { requiresAuth: true } },
-  { path: '/financial/portfolios',name: 'Portfolios',         component: Portfolios,         meta: { requiresAuth: true } },
+  { path: '/financial',           name: 'FinancialDashboard', component: FinancialDashboard, meta: { requiresAuth: true, capability: 'finance.view' } },
+  { path: '/financial/ledger',    name: 'FinancialLedger',    component: FinancialLedger,    meta: { requiresAuth: true, capability: 'finance.view' } },
+  { path: '/financial/invoices',  name: 'Invoices',           component: Invoices,           meta: { requiresAuth: true, capability: 'finance.view' } },
+  { path: '/financial/payments',  name: 'Payments',           component: Payments,           meta: { requiresAuth: true, capability: 'finance.view' } },
+  { path: '/financial/portfolios',name: 'Portfolios',         component: Portfolios,         meta: { requiresAuth: true, capability: 'finance.view' } },
+  { path: '/financial/expenses',      name: 'Expenses',      component: ExpenseList,   meta: { requiresAuth: true, capability: 'expenses.submit' } },
+  // NOTE: /new must be declared before /:id so the literal segment wins.
+  { path: '/financial/expenses/new',  name: 'ExpenseNew',    component: ExpenseNew,    meta: { requiresAuth: true, capability: 'expenses.submit' } },
+  { path: '/financial/expenses/:id',  name: 'ExpenseDetail', component: ExpenseDetail, meta: { requiresAuth: true, capability: 'expenses.submit' } },
 
   // ---------------- ADMIN SPACE ----------------
   {

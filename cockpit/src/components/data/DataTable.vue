@@ -47,6 +47,8 @@
             v-for="(row, idx) in sortedRows"
             :key="rowKey(row, idx)"
             class="hover:bg-gray-50"
+            :class="{ 'cursor-pointer': clickableRows }"
+            @click="clickableRows && $emit('row-click', row)"
           >
             <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap">
               <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
@@ -72,7 +74,10 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   caption: { type: String, default: '' },
   rowKeyField: { type: String, default: 'id' },
+  clickableRows: { type: Boolean, default: false },
 })
+
+defineEmits(['row-click'])
 
 const sortedBy = ref('')
 const sortDir  = ref('ascending')

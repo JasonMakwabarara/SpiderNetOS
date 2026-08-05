@@ -211,6 +211,8 @@ const ROUTES = [
   { id: 'r-automation', label: 'Automation level',    hint: 'Manual / Assisted / Autonomous', path: '/settings/automation-level' },
   { id: 'r-billing',    label: 'Billing',             hint: 'Platform plan & AI usage', path: '/billing' },
   { id: 'r-financial',  label: 'Financial OS',        hint: 'Invoices & ledger',       path: '/financial' },
+  { id: 'r-expenses',   label: 'Expenses',            hint: 'Reports & receipts',      path: '/financial/expenses' },
+  { id: 'r-expense-new',label: 'New expense',         hint: 'Submit a report',         path: '/financial/expenses/new' },
   { id: 'r-sales',      label: 'Sales & CRM',         hint: 'Pipeline & leads',        path: '/sales' },
   { id: 'r-compliance', label: 'Compliance Radar',    hint: 'What applies to you',     path: '/compliance' },
   { id: 'r-first-win',  label: 'First win wizard',    hint: '5-minute automation',   path: '/operate/first-win' },

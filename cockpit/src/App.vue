@@ -274,6 +274,7 @@ import ImpersonationBanner from './components/impersonation/ImpersonationBanner.
 import { useApprovalsStore } from './stores/approvals.js'
 import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
+import { useExpensesStore } from './stores/expenses.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -284,6 +285,7 @@ const flowsStore = useFlowsStore()
 const approvalsStore = useApprovalsStore()
 const tracesStore = useTracesStore()
 const atlasStore = useAtlasStore()
+const expensesStore = useExpensesStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -324,6 +326,7 @@ const ic = {
   sales:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>',
   shield2:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
   firstwin: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+  receipt:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21V3zM9 8h6m-6 4h6m-6 4h3"/></svg>',
 }
 
 // Grouped nav
@@ -339,10 +342,15 @@ const userNav = {
 }
 const packsNav = {
   label: 'Packs', items: [
-    { key: 'financial', name: 'Financial OS', path: '/financial', icon: ic.finance },
+    { key: 'financial', name: 'Financial OS', path: '/financial', exact: true, icon: ic.finance },
     { key: 'sales', name: 'Sales & CRM', path: '/sales', icon: ic.sales },
     { key: 'compliance', name: 'Compliance Radar', path: '/compliance', icon: ic.shield2 },
     { key: 'feature-packs', name: 'All packs', path: '/feature-packs', icon: ic.packs },
+  ],
+}
+const spendNav = {
+  label: 'Spend', items: [
+    { key: 'expenses', name: 'Expenses', path: '/financial/expenses', icon: ic.receipt, capability: 'expenses.submit' },
   ],
 }
 const buildNav = {
@@ -415,9 +423,18 @@ const workspaceChoices = computed(() => {
 const hasWorkspaceChoice = computed(() => workspaceChoices.value.length > 1)
 
 const visibleNavigation = computed(() => {
-  if (currentWorkspace.value === '/platform') return platformNav
-  if (currentWorkspace.value === '/admin') return adminNav
-  return [userNav, packsNav, buildNav, observeNav, enterpriseNav, tenantNav]
+  const groups = (() => {
+    if (currentWorkspace.value === '/platform') return platformNav
+    if (currentWorkspace.value === '/admin') return adminNav
+    return [userNav, packsNav, spendNav, buildNav, observeNav, enterpriseNav, tenantNav]
+  })()
+  // Per-item capability filtering — items without a capability always show.
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((i) => !i.capability || authStore.has(i.capability)),
+    }))
+    .filter((group) => group.items.length)
 })
 
 function switchWorkspace(path) { router.push(path) }
@@ -439,7 +456,7 @@ const autoPillClass = computed(() => {
   return 'sn-pill'
 })
 
-const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore)
+const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore)
 
 function openCommandBar() {
   cmdBarRef.value?.open?.()
@@ -479,6 +496,8 @@ const BREADCRUMB_MAP = {
   '/settings/usage': ['Settings', 'Usage'],
   '/billing': ['Billing'],
   '/financial': ['Financial OS'],
+  '/financial/expenses': ['Financial OS', 'Expenses'],
+  '/financial/expenses/new': ['Financial OS', 'Expenses', 'New'],
   '/financial/ledger': ['Financial OS', 'Ledger'],
   '/financial/invoices': ['Financial OS', 'Invoices'],
   '/financial/payments': ['Financial OS', 'Payments'],

@@ -44,6 +44,12 @@
     radial-gradient(1200px 600px at 20% -10%, rgba(0,229,200,0.12), transparent 60%),
     radial-gradient(800px 400px at 100% 100%, rgba(0,229,200,0.08), transparent 55%),
     linear-gradient(180deg, #05070A, #0A0D12);
+
+  /* Legacy dct-* token aliases (companions to the dct-* class shims below).
+     Referenced widely by older financial views; map to flight-deck tokens. */
+  --charge-vivid:  #31D67B;
+  --tealime-vivid: var(--accent);
+  --dusk-vivid:    var(--danger);
 }
 
 /* Force dark regardless of .dark toggle — dark is the product. */

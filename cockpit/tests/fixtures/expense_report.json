@@ -1,0 +1,76 @@
+{
+  "id": "exp_001",
+  "title": "Client visit — Cardiff, March",
+  "status": "awaiting_approval",
+  "currency": "GBP",
+  "total_amount": "412.50",
+  "requires_typed_confirm": true,
+  "approval_id": "apr_777",
+  "policy_violation_count": 2,
+  "created_at": "2026-03-14T10:22:00Z",
+  "line_items": [
+    {
+      "id": "li_1",
+      "expense_date": "2026-03-10",
+      "category_id": "cat_travel",
+      "merchant": "Great Western Railway",
+      "description": "Return train Swansea → Cardiff",
+      "amount": "62.50",
+      "has_receipt": true,
+      "policy_flags": []
+    },
+    {
+      "id": "li_2",
+      "expense_date": "2026-03-10",
+      "category_id": "cat_meals",
+      "merchant": "The Potted Pig",
+      "description": "Client dinner (4 people)",
+      "amount": "350.00",
+      "has_receipt": false,
+      "policy_flags": ["over_limit", "missing_receipt"]
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc_1",
+      "original_filename": "gwr-ticket.jpg",
+      "mime_type": "image/jpeg",
+      "status": "scanned"
+    },
+    {
+      "id": "doc_2",
+      "original_filename": "hotel-invoice.pdf",
+      "mime_type": "application/pdf",
+      "status": "scanned"
+    }
+  ],
+  "approval": {
+    "id": "apr_777",
+    "steps": [
+      {
+        "id": "st_1",
+        "role": "manager",
+        "approver_name": "Ada Lovelace",
+        "status": "approved",
+        "acted_at": "2026-03-14T12:00:00Z",
+        "response": "Looks fine, receipts to follow."
+      },
+      {
+        "id": "st_2",
+        "role": "finance",
+        "approver_name": "Grace Hopper",
+        "status": "pending",
+        "acted_at": null,
+        "response": null
+      },
+      {
+        "id": "st_3",
+        "role": "cfo",
+        "approver_name": "Katherine Johnson",
+        "status": "queued",
+        "acted_at": null,
+        "response": null
+      }
+    ]
+  }
+}
