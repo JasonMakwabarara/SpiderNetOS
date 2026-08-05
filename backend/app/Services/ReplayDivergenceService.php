@@ -74,7 +74,10 @@ class ReplayDivergenceService
             throw new \RuntimeException('Execution not found for divergence check.');
         }
 
-        $liveNodes = DB::table('dag_nodes')
+        // Runtime node state lives in execution_dag_nodes (dag_nodes is the
+        // per-flow DESIGN table keyed by flow_id — it has no execution_id, and
+        // on Postgres the bad column poisons the surrounding transaction).
+        $liveNodes = DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->get()
             ->keyBy('node_id')
@@ -95,8 +98,11 @@ class ReplayDivergenceService
                     $q2->where('aggregate_type', 'flow_execution')
                         ->where('aggregate_id', $executionId);
                 })->orWhere(function ($q2) use ($executionId) {
+                    // Portable JSON path (compiles to ->> on pgsql,
+                    // json_extract on sqlite) — raw JSON_EXTRACT is MySQL-only
+                    // and throws on Postgres jsonb.
                     $q2->where('aggregate_type', 'approval_checkpoint')
-                        ->whereRaw("JSON_EXTRACT(payload, '$.execution_id') = ?", [$executionId]);
+                        ->where('payload->execution_id', (string) $executionId);
                 });
             })
             ->orderBy('sequence_num')
