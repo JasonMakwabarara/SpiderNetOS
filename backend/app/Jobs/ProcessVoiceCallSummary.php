@@ -44,8 +44,8 @@ class ProcessVoiceCallSummary implements ShouldQueue
     public int $backoff  = 30;   // seconds
 
     public function __construct(
-        private readonly string $callSid,
-        private readonly string $tenantId,
+        public readonly string $callSid,
+        public readonly string $tenantId,
     ) {}
 
     public function handle(): void

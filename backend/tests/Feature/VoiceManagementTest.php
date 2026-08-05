@@ -41,6 +41,10 @@ class VoiceManagementTest extends TestCase
             'email'     => 'test@example.com',
             'password'  => bcrypt('password'),
             'tenant_id' => $tenant->id,
+            'role'      => 'admin',
+            // Voice management routes sit behind the onboarding gate — an
+            // un-onboarded user is 403'd before reaching the controller.
+            'onboarding_completed_at' => now(),
         ]);
     }
 

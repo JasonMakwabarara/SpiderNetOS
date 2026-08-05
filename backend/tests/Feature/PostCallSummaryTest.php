@@ -78,7 +78,7 @@ class PostCallSummaryTest extends TestCase
 
         $response->assertStatus(200);
         Queue::assertPushed(ProcessVoiceCallSummary::class, function ($job) {
-            return $job->call_sid  === 'CAsummary001';
+            return $job->callSid === 'CAsummary001';
         });
     }
 
@@ -111,8 +111,9 @@ class PostCallSummaryTest extends TestCase
 
     public function test_job_handles_missing_call_gracefully(): void
     {
-        // Job with non-existent call_sid should not throw
-        $job = new ProcessVoiceCallSummary('CAnonexistent999', 'fake-tenant-id');
+        // Job with non-existent call_sid should not throw. Tenant id must be a
+        // real UUID: Postgres rejects non-uuid text where sqlite wouldn't.
+        $job = new ProcessVoiceCallSummary('CAnonexistent999', (string) \Illuminate\Support\Str::uuid());
         $job->handle(); // should not throw
         $this->assertTrue(true);
     }
