@@ -78,6 +78,20 @@ Route::prefix('whatsapp')->middleware(['throttle:voice_webhook', 'voice.verify_t
 Route::post('/webhooks/dodo', [\App\Http\Controllers\Webhooks\DodoWebhookController::class, 'handle'])
     ->middleware(['throttle:payment_webhook', 'dodo.verify_signature']);
 
+// Enterprise self-serve registration funnel (public, heavily throttled,
+// kill-switched via config('enterprise.self_serve_enabled')). Restored from
+// real trunk e31d996 — prod serves this today.
+Route::prefix('enterprise/register')->middleware('throttle:enterprise_register')->group(function () {
+    $controller = \App\Http\Controllers\Enterprise\EnterpriseRegistrationController::class;
+
+    Route::post('/start', [$controller, 'start']);
+    Route::post('/verify-domain', [$controller, 'verifyDomain']);
+    Route::post('/create-tenant', [$controller, 'createTenant']);
+    Route::post('/scim/generate', [$controller, 'scimGenerate']);
+    Route::post('/bundle/create', [$controller, 'bundleCreate']);
+    Route::post('/deploy/start', [$controller, 'deployStart']);
+});
+
 // Voice AI — WebSocket streaming (Phase C) — Twilio-signed only, no feature flag needed at transport layer
 Route::post('/voice/stream/connect', [VoiceStreamController::class, 'connect'])
     ->middleware('voice.verify_twilio');
@@ -219,6 +233,25 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // Business profile (Atlas discovery learning loop)
     Route::get('/business-profile', [BusinessProfileController::class, 'show']);
     Route::put('/business-profile', [BusinessProfileController::class, 'update']);
+
+    // Business Systemization pack — systems map, ownership, snowball, SOPs
+    // (restored from real trunk a9a2d8d/d0a5e0e — prod serves this today)
+    Route::prefix('systemization')->group(function () {
+        $controller = \App\Http\Controllers\SystemizationController::class;
+
+        Route::post('/bootstrap', [$controller, 'bootstrap']);
+        Route::get('/map', [$controller, 'map']);
+        Route::post('/systems', [$controller, 'storeSystem']);
+        Route::post('/systems/{system}/processes', [$controller, 'storeProcess']);
+        Route::patch('/processes/{process}', [$controller, 'updateProcess']);
+        Route::get('/snowball', [$controller, 'snowball']);
+        Route::post('/processes/{process}/sops', [$controller, 'storeSop']);
+        Route::post('/sops/{sop}/publish', [$controller, 'publishSop']);
+        // Accountable ownership: runbook compilation, execution, escalation
+        Route::post('/processes/{process}/automate', [$controller, 'automate']);
+        Route::post('/processes/{process}/run', [$controller, 'run']);
+        Route::post('/processes/{process}/resolve-escalation', [$controller, 'resolveEscalation']);
+    });
 
     // Messaging channels (provisioned numbers + supported channels)
     Route::get('/messaging/channels', [\App\Http\Controllers\MessagingController::class, 'channels']);

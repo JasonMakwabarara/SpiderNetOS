@@ -71,6 +71,12 @@ class SecurityServiceProvider extends ServiceProvider
                 ->by($request->ip());
         });
 
+        // ── Enterprise self-serve registration (public funnel) ─────────
+        RateLimiter::for('enterprise_register', function (Request $request) use ($tiers) {
+            return Limit::perMinute((int) ($tiers['enterprise_register'] ?? 10))
+                ->by($request->ip());
+        });
+
         // ── Payment provider webhooks (already signature-verified) ─────
         RateLimiter::for('payment_webhook', function (Request $request) use ($tiers) {
             return Limit::perMinute((int) ($tiers['payment_webhook'] ?? 300))

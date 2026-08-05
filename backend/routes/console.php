@@ -42,3 +42,9 @@ Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');
 
 // Platform billing: close the previous month into invoices (fee + overage), 1st at 03:00 UTC
 Schedule::command('spidernet:billing:generate-invoices')->monthlyOn(1, '03:00')->withoutOverlapping();
+
+// DAG node watchdog — no node may stay `running` forever (every 10 minutes)
+Schedule::job(new \App\Jobs\FailStaleExecutionNodesJob)->everyTenMinutes()->withoutOverlapping();
+
+// Systemization write-back for scheduled runs (every 5 minutes)
+Schedule::job(new \App\Jobs\SystemizationRunSweepJob)->everyFiveMinutes()->withoutOverlapping();
