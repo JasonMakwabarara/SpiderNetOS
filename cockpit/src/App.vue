@@ -275,6 +275,7 @@ import { useApprovalsStore } from './stores/approvals.js'
 import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
 import { useExpensesStore } from './stores/expenses.js'
+import { useApStore } from './stores/ap.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -286,6 +287,7 @@ const approvalsStore = useApprovalsStore()
 const tracesStore = useTracesStore()
 const atlasStore = useAtlasStore()
 const expensesStore = useExpensesStore()
+const apStore = useApStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -327,6 +329,10 @@ const ic = {
   shield2:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
   firstwin: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
   receipt:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21V3zM9 8h6m-6 4h6m-6 4h3"/></svg>',
+  inbox:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h4l2 3h6l2-3h4M5 5h14l2 8v6H3v-6l2-8z"/></svg>',
+  storefront: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10v11h16V10M3 6l1.5-3h15L21 6a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-6 0zM9 21v-6h6v6"/></svg>',
+  pie:      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.05A9 9 0 1020.95 13H11V3.05z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 3.5A9.01 9.01 0 0120.5 9H15V3.5z"/></svg>',
+  ledger:   '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20V4a1 1 0 00-1-1H6.5A2.5 2.5 0 004 5.5v14z"/><path stroke-linecap="round" d="M4 19.5A2.5 2.5 0 006.5 22H20v-5M9 7h6m-6 4h6"/></svg>',
 }
 
 // Grouped nav
@@ -351,6 +357,10 @@ const packsNav = {
 const spendNav = {
   label: 'Spend', items: [
     { key: 'expenses', name: 'Expenses', path: '/financial/expenses', icon: ic.receipt, capability: 'expenses.submit' },
+    { key: 'bills', name: 'Bills', path: '/financial/bills', icon: ic.inbox, capability: 'ap.view' },
+    { key: 'vendors', name: 'Vendors', path: '/financial/vendors', icon: ic.storefront, capability: 'ap.view' },
+    { key: 'spend-analytics', name: 'Analytics', path: '/financial/spend', icon: ic.pie, capability: 'finance.view' },
+    { key: 'accounting', name: 'Accounting', path: '/financial/accounting', icon: ic.ledger, capability: 'accounting.manage' },
   ],
 }
 const buildNav = {
@@ -456,7 +466,7 @@ const autoPillClass = computed(() => {
   return 'sn-pill'
 })
 
-const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore)
+const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore)
 
 function openCommandBar() {
   cmdBarRef.value?.open?.()
@@ -498,6 +508,11 @@ const BREADCRUMB_MAP = {
   '/financial': ['Financial OS'],
   '/financial/expenses': ['Financial OS', 'Expenses'],
   '/financial/expenses/new': ['Financial OS', 'Expenses', 'New'],
+  '/financial/bills': ['Financial OS', 'Bills'],
+  '/financial/vendors': ['Financial OS', 'Vendors'],
+  '/financial/spend': ['Financial OS', 'Spend Analytics'],
+  '/financial/accounting': ['Financial OS', 'Accounting'],
+  '/financial/accounting/export': ['Financial OS', 'Accounting', 'Export Center'],
   '/financial/ledger': ['Financial OS', 'Ledger'],
   '/financial/invoices': ['Financial OS', 'Invoices'],
   '/financial/payments': ['Financial OS', 'Payments'],

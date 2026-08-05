@@ -42,6 +42,13 @@ const Portfolios         = () => import('../views/financial/Portfolios.vue')
 const ExpenseList        = () => import('../views/financial/expenses/ExpenseList.vue')
 const ExpenseNew         = () => import('../views/financial/expenses/ExpenseNew.vue')
 const ExpenseDetail      = () => import('../views/financial/expenses/ExpenseDetail.vue')
+const BillsInbox         = () => import('../views/financial/ap/BillsInbox.vue')
+const BillDetail         = () => import('../views/financial/ap/BillDetail.vue')
+const Vendors            = () => import('../views/financial/ap/Vendors.vue')
+const VendorDetail       = () => import('../views/financial/ap/VendorDetail.vue')
+const AccountingSettings = () => import('../views/financial/accounting/AccountingSettings.vue')
+const ExportCenter       = () => import('../views/financial/accounting/ExportCenter.vue')
+const SpendAnalytics     = () => import('../views/financial/spend/SpendAnalytics.vue')
 
 // Lazy shell / shared
 const Forbidden     = () => import('../views/Forbidden.vue')
@@ -115,6 +122,13 @@ const routes = [
   // NOTE: /new must be declared before /:id so the literal segment wins.
   { path: '/financial/expenses/new',  name: 'ExpenseNew',    component: ExpenseNew,    meta: { requiresAuth: true, capability: 'expenses.submit' } },
   { path: '/financial/expenses/:id',  name: 'ExpenseDetail', component: ExpenseDetail, meta: { requiresAuth: true, capability: 'expenses.submit' } },
+  { path: '/financial/bills',         name: 'BillsInbox',    component: BillsInbox,    meta: { requiresAuth: true, capability: 'ap.view' } },
+  { path: '/financial/bills/:id',     name: 'BillDetail',    component: BillDetail,    meta: { requiresAuth: true, capability: 'ap.view' } },
+  { path: '/financial/vendors',       name: 'Vendors',       component: Vendors,       meta: { requiresAuth: true, capability: 'ap.view' } },
+  { path: '/financial/vendors/:id',   name: 'VendorDetail',  component: VendorDetail,  meta: { requiresAuth: true, capability: 'ap.view' } },
+  { path: '/financial/accounting',        name: 'AccountingSettings', component: AccountingSettings, meta: { requiresAuth: true, capability: 'accounting.manage' } },
+  { path: '/financial/accounting/export', name: 'ExportCenter',       component: ExportCenter,       meta: { requiresAuth: true, capability: 'accounting.manage' } },
+  { path: '/financial/spend',             name: 'SpendAnalytics',     component: SpendAnalytics,     meta: { requiresAuth: true, capability: 'finance.view' } },
 
   // ---------------- ADMIN SPACE ----------------
   {

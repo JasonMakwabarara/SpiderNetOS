@@ -1,0 +1,11 @@
+{
+  "as_of": "2026-08-05",
+  "total_outstanding": "27100.00",
+  "buckets": {
+    "current": { "amount": "12500.00", "count": 6 },
+    "1_30":    { "amount": "8200.00",  "count": 4 },
+    "31_60":   { "amount": "4100.00",  "count": 2 },
+    "61_90":   { "amount": "1800.00",  "count": 1 },
+    "90_plus": { "amount": "500.00",   "count": 1 }
+  }
+}

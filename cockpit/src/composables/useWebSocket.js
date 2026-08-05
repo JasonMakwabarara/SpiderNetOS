@@ -19,11 +19,12 @@ import { ref, onMounted, onUnmounted } from 'vue'
  *     .usage.updated | .budget.alert
  *     .approval.created | .approval.updated
  *     .expense.created | .expense.updated
+ *     .bill.created | .bill.updated
  *     .trace.appended
  *     .atlas.task.updated | .atlas.agent.updated | .atlas.stream.chunk
  *   }
  */
-export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore) {
+export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore) {
   const isConnected = ref(false)
   const lastMessage = ref(null)
 
@@ -82,6 +83,10 @@ export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, app
     // ── Expenses ────────────────────────────────────────────────────
     channel.listen('.expense.created', (data) => { expensesStore?.handleExpenseCreated?.(data); lastMessage.value = { type: 'expense.created', data } })
     channel.listen('.expense.updated', (data) => { expensesStore?.handleExpenseUpdated?.(data); lastMessage.value = { type: 'expense.updated', data } })
+
+    // ── Bills (AP) ──────────────────────────────────────────────────
+    channel.listen('.bill.created', (data) => { apStore?.handleBillCreated?.(data); lastMessage.value = { type: 'bill.created', data } })
+    channel.listen('.bill.updated', (data) => { apStore?.handleBillUpdated?.(data); lastMessage.value = { type: 'bill.updated', data } })
 
     // ── Traces ──────────────────────────────────────────────────────
     channel.listen('.trace.appended', (data) => { tracesStore?.handleTraceUpdate?.(data); lastMessage.value = { type: 'trace.appended', data } })
