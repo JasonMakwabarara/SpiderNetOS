@@ -23,6 +23,7 @@ const Billing       = () => import('../views/Billing.vue')
 const Outcomes      = () => import('../views/Outcomes.vue')
 const Communications = () => import('../views/Communications.vue')
 const FeaturePacks  = () => import('../views/FeaturePacks.vue')
+const Connectors    = () => import('../views/Connectors.vue')
 const OpsFirstWin     = () => import('../views/operate/OpsFirstWin.vue')
 const SalesHome       = () => import('../views/sales/SalesHome.vue')
 const SalesLeads      = () => import('../views/sales/Leads.vue')
@@ -85,6 +86,7 @@ const routes = [
   { path: '/outcomes',      name: 'Outcomes',      component: Outcomes,      meta: { requiresAuth: true } },
   { path: '/communications', name: 'Communications', component: Communications, meta: { requiresAuth: true } },
   { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
+  { path: '/connectors',    name: 'Connectors',    component: Connectors,    meta: { requiresAuth: true } },
   { path: '/operate/first-win', name: 'OpsFirstWin', component: OpsFirstWin, meta: { requiresAuth: true } },
   { path: '/sales', name: 'SalesHome', component: SalesHome, meta: { requiresAuth: true } },
   { path: '/sales/leads', name: 'SalesLeads', component: SalesLeads, meta: { requiresAuth: true } },

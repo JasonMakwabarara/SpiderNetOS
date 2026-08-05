@@ -351,6 +351,7 @@ const buildNav = {
     { key: 'flows', name: 'Flows', path: '/flows', icon: ic.flows },
     { key: 'memory', name: 'Memory', path: '/memory', icon: ic.memory },
     { key: 'feature-packs', name: 'Feature packs', path: '/feature-packs', icon: ic.packs },
+    { key: 'connectors', name: 'Connectors', path: '/connectors', icon: ic.connectors },
   ],
 }
 const observeNav = {
