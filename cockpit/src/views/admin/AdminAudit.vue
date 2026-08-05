@@ -38,7 +38,7 @@ import EmptyState  from '../../components/data/EmptyState.vue'
 import JsonDrawer  from '../../components/data/JsonDrawer.vue'
 import RoleBadge   from '../../components/security/RoleBadge.vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const loading     = ref(false)
 const events      = ref([])

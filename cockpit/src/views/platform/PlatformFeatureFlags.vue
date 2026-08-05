@@ -70,7 +70,7 @@ import JsonDrawer     from '../../components/data/JsonDrawer.vue'
 import ConfirmDialog  from '../../components/feedback/ConfirmDialog.vue'
 import StepUpGuard    from '../../components/security/StepUpGuard.vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const loading = ref(false)
 const flags   = ref([])

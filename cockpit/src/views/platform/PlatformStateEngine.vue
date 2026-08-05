@@ -90,7 +90,7 @@ import DropoffBar       from '../../components/ste/DropoffBar.vue'
 import WinningTagsList  from '../../components/ste/WinningTagsList.vue'
 import SimulationPanel  from '../../components/ste/SimulationPanel.vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const chain         = ref('session_lifecycle')
 const metric        = ref('activation')

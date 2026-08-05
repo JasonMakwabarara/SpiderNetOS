@@ -118,7 +118,7 @@ import StepUpGuard        from '../../components/security/StepUpGuard.vue'
 import TypedConfirmDialog from '../../components/feedback/TypedConfirmDialog.vue'
 import EmptyState         from '../../components/data/EmptyState.vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const stages = [
   { key: 'prep',    label: 'Prep' },

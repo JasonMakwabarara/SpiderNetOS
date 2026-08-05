@@ -49,7 +49,7 @@ import { ref } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../../stores/auth.js'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const props = defineProps({
   reason: { type: String, default: '' },

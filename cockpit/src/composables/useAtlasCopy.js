@@ -15,7 +15,7 @@
 import { ref, watch, toValue } from 'vue'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 const FALLBACK_TIMEOUT_MS = 500
 
 // Bundled fallback templates (must stay in sync with intelligence/atlas/fallback_copy.json)

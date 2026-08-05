@@ -15,17 +15,17 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'SpiderNetOS'
   const options = {
     body: data.body || '',
-    icon: '/cockpit/icon.svg',
-    badge: '/cockpit/icon.svg',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     tag: data.event_type || 'spidernetos',
-    data: { url: data.url || '/cockpit/' },
+    data: { url: data.url || '/' },
   }
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/cockpit/'
+  const url = (event.notification.data && event.notification.data.url) || '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       for (const w of wins) {
