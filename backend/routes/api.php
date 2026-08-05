@@ -391,6 +391,42 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/payments/initiate', [\App\Http\Controllers\Financial\PaymentController::class, 'initiatePayment']);
         Route::get('/transactions', [\App\Http\Controllers\Financial\PaymentController::class, 'transactions']);
 
+        // Spend — Expense management (Stage 1c). Literal segments before
+        // /{id} (see invoice note above); writes are admin-gated where noted.
+        Route::get('/expense-categories', [\App\Http\Controllers\Spend\ExpenseCategoryController::class, 'index']);
+        Route::post('/expense-categories', [\App\Http\Controllers\Spend\ExpenseCategoryController::class, 'store'])->middleware('role:admin');
+        Route::put('/expense-categories/{id}', [\App\Http\Controllers\Spend\ExpenseCategoryController::class, 'update'])->middleware('role:admin');
+
+        Route::get('/expense-policies', [\App\Http\Controllers\Spend\ExpensePolicyController::class, 'index']);
+        Route::post('/expense-policies', [\App\Http\Controllers\Spend\ExpensePolicyController::class, 'store'])->middleware('role:admin');
+        Route::put('/expense-policies/{id}', [\App\Http\Controllers\Spend\ExpensePolicyController::class, 'update'])->middleware('role:admin');
+        Route::delete('/expense-policies/{id}', [\App\Http\Controllers\Spend\ExpensePolicyController::class, 'destroy'])->middleware('role:admin');
+
+        Route::get('/expenses/summary', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'summary']);
+        Route::get('/expenses', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'index']);
+        Route::post('/expenses', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'store']);
+        Route::get('/expenses/{id}', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'show']);
+        Route::put('/expenses/{id}', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'update']);
+        Route::post('/expenses/{id}/items', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'addItem']);
+        Route::delete('/expenses/{id}/items/{itemId}', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'removeItem']);
+        Route::post('/expenses/{id}/items/{itemId}/receipt', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'attachReceipt']);
+        Route::delete('/expenses/{id}/receipts/{documentId}', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'removeReceipt']);
+        Route::post('/expenses/{id}/submit', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'submit']);
+        Route::post('/expenses/{id}/void', [\App\Http\Controllers\Spend\ExpenseReportController::class, 'void']);
+
+        // Spend documents — AI extraction + category automation (literal
+        // /spend/categorize before the /{id} routes, see invoice note above).
+        Route::post('/spend/categorize', [\App\Http\Controllers\Spend\SpendDocumentController::class, 'categorize']);
+        Route::get('/spend/documents/{id}', [\App\Http\Controllers\Spend\SpendDocumentController::class, 'show']);
+        Route::post('/spend/documents/{id}/confirm', [\App\Http\Controllers\Spend\SpendDocumentController::class, 'confirm']);
+        Route::post('/spend/documents/{id}/retry', [\App\Http\Controllers\Spend\SpendDocumentController::class, 'retry']);
+
+        Route::get('/reimbursements', [\App\Http\Controllers\Spend\ReimbursementController::class, 'index']);
+        Route::post('/reimbursements/{id}/mark-paid', [\App\Http\Controllers\Spend\ReimbursementController::class, 'markPaid'])
+            ->middleware(['role:admin', 'step.up']);
+        Route::post('/reimbursements/{id}/cancel', [\App\Http\Controllers\Spend\ReimbursementController::class, 'cancel'])
+            ->middleware('role:admin');
+
         // Financial Overview
         Route::get('/dashboard', [\App\Http\Controllers\Financial\FinancialController::class, 'dashboard']);
         Route::get('/reports', [\App\Http\Controllers\Financial\FinancialController::class, 'reports']);
