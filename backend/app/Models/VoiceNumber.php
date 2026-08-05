@@ -21,11 +21,23 @@ class VoiceNumber extends Model
         'agent_id',
         'config',
         'is_active',
+        // Safety/policy columns (add_voice_agent_policy migration) — absent
+        // from fillable they were silently dropped on update, so operators'
+        // approval-policy changes never persisted.
+        'tool_allowlist',
+        'approval_policy',
+        'agent_config',
+        'allow_outbound',
+        'daily_call_cap',
     ];
 
     protected $casts = [
         'config' => 'array',
         'is_active' => 'boolean',
+        'tool_allowlist' => 'array',
+        'agent_config' => 'array',
+        'allow_outbound' => 'boolean',
+        'daily_call_cap' => 'integer',
     ];
 
     public $timestamps = true;
