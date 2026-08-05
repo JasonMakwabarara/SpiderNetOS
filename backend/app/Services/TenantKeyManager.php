@@ -170,6 +170,58 @@ class TenantKeyManager
         return Crypt::encryptString($secret);
     }
 
+    /**
+     * Store an arbitrary tenant secret (e.g. integration credentials) encrypted
+     * in tenant_secrets, superseding any previous value under the same name.
+     * Returns the key_name used as the reference (tenant_integrations.credentials_ref).
+     *
+     * NOTE: this and getSecret()/forgetSecret() back the integrations layer —
+     * IntegrationsController::authorize() and CalendarController both called
+     * them before they existed, so connecting/using an integration fatally
+     * failed. See tests/Feature/Connectors.
+     */
+    public function storeSecret(string $tenantId, string $keyName, string $value): string
+    {
+        DB::table('tenant_secrets')
+            ->where('tenant_id', $tenantId)
+            ->where('key_name', $keyName)
+            ->update(['active' => 0, 'updated_at' => now()]);
+
+        DB::table('tenant_secrets')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenantId,
+            'key_name' => $keyName,
+            'secret_value' => $this->encryptSecret($value),
+            'active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $keyName;
+    }
+
+    /** Read a stored tenant secret by its key_name; null when absent. */
+    public function getSecret(string $tenantId, string $keyName): ?string
+    {
+        $value = DB::table('tenant_secrets')
+            ->where('tenant_id', $tenantId)
+            ->where('key_name', $keyName)
+            ->where('active', 1)
+            ->orderByDesc('updated_at')
+            ->value('secret_value');
+
+        return $value === null ? null : $this->decryptSecret((string) $value);
+    }
+
+    /** Deactivate a stored secret (used when disconnecting an integration). */
+    public function forgetSecret(string $tenantId, string $keyName): void
+    {
+        DB::table('tenant_secrets')
+            ->where('tenant_id', $tenantId)
+            ->where('key_name', $keyName)
+            ->update(['active' => 0, 'updated_at' => now()]);
+    }
+
     public function resolveVerificationKeysForEvent(string $tenantId, ?string $keyId = null): array
     {
         $keys = [];

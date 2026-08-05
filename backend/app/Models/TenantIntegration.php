@@ -30,12 +30,21 @@ class TenantIntegration extends Model
         'credentials_ref',
         'is_active',
         'config',
+        'status',
+        'last_verified_at',
+        'last_error',
     ];
 
     protected $casts = [
         'config'    => 'array',
         'is_active' => 'boolean',
+        'last_verified_at' => 'datetime',
     ];
+
+    public function scopeForTenant($query, string $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
 
     // ─── Relationships ────────────────────────────────────────────────────────
 

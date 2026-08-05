@@ -196,7 +196,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::put('/voice/quotas',             [VoiceController::class, 'updateQuotas']);
     // Integrations (Phase D)
     Route::get('/integrations',                       [IntegrationsController::class, 'index']);
+    Route::get('/integrations/catalogue',             [IntegrationsController::class, 'catalogue']);
     Route::post('/integrations/{provider}/authorize', [IntegrationsController::class, 'authorize']);
+    Route::post('/integrations/{provider}/test',      [IntegrationsController::class, 'test']);
+    Route::post('/integrations/{provider}/actions/{action}', [IntegrationsController::class, 'execute']);
+    Route::delete('/integrations/{provider}',         [IntegrationsController::class, 'destroy']);
     Route::post('/integrations/calendar/book',        [CalendarController::class, 'book']);
 
     // Feature Packs (Phase 3)
