@@ -1,0 +1,576 @@
+# Canonical sales-principles corpus
+# All principles are re-expressed in original wording; no source text is reproduced.
+
+principles:
+
+  # ------------------------------------------------------------------
+  # PITCH STRUCTURE
+  # ------------------------------------------------------------------
+
+  - id: "five-beat-conversation-arc"
+    name: "Five-beat conversation arc"
+    category: pitch_structure
+    statement: "Every selling conversation should move through five deliberate beats: open, brief personal framing, value presentation, ask, and a post-yes extension. Skipping a beat forces the ask to carry weight the earlier beats should have built."
+    application: "Use as the skeleton for any first-contact conversation, demo, or written outreach sequence; each message or paragraph should map to one beat."
+    script_guidance: "Structure drafted outreach so the opening earns attention, one or two lines establish who is writing and why, the middle builds a single concrete value case, and the message ends with exactly one clear ask. Never combine the value case and the ask into the same sentence, and never ask before value has been established."
+    example_phrasing:
+      - "Quick reason I'm reaching out: teams like yours are quietly overpaying for X, and there's a clean fix."
+      - "If that saving sounds worth fifteen minutes, does Thursday morning work?"
+
+  - id: "controlled-introduction"
+    name: "Own the opening seconds"
+    category: pitch_structure
+    statement: "The first few seconds decide whether the rest of the conversation gets heard, so the opening must be confident, warm, and already in motion before the prospect decides how to react."
+    application: "Applies to the first line of an email, the first sentence of a call, or the first exchange in chat — anywhere a cold audience decides whether to keep reading."
+    script_guidance: "Lead drafted messages with a specific, energetic first line rather than a generic greeting or apology. Assume the reader is willing to engage; do not open with hedges like 'sorry to bother you' or 'I know you're busy.' State who you are and the point of contact within the first two lines."
+    example_phrasing:
+      - "Morning Sam — one specific idea for you, thirty seconds to read."
+
+  - id: "short-story-positioning"
+    name: "Brief personal framing before value"
+    category: pitch_structure
+    statement: "A two-or-three-line explanation of who you are, what your organisation does, and why you're talking to this person lowers defensiveness and sets context before any value claim is made."
+    application: "Use immediately after the opening in cold outreach and first meetings, and whenever a conversation restarts with someone new in the room."
+    script_guidance: "Insert a compact credibility block early in drafts: name, role, what the company does in plain words, and the specific reason this recipient was chosen. Keep it under three sentences so it reads as context, not autobiography. Tailor the 'why you' line to something verifiable about the recipient."
+    example_phrasing:
+      - "I lead partnerships at Northbeam — we help clinics cut admin time, and your booking volume made you an obvious fit."
+
+  - id: "agreement-ladder-presentation"
+    name: "Stack small agreements toward the ask"
+    category: pitch_structure
+    statement: "A presentation lands hardest when it wins a series of small, easy agreements — about the problem, the mechanism, and the benefit — so that the final ask feels like the natural last step rather than a leap."
+    application: "Use when structuring demos, proposals, and multi-paragraph pitch emails; each section should end on a point the prospect can readily accept."
+    script_guidance: "Break drafted value cases into stages that each invite implicit assent: name a problem the reader recognises, show why it happens, quantify the gap, then connect the offer to closing that gap. Use rhetorical checkpoints ('sound familiar?', 'fair?') sparingly to surface agreement. The close should reference the agreements already made, not introduce new claims."
+    example_phrasing:
+      - "You've seen the invoice creep, you know why it happens — the only question left is whether this month is when it stops."
+
+  - id: "analogy-reframe"
+    name: "Analogy before arithmetic"
+    category: pitch_structure
+    statement: "An everyday analogy shifts a prospect's perspective on an unfamiliar decision faster than data does; once they agree with the analogy, the numbers only confirm what they already accept."
+    application: "Use when the offer involves switching, technical detail, or a concept the prospect has never had to think about."
+    script_guidance: "When a drafted explanation involves anything abstract, precede the figures with a one-line comparison to a decision the reader already understands. Get agreement on the simple version before presenting the detailed one. Keep analogies concrete and domain-neutral."
+    example_phrasing:
+      - "Same water, different bottle, half the price — that's essentially what switching here means."
+
+  - id: "consolidation-before-commitment-step"
+    name: "Consolidate before the formal step"
+    category: pitch_structure
+    statement: "Before any formal confirmation step — a signature, a verification call, a payment page — the buyer should already be fully settled on the decision, so the formal step records the yes rather than tests it."
+    application: "Applies just before contracts, confirmation calls, checkout links, or anything procedural that could reopen doubt."
+    script_guidance: "When drafting the message that delivers a contract or confirmation link, restate the decision, the benefit, and what happens next in plain terms before presenting the mechanism. Frame the formal step as routine paperwork on a decision already made. Never introduce new terms or surprises at this stage."
+    example_phrasing:
+      - "You're locked in for the rate we discussed — the e-sign link below just makes it official."
+
+  - id: "rehash-while-warm"
+    name: "Extend the yes while it's warm"
+    category: pitch_structure
+    statement: "The moments right after an agreement are the highest-trust moments in the relationship; that is the time to ask about an add-on, a referral, or an expanded scope, not weeks later."
+    application: "Use immediately after a closed deal, a signed renewal, or a strong positive reply."
+    script_guidance: "When a deal closes, have the follow-up draft include one light additional ask — a referral, a second product, a case-study request — framed as an afterthought rather than a second pitch. Keep it to one sentence and make declining costless. Do not stack multiple extra asks."
+    example_phrasing:
+      - "While we're at it — anyone else on your team who'd want the same setup?"
+
+  # ------------------------------------------------------------------
+  # IMPULSE
+  # ------------------------------------------------------------------
+
+  - id: "impulse-curve-management"
+    name: "Ride the excitement curve"
+    category: impulse
+    statement: "Buyer excitement rises and falls across a conversation, and agreement only happens above a threshold of genuine enthusiasm; the seller's job is to build excitement stage by stage, ask at the peak, and stop selling once the yes arrives."
+    application: "Governs pacing across a whole conversation or email thread: when to present, when to ask, and when to stop talking."
+    script_guidance: "Sequence drafted threads so energy builds toward the ask; never place the ask in a low-energy administrative message. When a reply shows peak interest, respond with the close, not with more information. After a yes, switch immediately to logistics — additional selling past the yes only reintroduces doubt."
+    example_phrasing:
+      - "Sounds like this is exactly what you were after — shall I get you set up today?"
+
+  - id: "truthful-fear-of-loss"
+    name: "Real stakes, plainly stated"
+    category: impulse
+    statement: "People act faster to avoid losing something than to gain something, so name what inaction genuinely costs them — but only losses that are real, verifiable, and would exist whether or not you mentioned them."
+    application: "Use when a prospect agrees on value but drifts on timing; quantify what each week of delay actually costs."
+    script_guidance: "When drafting nudges, compute and state the real ongoing cost of the status quo rather than inventing deadlines. Anchor the loss to the prospect's own numbers where possible. Never fabricate expiring offers or imply consequences that don't exist."
+    example_phrasing:
+      - "Every month on the old plan is roughly £40 you don't get back — that's the only deadline here."
+
+  - id: "social-proof-momentum"
+    name: "Show the crowd already moving"
+    category: impulse
+    statement: "People are reassured by evidence that others like them have already made the same choice; specific, truthful proof of neighbours, peers, or comparable firms acting reduces the fear of being first."
+    application: "Use with hesitant prospects who accept the value case but distrust novelty, and in outreach to conservative buyers."
+    script_guidance: "Include one concrete, honest proof point per draft — a named customer type, an adoption count, or a review score — chosen to resemble the recipient as closely as possible. Prefer 'firms your size in your sector' over generic totals. Never invent or inflate proof."
+    example_phrasing:
+      - "Three practices on your street made this switch last quarter — you'd be in familiar company."
+
+  - id: "professional-indifference"
+    name: "Wear the outcome lightly"
+    category: impulse
+    statement: "A seller who is visibly unbothered about any single outcome is more persuasive than one who needs the deal; calm detachment signals that the offer's value doesn't depend on this prospect saying yes."
+    application: "Use in tone across all messages, and especially when a prospect stalls, haggles, or tests commitment."
+    script_guidance: "Keep drafted replies relaxed and unhurried even when a deal matters; avoid pleading language, exclamation-mark enthusiasm at the wrong moments, and rapid-fire chasers. Offer the next step as available rather than begged for. If the prospect declines, exit warmly and quickly — that exit often reopens the door."
+    example_phrasing:
+      - "No pressure either way — the numbers work whether it's this month or next. Just say the word."
+
+  - id: "ethical-urgency"
+    name: "Urgency you can defend"
+    category: impulse
+    statement: "Urgency accelerates decisions, but it must rest on facts you could defend to the customer's face later: genuine capacity limits, real price windows, actual seasonal effects. Manufactured scarcity wins one deal and poisons the relationship."
+    application: "Apply whenever adding a time element to a close; audit every urgency claim for truth before using it."
+    script_guidance: "Only include time pressure in drafts when a real constraint exists, and state the reason for the constraint alongside the deadline. If no constraint exists, create momentum through scheduling ('I can hold Thursday') rather than false scarcity. Strip any urgency language that cannot be sourced to a fact."
+    example_phrasing:
+      - "The current rate is guaranteed until the provider's quarterly review on the 1st — after that I genuinely can't promise it."
+
+  - id: "suggestive-language"
+    name: "Speak as if the next step is normal"
+    category: impulse
+    statement: "Language that presumes forward motion — talking about 'when' rather than 'if', describing the prospect already using the product — gently normalises the decision without demanding it."
+    application: "Use in closes and late-stage messages once genuine interest is established; avoid it on cold contacts where it reads as presumptuous."
+    script_guidance: "In late-stage drafts, describe the post-purchase state concretely ('once you're live, the first report lands Friday') instead of conditional framing. Offer choices between two positive options rather than yes/no questions. Dial this back if the prospect has signalled hesitation — presumption on a cold reader damages trust."
+    example_phrasing:
+      - "Once you're on the new plan, your first statement will already show the difference — morning or afternoon better for the setup call?"
+
+  # ------------------------------------------------------------------
+  # FRAMING
+  # ------------------------------------------------------------------
+
+  - id: "value-cost-gap"
+    name: "Widen the value-cost gap"
+    category: framing
+    statement: "Desire to buy is the perceived distance between what something is worth and what it costs; every sentence in a pitch either widens or narrows that gap, so build value fully before price appears, and present price against the value already established."
+    application: "Governs ordering in any pitch: value first, cost last, and cost always expressed relative to the value it buys."
+    script_guidance: "Never let a drafted message state a price before the value case is complete. When price must appear, pair it in the same sentence with what it returns, and break large numbers into per-day or per-use terms. Audit every line for whether it adds value or adds cost in the reader's mind — cut lines that only add cost."
+    example_phrasing:
+      - "It's under £2 a day, and the average account claws that back before lunch."
+
+  - id: "spend-the-savings"
+    name: "Make the gain spendable"
+    category: framing
+    statement: "A saving stays abstract until the buyer attaches it to something they actually want; helping them picture what the recovered money buys converts arithmetic into desire and quietly confirms the decision to capture it."
+    application: "Use after quantifying any saving or gain, especially in consumer and small-business sales."
+    script_guidance: "After stating a quantified benefit in a draft, add one line inviting the reader to convert it into something tangible for them. Where you know their context, propose a specific, appealing use of the money. Once they've mentally spent the saving, they have implicitly agreed to make it."
+    example_phrasing:
+      - "That's about £300 a year back — roughly a weekend away, funded by your energy bill."
+
+  - id: "continuity-reassurance"
+    name: "Show what stays the same"
+    category: framing
+    statement: "Switching anxiety usually attaches to imagined disruption, not the decision itself; explicitly listing what does not change — the product, the pipes, the routine — removes the fear that price alone can't overcome."
+    application: "Essential in any switch, migration, or replacement sale where the underlying service is equivalent."
+    script_guidance: "In switch-oriented drafts, include a short 'nothing changes except' block: same product, same experience, different bill. Address the disruption fear before the reader raises it. Keep the changed element to exactly one thing — the one that benefits them."
+    example_phrasing:
+      - "Same supply, same taps, same everything — the only difference is the number at the bottom of the bill."
+
+  - id: "hook-problem-solution"
+    name: "Hook, problem, then solution"
+    category: framing
+    statement: "Open with a hook that earns curiosity, establish a problem the prospect recognises as theirs, and only then present the solution; a solution offered before the problem is felt gets evaluated as an interruption instead of an answer."
+    application: "Use to order any pitch, landing message, or first call; the offer should never be the first thing the prospect reads."
+    script_guidance: "Structure drafts in three moves: an opening line with tension or contrast, one or two lines that make a specific problem feel personal and current, then the offer as the resolution. A good-news-and-bad-news construction is a reliable hook. Do not name the product before the problem has landed."
+    example_phrasing:
+      - "Good news: your area just qualified for the lower rate. Bad news: nobody's told the people still paying the old one."
+
+  - id: "mutual-benefit-frame"
+    name: "Frame every deal as two wins"
+    category: framing
+    statement: "Positioning the transaction as genuinely good for both sides — and being able to say why honestly — removes the adversarial undertone that makes prospects defensive and makes long-term relationships possible."
+    application: "Use in negotiations, renewals, and any conversation where the prospect suspects a zero-sum game."
+    script_guidance: "Be transparent in drafts about why the deal works for your side too; concealment reads as manipulation, whereas an honest 'here's what we get out of it' builds trust. Frame proposals as trades of value rather than favours. Where an option is bad for the customer, say so and steer them away from it."
+    example_phrasing:
+      - "Straight up: we earn a referral fee on the switch, and you save £300 — that's why this exists."
+
+  # ------------------------------------------------------------------
+  # OBJECTION HANDLING
+  # ------------------------------------------------------------------
+
+  - id: "objection-loop"
+    name: "Agree, isolate, rebuild, re-ask"
+    category: objection_handling
+    statement: "A workable objection cycle never argues: side with the concern, confirm it's the only thing in the way, rebuild the value that made them interested, then ask again. Each loop either closes or surfaces the real blocker."
+    application: "Use whenever a prospect declines after showing genuine interest; run the loop at most twice before gracefully parking the deal."
+    script_guidance: "When drafting a reply to an objection, open by validating the concern in the prospect's own terms, then ask a question that isolates it ('if that were solved, is anything else in the way?'). Follow with one fresh value point rather than repeating earlier ones, then a soft re-ask. If a second loop fails, close warmly with a future hook instead of a third attempt."
+    example_phrasing:
+      - "Fair concern — if the contract term weren't an issue, would anything else hold you back?"
+
+  - id: "feel-felt-found"
+    name: "Feel, felt, found"
+    category: objection_handling
+    statement: "Empathy, precedent, outcome: acknowledge how the prospect feels, show that others in their position felt the same, and share what those people found after proceeding. It answers the emotion before the logic."
+    application: "Best for trust-based hesitations — scepticism about legitimacy, fear of hassle, worry about change — rather than factual disputes."
+    script_guidance: "Use the three-move structure in replies to emotional objections: one sentence of genuine acknowledgment, one sentence of honest precedent, one sentence of verifiable outcome. The precedent must be true and the outcome specific. Avoid the pattern's clichéd wording; keep the structure but freshen the language."
+    example_phrasing:
+      - "Totally get the hesitation — most of our current customers started exactly there, and the switch turned out to be the easy part."
+
+  - id: "acknowledge-isolate-respond"
+    name: "Acknowledge, isolate, respond"
+    category: objection_handling
+    statement: "Before answering any objection, confirm you heard it and pin down whether it's the real and only obstacle; answering an unisolated objection invites a parade of new ones."
+    application: "Default handling pattern for substantive objections in any channel; the isolation question is the step most sellers skip."
+    script_guidance: "In drafted replies, restate the objection in one sentence to prove comprehension, then ask whether solving it would clear the path before providing the answer. This prevents multi-round objection whack-a-mole in email threads. Only invest a detailed rebuttal once the objection is confirmed as decisive."
+    example_phrasing:
+      - "So the sticking point is the setup time — if that came down to one afternoon, are we good to go?"
+
+  - id: "preemptive-strike"
+    name: "Raise the objection first"
+    category: objection_handling
+    statement: "Any objection you can predict, you should raise and answer yourself before the prospect does; a concern voiced by the seller lands as honesty, while the same concern voiced by the buyer lands as a barrier."
+    application: "Use for the two or three most common objections in a given campaign — price, timing, legitimacy — and for anything unusual the prospect will certainly notice."
+    script_guidance: "Maintain a list of the top recurring objections per campaign and address the most likely one inside the pitch draft itself, before the ask. Phrase it as anticipation ('you might be wondering'), give the short answer, and move on without dwelling. Pre-empting more than two concerns in one message reads as defensive."
+    example_phrasing:
+      - "You might be thinking there's a catch — the honest answer is we're paid by the provider, not by you."
+
+  - id: "objections-as-filters"
+    name: "A no is data, not a verdict"
+    category: objection_handling
+    statement: "Most refusals are aimed at the category, the timing, or the interruption — not at you or the offer; treating each no as one more filtered-out mismatch keeps judgment clean and effort steady."
+    application: "Governs both the seller's mindset after rejection and how an automated agent logs and reacts to declined outreach."
+    script_guidance: "Classify each no by type — wrong fit, wrong time, wrong channel, hard refusal — and route accordingly: recycle timing-based nos into the future queue, drop hard refusals permanently, and adjust targeting on fit-based nos. Never let a drafted reply argue with a clean refusal. Respond to every no with brevity and warmth, since today's no is often a future yes."
+    example_phrasing:
+      - "Understood — I'll leave it there. If the picture changes next quarter, you know where I am."
+
+  - id: "prepared-response-inventory"
+    name: "Load the answers before the fight"
+    category: objection_handling
+    statement: "The eight or so objections a campaign will produce are knowable in advance, so the responses should be written, tested, and ready before the first conversation — improvising answers live is a choice to be worse."
+    application: "Build and refine a per-campaign objection playbook; review it whenever a new objection appears twice."
+    script_guidance: "Keep a structured objection-response map per product or campaign and draw drafted rebuttals from it rather than generating novel answers each time. Track which responses convert and prune the ones that don't. When a genuinely new objection appears, log it, draft a response, and add it to the inventory."
+    example_phrasing:
+      - "That one comes up a lot, so here's the straight answer we give everyone."
+
+  # ------------------------------------------------------------------
+  # QUALIFICATION
+  # ------------------------------------------------------------------
+
+  - id: "traffic-light-triage"
+    name: "Red, amber, green triage"
+    category: qualification
+    statement: "Roughly a tenth of prospects will never buy, a tenth are ready now, and the large middle can be moved either way; the skill of qualification is disengaging fast from red, closing green without over-talking, and spending the real effort on amber."
+    application: "Apply to every list, queue, and conversation: decide the colour early and let it dictate the time invested."
+    script_guidance: "Score inbound and outbound contacts by engagement signals and allocate drafting effort accordingly: minimal courteous exits for clear reds, immediate closes for greens, and the full educational sequence only for ambers. Re-score after every meaningful reply. The most common automation error is lavishing identical effort on all three colours."
+    example_phrasing:
+      - "Sounds like this isn't for you, and that's completely fine — thanks for the straight answer."
+
+  - id: "quality-time-quality-people"
+    name: "Time goes where the buyers are"
+    category: qualification
+    statement: "Selling time is the scarcest asset in the operation, and every minute spent on someone who cannot or will not buy is taken from someone who would; efficiency with the wrong people funds patience with the right ones."
+    application: "Use when prioritising queues, deciding thread depth, and setting caps on how long any single non-converting conversation may run."
+    script_guidance: "Enforce effort budgets per prospect tier: cap the number of substantive replies drafted for unqualified contacts and escalate depth only as qualification signals accumulate. Detect politeness loops — long friendly threads with no progression — and steer them to a decision point. Ending a dead-end conversation kindly is a win, not a failure."
+    example_phrasing:
+      - "I don't want to fill your inbox if the timing's wrong — should I close this out or is it worth one call?"
+
+  - id: "buying-signals-stop-selling"
+    name: "See the signal, stop the pitch"
+    category: qualification
+    statement: "Questions about details, talk of future use, comparisons with alternatives, and small courtesies are signs the decision is already forming; when they appear, the correct move is to stop presenting and ask."
+    application: "Use mid-conversation and mid-thread: buying signals override whatever step of the script was next."
+    script_guidance: "Train reply logic to detect commitment signals — logistics questions, 'we' language, pricing minutiae, implementation talk — and respond with a close instead of the next scripted content block. Continuing to present after a buying signal actively risks the sale. The answer to 'how soon could this start?' is a start date and an ask, not more features."
+    example_phrasing:
+      - "Great question — it'd be live by Monday. Want me to lock that in?"
+
+  - id: "fast-disqualification"
+    name: "Disqualify early and cheaply"
+    category: qualification
+    statement: "In most markets the majority of contacts cannot buy at all — wrong contract status, wrong authority, wrong circumstances — so the fastest route to volume is asking the disqualifying questions first, not last."
+    application: "Front-load hard eligibility checks in the first exchange of any outreach sequence or discovery call."
+    script_guidance: "Put the knockout criteria — decision authority, current contract position, minimum requirements — into the earliest natural point of a drafted sequence, phrased as helpful filtering rather than interrogation. Route disqualified contacts out politely with a future re-check date where circumstances can change. Never spend a full pitch on an unverified prospect."
+    example_phrasing:
+      - "Before I take more of your time — are you out of contract, or coming up on renewal soon?"
+
+  - id: "timing-passes"
+    name: "Work the list in passes"
+    category: qualification
+    statement: "The people you can't reach on the first pass are not gone, they're elsewhere; sweeping the same territory or list at different times and through different channels reaches distinct populations, and later passes often hold the decision-makers."
+    application: "Use for scheduling outreach waves across a list: vary time of day, day of week, and channel across passes rather than repeating the same attempt."
+    script_guidance: "Plan multi-pass sequences where each pass changes a variable — send time, channel, angle — instead of resending the same message. Track which pass converts which persona and schedule accordingly. Treat non-response on pass one as 'not reached yet,' distinct from a refusal, and manage the two differently."
+    example_phrasing:
+      - "Tried you Tuesday morning — evenings might suit better, so one last note at a saner hour."
+
+  # ------------------------------------------------------------------
+  # MINDSET
+  # ------------------------------------------------------------------
+
+  - id: "law-of-averages"
+    name: "Volume carries the day"
+    category: mindset
+    statement: "Every offer has a discoverable ratio of conversations to conversions, and the yeses are distributed through the nos; enough attempts makes the result a matter of arithmetic rather than luck."
+    application: "Foundation for activity targets, forecasting, and morale: judge days by attempts made against the known ratio, not by how the attempts felt."
+    script_guidance: "Anchor outreach planning to the measured conversion ratio: to promise N wins, schedule N-times-the-ratio attempts. Report progress in ratio terms so a string of refusals reads as progress through the denominator. Never slow outreach because recent replies were negative — the ratio predicts that."
+    example_phrasing:
+      - "Forty conversations at our one-in-eight rate is five wins — we're at twenty-six, so we're on schedule."
+
+  - id: "ratio-compression"
+    name: "Mastery shrinks the ratio"
+    category: mindset
+    statement: "Working more hours multiplies output linearly, but improving the conversion ratio multiplies every future hour; the highest-leverage work is whatever makes each conversation more likely to land."
+    application: "Use when deciding between more volume and better craft: once volume is healthy, invest in compression — better targeting, tighter scripts, sharper closes."
+    script_guidance: "Instrument every template and sequence so conversion per variant is measurable, and continuously promote the variants that convert at a better ratio. Treat a small ratio improvement as worth more than a large volume increase at equal cost. Review losing variants for what to stop doing and winning variants for what to standardise."
+    example_phrasing:
+      - "Same effort, better script: we turned one-in-twelve into one-in-nine, which is a free third more revenue."
+
+  - id: "five-stages-of-mastery"
+    name: "Five stages from blind to fluent"
+    category: mindset
+    statement: "Skill moves through five stages: not knowing what you lack, knowing what you lack, performing well with full concentration, performing well automatically, and finally applying deliberate focus on top of automaticity. Most practitioners stall at comfortable automaticity and never take the fifth step."
+    application: "Use to diagnose where a person — or an automated playbook — sits on any given skill, and to prescribe the right next intervention for that stage."
+    script_guidance: "Apply the model to the agent's own playbooks: a sequence that runs on autopilot with acceptable numbers is stage four, and stage five means re-examining it with fresh intent — testing, tightening, and questioning steps that merely work. Flag any workflow untouched for a long period as a candidate for deliberate re-mastery. Comfort with current performance is the signal to push, not to rest."
+    example_phrasing:
+      - "This sequence works on autopilot — which is exactly why it's due for a deliberate teardown."
+
+  - id: "militant-day-review"
+    name: "Audit the wins as hard as the losses"
+    category: mindset
+    statement: "Reviewing only bad days teaches what to avoid, never what to repeat; a disciplined breakdown of every day — especially the good ones — separates true cause from lucky hand and is the only way to make winning reproducible."
+    application: "Run a structured end-of-day review regardless of result: what was done, what the numbers were, and whether the actions or the conditions produced the outcome."
+    script_guidance: "Log the full activity funnel daily and run the same diagnostic on winning days as on losing ones, explicitly asking whether results came from repeatable actions or favourable conditions. Feed confirmed causes into tomorrow's plan and discard superstitions that merely co-occurred with wins. A win achieved through sloppy process should be flagged, not celebrated."
+    example_phrasing:
+      - "Great day — now prove it was the process and not the weather before we bottle it."
+
+  - id: "control-filter"
+    name: "Sort by controllable first"
+    category: mindset
+    statement: "Ask one question about every setback: is this within my control? If not, drop it without ceremony; if yes, act on it fully. Energy spent on uncontrollables is subtracted directly from the controllables that decide results."
+    application: "Use in daily planning, post-mortems, and coaching conversations to keep attention on message quality, activity volume, and attitude rather than market mood or luck."
+    script_guidance: "When analysing a poor-performing campaign, separate controllable factors (copy, list quality, timing, targeting) from uncontrollable ones (seasonality, news cycles) and only generate action items for the first set. In drafted coaching or status summaries, report uncontrollables without blame and controllables with a next action. Refuse to let an explanation rest on something nobody can change."
+    example_phrasing:
+      - "Market was flat — noted and filed. Now, the two things we control: the list and the first line."
+
+  - id: "keep-it-simple"
+    name: "Simplicity is the operating system"
+    category: mindset
+    statement: "The craft reduces to a few movable parts — the right words, delivered well, at volume, with a good attitude — and most performance problems are one of those four wearing a costume. Complexity in the diagnosis is usually avoidance of a simple fix."
+    application: "Use when diagnosing slumps and when designing training or automation: strip every problem back to words, delivery, volume, or attitude before accepting a more elaborate explanation."
+    script_guidance: "When performance drops, check the four basics in order — is the message right, is it delivered well, is there enough of it, is the tone right — before redesigning anything. Keep scripts short enough to hold in one screen and resist adding steps that don't demonstrably convert. Zoom out to the multi-week trendline before reacting to a bad day."
+    example_phrasing:
+      - "Before we rebuild the funnel: right message, sent well, sent enough, sent warm? Fix those four first."
+
+  - id: "day-shape-variance"
+    name: "Same cards, different order"
+    category: mindset
+    statement: "Two days with identical results can feel opposite because wins cluster differently — sometimes early, sometimes even, sometimes all at the death; knowing the shapes in advance keeps a late-clustering day from being abandoned at its lowest point."
+    application: "Use to pre-frame expectations for new sellers and to stop sequences being cancelled mid-run because early returns were empty."
+    script_guidance: "Evaluate campaigns on completed cycles, not partial ones: a sequence at half-run with no conversions is not yet evidence of failure. Pre-empt the hard-shaped day in coaching drafts so a barren morning is expected rather than demoralising. Only compare results at like-for-like completion points."
+    example_phrasing:
+      - "Zero by lunch means nothing — some days deal all their aces after three o'clock."
+
+  - id: "attitude-is-a-muscle"
+    name: "Attitude is trained, not owned"
+    category: mindset
+    statement: "Composure under rejection is built the way strength is built — by repeated exposure to discomfort with deliberate recovery — and everyone loses it sometimes; the professional difference is how fast it comes back."
+    application: "Use in hiring expectations, self-management, and coaching: treat attitude lapses as training moments and recovery speed as the metric."
+    script_guidance: "Keep tone quality constant across a session regardless of how the previous ten replies went; message fifty should read as warm as message one. After a hostile reply, do not let residual sharpness leak into the next draft to an unrelated prospect. Consistency of tone under sustained rejection is a core quality bar for any automated sender."
+    example_phrasing:
+      - "That last reply was rough — the next person still gets our best opening, not our bruised one."
+
+  # ------------------------------------------------------------------
+  # COACHING
+  # ------------------------------------------------------------------
+
+  - id: "pace-setting-leadership"
+    name: "The team copies the leader at a discount"
+    category: coaching
+    statement: "People replicate most of what a leader does right and amplify everything a leader does wrong, so the leader's own standard must run ahead of the standard they ask for. Authority in coaching comes from demonstrated performance, not position."
+    application: "Use whenever setting team standards: the person setting a bar must visibly clear it themselves, in activity, punctuality, and attitude."
+    script_guidance: "An agent coaching or evaluating human sellers should ground every recommendation in demonstrated benchmark data — this template at this volume produced this result — rather than abstract advice. Model the standard in its own output: the agent's drafts must exemplify the brevity and tone it recommends. Small visible shortcuts get amplified downstream, so allow none in exemplar material."
+    example_phrasing:
+      - "Here's the exact sequence and its numbers — I'm not asking you to try anything I can't show working."
+
+  - id: "thermostat-atmosphere"
+    name: "Set the temperature, don't read it"
+    category: coaching
+    statement: "A working environment's energy is created deliberately or inherited accidentally; the leader's job is to be the thermostat that sets the room's temperature rather than the thermometer that reports it, and to neutralise negativity immediately rather than hope it fades."
+    application: "Applies to team standups, group chats, and shared channels: open with energy, recognise wins publicly, and confront negativity the moment it appears."
+    script_guidance: "In team-facing drafts, lead with recognition of specific wins before business, and never let a complaint thread run unanswered — address it or redirect it the same day. Weight morning communications toward instruction and energy, end-of-day communications toward relationship and recognition. Silence in a shared channel is a temperature choice too."
+    example_phrasing:
+      - "Two things before the numbers: Ria's first double-win day, and Marco's rebooked cancellation — that's the standard."
+
+  - id: "expectation-reality-gap"
+    name: "Quits live in the expectation gap"
+    category: coaching
+    statement: "People rarely leave because the work is hard; they leave because the work differed from what they were led to expect. Painting the hard parts vividly in advance converts future shocks into recognised milestones."
+    application: "Use in onboarding, first-week training, and any handoff: pre-describe the rejection rates, the slow days, and the grind before the person meets them."
+    script_guidance: "Onboarding and welcome sequences should state plainly what the difficult stretches look like and when they arrive, alongside the upside. When drafting first-week check-ins, reference the predicted difficulty explicitly so the new person experiences it as forecast, not failure. Under-promising the ease and over-delivering the support retains people; the reverse loses them."
+    example_phrasing:
+      - "Week two usually feels worse than week one — that's the pattern, not a verdict on you."
+
+  - id: "build-break-build"
+    name: "Praise, correct, praise"
+    category: coaching
+    statement: "Correction lands when it travels inside affirmation: open with something genuinely done well, deliver the correction specifically and privately, and close by rebuilding confidence. Praise belongs in public; criticism belongs in private."
+    application: "Default structure for feedback conversations, review notes, and performance messages at every level."
+    script_guidance: "Structure drafted feedback in three moves: a specific genuine positive, one clearly-scoped correction with the fix attached, and a forward-looking close. Never stack multiple corrections in one message, and never deliver correction in a group channel. The positive must be real and particular — generic praise before criticism reads as the wind-up before a punch."
+    example_phrasing:
+      - "Your openings are landing — the drop-off is at the price reveal, so let's re-order that section. Everything upstream is working."
+
+  - id: "conversation-cadence"
+    name: "Development runs on scheduled conversations"
+    category: coaching
+    statement: "People grow through a predictable series of conversations — goals, first setbacks, money, progression — and each has a right week to happen; a clumsy conversation held on time beats a perfect one held too late, and the ones you skip become the resignations you didn't see coming."
+    application: "Maintain a per-person conversation tracker: which development conversations have happened, which are due, and which were skipped."
+    script_guidance: "Track conversation history per contact or team member and prompt the overdue one rather than defaulting to generic check-ins. Match conversation type to tenure stage: expectations early, evaluation after first stumbles, trajectory once competence shows. Flag any relationship with no substantive conversation in a defined window as a retention risk."
+    example_phrasing:
+      - "It's been three weeks since we talked about where this is taking you — let's fix that this Friday."
+
+  - id: "model-before-metrics"
+    name: "Be copyable before being promoted"
+    category: coaching
+    statement: "Advancement should require being a safe template: if twenty people copied this person's habits exactly, the operation should get better, not worse. Numbers earned through uncopyable shortcuts are a liability dressed as a result."
+    application: "Use as the bar for promotions and for choosing whose work becomes training material: replicability first, output second."
+    script_guidance: "When selecting exemplar messages or sellers to scale from, audit the full method for copyability, not just the outcome — a high converter with corner-cutting habits must not become the template. Promote patterns that survive replication across average performers. Ask of any candidate playbook: if every agent ran exactly this, would the whole system improve?"
+    example_phrasing:
+      - "Before we scale your approach, one question: if the whole team did it exactly your way, do we get better or worse?"
+
+  - id: "teach-back-loop"
+    name: "Learning ends at teach-back"
+    category: coaching
+    statement: "A skill isn't held until it survives the full loop: learn the theory, drill it, watch it done, be watched doing it, review the numbers, then teach it to someone else — and teaching is where the last gaps surface."
+    application: "Use to structure training plans and to verify mastery before sign-off on any key skill area; one area at a time, mastered before the next."
+    script_guidance: "Structure skill rollouts sequentially — one capability proven before the next begins — and verify with output checks rather than completion checks. For human trainees, have drafts prompt them to explain the concept back in their own words as the pass condition. Apply the same loop to playbooks: a new pattern isn't adopted until it has been tested, observed, measured, and documented clearly enough for another agent to run it."
+    example_phrasing:
+      - "You've watched it and run it — now explain it to me like I'm new, and then it's yours."
+
+  - id: "three-faces-replicability"
+    name: "Show every gear, stay human"
+    category: coaching
+    statement: "A leader who is only ever intense, or only ever polished, looks impossible to become; deliberately showing all the modes — field intensity, professional calm, ordinary humanity — proves the standard is a set of switchable gears rather than a personality trait."
+    application: "Use in mentoring and example-setting: let trainees see the intense mode, the strategic mode, and the relaxed mode within the first week."
+    script_guidance: "Vary register appropriately across contexts rather than holding one voice everywhere: urgent and punchy in a push, measured in a negotiation, warm and personal in relationship maintenance. Signal the register shifts clearly so the reader always knows which mode they're in. A single relentless register — all hype or all formality — erodes trust and exhausts the audience."
+    example_phrasing:
+      - "Deal talk's done — off the clock now. How was the wedding?"
+
+  # ------------------------------------------------------------------
+  # RECRUITMENT
+  # ------------------------------------------------------------------
+
+  - id: "recruitment-funnel-ratio"
+    name: "A hundred doors to five partners"
+    category: recruitment
+    statement: "Building a team obeys the same arithmetic as selling: expect on the order of a hundred serious candidate contacts to yield a handful of genuine long-term partners, and plan capacity, budget, and morale around that ratio rather than around hope."
+    application: "Use to size recruiting pipelines and to keep interviewers steady through long stretches of unsuitable candidates."
+    script_guidance: "Schedule candidate outreach volume from the known contacts-to-keeper ratio backwards: the number of hires needed defines the top of the funnel. Report recruiting progress in funnel terms so a week of poor candidates reads as ratio progress rather than failure. Keep sourcing continuous — the ratio only works if the denominator keeps filling."
+    example_phrasing:
+      - "We need two solid people this quarter, so the plan is forty conversations, not four good vibes."
+
+  - id: "no-show-resilience"
+    name: "Ghosts are in the forecast"
+    category: recruitment
+    statement: "A large fraction of enthusiastic candidates will vanish before the interview or the first day, and this is a property of the pipeline, not a verdict on the opportunity; the countermeasures are overbooking, confirmation touches, and unshaken tone."
+    application: "Apply to interview scheduling and first-week onboarding: book more than needed, confirm the day before, and follow up on every vanish once."
+    script_guidance: "Overbook interview slots based on the measured show rate and send confirmation nudges the day before with an easy reschedule path. When someone ghosts, send one warm re-open message without guilt-tripping, then release them. Never let drafted candidate communications carry resentment from previous no-shows into the next contact."
+    example_phrasing:
+      - "Looks like Tuesday got away from you — happy to re-slot once, Thursday 10 or Friday 2?"
+
+  - id: "competitive-interview-frame"
+    name: "The role is earned, not sold"
+    category: recruitment
+    statement: "Interviews work best when the candidate is winning a scarce place rather than being courted: engaged note-taking, sharp questions, and effort to stand out become the audition, and the interviewer's recommendation becomes the prize. Attract; don't chase."
+    application: "Use in group and second-round interviews for any role where drive matters more than pedigree, and in all candidate-facing copy."
+    script_guidance: "Frame drafted candidate communications around selectivity honestly held: multiple candidates, limited places, and clear criteria for standing out. Ask candidates to demonstrate rather than declare — a short written case for themselves, a specific example of persistence. Keep it truthful: manufactured scarcity in hiring backfires exactly like manufactured scarcity in selling."
+    example_phrasing:
+      - "Several strong candidates are up for this round — the note you send after this call is your chance to separate yourself."
+
+  - id: "personal-pipeline"
+    name: "Recruit before you need to"
+    category: recruitment
+    statement: "The strongest teams are built by leaders who source their own people continuously — informal preliminary chats, personal networks, visible public presence — rather than waiting for whoever the central process delivers."
+    application: "Use for ongoing talent sourcing: hold low-pressure preliminary conversations weekly and keep a warm bench before any vacancy exists."
+    script_guidance: "Maintain a standing talent-nurture track distinct from active vacancies: periodic light-touch messages to promising past candidates and referrals, sharing progress and keeping the door visibly open. When a role opens, draft first to the warm bench before cold sourcing. Log every strong near-miss candidate with a revisit date."
+    example_phrasing:
+      - "No opening today — this is just me making sure you think of us first when you're next looking."
+
+  - id: "never-prejudge"
+    name: "Audition everyone, assume nothing"
+    category: recruitment
+    statement: "Background, polish, and CV shine predict field performance far worse than hunger and coachability; judge candidates on what they do inside the process, not on what they resemble walking in."
+    application: "Use in screening rules and interview design: keep top-of-funnel criteria wide and let structured performance tasks do the filtering."
+    script_guidance: "Avoid encoding pedigree-based filters into candidate screening; weight responsiveness, effort in tasks, and evidence of resilience instead. Draft the same quality of interview invitation to the unpolished applicant as to the impressive one. Let the process's demonstrations — punctuality, preparation, teach-back — generate the ranking."
+    example_phrasing:
+      - "The CV gets you the conversation — what you do in the next hour is what actually counts here."
+
+  # ------------------------------------------------------------------
+  # RETRAINING
+  # ------------------------------------------------------------------
+
+  - id: "day-ratio-progression"
+    name: "Demonstrate, share, shadow, solo"
+    category: retraining
+    statement: "Field skills transfer on a stepped ratio: the trainer carries most of the work on day one, the split moves toward the trainee over the next days, and by day four the trainee runs alone with the trainer nearby. Independence is granted on schedule, not on mood."
+    application: "Use as the default structure for any hands-on skill transfer: heavy demonstration first, graduated handover, scheduled solo point."
+    script_guidance: "When generating training plans or onboarding sequences, encode an explicit handover ratio per day — trainer-led, then majority-shared, then trainee-led with observation, then solo — rather than an unstructured 'shadow until ready.' Each day's plan should name exactly which parts the trainee owns. Publish the solo date on day one so autonomy is an expectation, not a surprise."
+    example_phrasing:
+      - "Today I take three, you take one. Tomorrow it's two and two. Thursday afternoon, you fly solo."
+
+  - id: "gauge-based-teaching"
+    name: "Coach the numbers, not the vibes"
+    category: retraining
+    statement: "Retraining anchored to the trainee's own tracked funnel numbers turns feedback from opinion into observation, and explaining why each system exists — not just what to do — is what makes the training survive the trainer's absence."
+    application: "Use in every debrief: put the day's stage-by-stage numbers on the table first, locate the single weakest conversion, and teach into that with its reasoning."
+    script_guidance: "Base drafted coaching feedback on the individual's own funnel data, identifying the one stage where their conversion diverges most from benchmark, and attach the why behind the corrective system. One diagnosis per debrief; a list of five fixes fixes nothing. Frame the numbers as a shared puzzle rather than a scorecard."
+    example_phrasing:
+      - "Your opens are above benchmark and your closes aren't — so today is one thing only: the last forty seconds."
+
+  - id: "observe-from-distance"
+    name: "Watch from far enough to see the truth"
+    category: retraining
+    statement: "A trainee performs differently under a trainer's shoulder than alone, so real assessment requires stepping back and letting them run unassisted — and resisting the urge to jump in must be agreed beforehand, with a signal for genuine rescue."
+    application: "Use from day two of field training onward: set them up, step away, observe the whole interaction, debrief afterwards."
+    script_guidance: "For human coaching workflows, schedule unassisted reps early and review the artifacts afterwards rather than correcting mid-flight; interruption teaches dependence. For automated quality control, sample completed conversations for review instead of intervening in live ones unless a defined escalation threshold is hit. Debrief on observed patterns, not single moments."
+    example_phrasing:
+      - "I'll be across the street for the next three — you own them start to finish, and we'll talk after."
+
+  - id: "one-lesson-at-a-time"
+    name: "One brick, then the next"
+    category: retraining
+    statement: "Layering a second lesson onto an unlearned first one erases both; training compounds only when each block is demonstrably held before the next is introduced."
+    application: "Use when sequencing training content and when tempted to fix everything visible in one session."
+    script_guidance: "Deliver drafted training content in single-concept units gated on demonstrated competence, not on elapsed time. When multiple deficiencies are visible, sequence them by dependency and address only the foundational one now. Resist stuffing extra tips into a message whose one lesson hasn't landed yet."
+    example_phrasing:
+      - "There are three things to fix eventually — today we do the first one until it's boring."
+
+  - id: "first-week-retention-triad"
+    name: "Fun, money, momentum"
+    category: retraining
+    statement: "New people stay when three things are simultaneously true in the early weeks: they're enjoying it, they're earning, and they can feel themselves getting better. Lose any leg of the triad and the other two rarely hold."
+    application: "Use as the first-week checklist for every new starter: engineer an early win, an early laugh, and a visible skill gain."
+    script_guidance: "Early onboarding sequences should engineer a fast first success, celebrate it specifically, and show measurable progress — a personal-best chart beats a welcome pamphlet. Check-in drafts in week one should probe all three legs: what's been enjoyable, what's been earned, what feels stronger than day one. A missing leg is an intervention trigger, not a note for the file."
+    example_phrasing:
+      - "First win, day two — that's ahead of most. What's felt best so far, and what still feels foggy?"
+
+  # ------------------------------------------------------------------
+  # FOLLOW-UP
+  # ------------------------------------------------------------------
+
+  - id: "structured-followup-cadence"
+    name: "Follow-up is a calendar, not a mood"
+    category: followup
+    statement: "The touches that keep a relationship alive — the check-in call after the first stretch alone, the early feedback sit-down, the milestone review — work because they are scheduled in advance and kept, not remembered when convenient."
+    application: "Use for both customers and new team members: define the standard touch sequence per relationship type and honour it."
+    script_guidance: "Define cadence templates per relationship stage — post-signup check-in, first-milestone review, quiet-account revival — and schedule the touches at creation time rather than reactively. Each touch should have a purpose beyond contact: gather two specific positives and one thing to improve. A missed scheduled touch is a defect to repair with an apology-free re-book, not silently skip."
+    example_phrasing:
+      - "Promised I'd check in after your first solo week — two questions: what's working, and what would you change?"
+
+  - id: "tight-decision-window"
+    name: "Name the clock on every open loop"
+    category: followup
+    statement: "Open-ended processes decay; telling people exactly when they'll hear back — and keeping it short — maintains energy, respects them, and forces your own operation to move."
+    application: "Use at the end of every interview, proposal, and negotiation round: state the decision window explicitly and honour it."
+    script_guidance: "Every drafted message that leaves a loop open must name when it closes: a decision date, a reply-by window, a scheduled next step. Keep promised windows short — momentum dies over quiet weekends. Close every window on time even when the answer is 'no decision yet,' because silence past a promised date costs more trust than bad news."
+    example_phrasing:
+      - "You'll hear from me by Thursday 5pm either way — no chasing required."
+
+  - id: "callback-laps"
+    name: "The follow-up lap catches the misses"
+    category: followup
+    statement: "First-pass misses — unreachable, undecided, needed-to-consult — are a distinct population from refusals, and a deliberately scheduled return pass converts a meaningful share of them; the follow-up lap is where many of the best outcomes actually live."
+    application: "Use for prospects who were interested but unavailable or undecided: log them with a reason and revisit on a set lap, not on whim."
+    script_guidance: "Tag every non-final outcome with a category and a revisit date, and treat the revisit queue as first-class outreach work rather than leftovers. Draft return messages that reference the prior context and the stated reason for delay, arriving right when that reason should have expired. Cap the laps — two purposeful returns, then archive with a long-cycle re-check."
+    example_phrasing:
+      - "You mentioned things would settle after month-end — it's the 3rd, so here I am as threatened."
+
+  - id: "post-sale-quality-check"
+    name: "The sale is safe when it's checked"
+    category: followup
+    statement: "A closed deal quietly unravels when doubt goes unattended; a prompt post-sale touch that confirms understanding, restates value, and invites questions converts buyer's remorse into buyer's confidence and cancellations into referrals."
+    application: "Use within days of every close, and before any cooling-off period ends: confirm they know what they bought, when it starts, and who to call."
+    script_guidance: "Schedule a confirmation draft shortly after every close that restates the key benefit, the timeline, and the support path in plain language. Invite questions explicitly — surfaced doubt is repairable, silent doubt cancels. Use the same touch to seed the referral ask once satisfaction is confirmed."
+    example_phrasing:
+      - "Everything's in motion for Monday — quick sanity check: any part of the switch you want me to walk through again?"

@@ -149,13 +149,25 @@ class FunnelSetupService
             ->where('funnel_setup_id', $setup->id)
             ->max('version') ?? 0) + 1;
 
+        $draft = $this->composeDraft($setup);
+
+        $rationale = 'Drafted from your discovery interview answers and best-practice conversion scripts for your lead type.';
+        if ($draft['principles'] !== []) {
+            $cited = [];
+            foreach ($draft['principles'] as $principleId => $principleName) {
+                $cited[] = $principleId.' — '.$principleName;
+            }
+            // Rendered verbatim by ScriptStudio.vue as plain italic text.
+            $rationale .= ' Applied sales principles: '.implode('; ', $cited).'.';
+        }
+
         $script = SalesScript::create([
             'tenant_id' => $setup->tenant_id,
             'funnel_setup_id' => $setup->id,
             'version' => $nextVersion,
             'status' => 'draft',
-            'content' => $this->composeStarterScript($setup),
-            'rationale' => 'Drafted from your discovery interview answers and best-practice conversion scripts for your lead type.',
+            'content' => $draft['content'],
+            'rationale' => $rationale,
             'created_by' => 'funnel_architect',
         ]);
 
@@ -336,9 +348,15 @@ class FunnelSetupService
     /**
      * Deterministic starting script so Script Studio has something to show
      * and edit before the funnel_architect agent's LLM pass runs. Uses the
-     * interview answers plus the pack's shared conversion-scripts.yaml priors.
+     * interview answers plus the pack's shared conversion-scripts.yaml priors:
+     * entries whose `context` expression matches the funnel's derived lead
+     * attributes are blended into the deterministic sections, and their
+     * principle_ids are surfaced so draftScript() can cite them in the
+     * sales_scripts.rationale text.
+     *
+     * @return array{content: array<string, mixed>, principles: array<string, string>}
      */
-    private function composeStarterScript(FunnelSetup $setup): array
+    private function composeDraft(FunnelSetup $setup): array
     {
         $answers = $setup->interview_answers ?? [];
         $offer = $answers['core_offer']['answer'] ?? 'what you offer';
@@ -366,11 +384,375 @@ class FunnelSetupService
             'followups' => $followups,
         ];
 
-        return [
+        $principles = [];
+        $entries = $this->selectScriptEntries($this->loadConversionScripts(), $this->buildScriptContext($setup));
+
+        if ($entries !== []) {
+            $principleNames = $this->loadSalesPrincipleNames();
+            $primary = null;
+            $objectionBlocks = [];
+
+            foreach ($entries as $entry) {
+                foreach ((array) ($entry['principle_ids'] ?? []) as $principleId) {
+                    $principleId = (string) $principleId;
+                    $principles[$principleId] = $principleNames[$principleId] ?? $principleId;
+                }
+
+                if (str_contains((string) ($entry['context'] ?? ''), 'lead.objection')) {
+                    $objectionBlocks[] = trim(implode("\n", array_filter([
+                        trim((string) ($entry['opening'] ?? '')),
+                        trim((string) ($entry['follow_up'] ?? '')),
+                        trim((string) ($entry['closing'] ?? '')),
+                    ], fn ($line) => $line !== '')));
+                } elseif ($primary === null) {
+                    $primary = $entry;
+                }
+            }
+
+            // Blend, never replace: the deterministic copy above stays first so
+            // Script Studio always shows the offer-specific baseline, with the
+            // principle-derived copy appended for the owner to keep or trim.
+            if ($primary !== null) {
+                if (trim((string) ($primary['opening'] ?? '')) !== '') {
+                    $sections['opener'] .= "\n\n".trim((string) $primary['opening']);
+                }
+                if (trim((string) ($primary['closing'] ?? '')) !== '') {
+                    $sections['close'] .= "\n\n".trim((string) $primary['closing']);
+                }
+                if (trim((string) ($primary['follow_up'] ?? '')) !== '') {
+                    array_unshift($sections['followups'], trim((string) $primary['follow_up']));
+                }
+            }
+
+            if ($objectionBlocks !== []) {
+                $sections['objections'] .= "\n\nProven objection-handling angle:\n".implode("\n\n", $objectionBlocks);
+            }
+        }
+
+        $content = [
             'tone' => $tone,
             'email' => $sections,
-            'whatsapp' => array_merge($sections, ['opener' => Str::limit($opener, 200)]),
+            'whatsapp' => array_merge($sections, ['opener' => Str::limit($sections['opener'], 200)]),
         ];
+
+        return ['content' => $content, 'principles' => $principles];
+    }
+
+    /**
+     * Derives the lead-attribute context a funnel-setup draft is written for.
+     * A starter script targets the funnel's default population: cold inbound
+     * leads captured by the landing page/forms, plus whichever objection the
+     * owner named in the discovery interview.
+     *
+     * @return array<string, mixed> Flat map keyed by the dotted identifiers
+     *                              used in conversion-scripts.yaml contexts.
+     */
+    private function buildScriptContext(FunnelSetup $setup): array
+    {
+        $answers = $setup->interview_answers ?? [];
+        $objectionText = strtolower((string) ($answers['common_objection']['answer'] ?? ''));
+
+        $objection = null;
+        if ($objectionText !== '') {
+            if (preg_match('/price|cost|expensive|budget|afford|cheap/', $objectionText)) {
+                $objection = 'price';
+            } elseif (preg_match('/no time|busy|timing|later|next quarter|next year|bandwidth|not now/', $objectionText)) {
+                $objection = 'timing';
+            } elseif (preg_match('/boss|partner|approv|decision.maker|authority|sign.?off/', $objectionText)) {
+                $objection = 'authority';
+            }
+        }
+
+        return [
+            'lead.source' => 'inbound',
+            'lead.warmth' => 'cold',
+            'lead.objection' => $objection,
+            'lead.type' => 'prospect',
+            'lead.stage' => 'captured',
+            'lead.status' => 'new',
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $entries
+     * @param array<string, mixed> $context
+     * @return array<int, array<string, mixed>>
+     */
+    private function selectScriptEntries(array $entries, array $context): array
+    {
+        $selected = [];
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $expression = (string) ($entry['context'] ?? '');
+            if ($expression !== '' && $this->evaluateContextExpression($expression, $context)) {
+                $selected[] = $entry;
+            }
+            if (count($selected) >= 3) {
+                break;
+            }
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Safe evaluator for conversion-script `context` expressions such as
+     * "lead.source == 'inbound' && lead.warmth == 'cold'" or
+     * "lead.tags contains 'price_objection'". Supports ==, !=, <, <=, >, >=,
+     * `contains`, and/&&, or/||, not/!, and parentheses. Never uses eval();
+     * anything unparseable simply doesn't match (graceful fallback to the
+     * deterministic template).
+     *
+     * @param array<string, mixed> $context
+     */
+    private function evaluateContextExpression(string $expression, array $context): bool
+    {
+        try {
+            $tokens = $this->tokenizeContextExpression($expression);
+            if ($tokens === []) {
+                return false;
+            }
+            $position = 0;
+            $result = $this->parseOrExpression($tokens, $position, $context);
+            if ($position !== count($tokens)) {
+                return false; // trailing garbage — treat as no match
+            }
+
+            return (bool) $result;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, array{type: string, value: mixed}>
+     */
+    private function tokenizeContextExpression(string $expression): array
+    {
+        $tokens = [];
+        $length = strlen($expression);
+        $i = 0;
+
+        while ($i < $length) {
+            $char = $expression[$i];
+
+            if (ctype_space($char)) {
+                $i++;
+                continue;
+            }
+
+            if ($char === '(' || $char === ')') {
+                $tokens[] = ['type' => $char, 'value' => $char];
+                $i++;
+                continue;
+            }
+
+            $two = substr($expression, $i, 2);
+            if (in_array($two, ['&&', '||', '==', '!=', '>=', '<='], true)) {
+                $tokens[] = ['type' => 'op', 'value' => $two];
+                $i += 2;
+                continue;
+            }
+
+            if ($char === '>' || $char === '<') {
+                $tokens[] = ['type' => 'op', 'value' => $char];
+                $i++;
+                continue;
+            }
+
+            if ($char === '!') {
+                $tokens[] = ['type' => 'op', 'value' => '!'];
+                $i++;
+                continue;
+            }
+
+            if ($char === "'" || $char === '"') {
+                $end = strpos($expression, $char, $i + 1);
+                if ($end === false) {
+                    throw new \InvalidArgumentException('Unterminated string literal');
+                }
+                $tokens[] = ['type' => 'string', 'value' => substr($expression, $i + 1, $end - $i - 1)];
+                $i = $end + 1;
+                continue;
+            }
+
+            if (preg_match('/\G-?\d+(\.\d+)?/', $expression, $m, 0, $i)) {
+                $tokens[] = ['type' => 'number', 'value' => (float) $m[0]];
+                $i += strlen($m[0]);
+                continue;
+            }
+
+            if (preg_match('/\G[A-Za-z_][A-Za-z0-9_.]*/', $expression, $m, 0, $i)) {
+                $word = $m[0];
+                $lower = strtolower($word);
+                if (in_array($lower, ['and', 'or', 'not', 'contains'], true)) {
+                    $tokens[] = ['type' => 'op', 'value' => $lower];
+                } elseif ($lower === 'true' || $lower === 'false') {
+                    $tokens[] = ['type' => 'bool', 'value' => $lower === 'true'];
+                } elseif ($lower === 'null') {
+                    $tokens[] = ['type' => 'null', 'value' => null];
+                } else {
+                    $tokens[] = ['type' => 'ident', 'value' => $word];
+                }
+                $i += strlen($word);
+                continue;
+            }
+
+            throw new \InvalidArgumentException("Unexpected character '{$char}'");
+        }
+
+        return $tokens;
+    }
+
+    /**
+     * @param array<int, array{type: string, value: mixed}> $tokens
+     * @param array<string, mixed> $context
+     */
+    private function parseOrExpression(array $tokens, int &$position, array $context): bool
+    {
+        $result = $this->parseAndExpression($tokens, $position, $context);
+        while (isset($tokens[$position]) && $tokens[$position]['type'] === 'op'
+            && in_array($tokens[$position]['value'], ['or', '||'], true)) {
+            $position++;
+            $right = $this->parseAndExpression($tokens, $position, $context);
+            $result = $result || $right;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int, array{type: string, value: mixed}> $tokens
+     * @param array<string, mixed> $context
+     */
+    private function parseAndExpression(array $tokens, int &$position, array $context): bool
+    {
+        $result = $this->parseUnaryExpression($tokens, $position, $context);
+        while (isset($tokens[$position]) && $tokens[$position]['type'] === 'op'
+            && in_array($tokens[$position]['value'], ['and', '&&'], true)) {
+            $position++;
+            $right = $this->parseUnaryExpression($tokens, $position, $context);
+            $result = $result && $right;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int, array{type: string, value: mixed}> $tokens
+     * @param array<string, mixed> $context
+     */
+    private function parseUnaryExpression(array $tokens, int &$position, array $context): bool
+    {
+        $token = $tokens[$position] ?? throw new \InvalidArgumentException('Unexpected end of expression');
+
+        if ($token['type'] === 'op' && in_array($token['value'], ['not', '!'], true)) {
+            $position++;
+
+            return ! $this->parseUnaryExpression($tokens, $position, $context);
+        }
+
+        if ($token['type'] === '(') {
+            $position++;
+            $result = $this->parseOrExpression($tokens, $position, $context);
+            $closing = $tokens[$position] ?? null;
+            if (! $closing || $closing['type'] !== ')') {
+                throw new \InvalidArgumentException('Missing closing parenthesis');
+            }
+            $position++;
+
+            return $result;
+        }
+
+        return $this->parseComparison($tokens, $position, $context);
+    }
+
+    /**
+     * @param array<int, array{type: string, value: mixed}> $tokens
+     * @param array<string, mixed> $context
+     */
+    private function parseComparison(array $tokens, int &$position, array $context): bool
+    {
+        $left = $this->parseOperand($tokens, $position, $context);
+
+        $operator = $tokens[$position] ?? null;
+        if (! $operator || $operator['type'] !== 'op'
+            || ! in_array($operator['value'], ['==', '!=', '>', '<', '>=', '<=', 'contains'], true)) {
+            return (bool) $left; // bare operand truthiness
+        }
+        $position++;
+        $right = $this->parseOperand($tokens, $position, $context);
+
+        return match ($operator['value']) {
+            '==' => $this->looselyEquals($left, $right),
+            '!=' => ! $this->looselyEquals($left, $right),
+            '>' => is_numeric($left) && is_numeric($right) && (float) $left > (float) $right,
+            '<' => is_numeric($left) && is_numeric($right) && (float) $left < (float) $right,
+            '>=' => is_numeric($left) && is_numeric($right) && (float) $left >= (float) $right,
+            '<=' => is_numeric($left) && is_numeric($right) && (float) $left <= (float) $right,
+            'contains' => is_array($left)
+                ? in_array($right, $left, false)
+                : (is_string($left) && is_scalar($right) && $right !== '' && str_contains($left, (string) $right)),
+        };
+    }
+
+    /**
+     * @param array<int, array{type: string, value: mixed}> $tokens
+     * @param array<string, mixed> $context
+     */
+    private function parseOperand(array $tokens, int &$position, array $context): mixed
+    {
+        $token = $tokens[$position] ?? throw new \InvalidArgumentException('Missing operand');
+        $position++;
+
+        return match ($token['type']) {
+            'string', 'number', 'bool', 'null' => $token['value'],
+            'ident' => array_key_exists($token['value'], $context)
+                ? $context[$token['value']]
+                : data_get($context, $token['value']),
+            default => throw new \InvalidArgumentException('Expected operand, got '.$token['type']),
+        };
+    }
+
+    private function looselyEquals(mixed $left, mixed $right): bool
+    {
+        if (is_numeric($left) && is_numeric($right)) {
+            return (float) $left === (float) $right;
+        }
+        if ($left === null || $right === null) {
+            return $left === $right;
+        }
+
+        return (string) $left === (string) $right;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadConversionScripts(): array
+    {
+        $parsed = $this->loadPackFile('policies/conversion-scripts.yaml');
+
+        return array_values(array_filter((array) ($parsed['scripts'] ?? []), 'is_array'));
+    }
+
+    /**
+     * @return array<string, string> principle id => human-readable name
+     */
+    private function loadSalesPrincipleNames(): array
+    {
+        $parsed = $this->loadPackFile('policies/sales-principles.yaml');
+
+        $names = [];
+        foreach ((array) ($parsed['principles'] ?? []) as $principle) {
+            if (is_array($principle) && isset($principle['id'])) {
+                $names[(string) $principle['id']] = (string) ($principle['name'] ?? $principle['id']);
+            }
+        }
+
+        return $names;
     }
 
     /**
@@ -378,19 +760,36 @@ class FunnelSetupService
      */
     private function loadInterviewQuestions(): array
     {
-        $path = storage_path('app/feature-packs/'.self::PACK_ID.'/interview/questions.yaml');
+        return $this->loadPackFile('interview/questions.yaml') ?: ['sections' => []];
+    }
+
+    /**
+     * Staged-pack storage path first, source tree fallback for local dev
+     * before the pack has been staged via spidernet:pack-install.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadPackFile(string $relativePath): array
+    {
+        $path = storage_path('app/feature-packs/'.self::PACK_ID.'/'.$relativePath);
 
         if (! is_readable($path)) {
-            // Fallback to the source tree for local dev before the pack has
-            // been staged via spidernet:pack-install.
-            $path = dirname(base_path()).'/packages/feature-packs/'.self::PACK_ID.'/interview/questions.yaml';
+            $path = dirname(base_path()).'/packages/feature-packs/'.self::PACK_ID.'/'.$relativePath;
         }
 
         if (! is_readable($path)) {
-            return ['sections' => []];
+            return [];
         }
 
-        return Yaml::parseFile($path);
+        try {
+            $parsed = Yaml::parseFile($path);
+        } catch (\Throwable $e) {
+            Log::warning('FunnelSetupService: unreadable pack file', ['path' => $relativePath, 'error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        return is_array($parsed) ? $parsed : [];
     }
 
     /**

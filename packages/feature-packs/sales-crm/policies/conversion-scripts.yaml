@@ -39,6 +39,287 @@ scripts:
     alpha: 14
     beta: 9
 
+  # ------------------------------------------------------------------
+  # Principle-derived entries (see policies/sales-principles.yaml).
+  # alpha/beta are uninformative 1/1 Thompson-sampling priors at seed
+  # time; principle_ids cite the sales principles each entry applies.
+  # ------------------------------------------------------------------
+
+  - id: cold-inbound-problem-first
+    context: "lead.source == 'inbound' && lead.warmth == 'cold'"
+    opening: >-
+      Hi {{lead.first_name}} — saw you grabbed our automation guide. Quick
+      question rather than a pitch: teams your size usually lose 6-10 hours a
+      week to hand-offs that nobody owns — copying data between tools, chasing
+      approvals, re-keying the same record twice. Is that close to what
+      {{lead.company}} is running into, or is it something else that brought
+      you our way?
+    follow_up: >-
+      {{lead.first_name}}, following up with one concrete example instead of a
+      feature list: an ops team about your size mapped their intake-to-invoice
+      flow in SpiderNetOS and cut the manual steps from 14 to 3 in their first
+      month. I'd rather show you where your process leaks time than talk
+      software. Worth 15 minutes to find out?
+    closing: >-
+      I'll keep this simple: if I can't show you at least five hours a week of
+      recoverable time in one short call, we part as friends and you keep the
+      process map we build. Does Tuesday morning or Thursday afternoon suit you
+      better? {{sender.calendar_link}}
+    alpha: 1
+    beta: 1
+    principle_ids: [impulse-curve-management, value-cost-gap, quality-time-quality-people, suggestive-language]
+
+  - id: warm-inbound-strike-while-hot
+    context: "lead.source == 'inbound' && lead.warmth == 'warm'"
+    opening: >-
+      {{lead.first_name}}, thanks for reaching out about {{lead.pain_point}} —
+      replying while it's fresh because this is exactly the kind of workflow
+      SpiderNetOS was built to take off your plate. The fastest way to see if
+      it fits is a 20-minute walkthrough using your actual process, not a
+      canned demo. When works this week?
+    follow_up: >-
+      Keeping the momentum, {{lead.first_name}} — I've sketched how
+      {{lead.pain_point}} would run as an automated flow at {{lead.company}}.
+      It took about ten minutes on our side, which is roughly the setup effort
+      you'd see too. Want me to walk you through it live? Two slots left this
+      week: {{sender.calendar_link}}
+    closing: >-
+      You asked the right questions when you reached out — teams that ask those
+      usually go live within a fortnight. Shall we lock in the walkthrough for
+      this week so you're not still doing this by hand next month?
+    alpha: 1
+    beta: 1
+    principle_ids: [impulse-curve-management, ethical-urgency, buying-signals-stop-selling, suggestive-language]
+
+  - id: referral-borrowed-trust
+    context: "lead.source == 'referral'"
+    opening: >-
+      Hi {{lead.first_name}} — {{lead.referrer_name}} suggested I get in touch.
+      Their team automated their approval chain with SpiderNetOS and got about
+      a day a week back per manager, and they thought {{lead.company}} had a
+      similar bottleneck. I don't want to assume — is that a live problem for
+      you right now?
+    follow_up: >-
+      {{lead.first_name}}, one more note before I leave this with you:
+      {{lead.referrer_name}}'s setup took under two weeks and the part they
+      said mattered most wasn't the software — it was finally seeing their
+      whole process in one place. Happy to show you the same view for
+      {{lead.company}}, no commitment attached.
+    closing: >-
+      Since {{lead.referrer_name}} has already seen it work, the easiest next
+      step is a short three-way-style demo where I recreate their setup on
+      your process. Twenty minutes, this week or next — which end of the week
+      is better for you?
+    alpha: 1
+    beta: 1
+    principle_ids: [social-proof-momentum, short-story-positioning, value-cost-gap, suggestive-language]
+
+  - id: re-engage-after-silence
+    context: "lead.status == 'stale' && lead.days_since_last_contact >= 21"
+    opening: >-
+      {{lead.first_name}}, no guilt-trip — timing kills more good projects than
+      doubt does. Since we last spoke we shipped auto-reconciliation for
+      {{lead.industry}} workflows, which is the piece you flagged as missing.
+      Thought you'd want to know it exists now.
+    follow_up: >-
+      Quick second lap, {{lead.first_name}} — circumstances change every
+      quarter, and the door that was shut in spring is sometimes open in
+      autumn. If {{lead.pain_point}} is still on your list, I can show you the
+      new build in 15 minutes. If it's genuinely off the list, tell me and I'll
+      close the file — no hard feelings either way.
+    closing: >-
+      Last one from me: I'm tidying my pipeline this week and would rather have
+      an honest "not now" than keep guessing. If there's still a live problem
+      here, grab a slot — {{sender.calendar_link}}. If not, I'll check back
+      next quarter and you won't hear from me before then.
+    alpha: 1
+    beta: 1
+    principle_ids: [callback-laps, law-of-averages, professional-indifference, control-filter]
+
+  - id: post-demo-rehash
+    context: "lead.stage == 'post_demo'"
+    opening: >-
+      {{lead.first_name}}, three things we agreed on yesterday, so we're
+      building on the same ground: your intake process has {{lead.manual_steps}}
+      manual touches, roughly {{lead.hours_lost_weekly}} hours a week sit in
+      those touches, and the flow we mocked up removed most of them. Fair
+      summary, or did I miss one?
+    follow_up: >-
+      Here's the part worth sitting with: {{lead.hours_lost_weekly}} hours a
+      week back is not an abstraction — that's your team clearing the backlog
+      they keep apologising for, or shipping the project that's been parked
+      since January. What would you actually point those hours at? That answer
+      is usually the real business case.
+    closing: >-
+      Proposal: we start with the intake flow you saw, live within two weeks,
+      and once that's paying for itself we look at the reporting module your
+      ops lead asked about — most teams add it in month two. Shall I send the
+      order form with a start date of {{proposal.start_date}}?
+    alpha: 1
+    beta: 1
+    principle_ids: [agreement-ladder-presentation, consolidation-before-commitment-step, spend-the-savings, rehash-while-warm]
+
+  - id: objection-price-value-gap
+    context: "lead.objection == 'price'"
+    opening: >-
+      {{lead.first_name}}, you're right to push on price — I'd do the same. Let
+      me ask one thing so I answer the real question: if the numbers clearly
+      worked in your favour, is cost the only thing standing between us, or is
+      there something else in the mix?
+    follow_up: >-
+      A COO I work with felt exactly the same last year — the subscription
+      looked like a new cost line. What changed her mind was pricing the
+      current state: {{lead.hours_lost_weekly}} hours a week of manual work at
+      loaded cost came to roughly four times our annual fee. She found she
+      wasn't comparing us to zero — she was comparing us to the most expensive
+      software she already owned: spreadsheets and people's evenings.
+    closing: >-
+      So the honest comparison is {{price.annual}} against what the manual
+      process already costs you every year — and one of those numbers keeps
+      growing as you hire. If that framing holds up when you run your own
+      figures, are we ready to move forward this month?
+    alpha: 1
+    beta: 1
+    principle_ids: [objection-loop, feel-felt-found, value-cost-gap, spend-the-savings]
+
+  - id: objection-timing-cost-of-waiting
+    context: "lead.objection == 'timing'"
+    opening: >-
+      Completely fair, {{lead.first_name}} — nobody needs another project
+      landing in a busy quarter. One clarifier so I don't misread you: is it
+      genuinely the calendar, or is there a doubt about the fit that a better
+      time won't fix? If it's the calendar, I have an option most people
+      haven't seen.
+    follow_up: >-
+      The option: a contained pilot on one workflow, set up by us, about two
+      hours of your team's time total. It's designed for exactly the "no
+      bandwidth" quarter — the point of automation is that it frees the
+      bandwidth. Meanwhile the waiting itself has a price: at
+      {{lead.hours_lost_weekly}} hours a week, pushing this one quarter costs
+      about {{cost.of_delay_quarter}} in staff time that doesn't come back.
+    closing: >-
+      Our implementation calendar for next month has two remaining slots, and
+      I'd rather hold one for {{lead.company}} than give it to a colder
+      conversation. If I reserve the later slot — setup on our side, two hours
+      on yours — does that make "not now" workable?
+    alpha: 1
+    beta: 1
+    principle_ids: [objection-loop, truthful-fear-of-loss, ethical-urgency, control-filter]
+
+  - id: objection-authority-arm-the-champion
+    context: "lead.objection == 'authority'"
+    opening: >-
+      Makes sense, {{lead.first_name}} — a decision like this should have
+      {{lead.decision_maker_role}} in the room. Rather than send you in with a
+      brochure, let's build the internal case together: I'll draft a one-pager
+      with your numbers — current manual cost, projected time saved, payback
+      period — so the conversation starts from evidence, not enthusiasm.
+    follow_up: >-
+      One thing I've learned from a hundred of these conversations: the
+      questions your {{lead.decision_maker_role}} will ask are predictable —
+      security, migration effort, what happens if we cancel. I've answered
+      each on one page, plus two references from {{lead.industry}} companies
+      they may recognise. Want me to join the conversation for the first ten
+      minutes so you're not fielding technical questions alone?
+    closing: >-
+      Let's put a three-way call on the calendar — you, me, and
+      {{lead.decision_maker_role}}. You open with the one-pager, I handle the
+      detail, and either way you get a decision instead of a maybe. What does
+      their calendar look like next week?
+    alpha: 1
+    beta: 1
+    principle_ids: [preemptive-strike, consolidation-before-commitment-step, social-proof-momentum, value-cost-gap]
+
+  - id: upsell-after-a-win
+    context: "lead.type == 'customer' && lead.health == 'good'"
+    opening: >-
+      {{lead.first_name}}, your dashboard crossed a milestone worth naming:
+      {{metrics.hours_saved_total}} hours automated since you went live.
+      Congratulations — that's real capacity you created. It also makes this
+      the right moment to look at the workflow next door: your
+      {{lead.adjacent_process}} is still fully manual, and it feeds the flow
+      you already automated.
+    follow_up: >-
+      For context, about seven in ten teams that start where you started add
+      {{product.module}} within six months, for the same reason — once one
+      flow runs itself, the manual one beside it starts to look expensive.
+      Your existing setup means activation is a toggle, not a project.
+    closing: >-
+      Suggestion: I switch {{product.module}} on in trial mode against your
+      live data for two weeks. If the numbers repeat what you saw the first
+      time, we add it to the plan; if not, it switches off and nothing
+      changes. Shall I enable it this week?
+    alpha: 1
+    beta: 1
+    principle_ids: [rehash-while-warm, agreement-ladder-presentation, social-proof-momentum, suggestive-language]
+
+  - id: win-back-lapsed-customer
+    context: "lead.type == 'former_customer'"
+    opening: >-
+      {{lead.first_name}}, I'll be straight: when {{lead.company}} left, the
+      gap was real — {{lead.churn_reason}} wasn't something we could solve
+      then. I'm writing because that specific gap is what we spent the last
+      two release cycles closing, and you're one of a handful of former
+      customers I wanted to tell personally.
+    follow_up: >-
+      No pitch deck — one screenshot of the rebuilt {{lead.churn_reason}}
+      capability, attached, next to what you had when you left. Your old
+      configuration is still archived on our side, so a restart would mean
+      picking up where you stopped, not starting over. If it's not relevant
+      anymore, a one-word reply closes the loop.
+    closing: >-
+      If you're open to it: 30-day restart on your archived setup, no
+      onboarding fee, cancel with a click if the gap isn't truly closed. The
+      worst case is you confirm you were right to leave — the best case is
+      you get the tool you originally wanted. Want me to reactivate the
+      workspace?
+    alpha: 1
+    beta: 1
+    principle_ids: [short-story-positioning, law-of-averages, value-cost-gap, professional-indifference]
+
+  - id: demo-no-show-rebuild-impulse
+    context: "lead.stage == 'demo_scheduled' && lead.no_show == true"
+    opening: >-
+      {{lead.first_name}}, calendars ambush all of us — no explanation needed.
+      The slot's easy to rebuild; the reason you booked it hasn't gone
+      anywhere: {{lead.pain_point}} is still eating hours at {{lead.company}}
+      this week. Shall we find 20 minutes that fit better?
+    follow_up: >-
+      To make rescheduling worth it, I recorded a 3-minute version of what you
+      would have seen — just the part where your workflow goes from manual to
+      automatic. Watch it when convenient; if it earns the full 20 minutes,
+      I'm holding two slots: Wednesday 10am or Friday 2pm.
+    closing: >-
+      I'll pencil you in for Wednesday 10am unless Friday suits better — one
+      word either way and it's locked. Either slot, you'll leave with a
+      process map of your own workflow, whatever you decide about us.
+    alpha: 1
+    beta: 1
+    principle_ids: [control-filter, impulse-curve-management, suggestive-language, value-cost-gap]
+
+  - id: trial-expiry-consolidate-and-close
+    context: "lead.stage == 'trial' && lead.trial_days_left <= 5"
+    opening: >-
+      {{lead.first_name}}, your trial has {{lead.trial_days_left}} days left,
+      so here's the scoreboard rather than a sales note: your team built
+      {{metrics.workflows_built}} workflows, ran {{metrics.runs_completed}}
+      automated runs, and saved an estimated {{metrics.hours_saved_trial}}
+      hours. Those aren't our numbers — they're yours.
+    follow_up: >-
+      Worth being clear about what expiry means: the workflows pause, the
+      time-savings stop, and the manual versions come back Monday morning.
+      Nothing is deleted for 30 days, but the value you switched on switches
+      off. If there's an open question standing between you and continuing,
+      let's clear it before the clock does it for us — 15 minutes tomorrow?
+    closing: >-
+      Based on the trial numbers, the plan pays for itself in about
+      {{metrics.payback_weeks}} weeks — and you've already done the hard part
+      by building the workflows. Shall I convert the workspace today so
+      nothing your team built goes dark?
+    alpha: 1
+    beta: 1
+    principle_ids: [consolidation-before-commitment-step, agreement-ladder-presentation, truthful-fear-of-loss, ethical-urgency]
+
 aggregation:
   method: thompson_sampling
   context_matching: semantic

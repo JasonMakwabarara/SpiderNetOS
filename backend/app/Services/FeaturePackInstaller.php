@@ -195,12 +195,32 @@ class FeaturePackInstaller
             // collide when a tenant installs more than one pack.
             $slug = Str::slug($packId, '_').'_'.Str::slug((string) $agentId, '_');
 
-            $exists = DB::table('agents')
+            $config = ['pack_id' => $packId];
+            $systemPrompt = $this->packAgentPrompt($packId, (string) $agentId);
+            if ($systemPrompt !== null) {
+                $config['system_prompt'] = $systemPrompt;
+            }
+
+            $existing = DB::table('agents')
                 ->where('tenant_id', $tenant->id)
                 ->where('slug', $slug)
-                ->exists();
+                ->first(['id', 'config']);
 
-            if ($exists) {
+            if ($existing) {
+                // Backfill the pack prompt onto agents provisioned before the
+                // pack shipped prompts/ — never overwrite a prompt already set.
+                if ($systemPrompt !== null) {
+                    $existingConfig = json_decode((string) $existing->config, true);
+                    $existingConfig = is_array($existingConfig) ? $existingConfig : [];
+                    if (empty($existingConfig['system_prompt'])) {
+                        $existingConfig['system_prompt'] = $systemPrompt;
+                        DB::table('agents')->where('id', $existing->id)->update([
+                            'config' => json_encode($existingConfig),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
                 continue;
             }
 
@@ -213,7 +233,7 @@ class FeaturePackInstaller
                 'type' => 'dynamic',
                 'status' => 'inactive',
                 'capabilities' => json_encode($agentDef['capabilities'] ?? []),
-                'config' => json_encode(['pack_id' => $packId]),
+                'config' => json_encode($config),
                 'activated_at' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -222,6 +242,40 @@ class FeaturePackInstaller
         }
 
         return $count;
+    }
+
+    /**
+     * Contents of the pack's prompts/{agent}.md, if the pack ships one.
+     * Checked against both the staged storage copy and the source tree, and
+     * tolerant of hyphen/underscore differences between the manifest agent id
+     * and the prompt filename (e.g. `funnel_architect` -> funnel-architect.md).
+     */
+    private function packAgentPrompt(string $packId, string $agentId): ?string
+    {
+        $candidates = array_unique(array_filter([
+            $agentId,
+            Str::slug($agentId),        // funnel_architect -> funnel-architect
+            Str::slug($agentId, '_'),   // funnel-architect -> funnel_architect
+        ]));
+
+        $roots = [
+            storage_path('app/feature-packs/'.$packId),
+            $this->packsRoot().'/'.$packId,
+        ];
+
+        foreach ($roots as $root) {
+            foreach ($candidates as $candidate) {
+                $path = $root.'/prompts/'.$candidate.'.md';
+                if (is_readable($path)) {
+                    $contents = trim((string) file_get_contents($path));
+                    if ($contents !== '') {
+                        return $contents;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private function packsRoot(): string
