@@ -109,7 +109,10 @@ class ApprovalEngine
             throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$approval->status}).");
         }
 
-        $newStatus = $approved ? 'granted' : 'rejected';
+        // Status vocabulary is canonicalized on 'approved' (the value the
+        // cockpit UI and ApprovalController already use); domain event names
+        // (approval.granted / approval.rejected) are unchanged.
+        $newStatus = $approved ? 'approved' : 'rejected';
 
         DB::table('approvals')
             ->where('id', $approvalId)

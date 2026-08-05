@@ -15,6 +15,7 @@ class InvoiceService
 {
     public function __construct(
         private readonly EventStore $eventStore,
+        private readonly DocumentNumberService $documentNumbers,
     ) {}
 
     public function createInvoice(
@@ -195,7 +196,6 @@ class InvoiceService
 
     private function generateInvoiceNumber(string $tenantId): string
     {
-        $count = Invoice::where('tenant_id', $tenantId)->count() + 1;
-        return 'INV-' . date('Ymd') . '-' . str_pad((string) $count, 6, '0', STR_PAD_LEFT);
+        return $this->documentNumbers->next($tenantId, 'invoice', 'INV');
     }
 }

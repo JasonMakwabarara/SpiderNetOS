@@ -74,4 +74,16 @@ class Invoice extends Model
     {
         return $query->where('status', 'paid');
     }
+
+    public function markAsPaid(): void
+    {
+        if ($this->status === 'paid') {
+            return;
+        }
+
+        $this->update([
+            'status' => 'paid',
+            'paid_at' => now()->toDateString(),
+        ]);
+    }
 }

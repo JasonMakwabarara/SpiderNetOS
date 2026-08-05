@@ -31,7 +31,7 @@ class ApprovalController extends Controller
         // Optional status filter
         if ($request->has('status')) {
             $request->validate([
-                'status' => 'string|in:pending,approved,rejected',
+                'status' => 'string|in:pending,approved,rejected,expired',
             ]);
             $query->where('status', $request->input('status'));
         }

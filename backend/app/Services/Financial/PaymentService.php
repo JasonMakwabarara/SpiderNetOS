@@ -15,6 +15,7 @@ class PaymentService
 {
     public function __construct(
         private readonly EventStore $eventStore,
+        private readonly DocumentNumberService $documentNumbers,
     ) {}
 
     public function recordPayment(
@@ -60,6 +61,7 @@ class PaymentService
                 'status' => 'completed',
                 'provider' => $provider,
                 'provider_reference' => $providerReference,
+                'idempotency_key' => $idempotencyKey,
                 'notes' => $description,
                 'paid_at' => now(),
             ]);
@@ -213,13 +215,11 @@ class PaymentService
 
     private function generatePaymentNumber(string $tenantId): string
     {
-        $count = Payment::where('tenant_id', $tenantId)->count() + 1;
-        return 'PAY-' . date('Ymd') . '-' . str_pad((string) $count, 6, '0', STR_PAD_LEFT);
+        return $this->documentNumbers->next($tenantId, 'payment', 'PAY');
     }
 
     private function generateTransactionNumber(string $tenantId): string
     {
-        $count = Transaction::where('tenant_id', $tenantId)->count() + 1;
-        return 'TXN-' . date('Ymd') . '-' . str_pad((string) $count, 6, '0', STR_PAD_LEFT);
+        return $this->documentNumbers->next($tenantId, 'transaction', 'TXN');
     }
 }

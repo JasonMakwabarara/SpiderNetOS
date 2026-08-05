@@ -226,7 +226,7 @@ class ProcessAutomationTest extends TestCase
         $this->assertSame(0, $this->process->consecutive_failures);
         $this->assertNull($this->process->escalation_approval_id);
 
-        $this->assertSame(1, DB::table('approvals')->where('resource_id', (string) $this->process->id)->where('status', 'granted')->count());
+        $this->assertSame(1, DB::table('approvals')->where('resource_id', (string) $this->process->id)->where('status', 'approved')->count());
 
         $this->assertDatabaseHas('event_log', [
             'tenant_id' => (string) $this->tenant->id,
