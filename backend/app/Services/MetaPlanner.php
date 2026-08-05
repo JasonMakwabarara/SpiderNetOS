@@ -208,9 +208,14 @@ class MetaPlanner
      */
     private function canAgentExecute(string $tenantId, string $agentId, string $intent): bool
     {
+        // Callers pass either a uuid or an agent slug (e.g. 'atlas', compiled
+        // pack flows). Matching a slug against the uuid `id` column throws on
+        // Postgres (invalid uuid text), so route by shape.
+        $isUuid = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $agentId);
+
         $agent = DB::table('agents')
-            ->where('id', $agentId)
             ->where('tenant_id', $tenantId)
+            ->where($isUuid ? 'id' : 'slug', $agentId)
             ->first();
         
         if (!$agent || $agent->status !== 'active') {

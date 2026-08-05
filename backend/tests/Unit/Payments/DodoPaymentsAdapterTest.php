@@ -156,9 +156,13 @@ class DodoPaymentsAdapterTest extends TestCase
         ]));
     }
 
-    public function test_missing_api_key_throws(): void
+    public function test_missing_api_key_throws_on_api_call(): void
     {
+        // Constructing without a key is allowed (webhook verification needs no
+        // key); any API call must throw.
+        $adapter = new DodoPaymentsAdapter(['api_key' => '', 'webhook_secret' => 'x', 'environment' => 'test']);
+
         $this->expectException(\RuntimeException::class);
-        new DodoPaymentsAdapter(['api_key' => '', 'webhook_secret' => 'x', 'environment' => 'test']);
+        $adapter->getPayment('pay_123');
     }
 }
