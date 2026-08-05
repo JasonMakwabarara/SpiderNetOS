@@ -31,6 +31,7 @@ class VoiceManagementTest extends TestCase
         $tenant = \App\Models\Tenant::create([
             'id'     => \Illuminate\Support\Str::uuid(),
             'name'   => 'Mgmt Tenant',
+            'slug'   => 'mgmt-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
             'status' => 'active',
             'plan'   => 'pro',
         ]);
@@ -113,7 +114,7 @@ class VoiceManagementTest extends TestCase
     public function test_cannot_access_other_tenant_number(): void
     {
         $otherTenant = \App\Models\Tenant::create([
-            'id' => \Illuminate\Support\Str::uuid(), 'name' => 'Other', 'status' => 'active', 'plan' => 'starter',
+            'id' => \Illuminate\Support\Str::uuid(), 'name' => 'Other', 'slug' => 'other-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)), 'status' => 'active', 'plan' => 'starter',
         ]);
 
         $number = VoiceNumber::create([

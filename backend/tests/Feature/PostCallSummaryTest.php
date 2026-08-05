@@ -44,6 +44,7 @@ class PostCallSummaryTest extends TestCase
         $tenant = \App\Models\Tenant::create([
             'id'     => \Illuminate\Support\Str::uuid(),
             'name'   => 'Post-Call Tenant',
+            'slug'   => 'postcall-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
             'status' => 'active',
             'plan'   => 'starter',
         ]);

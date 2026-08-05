@@ -164,10 +164,46 @@ class AgentController extends Controller
         $agent->capabilities = json_decode($agent->capabilities, true);
         $agent->config = json_decode($agent->config, true);
 
-        // Fetch delegation edges
-        $delegations = DB::table('agent_delegations')
+        $delegations = $this->tenantDelegations($tenantId, $id);
+
+        // `data` envelope: the cockpit store reads response.data.data, and the
+        // embedded delegations sit alongside the agent fields.
+        $payload = (array) $agent;
+        $payload['delegations'] = $delegations;
+
+        return response()->json(['data' => $payload]);
+    }
+
+    /**
+     * GET /agents/{agent}/delegations — this agent's delegate edges,
+     * tenant-scoped (consumed by the cockpit's fetchDelegations).
+     */
+    public function delegations(Request $request, $id): JsonResponse
+    {
+        $tenantId = $request->attributes->get('tenant_id');
+
+        $exists = DB::table('agents')
+            ->where('id', $id)
+            ->where('tenant_id', $tenantId)
+            ->exists();
+
+        if (! $exists) {
+            return response()->json(['error' => 'Agent not found.'], 404);
+        }
+
+        return response()->json(['data' => $this->tenantDelegations($tenantId, $id)]);
+    }
+
+    /**
+     * Delegate edges for an agent, EXCLUDING delegates that belong to another
+     * tenant — cross-tenant rows must never leak agent names/slugs.
+     */
+    private function tenantDelegations(string $tenantId, string $agentId): \Illuminate\Support\Collection
+    {
+        return DB::table('agent_delegations')
             ->join('agents', 'agent_delegations.delegate_id', '=', 'agents.id')
-            ->where('agent_delegations.agent_id', $id)
+            ->where('agent_delegations.agent_id', $agentId)
+            ->where('agents.tenant_id', $tenantId)
             ->select(
                 'agent_delegations.id as delegation_id',
                 'agents.id as agent_id',
@@ -178,11 +214,6 @@ class AgentController extends Controller
                 'agent_delegations.permission'
             )
             ->get();
-
-        return response()->json([
-            'agent' => $agent,
-            'delegations' => $delegations,
-        ]);
     }
 
     /**
@@ -621,8 +652,12 @@ class AgentController extends Controller
             ];
         })->values()->toArray();
 
-        // Fetch all delegation edges
+        // Fetch delegation edges where BOTH endpoints are this tenant's agents
+        // — a cross-tenant delegate edge must not appear in the graph.
+        $tenantAgentIds = $agents->pluck('id');
         $delegations = DB::table('agent_delegations')
+            ->whereIn('agent_id', $tenantAgentIds)
+            ->whereIn('delegate_id', $tenantAgentIds)
             ->select('id', 'agent_id', 'delegate_id', 'permission')
             ->get();
 

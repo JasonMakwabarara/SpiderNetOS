@@ -62,6 +62,7 @@ class VoiceWebhookTest extends TestCase
         return \App\Models\Tenant::create([
             'id'     => \Illuminate\Support\Str::uuid(),
             'name'   => 'Test Tenant',
+            'slug'   => 'voice-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
             'status' => 'active',
             'plan'   => 'starter',
         ]);

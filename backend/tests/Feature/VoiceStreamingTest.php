@@ -66,6 +66,7 @@ class VoiceStreamingTest extends TestCase
         $tenant = \App\Models\Tenant::create([
             'id'     => \Illuminate\Support\Str::uuid(),
             'name'   => 'Stream Tenant',
+            'slug'   => 'stream-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
             'status' => 'active',
             'plan'   => 'starter',
         ]);
@@ -102,6 +103,7 @@ class VoiceStreamingTest extends TestCase
         $tenant = \App\Models\Tenant::create([
             'id'     => \Illuminate\Support\Str::uuid(),
             'name'   => 'Stream T2',
+            'slug'   => 'streamt2-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
             'status' => 'active',
             'plan'   => 'starter',
         ]);

@@ -42,6 +42,7 @@ class FeaturePackApiTest extends TestCase
     private function createPack(Tenant $tenant, array $overrides = []): FeaturePack
     {
         $defaults = [
+            'tenant_id' => $tenant->id,
             'pack_id' => 'real-estate-crm',
             'version' => '0.1.0',
             'vertical' => 'real_estate',

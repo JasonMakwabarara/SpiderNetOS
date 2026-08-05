@@ -62,8 +62,11 @@ class AuthSanctumContractTest extends TestCase
 
         $response = $this->actingAs($user, 'sanctum')->getJson('/api/auth/me');
 
+        // Contract: top-level user/tenant envelope (what the cockpit auth
+        // store consumes as response.data.user).
         $response->assertOk();
-        $response->assertJsonPath('data.email', $user->email);
+        $response->assertJsonPath('user.email', $user->email);
+        $response->assertJsonPath('tenant.id', $tenant->id);
     }
 
     public function test_agents_index_returns_tenant_scoped_agents(): void
@@ -124,10 +127,30 @@ class AuthSanctumContractTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_onboarding_complete_requires_all_steps(): void
+    {
+        $tenant = $this->createTenant();
+        $user = $this->createUser($tenant, onboarded: false);
+
+        // No wizard steps persisted yet → completion must be refused.
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/admin/onboarding/complete', [])
+            ->assertStatus(422);
+    }
+
     public function test_onboarding_complete_flow(): void
     {
         $tenant = $this->createTenant();
         $user = $this->createUser($tenant, onboarded: false);
+
+        // Simulate the wizard having persisted every required step.
+        $tenant->update(['onboarding' => [
+            'tenant' => ['name' => 'Test Tenant'],
+            'budget' => ['monthly' => 100],
+            'invites' => ['emails' => []],
+            'strictness' => ['level' => 'assisted'],
+            'branding' => ['color' => '#00E5C8'],
+        ]]);
 
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/admin/onboarding/complete', []);

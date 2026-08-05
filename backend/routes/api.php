@@ -142,6 +142,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::post('/agents', [AgentController::class, 'store'])->middleware('plan.quota:agents');
     Route::get('/agents/templates', [AgentController::class, 'templates']);
     Route::get('/agents/graph/delegation', [AgentController::class, 'delegationGraph']);
+    Route::get('/agents/{agent}/delegations', [AgentController::class, 'delegations']);
     Route::get('/agents/{agent}', [AgentController::class, 'show']);
     Route::put('/agents/{agent}', [AgentController::class, 'update']);
     Route::delete('/agents/{agent}', [AgentController::class, 'destroy']);
