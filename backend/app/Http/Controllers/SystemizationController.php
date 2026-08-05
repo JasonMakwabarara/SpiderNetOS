@@ -31,10 +31,18 @@ class SystemizationController extends Controller
 
     /**
      * POST /api/systemization/bootstrap — seed the six core functions.
+     *
+     * Pass seed_templates=true to also install the recruitment + retraining
+     * playbooks from the template library (systems:seed-templates); only
+     * fires when template files actually exist.
      */
     public function bootstrap(Request $request): JsonResponse
     {
         $tenantId = (string) $request->attributes->get('tenant_id');
+
+        $validated = $request->validate([
+            'seed_templates' => 'sometimes|boolean',
+        ]);
 
         $defaults = [
             'marketing' => 'Generate qualified leads',
@@ -65,7 +73,17 @@ class SystemizationController extends Controller
             }
         }
 
-        return response()->json(['data' => ['created' => $created]]);
+        $templatesSeeded = false;
+
+        if (($validated['seed_templates'] ?? false)
+            && \App\Console\Commands\SeedSystemTemplates::templatesAvailable()) {
+            \Illuminate\Support\Facades\Artisan::call('systems:seed-templates', [
+                '--tenant' => $tenantId,
+            ]);
+            $templatesSeeded = true;
+        }
+
+        return response()->json(['data' => ['created' => $created, 'templates_seeded' => $templatesSeeded]]);
     }
 
     /**

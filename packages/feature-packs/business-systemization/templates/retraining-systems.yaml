@@ -1,0 +1,271 @@
+function: retraining
+systems:
+  - name: Field Retraining Protocol
+    goal: Rebuild and sharpen a team member's live skills through structured side-by-side working sessions that transfer the system, not just the script.
+    processes:
+      - name: Ten-practice retraining session
+        goal: Run every side-by-side retraining session against the same ten coaching practices so quality does not depend on who is coaching.
+        effort_size: 4
+        sop:
+          title: Ten-Practice Coaching Session
+          purpose: A retraining day is where a team member relearns the fundamentals by watching them executed and executing them under observation. Ten fixed practices keep the session constructive, metrics-driven, and repeatable across every coach in the business.
+          trigger: Any scheduled retraining or side-by-side development day with a team member.
+          tools: [activity metrics sheet, session plan, observation notes]
+          steps:
+            - Anchor all teaching to the tracked numbers and the documented system rather than opinion; open by reviewing the trainee's current metrics together.
+            - Build the person up throughout - name specifically what they already do well before touching what needs work.
+            - Stay visibly composed no matter what the day throws up; the trainee learns emotional control by watching yours.
+            - Engineer the trainee's success rather than gifting it - set them up in favorable situations and let them earn the win themselves; never hand over results you produced.
+            - Follow the agreed lead-ratio for the day, alternating demonstrations by the coach with live attempts by the trainee.
+            - Observe some of their attempts from a distance so you see how they perform unsupervised, and ask the prospect or counterpart for feedback where appropriate.
+            - Never interrupt a trainee mid-conversation; agree a discreet signal beforehand for when they want you to step in.
+            - Keep today's coaching continuous with yesterday's goals so the trainee works on one consistent version of the skill, not a new opinion each day.
+            - Check the three success conditions across the day - the trainee is enjoying it, feels measurable improvement, and sees real results.
+            - Close by agreeing tomorrow's focus and writing the handoff note for the next coach.
+          quality_criteria:
+            - All ten practices evidenced in the session notes.
+            - Trainee achieves at least one self-earned positive outcome per session.
+            - Zero coach interruptions of live trainee conversations outside the agreed signal.
+            - Next-day focus agreed and written before the session ends.
+            - Trainee self-rates enjoyment and learning at 7/10 or higher.
+      - name: Ratio progression schedule
+        goal: Graduate a trainee from heavy demonstration to full independence over roughly four days using fixed lead-ratios.
+        effort_size: 3
+        sop:
+          title: Independence Ramp
+          purpose: Independence is earned in measured steps. Fixing the coach-to-trainee lead ratio per day prevents both extremes - carrying the trainee so long they never develop, or abandoning them before the skill holds.
+          trigger: Starts on the first retraining day of any new starter or any team member returning for skills rebuilding.
+          tools: [ratio schedule, activity metrics sheet, advancement checklist]
+          steps:
+            - "Day one: coach leads three interactions for every one the trainee leads; the trainee always delivers the opening portion so first-contact confidence builds immediately."
+            - Restrict day-one trainee attempts to the segments they have actually practiced; find one specific improvement point and work only on that.
+            - "Days two and three: shift to two coach-led interactions per trainee-led one, expanding the trainee's share of each conversation as the improvement point stabilizes."
+            - Advance to a half-day solo once the trainee meets the day's activity and quality gates; coach reviews the half-day numbers immediately afterwards.
+            - "Grant full solo status the following day if the half-day gates were met; if not, repeat one day at the previous ratio without framing it as failure."
+            - Record each ratio transition and its supporting numbers on the advancement checklist.
+            - Keep a light-touch check-in on the first two full solo days so independence is supported, not sink-or-swim.
+          quality_criteria:
+            - Ratio followed as scheduled or a documented reason recorded for deviation.
+            - Advancement gates checked with numbers before every ratio step-up.
+            - Trainee reaches half-day solo within 4 working days in at least 80% of cases.
+            - Solo-day check-ins completed on the first 2 independent days.
+      - name: End-of-day debrief
+        goal: Convert every working day into documented learning by reviewing actions against results with equal rigor after good and bad days.
+        effort_size: 2
+        sop:
+          title: Daily Action Review
+          purpose: Teams naturally dissect bad days and skip reviewing good ones, which teaches only what to avoid, never what to repeat. Reviewing wins with the same intensity isolates the true repeatable formula - because a lucky day copied uncritically produces tomorrow's zero.
+          trigger: End of every working day for every team member in development; non-negotiable regardless of result.
+          tools: [day breakdown template, activity metrics sheet]
+          steps:
+            - Record the full activity funnel for the day - attempts, meaningful conversations, advanced-stage discussions, and closed outcomes.
+            - Compare each stage conversion against the personal baseline and mark stages that moved materially in either direction.
+            - For each marked stage, identify the specific action difference that explains it - not the mood, the luck, or the territory.
+            - On winning days, explicitly test whether the actions were repeatable or the conditions were merely generous; label the day's result accordingly.
+            - Choose exactly one action to keep and one action to change, and write both into tomorrow's plan.
+            - Share the breakdown with the coach the same evening; the coach responds with one question, not a lecture.
+          quality_criteria:
+            - Breakdown completed on 100% of working days, wins included.
+            - Every breakdown names one keep-action and one change-action.
+            - Stage conversions tracked against personal baseline daily.
+            - Coach acknowledgment logged same evening at least 5 days per week.
+      - name: Coach-to-coach handoff
+        goal: Preserve development continuity when a trainee works with different coaches on different days.
+        effort_size: 1
+        sop:
+          title: Development Handoff Note
+          purpose: A trainee coached by three people with three private opinions learns three conflicting versions of the skill. A short written handoff keeps every coach building on the same foundation.
+          trigger: Whenever the next session's coach differs from today's, or weekly for every active trainee.
+          tools: [handoff template, shared trainee record]
+          steps:
+            - Write the trainee's current single focus area in one sentence at the top of the note.
+            - List what was demonstrated today, what the trainee attempted, and at what ratio.
+            - Record one strength to reinforce publicly and one gap to work on privately.
+            - State explicitly what the next coach should NOT change yet, to protect consistency.
+            - Post the note to the shared trainee record before the day closes and confirm the next coach has read it before their session starts.
+          quality_criteria:
+            - Handoff note filed the same day for 100% of coach changes.
+            - Next coach confirms read-before-session in the record.
+            - Only one active focus area per trainee at any time.
+            - Trainee reports consistent coaching direction in weekly check-ins.
+
+  - name: Mastery Coaching
+    goal: Develop each team member deliberately up a five-stage competence ladder, with distinct coach behavior at each stage, until skills are not merely automatic but efficient.
+    processes:
+      - name: Stage diagnosis
+        goal: Place each team member's key skills accurately on the five-stage ladder so coaching effort matches actual need.
+        effort_size: 2
+        sop:
+          title: Competence Stage Assessment
+          purpose: The five stages - unaware and unskilled, aware but unskilled, skilled with full concentration, skilled on autopilot, and true mastery - each demand different coaching. Misdiagnosis wastes effort - drilling fundamentals into someone at stage four bores them, while handing autonomy to someone at stage two sinks them.
+          trigger: Monthly per team member, and after any sustained performance shift in either direction.
+          tools: [skill matrix, observation notes, activity metrics history]
+          steps:
+            - "List the member's core skills separately - opening conversations, presenting, handling pushback, closing, coaching others - because stages differ per skill."
+            - Observe each skill live without intervening, noting whether execution requires full concentration, flows automatically, or actively improves its own efficiency.
+            - "Cross-check observation against four weeks of metrics: erratic results suggest stages one or two, stable-with-effort suggests stage three, stable-without-thought suggests stage four."
+            - "Distinguish stage four from five by the efficiency test: a stage-five operator needs measurably fewer attempts per result than the team average and is still shrinking that number."
+            - Discuss the diagnosis openly with the member, since knowing you do not know is itself the doorway from stage one to stage two.
+            - Record the per-skill stage on the matrix and select the matching coaching playbook for the coming month.
+          quality_criteria:
+            - Every active team member diagnosed across all core skills monthly.
+            - Diagnosis supported by both live observation and 4 weeks of metrics.
+            - Member informed of their stage per skill in a documented conversation.
+            - Coaching plan on file matches the diagnosed stage for each skill.
+      - name: Per-stage coaching playbook
+        goal: Apply the correct coach behavior for each competence stage instead of one-size-fits-all training.
+        effort_size: 4
+        sop:
+          title: Stage-Matched Coaching Actions
+          purpose: Each rung of the ladder has a distinct failure mode - ignorance, discouragement, exhaustion, complacency, and plateau - and a distinct coaching antidote. This playbook maps the antidote to the rung so no one gets stuck.
+          trigger: Applied continuously; playbook selection updates whenever a stage diagnosis changes.
+          tools: [skill matrix, session plans, roleplay scenarios, teach-back schedule]
+          steps:
+            - "Stage one (unaware, unskilled): show the full picture early - let them watch excellent execution end-to-end, name the sub-skills involved, and normalize not knowing; the goal is accurate self-awareness, not performance."
+            - "Stage two (aware, unskilled): protect morale while building reps - set narrow micro-goals, deliver specific evaluation weekly, and frame every gap as trainable; this is where discouragement quits people, so ratio of encouragement to correction stays high."
+            - "Stage three (skilled with concentration): reduce cognitive load through volume - drill segments via roleplay until they run without thought, remove distractions during live work, and resist adding new material until current skills automate."
+            - "Stage four (autopilot): fight complacency - assign them to teach the skill to newer members, introduce fresh challenges and formats, and require the same daily review after wins as after losses, because autopilot without review stalls permanently."
+            - "Stage five (mastery): coach efficiency - set targets on attempts-per-result rather than raw results, study their best interactions for transferable patterns, and position them as a multiplier who lifts the team average."
+            - Review each member's playbook execution in the weekly coaching meeting and adjust when stage transitions occur.
+          quality_criteria:
+            - Documented coaching actions match diagnosed stage for every member.
+            - Stage-two members receive written weekly evaluations.
+            - Stage-four members hold at least one teach-back session per month.
+            - Stage transitions confirmed within 2 weeks by re-diagnosis.
+            - No member remains at the same stage for a skill beyond 2 diagnosis cycles without an escalated plan.
+      - name: Efficiency-push coaching
+        goal: Move autopilot performers into genuine mastery by shrinking their personal attempts-per-result ratio.
+        effort_size: 3
+        sop:
+          title: Ratio-Shrinking Program
+          purpose: Being able to perform without thinking is not the summit - the summit is needing fewer attempts than anyone else for the same result, which multiplies leadership capacity because a highly efficient operator can carry trainees and still produce. This program makes efficiency itself the coached variable.
+          trigger: Opens when a member is confirmed at stage four on a core skill for two consecutive diagnosis cycles.
+          tools: [personal ratio dashboard, recorded or observed session reviews, day breakdown archive]
+          steps:
+            - Establish the member's personal baseline ratio of attempts to positive outcomes from the last month of data, alongside the team average.
+            - Set a quarterly ratio-improvement target expressed as a percentage reduction, agreed with the member.
+            - Review their highest-efficiency days from the breakdown archive and extract the specific controllable behaviors those days shared.
+            - Turn the extracted behaviors into a personal pre-work checklist the member runs daily.
+            - Conduct a fortnightly deep review of two live interactions - one strong, one weak - focusing exclusively on wasted attempts and missed accelerators.
+            - Track the rolling ratio weekly on the dashboard and celebrate ratio milestones as loudly as raw-result milestones.
+            - When the target is hit, either deepen the target or redirect the surplus capacity into formal coaching responsibility.
+          quality_criteria:
+            - Baseline and target ratios documented at program start.
+            - Fortnightly deep reviews completed without gaps.
+            - Rolling ratio updated weekly on the dashboard.
+            - Measurable ratio improvement within one quarter for at least 70% of participants.
+      - name: Ten-step learning loop with teach-back
+        goal: Take any team member through a complete learn-practice-teach cycle for each key skill area, one area at a time.
+        effort_size: 3
+        sop:
+          title: Learn-Master-Teach Cycle
+          purpose: Skills stick when they travel the full loop from theory to teaching. Requiring teach-back before sign-off builds a bench of people who can each replace the leader - which is the actual goal of development.
+          trigger: Runs whenever a member begins a new key skill area; one area active at a time, maximum two weeks per area.
+          tools: [learning materials library, roleplay scenarios, gauge tracker, teach-back schedule]
+          steps:
+            - Study the theory of the area from the documented materials and write down clarifying questions.
+            - Rehearse the skill in roleplay until the sequence runs smoothly under friendly conditions.
+            - Observe a strong practitioner performing it live and note the deltas from the documented theory.
+            - Perform it live while being observed, and receive structured feedback the same day.
+            - Self-evaluate against the area's quality standard before hearing the observer's view.
+            - Instrument the skill - define the two or three numbers that indicate it is working and start tracking them.
+            - Set a measurable goal on those numbers with a deadline inside the two-week window.
+            - Teach the area back to another team member and have the coach verify the teaching was accurate.
+            - Work through situational what-if questions with the coach to stress-test understanding beyond the happy path.
+            - Close the loop by networking with the best practitioner available on remaining rough edges, then sign the area off and select the next.
+          quality_criteria:
+            - One active skill area per member at any time, capped at 2 weeks.
+            - Teach-back verified by a coach for every completed area.
+            - Tracking numbers defined and live before area sign-off.
+            - Situational Q&A session logged for every area.
+            - Area goal met or a documented remediation plan in place at the 2-week mark.
+
+  - name: Atmosphere & Standards
+    goal: Maintain a working environment whose energy, standards, and daily rhythms make high performance the default, anchored by leaders who visibly re-earn their standing every week.
+    processes:
+      - name: Attitude standards and negativity response
+        goal: Keep the team environment constructive by defining attitude expectations and acting on negativity immediately rather than hoping it fades.
+        effort_size: 3
+        sop:
+          title: Environment Protection Protocol
+          purpose: One unaddressed negative voice quietly taxes everyone's belief. Leaders set the temperature rather than reflect it - so this protocol defines the attitude standard, catches drift early, and resolves it by conversion or, when necessary, by separation. Ignoring a negative never makes it disappear.
+          trigger: Continuous; formal response fires the same day any team member displays sustained negativity, cost-adding talk, or excuse patterns.
+          tools: [team standards document, private conversation framework, escalation path]
+          steps:
+            - Publish the attitude standard in writing - problem-solvers not problem-makers, enthusiasm as a professional tool, personal issues parked at the door, celebrate others' wins.
+            - Model the standard personally before enforcing it; a leader who vents downward forfeits the right to correct anyone.
+            - Distinguish a bad moment from a pattern - everyone loses their attitude occasionally; the standard is how fast it is recovered, and quick recovery gets praised.
+            - Address patterns privately the same day using a build-address-build structure - genuine strengths first, the specific behavior and its cost to the room second, a clear path back third.
+            - Attempt conversion first by reconnecting the person to their own stated goals and pairing them with high-energy teammates for a defined period.
+            - If the pattern persists after two documented conversations, escalate to a formal decision point, because retaining a persistent negative taxes every other member of the room.
+            - Note every intervention and outcome so patterns across the team become visible.
+          quality_criteria:
+            - Attitude standard documented and acknowledged by 100% of the team.
+            - Pattern-level negativity addressed within 1 working day of identification.
+            - All corrective conversations follow build-address-build and are logged.
+            - No more than 2 documented conversations before escalation review.
+            - Quarterly team-environment pulse survey trending flat or improving.
+      - name: Pace-setting model audit
+        goal: Hold every leader to the test that their personal daily example, copied by twenty people, would produce a winning team.
+        effort_size: 2
+        sop:
+          title: Replication Audit
+          purpose: A team replicates its leader's real behavior, not their instructions - typically executing a discounted copy of the good habits and an amplified copy of the bad ones. Small personal shortcuts multiply across headcount into large organizational losses, so each leader regularly audits whether they are worth copying.
+          trigger: Monthly self-audit per leader, reviewed quarterly with their own coach.
+          tools: [audit checklist, personal metrics, calendar review]
+          steps:
+            - Walk the full day honestly on the checklist - preparation the night before, arrival time, readiness for the morning session, urgency in live work, break discipline, evening review, and how you speak when things go wrong.
+            - Score each item against one question - if twenty team members copied exactly this behavior, would the team be stronger or weaker?
+            - Quantify one shortcut's team-level cost by multiplying its daily minutes or lost conversations across headcount and weeks, to make the invisible tax visible.
+            - Pick the single lowest-scoring item and fix it for the coming month; do not attempt wholesale reform.
+            - Verify with results - a pace-setting leader should sit at or near the top of the team's own performance metrics; if not, field credibility is the first repair.
+            - Review the audit with your own coach quarterly and have one team member confirm or challenge your self-scores.
+          quality_criteria:
+            - Monthly audit completed and filed by every leader.
+            - One named improvement item in progress at all times per leader.
+            - Leader personal metrics at or above team median.
+            - Quarterly coach review held with at least one external challenge to self-scores.
+      - name: Weekly requalification ritual
+        goal: Have every leader visibly re-earn leadership standing each week on the controllables rather than coasting on past results.
+        effort_size: 2
+        sop:
+          title: Weekly Requalification
+          purpose: Leadership in a performance business is rented weekly, never owned. Requalifying on the three controllables - quality of execution, volume of activity, and attitude - keeps leaders credible, keeps standards objective, and shows the team that position follows performance at every level.
+          trigger: Fixed weekly cycle, closing at the end-of-week review meeting.
+          tools: [requalification scorecard, weekly metrics, key-area focus tracker]
+          steps:
+            - Publish the requalification bar openly - the minimum weekly execution quality, activity volume, and environment contribution expected of anyone holding a leadership role.
+            - Each leader logs their week against the bar before the review meeting; self-reported numbers are spot-checked against the tracker.
+            - Alongside the bar, each leader declares one key development area for the week ahead - one area at a time, never more than two consecutive weeks on the same area.
+            - At the weekly review, leaders who met the bar are recognized publicly; leaders who missed it state plainly what they will change, without excuse language.
+            - A second consecutive miss triggers a private reset conversation with their coach and a written plan; leadership duties narrow until the bar is met again.
+            - Close the ritual with the coming week's team goals so requalification always points forward, not backward.
+          quality_criteria:
+            - Scorecards submitted before the weekly review by 100% of leaders.
+            - Spot-check variance between self-report and tracker under 5%.
+            - One and only one declared key area per leader per week.
+            - Reset plan in writing within 2 days of any second consecutive miss.
+            - Weekly review meeting held without cancellation.
+      - name: Daily atmosphere structure and micro-teaching
+        goal: Run morning and evening team time to a deliberate energy-and-learning formula so every day starts primed and ends connected.
+        effort_size: 3
+        sop:
+          title: Daily Room Rhythm
+          purpose: The hours around field work are where the team is actually built - the morning charges people up and equips them; the evening consolidates learning and relationships. A deliberate split - mornings weighted heavily to teaching, evenings weighted heavily to connection - stops this time from dissolving into aimless hanging around.
+          trigger: Every working day, morning session before field work and evening session after.
+          tools: [session plan, micro-teaching format, recognition list, energy playlist]
+          steps:
+            - Plan tomorrow's morning session the evening before - the micro-teaching topic, who delivers it, and who needs a specific conversation - so no session is improvised.
+            - Open the morning with energy on purpose - music, movement, and the leaders arriving charged, because the room takes its temperature from them.
+            - Run the morning at roughly four parts teaching to one part social - a short skills session, practice reps in pairs, and recognition of yesterday's genuine wins.
+            - Deliver micro-teachings in a fixed three-beat format - what the concept is, why it matters, and exactly how to apply it today - kept under ten minutes.
+            - Give newer members a small ownership task in the room each morning so involvement starts on day one.
+            - Flip the ratio in the evening - roughly one part teaching to four parts connection - handling admin quickly so the time goes to relationships and informal coaching.
+            - Watch the room actively during both sessions - rotate anyone monopolized or drifting, and pull aside anyone whose energy has visibly dropped for a quiet check-in.
+            - End each evening by previewing tomorrow just enough to create anticipation.
+          quality_criteria:
+            - Session plan written the prior evening for 100% of mornings.
+            - Micro-teaching delivered daily in the three-beat format within 10 minutes.
+            - Morning and evening teach-to-social ratios honored as planned.
+            - Every new member receives an ownership task in week one.
+            - At least one genuine recognition given daily.

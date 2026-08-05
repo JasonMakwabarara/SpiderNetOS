@@ -1,0 +1,225 @@
+function: recruitment
+systems:
+  - name: Personal Recruiting
+    goal: Keep a leader-owned stream of candidates flowing into the pipeline from everyday networks, social channels, and posted openings instead of waiting on a central hiring function.
+    processes:
+      - name: Everyday network sourcing with contact cards
+        goal: Convert chance encounters with impressive people into booked preliminary conversations.
+        effort_size: 2
+        sop:
+          title: Contact-Card Sourcing
+          purpose: Equips every leader to notice promising people during ordinary daily life and turn those moments into scheduled intro meetings. Strong future team members are usually met in person before they ever see a job post.
+          trigger: Continuous weekly habit; fires whenever a leader encounters someone sharp, energetic, or service-minded in any everyday setting.
+          tools: [personal contact cards or digital card link, scheduling link, candidate tracker]
+          steps:
+            - Prepare a simple personal card (physical or digital) carrying your name, role, and a one-line description of the opportunity, plus a booking link.
+            - Define your target profile in one sentence — people who show initiative, energy, and an appetite for fast progression — and review it weekly so spotting becomes reflexive.
+            - When you meet someone who fits, open with genuine curiosity about what they do now; do not lead with the opportunity.
+            - Give a two-sentence description of what your business is building and why you are expanding, then offer your card and propose a short informal meeting at a set day and time.
+            - Log every card given and every meeting booked in the candidate tracker the same day, with a one-line note on why the person stood out.
+            - Hold the informal meeting within seven days; explain the opening, the growth path, and the earnings mechanics, then invite qualified people into the formal interview pipeline.
+            - Review your sourcing numbers weekly with your own coach and set a card-conversation target for the coming week.
+          quality_criteria:
+            - At least 5 new opportunity conversations initiated per leader per week.
+            - Every card handed out is logged in the tracker within 24 hours.
+            - At least 1 in 5 card conversations converts to a booked preliminary meeting.
+            - Informal meetings happen within 7 days of first contact.
+      - name: Ad posting and social channel pipeline
+        goal: Generate a predictable weekly volume of inbound applicants through posted openings and active social profiles.
+        effort_size: 3
+        sop:
+          title: Inbound Applicant Channel Management
+          purpose: Maintains always-on inbound candidate flow so interview slots are never empty. Treats job ads and social accounts as a marketing funnel with the same discipline applied to any campaign.
+          trigger: Weekly posting cycle; also runs whenever booked-interview volume drops below the weekly target.
+          tools: [job boards, professional and social network profiles, application form or short screening survey, candidate tracker]
+          steps:
+            - Write ad copy that sells the growth journey and merit-based progression rather than only the entry role; refresh wording at least monthly to avoid ad fatigue.
+            - Post openings on the agreed job boards on a fixed weekly schedule and record posting dates in the tracker.
+            - Keep leader profiles on professional networks current, with recent wins, team activity, and progression stories that a curious applicant would find when searching you.
+            - Route every applicant through a short application survey that captures availability, earliest start date, and motivation, so screening starts before the first call.
+            - Respond to every new applicant within one business day with a booking link for a preliminary conversation.
+            - Tag each applicant with their source channel so cost and yield per channel can be compared.
+            - Review channel yield weekly; shift effort toward the channels producing confirmed starts, not just applications.
+          quality_criteria:
+            - New or refreshed postings live every week without gaps.
+            - First response to every applicant within 1 business day.
+            - Source channel recorded for 100% of applicants.
+            - Weekly inbound volume meets or exceeds the interview-slot target.
+            - Channel yield review completed weekly with at least one documented adjustment per month.
+      - name: Online presence audit
+        goal: Ensure that anything a candidate finds when researching a leader online builds confidence in the opportunity.
+        effort_size: 2
+        sop:
+          title: Leader Reputation Audit
+          purpose: Candidates research the people interviewing them before they show up. This audit makes sure what they find matches the professional standard set in person, protecting show rates and offer acceptance.
+          trigger: Monthly per leader; also before any leader begins taking interviews for the first time.
+          tools: [search engine, social media accounts, professional network profile]
+          steps:
+            - Search your own name the way a candidate would and note everything on the first page of results.
+            - Review every public social profile and remove or hide content that conflicts with the professional image you want candidates to see.
+            - Confirm the professional network profile is complete — current role, clear photo, a summary that explains the business you are building.
+            - Publish at least one piece of content per month that shows real team activity, recognition, or progress.
+            - Check what others have posted about you or tagged you in, and address anything off-brand.
+            - Record the audit as complete in the leader checklist with the date.
+          quality_criteria:
+            - Audit completed and logged monthly for every interviewing leader.
+            - Zero conflicting or unprofessional items remaining on first-page search results after each audit.
+            - Professional profile completeness at 100% of required fields.
+            - At least 1 credible activity post published per leader per month.
+
+  - name: Interview Pipeline
+    goal: Move a high volume of applicants through a consistent multi-stage interview flow that filters for drive and coachability, while accepting the funnel mathematics of recruiting.
+    processes:
+      - name: Preliminary screening interview
+        goal: Quickly separate genuinely available, motivated applicants from the rest before investing longer sessions.
+        effort_size: 2
+        sop:
+          title: First-Round Screen
+          purpose: Protects senior interview time by confirming basics — availability, start date, motivation, and drive — in a short structured conversation. Speed of start matters; when two candidates match on skills, the one who can begin sooner usually wins the slot.
+          trigger: Runs within 2 business days of any application or referral entering the tracker.
+          tools: [video call or phone, screening question sheet, candidate tracker]
+          steps:
+            - Open by asking what the applicant thinks they did well to reach this stage; their answer reveals self-awareness and energy.
+            - Confirm whether they want full-time work and their earliest realistic start date; if the date is distant, probe for flexibility and lock a specific committed date.
+            - Ask what one or two things they most want from their next role and what stood out to them about this opening.
+            - Check relevant experience briefly — customer-facing, sales, marketing, or leadership — without treating any gap as disqualifying, since progression is trainable.
+            - Explain that only a limited number of positive recommendations advance, and that engagement, questions, and note-taking are how candidates separate themselves.
+            - Score the applicant against the drive, availability, and coachability checklist immediately after the call.
+            - Book advancing candidates into the next stage before ending the day; log declines with a reason code.
+          quality_criteria:
+            - Screen held within 2 business days of application for 95% of applicants.
+            - Committed specific start date captured for every advancing candidate.
+            - Score sheet completed same-day for 100% of screens.
+            - Advance-or-decline decision logged with reason for every applicant.
+      - name: Structured second-round presentation interview
+        goal: Educate serious candidates on the business model and growth path while testing engagement, competitiveness, and professionalism under a longer format.
+        effort_size: 4
+        sop:
+          title: Second-Round Deep Session
+          purpose: Gives candidates a genuine understanding of what the business does, why it is growing, and how progression works — while the interviewer observes who takes notes, asks sharp questions, and competes to stand out. The session should attract talent, not beg for it.
+          trigger: Runs for all candidates who pass the preliminary screen, typically within the same week.
+          tools: [video call or meeting room, presentation outline, questionnaire, candidate tracker]
+          steps:
+            - Set ground rules up front - treat the session like an in-person interview, cameras on, notes encouraged, questions saved for the allocated slot at the end.
+            - Share your own short background and goals so candidates see a real progression story, then ask each candidate what they already know about the company to gauge preparation.
+            - Walk through the company history, mission, and staged growth plan, emphasizing that senior roles are filled only by internal promotion.
+            - Teach the core of the business model interactively - ask candidates questions and let them reason toward answers rather than lecturing, creating light competition when multiple candidates attend.
+            - Explain the development path stage by stage, including realistic earnings ranges, the performance-based progression rules, and the working culture.
+            - Close the group portion by explaining the decision process, the follow-up questionnaire, and the same-day effort deadline that lets motivated candidates prove themselves.
+            - Hold a short individual close with each candidate - ask which role fits them and why, test their comfort with performance-based pay, ask for a leadership example, and push for stronger answers when responses are generic.
+            - Record a recommend / do-not-recommend verdict with three supporting observations before the day ends.
+          quality_criteria:
+            - Session delivered from the standard outline with all mandatory segments covered.
+            - Individual close completed for 100% of attendees.
+            - Recommendation with three observations logged same-day for every candidate.
+            - Follow-up questionnaire dispatched within 2 hours of session end.
+            - Final-stage decisions communicated to candidates within 48 hours.
+      - name: Funnel ratio tracking
+        goal: Make recruiting volume decisions from real conversion data anchored on the expectation that roughly 100 candidates yield about 5 long-term business partners.
+        effort_size: 2
+        sop:
+          title: Recruiting Funnel Mathematics
+          purpose: Recruiting obeys averages just like any prospect conversation - many will express interest, fewer will show, fewer will start, and only a small fraction become durable partners. Tracking the ratios keeps leaders emotionally steady and mathematically honest about how much top-of-funnel volume their growth goals require.
+          trigger: Weekly review cycle; also whenever a growth target changes.
+          tools: [candidate tracker, funnel dashboard or spreadsheet]
+          steps:
+            - Record every stage transition per candidate - applied, screened, second round, offer, started, retained past the first month, and established as a consistent contributor.
+            - Compute weekly conversion rates between each adjacent stage.
+            - Compare the end-to-end ratio against the planning baseline of roughly 100 entrants per 5 durable partners; investigate stages that fall materially below their historical rate.
+            - Work backwards from the team-growth target to the required weekly interview volume, and set sourcing targets accordingly.
+            - Present the funnel at the weekly leadership review and agree one corrective action for the weakest stage.
+            - Keep a written log of corrective actions and check the affected ratio two weeks later to confirm movement.
+          quality_criteria:
+            - All stage transitions logged within 24 hours of occurring.
+            - Funnel reviewed weekly with conversion rates computed for every stage.
+            - Sourcing targets recalculated whenever the growth target changes.
+            - Each corrective action re-checked after 2 weeks with the result recorded.
+      - name: No-show recovery and candidate rehash
+        goal: Recover value from missed interviews and previously paused candidates instead of writing them off.
+        effort_size: 2
+        sop:
+          title: No-Show and Re-Invite Loop
+          purpose: A meaningful share of booked candidates will not appear - that is normal funnel behavior, not a verdict on the opportunity. A calm, caring follow-up converts a portion of no-shows into rebooked interviews, and periodic re-invites to strong past candidates reopen doors when timing has changed.
+          trigger: Same-day for any missed interview; monthly sweep of the paused-candidate list.
+          tools: [candidate tracker, phone, message templates]
+          steps:
+            - Call every no-show within 4 hours of the missed slot; lead with concern for them rather than irritation.
+            - Offer exactly one rebooking at a specific alternative time; log the outcome either way.
+            - Tag candidates by outcome - rebooked, declined, unreachable - and move unreachable candidates to the paused list after two attempts.
+            - Run a monthly sweep of the paused list and re-invite candidates whose circumstances may have shifted, referencing something specific from the earlier conversation.
+            - Refresh the pitch on re-invite - lead with what has changed or grown in the business since they last heard from you.
+            - Retire candidates permanently only after a clear decline or three unanswered cycles, recording the final status.
+          quality_criteria:
+            - 100% of no-shows contacted within 4 hours.
+            - At least 25% of contacted no-shows rebooked.
+            - Monthly paused-list sweep completed with outcomes logged.
+            - No candidate left in an untagged or unknown status at week end.
+
+  - name: Onboarding & First Days
+    goal: Give every new starter a structured, expectation-managed first exposure to the work so their early reality matches what they were promised and their first days build belief.
+    processes:
+      - name: Observation day run-sheet
+        goal: Run a candidate's first field-observation day to a fixed structure that teaches the business while assessing fit.
+        effort_size: 3
+        sop:
+          title: Structured Observation Day
+          purpose: The first live day decides whether a promising candidate becomes a believer or a dropout. A fixed run-sheet guarantees the day educates in the right order - context first, live prospect conversations second, career path over the midday break, feedback at the end - and keeps the host in control throughout.
+          trigger: Runs on the first scheduled field or shadow day for any candidate or new starter.
+          tools: [day run-sheet, travel plan, career-path overview materials, end-of-day feedback form]
+          steps:
+            - Take a warm, confident handover when the manager introduces the candidate; first impressions set the tone, so greet them properly and guide them straight into the morning routine.
+            - During transit or the walk out, deliver the context block - what the business does, which client or product today represents, why the company is growing, and the exact shape of the day ahead.
+            - Explain the conversion mathematics of the work before the first conversation - the expected ratio of conversations to positive outcomes - so rejection is understood as arithmetic, not failure.
+            - Have the candidate predict the common reasons prospects decline, write them down together, and mark which ones a skilled operator can turn around.
+            - Demonstrate live prospect conversations while the candidate observes; narrate what you are doing and why between interactions.
+            - Involve the candidate in the first positive outcome of the day in a small concrete way so they feel part of the win.
+            - Over the midday break, walk through the full development program and promotion criteria while energy is relaxed; invite every question.
+            - Close the day with the feedback form, capture their two favorite moments and two confusions, and agree the next step before parting.
+          quality_criteria:
+            - All eight run-sheet blocks delivered in order on every observation day.
+            - Decline-reasons exercise completed and retained in the day notes.
+            - Feedback form completed for 100% of observation days.
+            - Next-step commitment agreed and logged before the candidate leaves.
+            - At least 60% of observation-day attendees confirm for a first working day.
+      - name: Expectation setting and pre-emptive briefing
+        goal: Surface and neutralize predictable first-day frictions before they occur.
+        effort_size: 2
+        sop:
+          title: Pre-Emptive First-Day Briefing
+          purpose: Most first-day wobbles - phone distractions, surprise at the pace, discomfort with rejection, unclear finish times - are predictable and preventable. Naming them in advance keeps the trainer in control and spares the new person embarrassment. People quit when reality diverges from expectation, so the brief closes that gap on day one.
+          trigger: Delivered at the start of each observation day and repeated in condensed form on the first working day.
+          tools: [briefing checklist]
+          steps:
+            - State the four things the day will be judged on - positive attitude, willingness to learn, effort against the numbers, and teamwork - so success is defined before work begins.
+            - Walk the full timetable including the finish time, break timing, and travel logistics; ask directly whether they have any other commitments today.
+            - Pre-empt device etiquette by silencing your own phone first and inviting them to do the same, framed around professionalism in front of prospects.
+            - Pre-empt rejection by explaining that most declines are aimed at the offer, never at the person, and agree how the two of you will reset after a rough interaction.
+            - Explain the why behind each routine they will see - the morning meeting, the metrics, the debrief - so nothing feels arbitrary.
+            - Ask them to voice any concern now rather than mid-day, and answer each one plainly.
+          quality_criteria:
+            - Briefing checklist covered in full before any live prospect exposure.
+            - Zero surprise-schedule complaints recorded in feedback forms.
+            - Every voiced concern answered and noted in the day log.
+            - Condensed re-brief delivered on the first working day for 100% of starters.
+      - name: Day-one goals and first-week contact cadence
+        goal: Anchor every new starter to concrete early goals and a scheduled rhythm of supportive contact through the vulnerable first weeks.
+        effort_size: 3
+        sop:
+          title: First-Week Development Cadence
+          purpose: Attrition concentrates in the first one to two weeks, when effort is high and results are thin. A fixed cadence of goals, calls, and sit-downs keeps belief alive, shows the starter their input matters, and gets problems voiced while they are still small.
+          trigger: Begins the moment a new starter confirms; runs through the end of week three.
+          tools: [goal sheet, calendar, conversation tracker]
+          steps:
+            - Before the first working day, agree one modest measurable day-one goal and one learning goal, written on the goal sheet.
+            - At the end of day one, review both goals, name specifically what they did well, and set the goals for day two.
+            - Schedule a weekend check-in call at a fixed agreed time; use it to review the week and set the coming week's goal, showing that support does not stop at the door.
+            - After the first solo session, hold a short sit-down and ask for two things they enjoyed and two things they would change; treat the answers as onboarding feedback, not complaints.
+            - In week two, walk through the core working principles one at a time, having them teach one concept back to you to confirm understanding.
+            - Hold a bottom-line conversation over a meal in week two or three - review their checklist honestly, ask how fast they want to progress, and agree the coaching intensity they prefer.
+            - Log every conversation on the tracker so any coach can see cadence compliance at a glance.
+          quality_criteria:
+            - Day-one goals set and reviewed for 100% of starters.
+            - Weekend call held at the pre-agreed time in week one.
+            - Post-solo sit-down completed within 1 day of the first solo session.
+            - Teach-back of at least one core concept passed in week two.
+            - Full cadence logged on the tracker with no gaps through week three.

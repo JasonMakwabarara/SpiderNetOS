@@ -15,6 +15,7 @@ class BusinessSystem extends Model
         'operations',
         'finance',
         'recruitment',
+        'retraining',
         'management',
     ];
 
