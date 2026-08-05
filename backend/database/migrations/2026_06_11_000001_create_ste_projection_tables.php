@@ -27,10 +27,10 @@ return new class extends Migration
             $table->string('chain', 32);              // 'session_lifecycle' | 'tenant_lifecycle'
             $table->string('from_state', 64);
             $table->string('to_state', 64);
-            $table->jsonb('tags')->default(DB::raw("'{}'::jsonb"));
+            $table->jsonb('tags')->default('{}');
             $table->uuid('tenant_id')->nullable();    // NULL = cross-tenant aggregate
             $table->bigInteger('count')->default(0);
-            $table->timestampTz('last_seen_at')->default(DB::raw('now()'));
+            $table->timestampTz('last_seen_at')->useCurrent();
 
             $table->index(['chain', 'from_state']);
             $table->index(['tenant_id', 'chain']);
@@ -38,10 +38,13 @@ return new class extends Migration
 
         // Postgres requires md5(tags::text) to get a unique index on jsonb
         // (jsonb is not directly comparable for uniqueness in an index of this size).
-        DB::statement("
-            CREATE UNIQUE INDEX ste_transitions_dedup_idx
-              ON ste_transitions (chain, from_state, to_state, md5(tags::text), COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'))
-        ");
+        // Functional/COALESCE indexes are pgsql-only; the sqlite lane skips them.
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::statement("
+                CREATE UNIQUE INDEX ste_transitions_dedup_idx
+                  ON ste_transitions (chain, from_state, to_state, md5(tags::text), COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'))
+            ");
+        }
 
         // ste_session_states
         Schema::create('ste_session_states', function (Blueprint $table) {
@@ -49,8 +52,8 @@ return new class extends Migration
             $table->uuid('tenant_id');
             $table->string('current_state', 64);
             $table->string('last_state', 64)->nullable();
-            $table->timestampTz('entered_at')->default(DB::raw('now()'));
-            $table->timestampTz('updated_at')->default(DB::raw('now()'));
+            $table->timestampTz('entered_at')->useCurrent();
+            $table->timestampTz('updated_at')->useCurrent();
             $table->bigInteger('last_sequence_num');
 
             $table->index(['tenant_id', 'current_state']);
@@ -61,8 +64,8 @@ return new class extends Migration
             $table->uuid('tenant_id')->primary();
             $table->string('current_state', 64);
             $table->string('last_state', 64)->nullable();
-            $table->timestampTz('entered_at')->default(DB::raw('now()'));
-            $table->timestampTz('updated_at')->default(DB::raw('now()'));
+            $table->timestampTz('entered_at')->useCurrent();
+            $table->timestampTz('updated_at')->useCurrent();
             $table->bigInteger('last_sequence_num');
         });
 
@@ -73,15 +76,17 @@ return new class extends Migration
             $table->string('chain', 32);
             $table->string('from_state', 64)->nullable();  // NULL = any prior state
             $table->string('to_state', 64);
-            $table->jsonb('extract_tags')->default(DB::raw("'{}'::jsonb"));
+            $table->jsonb('extract_tags')->default('{}');
             $table->boolean('enabled')->default(true);
-            $table->timestampTz('created_at')->default(DB::raw('now()'));
+            $table->timestampTz('created_at')->useCurrent();
         });
 
-        DB::statement("
-            CREATE UNIQUE INDEX ste_event_mapping_dedup_idx
-              ON ste_event_mapping (event_type, chain, COALESCE(from_state, ''), to_state)
-        ");
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::statement("
+                CREATE UNIQUE INDEX ste_event_mapping_dedup_idx
+                  ON ste_event_mapping (event_type, chain, COALESCE(from_state, ''), to_state)
+            ");
+        }
 
         // ste_unmapped_events — observability for missing mappings
         Schema::create('ste_unmapped_events', function (Blueprint $table) {
@@ -89,7 +94,7 @@ return new class extends Migration
             $table->string('event_type', 96)->unique();
             $table->uuid('sample_event_id');
             $table->uuid('tenant_id');
-            $table->timestampTz('first_seen_at')->default(DB::raw('now()'));
+            $table->timestampTz('first_seen_at')->useCurrent();
             $table->bigInteger('count')->default(1);
         });
     }

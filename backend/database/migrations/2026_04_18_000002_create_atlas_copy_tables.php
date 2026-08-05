@@ -51,8 +51,8 @@ return new class extends Migration
             $table->decimal('stability', 6, 4)->default(0);
             $table->integer('impressions')->default(0);
 
-            $table->timestampTz('created_at')->default(DB::raw('now()'));
-            $table->timestampTz('updated_at')->default(DB::raw('now()'));
+            $table->timestampTz('created_at')->useCurrent();
+            $table->timestampTz('updated_at')->useCurrent();
 
             $table->index(['surface', 'status']);
         });
@@ -92,8 +92,8 @@ return new class extends Migration
             $table->decimal('alpha', 10, 4)->default(1);
             $table->decimal('beta', 10, 4)->default(1);
 
-            $table->timestampTz('created_at')->default(DB::raw('now()'));
-            $table->timestampTz('updated_at')->default(DB::raw('now()'));
+            $table->timestampTz('created_at')->useCurrent();
+            $table->timestampTz('updated_at')->useCurrent();
 
             $table->index(['surface', 'status']);
             $table->foreign('prompt_id')->references('id')->on('atlas_prompts');
@@ -112,7 +112,7 @@ return new class extends Migration
             $table->string('surface', 32)->index();
             $table->jsonb('context');
 
-            $table->timestampTz('shown_at')->default(DB::raw('now()'))->index();
+            $table->timestampTz('shown_at')->useCurrent()->index();
             $table->timestampTz('clicked_at')->nullable();
             $table->timestampTz('action_at')->nullable();
             $table->timestampTz('conversion_at')->nullable();

@@ -55,10 +55,15 @@ return new class extends Migration
         // Backfill calculated_at from any available legacy timestamp before
         // imposing NOT NULL.
         if (Schema::hasColumn('usage_daily_aggregates', 'calculated_at')) {
-            DB::statement("UPDATE usage_daily_aggregates SET calculated_at = now() WHERE calculated_at IS NULL");
-            // Make NOT NULL with a default
-            DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at SET NOT NULL");
-            DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at SET DEFAULT now()");
+            DB::table('usage_daily_aggregates')
+                ->whereNull('calculated_at')
+                ->update(['calculated_at' => now()]);
+            // Make NOT NULL with a default — Postgres-only DDL; the sqlite
+            // lane (local dev / CiFast) keeps the column nullable.
+            if (Schema::getConnection()->getDriverName() === 'pgsql') {
+                DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at SET NOT NULL");
+                DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at SET DEFAULT now()");
+            }
         }
 
         // Add total_tokens if missing
@@ -94,7 +99,7 @@ return new class extends Migration
                 $table->decimal('canonical_total_cost', 12, 6)->nullable();
                 // One of: count_mismatch | cost_mismatch | missing_row | extra_row
                 $table->string('diff_kind', 32)->index();
-                $table->timestampTz('detected_at')->default(DB::raw('now()'))->index();
+                $table->timestampTz('detected_at')->useCurrent()->index();
                 $table->timestampTz('resolved_at')->nullable()->index();
             });
         }
@@ -110,9 +115,11 @@ return new class extends Migration
             DB::statement('UPDATE usage_daily_aggregates SET request_count = total_calls');
         }
 
-        // Make calculated_at nullable again
-        DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at DROP NOT NULL");
-        DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at DROP DEFAULT");
+        // Make calculated_at nullable again (Postgres-only DDL, see up()).
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at DROP NOT NULL");
+            DB::statement("ALTER TABLE usage_daily_aggregates ALTER COLUMN calculated_at DROP DEFAULT");
+        }
 
         // Drop shadow diffs table
         Schema::dropIfExists('usage_shadow_diffs');

@@ -8,6 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // pgvector-only tables: the vector(384) column and ivfflat index
+        // require Postgres. SQLite lanes (local dev, CiFast) skip them —
+        // MemoryNodeController and MemoryGraph already guard on table
+        // existence, so the RAG surface degrades cleanly when absent.
+        if (Schema::getConnection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         Schema::create('memory_nodes', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
@@ -43,6 +51,10 @@ return new class extends Migration
     
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         Schema::dropIfExists('memory_edges');
         Schema::dropIfExists('memory_nodes');
     }
