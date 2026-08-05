@@ -15,7 +15,6 @@
     "laravel-echo": "^1.16.1",
     "pinia": "^2.1.7",
     "pusher-js": "^8.4.0",
-    "qrcode": "^1.5.4",
     "vue": "^3.4.38",
     "vue-router": "^4.4.3"
   },

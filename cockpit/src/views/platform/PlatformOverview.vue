@@ -61,21 +61,6 @@
       </ul>
     </section>
 
-    <!-- Go-live readiness — Hannah's guidance pattern applied to infra gaps -->
-    <section v-if="readinessGaps.length" class="bg-white rounded-lg shadow-sm border p-4">
-      <h2 class="font-semibold text-sm mb-1">Go-live readiness</h2>
-      <p class="text-xs text-gray-500 mb-3">{{ readinessGaps.length }} infra/env gap{{ readinessGaps.length === 1 ? '' : 's' }} before this instance is production-ready.</p>
-      <ul class="divide-y">
-        <li v-for="item in readinessGaps" :key="item.key" class="py-2 flex items-start justify-between gap-3">
-          <div>
-            <p class="text-sm font-medium" :class="item.status === 'warning' ? 'text-amber-600' : 'text-red-600'">{{ item.label }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">{{ item.detail }}</p>
-          </div>
-          <a v-if="item.doc_link" :href="item.doc_link" target="_blank" rel="noopener" class="shrink-0 text-xs px-2 py-1 rounded border text-gray-600 hover:bg-gray-50">Docs</a>
-        </li>
-      </ul>
-    </section>
-
     <!-- STE tile (plan §12) -->
     <section class="bg-white rounded-lg shadow-sm border p-4 flex items-center justify-between">
       <div>
@@ -114,8 +99,6 @@ const stats = ref({
   shadowOpenDiffs: 0,
 })
 
-const readinessGaps = ref([])
-
 const shadowProgress = computed(() => {
   if (!stats.value.shadowStartedAt) return 0
   const started = new Date(stats.value.shadowStartedAt).getTime()
@@ -138,13 +121,6 @@ async function load() {
       stats.value.gate            = gate.ready_for_cutover ? 'GREEN' : 'AMBER'
       stats.value.shadowOpenDiffs = gate.open_diffs_last_24h ?? 0
     }
-  } catch {
-    /* keep defaults */
-  }
-
-  try {
-    const { data } = await axios.get(`${API_URL}/api/platform/readiness`)
-    readinessGaps.value = (data?.data || []).filter((i) => i.status !== 'ok')
   } catch {
     /* keep defaults */
   }

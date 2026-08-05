@@ -1,0 +1,148 @@
+{
+  "project": "SpiderNetOS Multi-Site Generation",
+  "model": "gemma4:31b",
+  "target_host": "vast.ai instance - 220.134.41.156 / 100.123.148.97",
+  "output_base": "/workspace/SpiderNetOS/sites",
+  "sites": [
+    {
+      "domain": "spidernetos.com",
+      "role": "public_landing",
+      "audience": "Prospective customers, investors, curious visitors",
+      "output_dir": "/workspace/SpiderNetOS/sites/landing",
+      "tech_stack": "Vue 3 + Vite + Tailwind CSS + GSAP (animations)",
+      "port": 3000,
+      "nginx_path": "/",
+      "design_brief": {
+        "color_scheme": {
+          "primary": "#FF6B2C",
+          "secondary": "#FF8C42",
+          "accent": "#00E5C8",
+          "bg_dark": "#0A0A0F",
+          "bg_card": "#141419",
+          "text_primary": "#F0F0F5",
+          "text_secondary": "#8A8A95",
+          "gradient_hero": "linear-gradient(135deg, #FF6B2C 0%, #FF8C42 50%, #FFA726 100%)"
+        },
+        "typography": "Inter for body, Space Grotesk for headings",
+        "animation_style": "GSAP scroll-triggered, particle networks, morphing shapes"
+      },
+      "pages": [
+        {
+          "name": "index",
+          "file": "src/App.vue",
+          "prompt": "Create a Vue 3 single-page landing experience for 'SpiderNetOS - Agent-Native Operating System'. This is NOT a traditional SaaS landing page. It uses behavioral psychology principles: Framing Effect, Peak-End Rule, and Curiosity Gap Theory.\n\nSTRUCTURE:\n1. HERO (0-3s): Full-screen dark background with animated particle network (canvas/WebGL). Center text: 'What if your business didn't scale linearly—but autonomously?' No navigation menu visible. Only a subtle pulsing indicator suggesting scroll.\n\n2. REALITY PATHS (3-30s): Three large interactive zones appearing on scroll:\n   - BUILD: 'Create an AI-driven system' → opens mini-simulation showing agent swarm\n   - SELL: 'Automate revenue generation' → shows revenue curve animation\n   - SCALE: 'Deploy autonomous operations' → shows infrastructure graph\n   Each zone has parallax depth, hover-triggered glow effects (orange #FF6B2C), and clicking reveals an interactive narrative module (not a new page).\n\n3. PROOF SECTION: Animated metrics that count up - '2.4M agents deployed', '$840M revenue automated', '99.97% uptime'. Use intersection observer to trigger.\n\n4. CONVERSION EMERGENCE: Instead of 'Sign Up', show 'Run Your First System Simulation' as a CTA. Clicking opens an inline terminal-style demo (mock data) showing an agent executing a business task.\n\n5. FOOTER: Minimal. Links to docs, GitHub, status page.\n\nINTERACTION RULES:\n- No traditional navbar - navigation is scroll-driven\n- Every interactive element has hover feedback (scale 1.02, orange glow box-shadow)\n- Scroll hijacking is FORBIDDEN - use natural scroll with GSAP ScrollTrigger\n- Mobile: stacked single-column, touch-friendly zones\n\nSTYLING:\n- Use Tailwind CSS with custom config\n- Dark mode only (#0A0A0F background)\n- Orange accent (#FF6B2C) for all interactive elements\n- Glassmorphism cards: backdrop-blur(12px), bg-white/5, border-white/10\n- All animations use transform and opacity (GPU-accelerated)\n\nTECHNICAL:\n- Vue 3 Composition API with <script setup>\n- GSAP + ScrollTrigger for scroll animations\n- Canvas 2D particle network in hero (self-contained component)\n- Responsive: breakpoints at 640px, 1024px, 1280px\n- No external images - use CSS gradients, SVG icons, and canvas graphics\n\nGenerate the COMPLETE App.vue file with all sections as sub-components defined in the same file or as separate component imports."
+        }
+      ]
+    },
+    {
+      "domain": "cockpit.spidernetos.com",
+      "role": "customer_control_plane",
+      "audience": "SpiderNetOS customers managing their AI agents and business automation",
+      "output_dir": "/workspace/SpiderNetOS/sites/customer-cockpit",
+      "tech_stack": "Vue 3 + Vite + Tailwind CSS + Pinia + Chart.js/D3",
+      "port": 3001,
+      "nginx_path": "/customer",
+      "design_brief": {
+        "color_scheme": {
+          "primary": "#FF6B2C",
+          "secondary": "#FF8C42",
+          "success": "#00E5C8",
+          "warning": "#FFA726",
+          "danger": "#F44336",
+          "bg_dark": "#0F0F14",
+          "bg_card": "#1A1A24",
+          "bg_elevated": "#252530",
+          "text_primary": "#F0F0F5",
+          "text_secondary": "#8A8A95",
+          "border": "rgba(255,255,255,0.08)"
+        },
+        "typography": "Inter body, JetBrains Mono for data/monospace",
+        "layout": "Sidebar navigation + main content area, 250px sidebar"
+      },
+      "pages": [
+        {
+          "name": "Dashboard",
+          "file": "src/views/Dashboard.vue",
+          "prompt": "Create a customer-facing Dashboard for SpiderNetOS Cockpit. This is where users SEE and CONTROL their autonomous business systems.\n\nCORE PRINCIPLE: The dashboard should feel ALIVE. Users must feel they are observing a living economic organism, not configuring software.\n\nLAYOUT:\n- Top bar: Logo, tenant name, notification bell, user avatar, budget indicator (green/yellow/red)\n- Left sidebar: Dashboard, Agents, Flows, Approvals, Traces, Usage, Memory, Settings\n- Main area: Cards arranged in Bento-grid style\n\nWIDGETS (each is a card):\n1. SYSTEM STATE (top-left, 2x2):\n   - Live count of active agents (pulsing green dot)\n   - Revenue stream visualization (sparkline chart)\n   - Active workflows count with trend indicator\n   - Opportunities detected this hour\n\n2. AGENT SWARM (top-right, 2x2):\n   - Visual representation of running agents as dots/nodes\n   - Each agent has status color (green=running, yellow=waiting, red=error)\n   - Click to expand agent details\n\n3. REVENUE GRAPH (bottom, full width):\n   - Line chart showing revenue over time (last 7 days)\n   - Overlay showing agent-contributed vs manual revenue\n   - Chart.js or D3 line chart with orange gradient fill\n\n4. QUICK ACTIONS (bottom-right):\n   - 'Approve Pending' button with count badge\n   - 'Deploy Agent' button\n   - 'View Traces' button\n\n5. RECENT EVENTS (sidebar or bottom):\n   - Scrollable list of recent agent actions\n   - Format: 'AtlasAgent processed query → $0.002'\n   - Timestamp, agent name, status icon\n\nINTERACTION:\n- All data starts as mock/demo but structured for real API integration\n- Cards have hover: subtle lift (translateY -2px), shadow increase\n- Clicking any metric opens detail drawer (slide from right)\n- Budget indicator pulses red when >90%\n\nSTYLING:\n- Dark theme (#0F0F14 background)\n- Cards: #1A1A24 background, 1px border rgba(255,255,255,0.08), border-radius 12px\n- Orange accents for primary actions and active states\n- Success green (#00E5C8) for positive metrics\n- Monospace font for all numbers/data (JetBrains Mono)\n\nGenerate Dashboard.vue with all widgets as inline components or imports. Use Pinia store for state."
+        },
+        {
+          "name": "AgentBuilder",
+          "file": "src/views/AgentBuilder.vue",
+          "prompt": "Create an Agent Builder interface for SpiderNetOS customers. Users create AI agents by describing what they want in natural language, and the system generates the agent configuration.\n\nLAYOUT:\n- Split view: Left = agent canvas/visualization, Right = configuration panel\n\nLEFT PANEL (Agent Canvas):\n- Central node representing the agent being built\n- Connected nodes showing: Trigger, Action, Memory, Output\n- Drag-and-drop connections (visual only, mock)\n- Animated data flow particles along connections\n\nRIGHT PANEL (Configuration):\n- Name input with auto-suggest\n- Description textarea (this is the KEY input - users describe in plain English what the agent should do)\n- Capability tags (multi-select chips): Sales, Support, Research, Code, Design, Data\n- Automation level slider: 0 (human-in-loop) to 100 (fully autonomous)\n- Cost ceiling input ($/day)\n- 'Generate Agent' button (primary, orange)\n\nBELOW CONFIG:\n- Preview section showing estimated: response time, cost/agent, success probability\n- These update live as user types\n\nSTYLING:\n- Dark theme matching dashboard\n- Canvas background: subtle grid pattern\n- Nodes: rounded rectangles, colored by type (trigger=orange, action=blue, memory=purple, output=green)\n- Connections: animated dashed lines with flowing particles\n\nGenerate AgentBuilder.vue with mock data."
+        },
+        {
+          "name": "Approvals",
+          "file": "src/views/Approvals.vue",
+          "prompt": "Create an Approvals interface for SpiderNetOS. When agents want to take high-impact actions (spend money, modify systems, contact customers), they queue for human approval.\n\nLAYOUT:\n- Top: Stats row - Pending (orange), Approved (green), Rejected (red), Total\n- Main: List of pending approvals\n\nAPPROVAL CARD:\n- Agent name + avatar/icon\n- Action description: 'ForgeAgent wants to deploy new pricing strategy to production'\n- Estimated impact: '+$12K revenue/day' or 'Modifies 3 active workflows'\n- Risk level badge: Low/Medium/High (colored)\n- Cost estimate: '$0.45 compute'\n- Two buttons: Approve (green) / Reject (red) + 'More Info' link\n- Timestamp\n\nFILTER BAR:\n- Search by agent name or action\n- Filter by: Risk level, Agent type, Time range\n- Sort by: Urgency, Cost, Time\n\nAPPROVED/REJECTED TABS:\n- Same card format but with outcome badge\n- Show who approved/rejected and when\n\nSTYLING:\n- Cards have left border colored by status (pending=orange, approved=green, rejected=red)\n- Hover reveals quick-approve buttons\n- Bulk select checkbox for batch approval\n\nGenerate Approvals.vue."
+        }
+      ]
+    },
+    {
+      "domain": "cockpit.internal.spidernetos.com",
+      "role": "admin_observability",
+      "audience": "SpiderNetOS team - admins, developers, executives monitoring the platform",
+      "output_dir": "/workspace/SpiderNetOS/cockpit",
+      "tech_stack": "Vue 3 + Vite + Tailwind CSS + Pinia + WebSocket + D3/Chart.js",
+      "port": 80,
+      "nginx_path": "/",
+      "design_brief": {
+        "color_scheme": {
+          "primary": "#FF6B2C",
+          "secondary": "#FF8C42",
+          "accent_teal": "#00E5C8",
+          "accent_purple": "#B967FF",
+          "bg_dark": "#0A0A0F",
+          "bg_panel": "#12121A",
+          "bg_card": "#1A1A24",
+          "text_primary": "#E8E8EF",
+          "text_secondary": "#6B6B7B",
+          "grid_line": "rgba(255,255,255,0.03)"
+        },
+        "typography": "Inter body, JetBrains Mono for all data/metrics",
+        "layout": "Dense information display, multiple panels, real-time updates"
+      },
+      "pages": [
+        {
+          "name": "SystemObservability",
+          "file": "src/views/Observability.vue",
+          "prompt": "Create the SpiderNetOS Internal Observability Dashboard. This is the GOD LAYER for the SpiderNetOS team to observe the entire platform. Think NASA mission control meets cyberpunk UI.\n\nPRINCIPLE: Every pixel must convey system state. No decorative elements. Information density is paramount.\n\nLAYOUT (3-column grid):\n\nCOLUMN 1 (Left, 25%):\n1. PLATFORM HEALTH (top):\n   - Vertical list of all services: Inference, Atlas API, Intelligence, CPL, WebSocket, Nginx\n   - Each service: name, status dot (green/yellow/red), latency (ms), uptime %\n   - Click to expand recent logs (last 5 lines)\n\n2. GPU CLUSTER (middle):\n   - For each GPU (2x RTX 5090):\n     - Utilization bar (horizontal, animated)\n     - VRAM: used/total with visual bar\n     - Temperature: numeric + color (green<75, yellow 75-85, red>85)\n     - Power draw in Watts\n     - Process list: which agent is using it\n   - Real-time updates every 2 seconds (WebSocket data)\n\n3. COST GOVERNOR (bottom):\n   - Today's spend: $X.XX / $XX.XX budget\n   - Progress bar with color zones\n   - Per-tenant cost breakdown (top 5)\n   - Alert if any tenant exceeds 80% budget\n\nCOLUMN 2 (Center, 50%):\n1. AGENT SWARM VISUALIZATION (top, 60%):\n   - Force-directed graph of all active agents\n   - Nodes: agents (colored by type: Atlas=orange, Forge=blue, Sentinel=red, Prism=purple, Nexus=green)\n   - Edges: communication flow between agents\n   - Node size = compute usage\n   - Edge thickness = message frequency\n   - Click node to see agent details panel\n   - Real-time layout updates (D3 force simulation or similar)\n\n2. EVENT STREAM (bottom, 40%):\n   - Scrolling log of system events\n   - Format: [timestamp] [agent] [action] [status] [cost]\n   - Color-coded by status (green=success, yellow=warning, red=error)\n   - Auto-scroll with pause on hover\n   - Filter: All, Errors, High Cost, Agent-specific\n\nCOLUMN 3 (Right, 25%):\n1. CPL REWARD HEATMAP (top):\n   - 3D-style visualization (or 2D heatmap) showing:\n     - X: Novelty score\n     - Y: Emotional score\n     - Color intensity: Utility score\n   - Pareto frontier line overlaid\n   - Latest scores animate in from edge\n   - Historical trail (last 50 scores fade out)\n\n2. EXPLORATION vs EXPLOITATION (middle):\n   - Pie chart or gauge showing current ratio\n   - Target: 20% explore, 80% exploit (adjustable)\n   - Current actual ratio with deviation indicator\n\n3. SYSTEM THROUGHPUT (bottom):\n   - Requests/minute sparkline\n   - Agent executions/minute\n   - Average response time (ms)\n   - All with 5-minute trailing window\n\nINTERACTION:\n- Everything updates in real-time via WebSocket\n- Click any metric to open detailed view (modal or slide-over)\n- Keyboard shortcuts: 'g' for GPU focus, 'a' for agents, 'e' for events\n- Dark mode only, no theme toggle\n\nSTYLING:\n- Background: #0A0A0F with subtle grid pattern\n- Panels: #12121A background, 1px border rgba(255,255,255,0.06), border-radius 8px\n- All data in JetBrains Mono font\n- Orange (#FF6B2C) for primary actions and highlights\n- Teal (#00E5C8) for positive/success metrics\n- Purple (#B967FF) for CPL/RL related elements\n- No rounded corners on data elements (sharp, technical feel)\n- Minimal padding (information density)\n\nGenerate Observability.vue with all panels as components. Include WebSocket connection setup."
+        },
+        {
+          "name": "RLTraining",
+          "file": "src/views/RLTraining.vue",
+          "prompt": "Create a Reinforcement Learning Training view for SpiderNetOS internal team. This shows the CPL (Curiosity-Priority Learning) engine training in real-time.\n\nLAYOUT:\n\nTOP BAR:\n- Training status: Running / Paused / Completed\n- Episode count, total steps, elapsed time\n- Current policy network: architecture summary\n- GPU allocation: which GPU is training\n\nMAIN AREA (split):\n\nLEFT (60%):\n1. REWARD CURVE (top):\n   - Line chart: Episode vs Cumulative Reward\n   - Smoothed curve with raw data faint behind\n   - Vertical markers for policy updates\n   - D3 or Chart.js, orange line on dark background\n\n2. PARETO FRONT (middle):\n   - 3D scatter plot (or 2D projection) of multi-objective rewards\n   - Axes: Novelty, Emotional Impact, Utility\n   - Each point is an episode\n   - Pareto frontier highlighted as connected line\n   - Color gradient from old (faint) to new (bright)\n\n3. LOSS DECOMPOSITION (bottom):\n   - Stacked area chart: Policy loss, Value loss, Entropy loss\n   - Shows training stability\n\nRIGHT (40%):\n1. HYPERPARAMETERS:\n   - Learning rate (slider + numeric)\n   - Batch size\n   - Discount factor (gamma)\n   - GAE lambda\n   - Entropy coefficient\n   - All editable with immediate effect (if backend connected, else mock)\n\n2. ACTION DISTRIBUTION:\n   - Bar chart showing frequency of each action type\n   - Actions: deploy, modify, pause, query, explore, exploit\n   - Updates per episode\n\n3. AGENT PERFORMANCE TABLE:\n   - List of agents with their learned policies\n   - Columns: Agent, Win Rate, Avg Reward, Preference Drift, Last Updated\n   - Sortable\n\nBOTTOM BAR:\n- Control buttons: Start Training, Pause, Save Checkpoint, Load Checkpoint, Reset\n- Checkpoint history dropdown\n\nSTYLING:\n- Technical/scientific aesthetic\n- Grid lines on all charts (rgba(255,255,255,0.03))\n- Chart lines: orange for primary, teal for secondary, purple for tertiary\n- All numeric values monospace\n- Buttons: sharp corners, orange border on primary action\n\nGenerate RLTraining.vue with mock training data that simulates realistic RL curves."
+        },
+        {
+          "name": "AgentDebugger",
+          "file": "src/views/AgentDebugger.vue",
+          "prompt": "Create an Agent Debugger view for SpiderNetOS internal team. This allows developers to trace agent decision-making step by step.\n\nLAYOUT:\n\nTOP: Agent Selector\n- Dropdown to select active agent\n- Shows: current status, last action, confidence score\n- 'Inject Command' button for manual testing\n\nMAIN (3 panels):\n\nLEFT: Execution Trace\n- Vertical timeline of agent's last execution\n- Each step: timestamp, step number, action taken, reasoning (collapsible)\n- Steps connected by vertical line with nodes\n- Click step to see full state\n\nCENTER: State Visualization\n- JSON tree view of agent's current state\n- Expandable/collapsible nodes\n- Syntax highlighting (orange for strings, teal for numbers, purple for booleans)\n- Search/filter capability\n\nRIGHT: Decision Logic\n- Shows the policy network's output for current state\n- Bar chart: action probabilities\n- Highlighted: chosen action vs alternatives\n- Value estimate for state\n- If model confidence < 0.7, show 'Uncertainty Warning' banner\n\nBOTTOM: Log Stream\n- Raw agent logs (last 100 lines)\n- Filter by: INFO, DEBUG, WARN, ERROR\n- Searchable\n- Auto-scroll with pause\n\nSTYLING:\n- Terminal/code aesthetic\n- Monospace everywhere\n- Dark background with subtle color coding\n- State tree uses indent guides (vertical lines)\n\nGenerate AgentDebugger.vue."
+        }
+      ]
+    }
+  ],
+  "shared_components": [
+    {
+      "name": "WebSocketClient",
+      "file": "src/services/ws.js",
+      "prompt": "Create a robust WebSocket client service for Vue 3/Pinia.\n\nREQUIREMENTS:\n- Auto-connect on app mount\n- Exponential backoff reconnect (1s, 2s, 4s, 8s, max 30s)\n- Heartbeat/ping-pong every 30 seconds\n- Message routing by type to Pinia stores\n- Connection status indicator\n- Graceful handling of server disconnect\n- Support both ws:// and wss:// based on window.location.protocol\n- Dynamic URL: ws://{hostname}:8002/ws\n\nMESSAGE TYPES TO HANDLE:\n- 'gpu': { data: [{id, util, mem_used, mem_total, temp, power, name}] } → systemStore.setGpu()\n- 'event': { data: {id, agent, status, intent, cost} } → systemStore.addEvent()\n- 'cpl_score': { data: {event_id, novelty, emotional, utility, pareto_distance} } → cplStore.addScore()\n- 'service_status': { data: {name, status, latency} } → systemStore.updateService()\n- 'telemetry': { data: {...} } → forward to analytics\n\nEXPORT: initWebSocket(), closeWebSocket(), sendMessage(data), getConnectionStatus()\n\nGenerate as a plain JavaScript module (not TS)."
+    },
+    {
+      "name": "GlassCard",
+      "file": "src/components/GlassCard.vue",
+      "prompt": "Create a reusable GlassCard component for SpiderNetOS UI.\n\nPROPS:\n- title: String\n- subtitle: String (optional)\n- icon: String (emoji or component name)\n- accent: String - color for top border ('orange', 'teal', 'purple', 'red')\n- loading: Boolean - show shimmer effect\n- collapsible: Boolean\n- defaultCollapsed: Boolean\n\nSTYLING:\n- Background: rgba(255,255,255,0.03) or #1A1A24\n- Backdrop blur: 12px\n- Border: 1px solid rgba(255,255,255,0.06)\n- Border-radius: 12px\n- Top border accent: 2px solid in accent color (if provided)\n- Padding: 20px\n- Header: flex between title and collapse icon\n- Content slot for custom content\n- Footer slot for actions\n- Hover: subtle lift (translateY -1px), border brightens slightly\n- Loading state: animated gradient shimmer across surface\n\nGenerate GlassCard.vue as a reusable component."
+    },
+    {
+      "name": "OrangeTheme",
+      "file": "src/styles/orange-theme.css",
+      "prompt": "Create a comprehensive CSS theme file for SpiderNetOS.\n\nCOLOR TOKENS:\n--color-primary: #FF6B2C\n--color-primary-light: #FF8C42\n--color-primary-dark: #E55A1E\n--color-accent-teal: #00E5C8\n--color-accent-purple: #B967FF\n--color-success: #00E5C8\n--color-warning: #FFA726\n--color-danger: #F44336\n--color-bg-base: #0A0A0F\n--color-bg-panel: #12121A\n--color-bg-card: #1A1A24\n--color-bg-elevated: #252530\n--color-text-primary: #E8E8EF\n--color-text-secondary: #6B6B7B\n--color-text-muted: #4A4A5A\n--color-border: rgba(255,255,255,0.06)\n\nGLASSMORPHISM UTILITIES:\n.glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); border: 1px solid var(--color-border); }\n.glass-strong { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); }\n\nGLOW EFFECTS:\n.glow-orange { box-shadow: 0 0 20px rgba(255,107,44,0.3), 0 0 40px rgba(255,107,44,0.1); }\n.glow-teal { box-shadow: 0 0 20px rgba(0,229,200,0.3); }\n.text-glow-orange { text-shadow: 0 0 10px rgba(255,107,44,0.5); }\n\nGRADIENTS:\n.gradient-primary { background: linear-gradient(135deg, #FF6B2C, #FF8C42); }\n.gradient-dark { background: linear-gradient(180deg, #12121A, #0A0A0F); }\n\nANIMATIONS:\n- Pulse glow for live indicators\n- Shimmer for loading states\n- Fade in for modal appearances\n- Slide in for notifications\n\nTYPOGRAPHY:\n- Body: Inter, system-ui, sans-serif\n- Mono: 'JetBrains Mono', 'Fira Code', monospace\n- Heading weights: 600, 700\n\nSCROLLBAR:\n- Thin (6px)\n- Track: transparent\n- Thumb: rgba(255,255,255,0.15)\n- Thumb hover: rgba(255,255,255,0.25)\n\nGenerate orange-theme.css as a comprehensive design system."
+    }
+  ],
+  "execution_instructions": {
+    "step_1": "Ensure Ollama is running: curl http://localhost:11434/api/tags",
+    "step_2": "Run the generator script that feeds each prompt to gemma4:31b",
+    "step_3": "Output files go to specified output_dir for each site",
+    "step_4": "Build each site with npm run build",
+    "step_5": "Configure Nginx to serve each built site on appropriate domain",
+    "step_6": "Test all three domains after deployment"
+  }
+}

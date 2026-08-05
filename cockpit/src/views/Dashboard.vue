@@ -172,7 +172,6 @@
             <RouterLink to="/agents" class="sn-btn justify-start text-xs" data-testid="qj-agents">Agents</RouterLink>
             <RouterLink to="/memory" class="sn-btn justify-start text-xs" data-testid="qj-memory">Memory</RouterLink>
             <RouterLink to="/intelligence" class="sn-btn justify-start text-xs" data-testid="qj-intel">Intelligence</RouterLink>
-            <RouterLink to="/operating" class="sn-btn justify-start text-xs" data-testid="qj-operating">Operating Model</RouterLink>
           </div>
         </div>
       </div>

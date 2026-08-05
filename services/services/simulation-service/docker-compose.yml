@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  simulation-service:
+    build:
+      context: ../../
+      dockerfile: services/simulation-service/Dockerfile
+    ports:
+      - "9200:9200"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - DEEPSEEK_MODEL=deepseek-v4-flash:cloud
+      - KAFKA_BOOTSTRAP=kafka:29092
+      - SIMULATION_PORT=9200
+      - CALIBRATION_WINDOW_HOURS=168
+      - LOG_LEVEL=INFO
+    depends_on:
+      - kafka
+      - postgres
+    volumes:
+      - ./policies:/app/policies
+      - ./logs:/app/logs
+    networks:
+      - spidernet
+    command: uvicorn main:app --host 0.0.0.0 --port 9200 --reload
+
+  # Optional: Dedicated training worker
+  training-worker:
+    build:
+      context: ../../
+      dockerfile: services/simulation-service/Dockerfile
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - KAFKA_BOOTSTRAP=kafka:29092
+      - WORKER_MODE=training
+    depends_on:
+      - kafka
+      - simulation-service
+    networks:
+      - spidernet
+    profiles:
+      - training
+
+networks:
+  spidernet:
+    external: true

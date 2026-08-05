@@ -1,0 +1,75 @@
+id: ad-copy-variants
+shared: true
+description: "High-performing ad creative for real estate"
+
+surfaces:
+  facebook:
+    - id: lifestyle-dream
+      headline: "Your Dream Home Awaits"
+      body: "Discover properties that match your lifestyle in [Neighborhood]. From cozy condos to family homes."
+      cta: "Browse Listings"
+      image: "family-home-lifestyle.jpg"
+      alpha: 45
+      beta: 15
+
+    - id: urgency-scarcity
+      headline: "Just Listed: Won't Last"
+      body: "New properties in [Neighborhood] are selling in days, not weeks. Don't miss out."
+      cta: "See Inside"
+      image: "sold-sign.jpg"
+      alpha: 38
+      beta: 22
+
+    - id: social-proof
+      headline: "Join 500+ Happy Homeowners"
+      body: "See why [Neighborhood] residents love where they live. Community events, great schools, walkable."
+      cta: "Join the Community"
+      image: "community-event.jpg"
+      alpha: 30
+      beta: 20
+
+    - id: investment-opportunity
+      headline: "Properties That Pay You Back"
+      body: "Rental income, appreciation, tax benefits. Explore investment opportunities in [Neighborhood]."
+      cta: "View ROI Calculator"
+      image: "investment-chart.jpg"
+      alpha: 25
+      beta: 25
+
+  instagram:
+    - id: visual-stunning
+      headline: "Swipe to Fall in Love"
+      body: "Stunning interiors, modern finishes, perfect location. Double-tap if this is your dream kitchen."
+      cta: "Save for Later"
+      image: "interior-shots-carousel.jpg"
+      alpha: 40
+      beta: 20
+
+    - id: behind-scenes
+      headline: "Behind the Scenes"
+      body: "From first showing to keys in hand — see the journey."
+      cta: "Start Your Journey"
+      image: "keys-handover.jpg"
+      alpha: 28
+      beta: 22
+
+  google:
+    - id: search-intent
+      headline: "Homes for Sale in [Neighborhood]"
+      description1: "Browse all listings. Updated every 15 minutes."
+      description2: "See photos, prices, and schedule viewings instantly."
+      alpha: 52
+      beta: 18
+
+    - id: seller-intent
+      headline: "What's Your Home Worth?"
+      description1: "Free instant valuation. No obligation."
+      description2: "See what similar homes sold for in your area."
+      alpha: 35
+      beta: 25
+
+aggregation:
+  method: thompson_sampling
+  surface_matching: exact
+  exploration_rate: 0.15
+  min_impressions_before_exploit: 100

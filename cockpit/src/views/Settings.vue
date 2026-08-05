@@ -132,9 +132,6 @@
           <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
             Change Password
           </button>
-
-          <MfaSettings />
-          <NotificationSettings />
         </div>
 
         <!-- API Keys -->
@@ -198,8 +195,6 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import MfaSettings from '../components/security/MfaSettings.vue'
-import NotificationSettings from '../components/security/NotificationSettings.vue'
 
 const tabs = [
   { id: 'general', name: 'General' },

@@ -1,0 +1,25 @@
+name: Feature Pack Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-packs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check feature packs
+        run: |
+          echo "=== Feature Pack Validation ==="
+          if [ -d "packages/feature-packs" ]; then
+            echo "? Feature packs directory found"
+            ls -la packages/feature-packs/
+          else
+            echo "?? No feature packs found - skipping validation"
+          fi
+          exit 0

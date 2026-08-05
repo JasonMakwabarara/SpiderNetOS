@@ -11,10 +11,3 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
-
-// Register the PWA service worker (web-push + installability).
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js').catch(() => {})
-  })
-}

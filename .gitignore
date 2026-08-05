@@ -90,3 +90,8 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Laravel runtime artifacts (generated)
+backend/storage/framework/views/*.php
+backend/storage/app/feature-packs/
+backend/.env
