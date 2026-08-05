@@ -2,7 +2,7 @@
 SpiderNet OS — Inference Plane Pydantic Models
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 
 
 class InferenceRequest(BaseModel):
@@ -19,6 +19,9 @@ class InferenceRequest(BaseModel):
     # endpoint ID). Overrides the static MODELARK_MODEL_MAP translation —
     # set from the Laravel admin dashboard via feature flags.
     provider_model_id: Optional[str] = None
+    # Optional base64-encoded images (raw base64, no data: URL prefix) for
+    # vision-capable models. Backward compatible: absent => text-only request.
+    images: Optional[List[str]] = None
 
 
 class InferenceResponse(BaseModel):

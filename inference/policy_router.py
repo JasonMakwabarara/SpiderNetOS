@@ -31,12 +31,20 @@ class RoutingDecision:
         self.retry_delay_ms = retry_delay_ms
 
 
-def rank_models(cost_ceiling: float, latency_max: float | None, tenant_tier: str) -> List[str]:
-    """Rank available models by policy constraints."""
+def rank_models(cost_ceiling: float, latency_max: float | None, tenant_tier: str,
+                require_capability: str | None = None) -> List[str]:
+    """Rank available models by policy constraints.
+
+    require_capability filters out models whose "capabilities" list does not
+    include the given capability (e.g. "vision" for image inputs).
+    """
     candidates = []
 
     for model_name, info in MODEL_COST_TABLE.items():
         if latency_max and info["latency_avg_ms"] > latency_max * 1000:
+            continue
+
+        if require_capability and require_capability not in info.get("capabilities", []):
             continue
 
         if info["provider"] == "openai" and not OPENAI_API_KEY:
@@ -58,7 +66,7 @@ def rank_models(cost_ceiling: float, latency_max: float | None, tenant_tier: str
     return [c[0] for c in candidates]
 
 
-def route(request: InferenceRequest) -> RoutingDecision:
+def route(request: InferenceRequest, require_capability: str | None = None) -> RoutingDecision:
     """Determine routing decision based on policy evaluation."""
     if request.cost_ceiling <= 0:
         raise ValueError("Budget exhausted — CostGovernor blocked this request")
@@ -67,19 +75,24 @@ def route(request: InferenceRequest) -> RoutingDecision:
         cost_ceiling=request.cost_ceiling,
         latency_max=request.latency_max,
         tenant_tier=request.tenant_tier,
+        require_capability=require_capability,
     )
 
     if not candidates:
         raise ValueError("No models available for given constraints")
 
     if request.model and request.model in MODEL_COST_TABLE:
-        fallbacks = [m for m in candidates if m != request.model]
-        return RoutingDecision(
-            primary=request.model,
-            fallbacks=fallbacks,
-            retry_count=2,
-            retry_delay_ms=500,
-        )
+        pinned_info = MODEL_COST_TABLE[request.model]
+        # A pinned model that lacks the required capability is ignored
+        # (falling through to the capability-filtered candidate ranking).
+        if not require_capability or require_capability in pinned_info.get("capabilities", []):
+            fallbacks = [m for m in candidates if m != request.model]
+            return RoutingDecision(
+                primary=request.model,
+                fallbacks=fallbacks,
+                retry_count=2,
+                retry_delay_ms=500,
+            )
 
     return RoutingDecision(
         primary=candidates[0],
@@ -89,6 +102,19 @@ def route(request: InferenceRequest) -> RoutingDecision:
     )
 
 
+def _sniff_image_mime(b64: str) -> str:
+    """Best-effort MIME detection from base64 magic-byte prefixes."""
+    if b64.startswith("/9j/"):
+        return "image/jpeg"
+    if b64.startswith("iVBOR"):
+        return "image/png"
+    if b64.startswith("R0lGOD"):
+        return "image/gif"
+    if b64.startswith("UklGR"):
+        return "image/webp"
+    return "image/png"
+
+
 async def call_model(model: str, request: InferenceRequest) -> InferenceResponse:
     """Call a specific model provider using async httpx."""
     info = MODEL_COST_TABLE[model]
@@ -96,15 +122,19 @@ async def call_model(model: str, request: InferenceRequest) -> InferenceResponse
 
     async with httpx.AsyncClient() as client:
         if info["provider"] == "ollama":
+            body = {
+                "model": model,
+                "prompt": request.prompt,
+                "system": request.system_prompt or "",
+                "stream": False,
+                "options": {"temperature": request.temperature, "num_predict": request.max_tokens},
+            }
+            if request.images:
+                # Ollama expects raw base64 strings (no data: URL prefix).
+                body["images"] = request.images
             resp = await client.post(
                 f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": model,
-                    "prompt": request.prompt,
-                    "system": request.system_prompt or "",
-                    "stream": False,
-                    "options": {"temperature": request.temperature, "num_predict": request.max_tokens},
-                },
+                json=body,
                 timeout=120.0,
             )
             resp.raise_for_status()
@@ -116,7 +146,18 @@ async def call_model(model: str, request: InferenceRequest) -> InferenceResponse
             messages = []
             if request.system_prompt:
                 messages.append({"role": "system", "content": request.system_prompt})
-            messages.append({"role": "user", "content": request.prompt})
+            if request.images:
+                # OpenAI-compatible multimodal content parts with data: URLs.
+                parts = [{"type": "text", "text": request.prompt}]
+                for image_b64 in request.images:
+                    mime = _sniff_image_mime(image_b64)
+                    parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{image_b64}"},
+                    })
+                messages.append({"role": "user", "content": parts})
+            else:
+                messages.append({"role": "user", "content": request.prompt})
 
             if info["provider"] == "modelark":
                 # BytePlus ModelArk is OpenAI-compatible but addresses models
@@ -160,9 +201,9 @@ async def call_model(model: str, request: InferenceRequest) -> InferenceResponse
     )
 
 
-async def route_request(request: InferenceRequest) -> InferenceResponse:
+async def route_request(request: InferenceRequest, require_capability: str | None = None) -> InferenceResponse:
     """Route an inference request through the policy engine with fallback cascade."""
-    decision = route(request)
+    decision = route(request, require_capability=require_capability)
 
     models_to_try = [decision.primary] + decision.fallbacks
     last_error = None

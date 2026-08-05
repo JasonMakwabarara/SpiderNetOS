@@ -26,18 +26,18 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 
 MODEL_COST_TABLE = {
-    # GPT-5 family (2026 — current)
-    "gpt-5-nano": {"cost_per_1k_tokens": 0.00005, "latency_avg_ms": 400, "provider": "openai"},
-    "gpt-5-mini": {"cost_per_1k_tokens": 0.00025, "latency_avg_ms": 600, "provider": "openai"},
-    "gpt-5": {"cost_per_1k_tokens": 0.00125, "latency_avg_ms": 1200, "provider": "openai"},
-    "gpt-5.4": {"cost_per_1k_tokens": 0.0025, "latency_avg_ms": 1500, "provider": "openai"},
+    # GPT-5 family (2026 — current). All multimodal => "vision" capability.
+    "gpt-5-nano": {"cost_per_1k_tokens": 0.00005, "latency_avg_ms": 400, "provider": "openai", "capabilities": ["vision"]},
+    "gpt-5-mini": {"cost_per_1k_tokens": 0.00025, "latency_avg_ms": 600, "provider": "openai", "capabilities": ["vision"]},
+    "gpt-5": {"cost_per_1k_tokens": 0.00125, "latency_avg_ms": 1200, "provider": "openai", "capabilities": ["vision"]},
+    "gpt-5.4": {"cost_per_1k_tokens": 0.0025, "latency_avg_ms": 1500, "provider": "openai", "capabilities": ["vision"]},
     # Reasoning models
     "o4-mini": {"cost_per_1k_tokens": 0.0011, "latency_avg_ms": 3000, "provider": "openai"},
     "o3-mini": {"cost_per_1k_tokens": 0.0011, "latency_avg_ms": 5000, "provider": "openai"},
     "o3": {"cost_per_1k_tokens": 0.002, "latency_avg_ms": 10000, "provider": "openai"},
-    # GPT-4 family (legacy — prefer GPT-5 equivalents)
-    "gpt-4o-mini": {"cost_per_1k_tokens": 0.00015, "latency_avg_ms": 800, "provider": "openai"},
-    "gpt-4.1-mini": {"cost_per_1k_tokens": 0.0004, "latency_avg_ms": 2000, "provider": "openai"},
+    # GPT-4 family (legacy — prefer GPT-5 equivalents). Multimodal.
+    "gpt-4o-mini": {"cost_per_1k_tokens": 0.00015, "latency_avg_ms": 800, "provider": "openai", "capabilities": ["vision"]},
+    "gpt-4.1-mini": {"cost_per_1k_tokens": 0.0004, "latency_avg_ms": 2000, "provider": "openai", "capabilities": ["vision"]},
     # Gemma family (local Ollama — zero cost)
     "gemma4": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 3000, "provider": "ollama"},
     "gemma2:2b": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2000, "provider": "ollama"},
@@ -47,11 +47,28 @@ MODEL_COST_TABLE = {
     "qwen3": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2000, "provider": "ollama"},
     # MedGemma (medical domain — local Ollama)
     "medgemma": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 2800, "provider": "ollama"},
+    # Llama 3.2 Vision (local Ollama — zero-cost vision for document extraction)
+    "llama3.2-vision": {"cost_per_1k_tokens": 0.0, "latency_avg_ms": 4000, "provider": "ollama", "capabilities": ["vision"]},
     # DeepSeek V4 via BytePlus ModelArk (primary hosted provider):
     # flash = fast/cheap default, pro = heavier reasoning fallback.
     "deepseek-v4-flash": {"cost_per_1k_tokens": 0.0004, "latency_avg_ms": 900, "provider": "modelark"},
     "deepseek-v4-pro": {"cost_per_1k_tokens": 0.0016, "latency_avg_ms": 2500, "provider": "modelark"},
 }
+
+
+def _cheapest_vision_model() -> str:
+    """Cheapest vision-capable model in the cost table (cost, then latency)."""
+    vision = [
+        (name, info) for name, info in MODEL_COST_TABLE.items()
+        if "vision" in info.get("capabilities", [])
+    ]
+    if not vision:
+        return "llama3.2-vision"
+    vision.sort(key=lambda x: (x[1]["cost_per_1k_tokens"], x[1]["latency_avg_ms"]))
+    return vision[0][0]
+
+
+VISION_DEFAULT_MODEL = os.getenv("VISION_DEFAULT_MODEL", _cheapest_vision_model())
 
 # Table key → Ark model/endpoint ID (ModelArk addresses models by its own
 # IDs, mirroring Hannah's deepseek_endpoint_map). Per-request overrides are
