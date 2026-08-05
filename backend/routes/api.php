@@ -427,6 +427,64 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/reimbursements/{id}/cancel', [\App\Http\Controllers\Spend\ReimbursementController::class, 'cancel'])
             ->middleware('role:admin');
 
+        // Spend — Bill pay / AP (Stage 2). Literal segments before /{id}
+        // (see invoice note above); payment-adjacent writes are admin-gated,
+        // mark-paid additionally requires fresh MFA step-up.
+        Route::get('/vendors', [\App\Http\Controllers\Spend\VendorController::class, 'index']);
+        Route::post('/vendors', [\App\Http\Controllers\Spend\VendorController::class, 'store']);
+        Route::get('/vendors/{id}', [\App\Http\Controllers\Spend\VendorController::class, 'show']);
+        Route::put('/vendors/{id}', [\App\Http\Controllers\Spend\VendorController::class, 'update']);
+        Route::post('/vendors/{id}/archive', [\App\Http\Controllers\Spend\VendorController::class, 'archive']);
+
+        Route::get('/bills/summary', [\App\Http\Controllers\Spend\BillController::class, 'summary']);
+        Route::get('/bills/due-soon', [\App\Http\Controllers\Spend\BillController::class, 'dueSoon']);
+        Route::get('/bills/aging', [\App\Http\Controllers\Spend\BillController::class, 'aging']);
+        Route::get('/bills', [\App\Http\Controllers\Spend\BillController::class, 'index']);
+        Route::post('/bills', [\App\Http\Controllers\Spend\BillController::class, 'store']);
+        Route::post('/bills/upload', [\App\Http\Controllers\Spend\BillController::class, 'upload']);
+        Route::get('/bills/{id}', [\App\Http\Controllers\Spend\BillController::class, 'show']);
+        Route::put('/bills/{id}', [\App\Http\Controllers\Spend\BillController::class, 'update']);
+        Route::post('/bills/{id}/submit', [\App\Http\Controllers\Spend\BillController::class, 'submit']);
+        Route::post('/bills/{id}/schedule', [\App\Http\Controllers\Spend\BillController::class, 'schedule'])
+            ->middleware('role:admin');
+        Route::post('/bills/{id}/mark-paid', [\App\Http\Controllers\Spend\BillController::class, 'markPaid'])
+            ->middleware(['role:admin', 'step.up']);
+        Route::post('/bills/{id}/void', [\App\Http\Controllers\Spend\BillController::class, 'void'])
+            ->middleware('role:admin');
+
+        Route::get('/recurring-bills', [\App\Http\Controllers\Spend\RecurringBillController::class, 'index']);
+        Route::post('/recurring-bills', [\App\Http\Controllers\Spend\RecurringBillController::class, 'store'])
+            ->middleware('role:admin');
+        Route::put('/recurring-bills/{id}', [\App\Http\Controllers\Spend\RecurringBillController::class, 'update'])
+            ->middleware('role:admin');
+        Route::delete('/recurring-bills/{id}', [\App\Http\Controllers\Spend\RecurringBillController::class, 'destroy'])
+            ->middleware('role:admin');
+
+        // Spend — Accounting automation (Stage 3). Literal segments before
+        // /{id} (see invoice note above); writes are admin-gated.
+        Route::get('/accounting/mappings', [\App\Http\Controllers\Spend\AccountingController::class, 'mappings']);
+        Route::put('/accounting/mappings', [\App\Http\Controllers\Spend\AccountingController::class, 'updateMappings'])
+            ->middleware('role:admin');
+        Route::get('/accounting/rules', [\App\Http\Controllers\Spend\AccountingController::class, 'rules']);
+        Route::put('/accounting/rules', [\App\Http\Controllers\Spend\AccountingController::class, 'updateRules'])
+            ->middleware('role:admin');
+        Route::get('/accounting/postings', [\App\Http\Controllers\Spend\AccountingController::class, 'postings']);
+        Route::post('/accounting/postings/{id}/post', [\App\Http\Controllers\Spend\AccountingController::class, 'executePosting'])
+            ->middleware('role:admin');
+        Route::get('/accounting/exports', [\App\Http\Controllers\Spend\AccountingController::class, 'exports']);
+        Route::post('/accounting/exports', [\App\Http\Controllers\Spend\AccountingController::class, 'createExport'])
+            ->middleware('role:admin');
+        Route::get('/accounting/exports/{id}/download', [\App\Http\Controllers\Spend\AccountingController::class, 'downloadExport'])
+            ->middleware('role:admin');
+        Route::get('/accounting/export-schedules', [\App\Http\Controllers\Spend\AccountingController::class, 'schedules']);
+        Route::post('/accounting/export-schedules', [\App\Http\Controllers\Spend\AccountingController::class, 'storeSchedule'])
+            ->middleware('role:admin');
+        Route::put('/accounting/export-schedules/{id}', [\App\Http\Controllers\Spend\AccountingController::class, 'updateSchedule'])
+            ->middleware('role:admin');
+        Route::delete('/accounting/export-schedules/{id}', [\App\Http\Controllers\Spend\AccountingController::class, 'destroySchedule'])
+            ->middleware('role:admin');
+        Route::get('/spend/summary', [\App\Http\Controllers\Spend\AccountingController::class, 'spendSummary']);
+
         // Financial Overview
         Route::get('/dashboard', [\App\Http\Controllers\Financial\FinancialController::class, 'dashboard']);
         Route::get('/reports', [\App\Http\Controllers\Financial\FinancialController::class, 'reports']);

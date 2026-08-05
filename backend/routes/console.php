@@ -51,3 +51,20 @@ Schedule::job(new \App\Jobs\SystemizationRunSweepJob)->everyFiveMinutes()->witho
 
 // Approval chains: escalate/expire overdue steps (every 10 minutes)
 Schedule::job(new \App\Jobs\ExpireApprovalStepsJob)->everyTenMinutes()->withoutOverlapping();
+
+// Bill pay (Stage 2): scheduled-payment sweep — record-only, notifies admins (every 15 minutes)
+Schedule::job(new \App\Jobs\SweepScheduledBillPaymentsJob)->everyFifteenMinutes()->withoutOverlapping();
+
+// Bill pay (Stage 2): bills-due-soon digest to tenant admins (daily 08:00)
+Schedule::job(new \App\Jobs\NotifyBillsDueSoonJob)->dailyAt('08:00')->withoutOverlapping();
+
+// Bill pay (Stage 2): generate draft bills from recurring templates (daily 06:15)
+Schedule::job(new \App\Jobs\GenerateRecurringBillsJob)->dailyAt('06:15')->withoutOverlapping();
+
+// Accounting (Stage 3): run due export schedules — weekly on the first run of
+// the ISO week, monthly on the first run of the month (daily 04:00)
+Schedule::job(new \App\Jobs\RunScheduledSpendExportsJob)->dailyAt('04:00')->withoutOverlapping();
+
+// Accounting (Stage 3): weekly spend digest to tenant admins (Mon 07:30) —
+// gated per tenant by the spend.weekly_digest flag / SPEND_WEEKLY_DIGEST env
+Schedule::job(new \App\Jobs\WeeklySpendDigestJob)->weeklyOn(1, '07:30')->withoutOverlapping();

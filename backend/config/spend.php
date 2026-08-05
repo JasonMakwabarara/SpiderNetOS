@@ -63,4 +63,20 @@ return [
 
     // Future: automatic GL posting of confirmed spend documents.
     'gl_posting_enabled' => (bool) env('SPEND_GL_POSTING_ENABLED', false),
+
+    /*
+    |----------------------------------------------------------------------
+    | Stage 3 — accounting automation
+    |----------------------------------------------------------------------
+    */
+
+    // Global default for the Monday weekly spend digest. The per-tenant
+    // spend.weekly_digest feature flag (Redis/env) can force it on for a
+    // tenant even when this default is off.
+    'weekly_digest_enabled' => (bool) env('SPEND_WEEKLY_DIGEST', false),
+
+    // Optional single LLM insight sentence in the weekly digest. The digest
+    // itself is always deterministic; when this is off (default) or the
+    // inference plane is unreachable, a plain-stats sentence is used.
+    'digest_llm_insight' => (bool) env('SPEND_DIGEST_LLM_INSIGHT', false),
 ];

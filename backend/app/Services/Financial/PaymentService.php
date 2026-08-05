@@ -213,6 +213,84 @@ class PaymentService
         ];
     }
 
+    /**
+     * Record an outgoing (sent) payment — Stage 2 bill pay. Record-only:
+     * money moved outside the system; this writes the ledger row. Dedupes
+     * on idempotency_key exactly like recordPayment().
+     */
+    public function recordOutgoingPayment(
+        string $tenantId,
+        string $amount,
+        string $method,
+        string $currency = 'USD',
+        ?string $billId = null,
+        ?string $reference = null,
+        ?string $idempotencyKey = null,
+    ): Payment {
+        return DB::transaction(function () use (
+            $tenantId, $amount, $method, $currency, $billId, $reference, $idempotencyKey
+        ) {
+            if ($idempotencyKey) {
+                $existing = Payment::where('tenant_id', $tenantId)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->first();
+                if ($existing) {
+                    return $existing;
+                }
+            }
+
+            $paymentNumber = $this->generatePaymentNumber($tenantId);
+
+            $payment = new Payment([
+                'tenant_id' => $tenantId,
+                'payment_number' => $paymentNumber,
+                'type' => 'sent',
+                'amount' => $amount,
+                'currency' => $currency,
+                'method' => $method,
+                'status' => 'completed',
+                'provider_reference' => $reference,
+                'idempotency_key' => $idempotencyKey,
+                'paid_at' => now(),
+            ]);
+            // bill_id is set via attribute assignment so the shared Payment
+            // model's fillable list stays untouched.
+            $payment->bill_id = $billId;
+            $payment->save();
+
+            $this->eventStore->append(
+                $tenantId,
+                'payment',
+                $payment->id,
+                'payment.sent',
+                [
+                    'payment_number' => $paymentNumber,
+                    'amount' => $amount,
+                    'method' => $method,
+                    'bill_id' => $billId,
+                    'reference' => $reference,
+                ]
+            );
+
+            return $payment;
+        });
+    }
+
+    /**
+     * Resource hook fired by ApprovalEngine when an approval chain on a
+     * 'payment' resource resolves (resource_id = transaction id).
+     */
+    public function onApprovalResolved(string $tenantId, string $transactionId, bool $granted): void
+    {
+        if ($granted) {
+            $this->completePayment($transactionId, $tenantId);
+
+            return;
+        }
+
+        $this->failPayment($transactionId, $tenantId, 'approval rejected');
+    }
+
     private function generatePaymentNumber(string $tenantId): string
     {
         return $this->documentNumbers->next($tenantId, 'payment', 'PAY');

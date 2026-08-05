@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Projections;
 
 use App\Jobs\EvaluateSpendPolicyJob;
+use App\Jobs\PostToGeneralLedgerJob;
 use App\Models\Event;
 use App\Services\Spend\CategorySuggestionService;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
  *
  *  - expense_report.submitted   -> queue deep policy evaluation (afterCommit,
  *                                  so the report row is visible to the job)
+ *  - expense_report.approved    -> queue GL posting (Stage 3, afterCommit)
+ *  - bill.paid                  -> queue GL posting (Stage 3, afterCommit)
  *  - spend_document.confirmed   -> learn merchant -> category mapping
  *  - expense.category_confirmed -> learn merchant -> category mapping
  *
@@ -29,6 +32,8 @@ class SpendAutomationProjection
     {
         return in_array($event->event_type, [
             'expense_report.submitted',
+            'expense_report.approved',
+            'bill.paid',
             'spend_document.confirmed',
             'expense.category_confirmed',
         ], true);
@@ -38,6 +43,8 @@ class SpendAutomationProjection
     {
         match ($event->event_type) {
             'expense_report.submitted' => $this->handleSubmitted($event),
+            'expense_report.approved' => $this->dispatchGlPosting($event, 'expense_report'),
+            'bill.paid' => $this->dispatchGlPosting($event, 'bill'),
             'spend_document.confirmed',
             'expense.category_confirmed' => $this->learnMerchantCategory($event),
             default => null,
@@ -47,6 +54,17 @@ class SpendAutomationProjection
     private function handleSubmitted(Event $event): void
     {
         EvaluateSpendPolicyJob::dispatch($event->tenant_id, $event->aggregate_id)->afterCommit();
+    }
+
+    /**
+     * Stage 3: approved expense reports and paid bills flow to the general
+     * ledger. afterCommit so the (approved|paid) source row is visible to the
+     * job; the gl_postings unique key makes the posting exactly-once.
+     */
+    private function dispatchGlPosting(Event $event, string $sourceType): void
+    {
+        PostToGeneralLedgerJob::dispatch($event->tenant_id, $sourceType, $event->aggregate_id)
+            ->afterCommit();
     }
 
     private function learnMerchantCategory(Event $event): void
