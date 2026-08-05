@@ -143,11 +143,28 @@ class DodoWebhookController extends Controller
         $localId = $metadata['tenant_subscription_id'] ?? null;
         $dodoSubId = $data['subscription_id'] ?? $data['id'] ?? null;
 
-        return DB::transaction(function () use ($type, $data, $webhookId, $localId, $dodoSubId, $eventStore) {
+        return DB::transaction(function () use ($type, $data, $metadata, $webhookId, $localId, $dodoSubId, $eventStore) {
             $query = TenantSubscription::query()->lockForUpdate();
             $sub = $localId
                 ? $query->find($localId)
                 : ($dodoSubId ? $query->where('dodo_subscription_id', $dodoSubId)->first() : null);
+
+            // Self-provisioning: a subscription that did not originate from our
+            // own subscribe() flow (e.g. a Dodo-hosted checkout) carries only
+            // tenant_id (+ plan_id/product_id) metadata. Create the local row
+            // so fulfillment still lands. Restores the trunk fulfiller's
+            // capability on our tenant_subscriptions architecture.
+            if (! $sub && ! empty($metadata['tenant_id']) && Tenant::whereKey($metadata['tenant_id'])->exists()) {
+                $planId = $this->resolvePlanId($metadata, $data);
+                if ($planId) {
+                    $sub = TenantSubscription::create([
+                        'tenant_id' => $metadata['tenant_id'],
+                        'plan_id' => $planId,
+                        'status' => 'pending',
+                        'dodo_subscription_id' => $dodoSubId,
+                    ]);
+                }
+            }
 
             if (! $sub) {
                 Log::warning('dodo.webhook.unknown_subscription', [
@@ -193,12 +210,19 @@ class DodoWebhookController extends Controller
             $sub->update($updates);
 
             // Mirror the plan onto the tenant so legacy tenants.plan reads and
-            // the billing summary reflect the live plan.
+            // the billing summary reflect the live plan; limits mirrored for
+            // legacy consumers (catalog entitlements preferred, config/dodo.php
+            // plan limits as fallback).
             if ($status === 'active') {
-                Tenant::whereKey($sub->tenant_id)->update([
+                $tenantUpdates = [
                     'plan' => $sub->plan_id,
+                    'status' => 'active',
                     'subscribed_at' => now(),
-                ]);
+                ];
+                if ($limits = $this->limitsForPlan($sub->plan_id)) {
+                    $tenantUpdates['limits'] = json_encode($limits);
+                }
+                Tenant::whereKey($sub->tenant_id)->update($tenantUpdates);
             }
 
             $eventStore->append(
@@ -209,5 +233,54 @@ class DodoWebhookController extends Controller
 
             return ['received' => true];
         });
+    }
+
+    /**
+     * Resolve the plan id for a self-provisioned subscription: explicit
+     * metadata.plan_id (validated against the catalog or config/dodo.php), or
+     * a reverse product-id lookup across both sources.
+     *
+     * @param array<string, mixed> $metadata
+     * @param array<string, mixed> $data
+     */
+    private function resolvePlanId(array $metadata, array $data): ?string
+    {
+        $candidate = $metadata['plan_id'] ?? null;
+        if ($candidate && (\App\Models\Plan::whereKey($candidate)->exists() || config("dodo.plans.{$candidate}"))) {
+            return (string) $candidate;
+        }
+
+        $productId = $data['product_id'] ?? null;
+        if ($productId) {
+            $byCatalog = \App\Models\Plan::where('dodo_product_id', $productId)->value('id');
+            if ($byCatalog) {
+                return (string) $byCatalog;
+            }
+            foreach ((array) config('dodo.plans', []) as $planId => $plan) {
+                if (($plan['product_id'] ?? null) === $productId) {
+                    return (string) $planId;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Limits to mirror onto tenants.limits on activation: catalog entitlements
+     * first, then the trunk-era config/dodo.php plan limits.
+     *
+     * @return array<string, int>|null
+     */
+    private function limitsForPlan(string $planId): ?array
+    {
+        $plan = \App\Models\Plan::find($planId);
+        if ($plan && is_array($plan->entitlements) && $plan->entitlements) {
+            return $plan->entitlements;
+        }
+
+        $cfg = config("dodo.plans.{$planId}.limits");
+
+        return is_array($cfg) ? $cfg : null;
     }
 }

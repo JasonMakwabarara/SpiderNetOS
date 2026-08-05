@@ -22,7 +22,14 @@ class VerifyDodoSignature
             // simple string-map signature.
             $headers = array_map(fn (array $values) => $values[0] ?? '', $request->headers->all());
 
-            $adapter = new DodoPaymentsAdapter((array) config('services.dodo'));
+            // services.dodo is primary; fall back to the trunk-era config/dodo.php
+            // keys so both configuration styles verify.
+            $cfg = (array) config('services.dodo');
+            $cfg['webhook_secret'] = $cfg['webhook_secret'] ?: config('dodo.webhook_secret');
+            $cfg['api_key'] = $cfg['api_key'] ?: config('dodo.api_key');
+            $cfg['environment'] = $cfg['environment'] ?? (config('dodo.mode') === 'live' ? 'live' : 'test');
+
+            $adapter = new DodoPaymentsAdapter($cfg);
             $valid = $adapter->verifyWebhook($request->getContent(), $headers);
         } catch (\Throwable $e) {
             Log::critical('Dodo webhook verification errored', ['error' => $e->getMessage()]);

@@ -36,7 +36,14 @@ class DodoPaymentsAdapter
         $this->baseUrl = ($config['environment'] ?? 'test') === 'live'
             ? 'https://live.dodopayments.com'
             : 'https://test.dodopayments.com';
+    }
 
+    /**
+     * API calls need a key; webhook verification does not — so the key is
+     * asserted per-call rather than in the constructor.
+     */
+    private function assertApiKey(): void
+    {
         if ($this->apiKey === '') {
             throw new \RuntimeException('Dodo Payments API key is not configured (DODO_API_KEY).');
         }
@@ -48,6 +55,8 @@ class DodoPaymentsAdapter
      */
     public function createCheckoutSession(string $productId, array $metadata, string $returnUrl, string $cancelUrl): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)
             ->post($this->baseUrl.'/checkouts', [
                 'product_cart' => [['product_id' => $productId, 'quantity' => 1]],
@@ -65,6 +74,8 @@ class DodoPaymentsAdapter
 
     public function getPayment(string $paymentId): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)->get($this->baseUrl.'/payments/'.$paymentId);
 
         if ($response->failed()) {
@@ -76,6 +87,8 @@ class DodoPaymentsAdapter
 
     public function getSubscription(string $subscriptionId): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)->get($this->baseUrl.'/subscriptions/'.$subscriptionId);
 
         if ($response->failed()) {
@@ -93,6 +106,8 @@ class DodoPaymentsAdapter
      */
     public function createSubscriptionCheckout(string $productId, array $metadata, string $returnUrl, string $cancelUrl): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)
             ->post($this->baseUrl.'/subscriptions', [
                 'product_id' => $productId,
@@ -115,6 +130,8 @@ class DodoPaymentsAdapter
      */
     public function cancelSubscription(string $subscriptionId, bool $atPeriodEnd = true): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)
             ->patch($this->baseUrl.'/subscriptions/'.$subscriptionId, [
                 'status' => $atPeriodEnd ? 'cancel_at_next_billing_date' : 'cancelled',
@@ -132,6 +149,8 @@ class DodoPaymentsAdapter
      */
     public function changePlan(string $subscriptionId, string $newProductId): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)
             ->post($this->baseUrl.'/subscriptions/'.$subscriptionId.'/change-plan', [
                 'product_id' => $newProductId,
@@ -154,6 +173,8 @@ class DodoPaymentsAdapter
      */
     public function chargeOverage(string $customerId, int $amountCents, string $currency, array $metadata): array
     {
+        $this->assertApiKey();
+
         $response = Http::withToken($this->apiKey)
             ->post($this->baseUrl.'/payments', [
                 'customer' => ['customer_id' => $customerId],

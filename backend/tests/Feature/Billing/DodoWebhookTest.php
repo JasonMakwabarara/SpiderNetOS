@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Billing;
 
-use App\Models\Subscription;
+use App\Models\TenantSubscription;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -30,6 +30,8 @@ class DodoWebhookTest extends TestCase
         config()->set('dodo.enabled', true);
         config()->set('dodo.webhook_secret', 'whsec_' . base64_encode(self::RAW_KEY));
         config()->set('dodo.plans.growth.product_id', 'prod_growth_test');
+        // Primary config path used by the routed webhook middleware.
+        config()->set('services.dodo.webhook_secret', 'whsec_' . base64_encode(self::RAW_KEY));
     }
 
     private function createTenant(string $plan = 'starter'): Tenant
@@ -107,18 +109,17 @@ class DodoWebhookTest extends TestCase
         $this->assertNotNull($tenant->subscribed_at);
         $this->assertSame(25, $tenant->limits['agents'] ?? null);
 
-        $subscription = Subscription::query()
+        $subscription = TenantSubscription::query()
             ->where('tenant_id', (string) $tenant->id)
-            ->where('provider', 'dodo')
             ->first();
 
         $this->assertNotNull($subscription);
-        $this->assertSame('sub_dodo_123', $subscription->provider_subscription_id);
+        $this->assertSame('sub_dodo_123', $subscription->dodo_subscription_id);
         $this->assertSame('active', $subscription->status);
 
         $this->assertDatabaseHas('event_log', [
             'tenant_id' => (string) $tenant->id,
-            'event_type' => 'billing.subscription.activated',
+            'event_type' => 'platform.subscription.active',
         ]);
     }
 
@@ -132,7 +133,7 @@ class DodoWebhookTest extends TestCase
         $response = $this->postWebhook($payload, webhookId: 'msg_fixed_id');
 
         $response->assertOk()->assertJson(['received' => true, 'duplicate' => true]);
-        $this->assertSame(1, Subscription::query()->where('tenant_id', (string) $tenant->id)->count());
+        $this->assertSame(1, TenantSubscription::query()->where('tenant_id', (string) $tenant->id)->count());
     }
 
     public function test_subscription_cancelled_keeps_access_until_period_end(): void
@@ -155,9 +156,8 @@ class DodoWebhookTest extends TestCase
         $this->assertSame('growth', $tenant->plan, 'plan retained until period end');
         $this->assertSame('active', $tenant->status);
 
-        $subscription = Subscription::query()
+        $subscription = TenantSubscription::query()
             ->where('tenant_id', (string) $tenant->id)
-            ->where('provider', 'dodo')
             ->first();
 
         $this->assertSame('cancelled', $subscription->status);
