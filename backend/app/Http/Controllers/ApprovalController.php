@@ -19,6 +19,59 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Single approval with its chain steps (empty for legacy single-stage).
+     */
+    public function show(Request $request, $id): JsonResponse
+    {
+        $tenantId = $request->attributes->get('tenant_id');
+
+        $approval = Approval::forTenant($tenantId)->with('steps')->find($id);
+
+        if (!$approval) {
+            return response()->json(['error' => 'Approval not found.'], 404);
+        }
+
+        return response()->json(['data' => $approval]);
+    }
+
+    /**
+     * Delegate the current pending chain step to another tenant user.
+     */
+    public function delegate(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'to_user_id' => 'required|uuid',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $tenantId = $request->attributes->get('tenant_id');
+
+        $approval = DB::table('approvals')
+            ->where('id', $id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        if (!$approval) {
+            return response()->json(['error' => 'Approval not found.'], 404);
+        }
+
+        try {
+            $result = app(\App\Services\ApprovalEngine::class)->delegateStep(
+                $id,
+                (string) $request->user()?->id,
+                $request->input('to_user_id'),
+                (string) $request->input('note', ''),
+            );
+        } catch (\DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        } catch (\LogicException $e) {
+            return response()->json(['error' => $e->getMessage()], 409);
+        }
+
+        return response()->json(['data' => $result]);
+    }
+
+    /**
      * List approvals scoped to tenant, with optional status filter.
      */
     public function index(Request $request): JsonResponse
@@ -68,6 +121,12 @@ class ApprovalController extends Controller
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
             ], 409);
+        }
+
+        // Multi-stage chains resolve through the engine (per-step auth,
+        // step advancement, terminal hooks, events).
+        if ($approval->current_step !== null) {
+            return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''));
         }
 
         // Hard Rule #1: All writes go through EventStore
@@ -153,6 +212,11 @@ class ApprovalController extends Controller
             ], 409);
         }
 
+        // Multi-stage chains resolve through the engine (see approve()).
+        if ($approval->current_step !== null) {
+            return $this->resolveChainStep($request, $id, false, (string) $request->input('reason', ''));
+        }
+
         // Hard Rule #1: All writes go through EventStore
         $event = $this->eventStore->append(
             tenantId: $tenantId,
@@ -202,6 +266,33 @@ class ApprovalController extends Controller
             'event_id' => $event->id,
             'status' => 'rejected',
             'message' => 'Approval rejected.',
+        ]);
+    }
+
+    /**
+     * Route a chained approval through ApprovalEngine::resolveStep with
+     * HTTP error mapping.
+     */
+    private function resolveChainStep(Request $request, string $id, bool $approved, string $response): JsonResponse
+    {
+        try {
+            $result = app(\App\Services\ApprovalEngine::class)->resolveStep(
+                $id,
+                (string) $request->user()?->id,
+                $approved,
+                $response,
+            );
+        } catch (\DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        } catch (\LogicException $e) {
+            return response()->json(['error' => $e->getMessage()], 409);
+        }
+
+        return response()->json([
+            'id' => $id,
+            'status' => $result['status'],
+            'current_step' => $result['current_step'],
+            'message' => $approved ? 'Step approved.' : 'Approval rejected.',
         ]);
     }
 

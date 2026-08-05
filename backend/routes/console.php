@@ -48,3 +48,6 @@ Schedule::job(new \App\Jobs\FailStaleExecutionNodesJob)->everyTenMinutes()->with
 
 // Systemization write-back for scheduled runs (every 5 minutes)
 Schedule::job(new \App\Jobs\SystemizationRunSweepJob)->everyFiveMinutes()->withoutOverlapping();
+
+// Approval chains: escalate/expire overdue steps (every 10 minutes)
+Schedule::job(new \App\Jobs\ExpireApprovalStepsJob)->everyTenMinutes()->withoutOverlapping();

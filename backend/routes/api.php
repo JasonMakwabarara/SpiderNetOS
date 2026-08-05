@@ -169,8 +169,15 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     
     // Approvals (Human-in-the-loop gates)
     Route::get('/approvals', [ApprovalController::class, 'index']);
+    // Approval chain policies — literal segment before /{approval}
+    Route::get('/approvals/policies', [\App\Http\Controllers\ApprovalPolicyController::class, 'index']);
+    Route::post('/approvals/policies', [\App\Http\Controllers\ApprovalPolicyController::class, 'store'])->middleware('role:admin');
+    Route::put('/approvals/policies/{id}', [\App\Http\Controllers\ApprovalPolicyController::class, 'update'])->middleware('role:admin');
+    Route::delete('/approvals/policies/{id}', [\App\Http\Controllers\ApprovalPolicyController::class, 'destroy'])->middleware('role:admin');
+    Route::get('/approvals/{approval}', [ApprovalController::class, 'show']);
     Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve']);
     Route::post('/approvals/{approval}/reject', [ApprovalController::class, 'reject']);
+    Route::post('/approvals/{approval}/delegate', [ApprovalController::class, 'delegate']);
     Route::post('/approvals/{id}/share', [ShareLinkController::class, 'mintApproval']);
     
     // Daily Brief
@@ -361,27 +368,28 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/ledger/chart-of-accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'chartOfAccounts']);
         Route::post('/ledger/chart-of-accounts', [\App\Http\Controllers\Financial\LedgerController::class, 'createChartAccount']);
 
-        // Invoices
+        // Invoices — literal segments must precede /{id} or Laravel matches
+        // "overdue"/"summary" as ids (findOrFail('overdue') → 404).
         Route::get('/invoices', [\App\Http\Controllers\Financial\InvoiceController::class, 'index']);
+        Route::get('/invoices/overdue', [\App\Http\Controllers\Financial\InvoiceController::class, 'overdue']);
+        Route::get('/invoices/summary', [\App\Http\Controllers\Financial\InvoiceController::class, 'summary']);
         Route::get('/invoices/{id}', [\App\Http\Controllers\Financial\InvoiceController::class, 'show']);
         Route::post('/invoices', [\App\Http\Controllers\Financial\InvoiceController::class, 'store']);
         Route::post('/invoices/{id}/send', [\App\Http\Controllers\Financial\InvoiceController::class, 'send']);
         Route::post('/invoices/{id}/mark-paid', [\App\Http\Controllers\Financial\InvoiceController::class, 'markPaid']);
         Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Financial\InvoiceController::class, 'cancel']);
-        Route::get('/invoices/overdue', [\App\Http\Controllers\Financial\InvoiceController::class, 'overdue']);
-        Route::get('/invoices/summary', [\App\Http\Controllers\Financial\InvoiceController::class, 'summary']);
 
         // Customers
         Route::get('/customers', [\App\Http\Controllers\Financial\InvoiceController::class, 'customers']);
         Route::post('/customers', [\App\Http\Controllers\Financial\InvoiceController::class, 'createCustomer']);
 
-        // Payments
+        // Payments — literal segments before /{id} (see invoice note above)
         Route::get('/payments', [\App\Http\Controllers\Financial\PaymentController::class, 'index']);
+        Route::get('/payments/summary', [\App\Http\Controllers\Financial\PaymentController::class, 'summary']);
         Route::get('/payments/{id}', [\App\Http\Controllers\Financial\PaymentController::class, 'show']);
         Route::post('/payments', [\App\Http\Controllers\Financial\PaymentController::class, 'recordPayment']);
         Route::post('/payments/initiate', [\App\Http\Controllers\Financial\PaymentController::class, 'initiatePayment']);
         Route::get('/transactions', [\App\Http\Controllers\Financial\PaymentController::class, 'transactions']);
-        Route::get('/payments/summary', [\App\Http\Controllers\Financial\PaymentController::class, 'summary']);
 
         // Financial Overview
         Route::get('/dashboard', [\App\Http\Controllers\Financial\FinancialController::class, 'dashboard']);
