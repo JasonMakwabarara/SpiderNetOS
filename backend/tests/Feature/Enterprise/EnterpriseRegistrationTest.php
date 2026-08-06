@@ -166,4 +166,29 @@ class EnterpriseRegistrationTest extends TestCase
             'enterprise_id' => 'ent_doesnotexist',
         ])->assertStatus(404);
     }
+
+    /**
+     * Regression: a fresh browser (Origin/Referer on a Sanctum stateful
+     * domain, no XSRF-TOKEN cookie yet) must not be 419'd off the funnel.
+     * The funnel routes sit in bootstrap/app.php's validateCsrfTokens
+     * except-list because the SPAs never call /sanctum/csrf-cookie.
+     *
+     * ValidateCsrfToken short-circuits when the app env is `testing`, which
+     * is why the suite never caught the prod 419 — so this test flips env
+     * after boot to run the real middleware. Without the except-list this
+     * request returns 419 "CSRF token mismatch".
+     */
+    public function test_first_browser_post_with_stateful_origin_succeeds(): void
+    {
+        config()->set('sanctum.stateful', ['spidernetos.com']);
+        $this->app['env'] = 'production'; // make ValidateCsrfToken actually run
+
+        $this->postJson('/api/enterprise/register/start', [
+            'org_name' => 'Fresh Browser Co',
+            'contact_email' => 'first-visit@fresh-browser.test',
+        ], [
+            'Origin' => 'https://spidernetos.com',
+            'Referer' => 'https://spidernetos.com/enterprise/register',
+        ])->assertOk()->assertJsonStructure(['enterprise_id', 'domain', 'domain_token']);
+    }
 }
