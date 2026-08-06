@@ -126,9 +126,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            // Mirrors the ValidationException body exactly, plus `detail` —
+            // the marketing-site SignInPage reads only response.data.detail.
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.',
+                'errors' => ['email' => ['The provided credentials are incorrect.']],
+                'detail' => 'Invalid email or password.',
+            ], 422);
         }
 
         // Record login event

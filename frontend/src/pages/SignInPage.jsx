@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   KeyRound,
@@ -119,6 +119,29 @@ export default function SignInPage() {
       setLoading(false);
     }
   };
+
+  // Entry points arriving via URL: emailed magic links land on
+  // /sign-in?magic_token=..., and the SSO callback bounces back with
+  // ?sso_error=... when IdP sign-in isn't available.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const magicToken = params.get('magic_token');
+    const ssoError = params.get('sso_error');
+    if (ssoError) {
+      setMethod('sso');
+      setErr(ssoError);
+    }
+    if (magicToken) {
+      setMethod('magic');
+      // Strip the token from the URL BEFORE verifying so a refresh can't
+      // replay a used token into a confusing error. return_to is preserved.
+      const url = new URL(window.location.href);
+      url.searchParams.delete('magic_token');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      consumeMagic(magicToken);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const doTotp = async () => {
     setErr(null);

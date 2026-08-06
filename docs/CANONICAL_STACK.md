@@ -84,7 +84,13 @@ The frontend nginx config uses Docker’s embedded resolver (`127.0.0.11`) with 
 
 - **Laravel Sanctum** is the canonical identity plane for cockpit business APIs.
 - Sign-in at `/sign-in` issues a unified session (`access_token`, `user`, `tenant`, `caps`).
-- Enterprise FastAPI auth is used for SSO, SCIM, magic link, and AIOS bundles only.
+- **All sign-in methods are Laravel** as of 2026-08-06: password (`/api/auth/login`)
+  and the enterprise methods (`/api/enterprise/auth/*` — TOTP, magic link, SSO,
+  WebAuthn) live in `EnterpriseAuthController` and issue real Sanctum sessions.
+  Demo flows are gated by `ENTERPRISE_DEMO_AUTH` (off in production). The FastAPI
+  `cockpit-api` copy of these endpoints is a dev-stack mock only (prod nginx routes
+  all `/api` to Laravel); SCIM and AIOS bundle mocks still live there in the
+  compose stack.
 
 ## Repo consolidation (Improvement #3)
 

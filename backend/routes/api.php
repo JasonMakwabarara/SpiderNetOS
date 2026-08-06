@@ -92,6 +92,20 @@ Route::prefix('enterprise/register')->middleware('throttle:enterprise_register')
     Route::post('/deploy/start', [$controller, 'deployStart']);
 });
 
+// Enterprise sign-in methods the marketing-site SignInPage calls (public,
+// Tier-1 throttled, CSRF-exempted in bootstrap/app.php). Demo behavior is
+// gated by config('enterprise.demo_auth_enabled') — OFF in production.
+Route::prefix('enterprise/auth')->middleware('throttle:auth')->group(function () {
+    $controller = \App\Http\Controllers\Enterprise\EnterpriseAuthController::class;
+
+    Route::post('/totp/login', [$controller, 'totpLogin']);
+    Route::post('/magic-link/request', [$controller, 'magicLinkRequest']);
+    Route::post('/magic-link/verify', [$controller, 'magicLinkVerify']);
+    Route::post('/sso/start', [$controller, 'ssoStart']);
+    Route::get('/sso/callback', [$controller, 'ssoCallback']);
+    Route::post('/webauthn/login', [$controller, 'webauthnLogin']);
+});
+
 // Voice AI — WebSocket streaming (Phase C) — Twilio-signed only, no feature flag needed at transport layer
 Route::post('/voice/stream/connect', [VoiceStreamController::class, 'connect'])
     ->middleware('voice.verify_twilio');

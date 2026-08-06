@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-06 (later) — Enterprise sign-in methods wired to Laravel
+
+The marketing-site sign-in page's SSO / magic-link / TOTP / WebAuthn tabs called
+`/api/enterprise/auth/*` routes that existed only in the FastAPI dev mock — every
+non-password method 404'd in prod. Now implemented in
+`EnterpriseAuthController` (Laravel, canonical in prod):
+
+- **TOTP login** (real, prod-enabled): users who enrolled TOTP in the cockpit can
+  sign in with email + authenticator code. NOTE: this deliberately makes an
+  enrolled TOTP secret a single sign-in factor (the page offers it as a
+  first-class method); kill-switch `ENTERPRISE_TOTP_LOGIN_ENABLED`, per-email
+  throttle on top of the IP tier.
+- **Magic link** (real, prod-enabled): single-use 30-min emailed links
+  (`magic_links` table, hashed tokens; email via BrandedMail). Doubles as the
+  activation path for registration-created admins who never set a password.
+  ⚠️ Inbox delivery requires SMTP (`MAIL_*`) — with the default `log` mailer the
+  link lands in `laravel.log`. `/sign-in?magic_token=...` is consumed by a new
+  SignInPage effect (token stripped from the URL before verify).
+- **SSO / WebAuthn**: honest `{"detail": ...}` 400s until real IdP/passkey
+  support lands; `GET sso/callback` (the published SP redirect URI) redirects to
+  `/sign-in?sso_error=...` — never issues a session.
+- **Demo flows** (demo SSO IdP, WebAuthn stub, TOTP `000000`, `dev_link` in
+  magic-link responses) are gated by `ENTERPRISE_DEMO_AUTH` — default ON outside
+  production, OFF in prod — and only ever sign in EXISTING users (the mock's
+  fabricated identities were an auth bypass and were not ported).
+- All error bodies on these routes (and `/api/auth/login` failures) now carry the
+  `detail` key the SPA reads. Suite: `tests/Feature/Enterprise/EnterpriseAuthTest`
+  (26 tests).
+
 ## 2026-08-06 — Atlas chat pipeline verified LLM-backed (#88), repo hygiene (#89)
 
 ### Atlas chat (#88)
