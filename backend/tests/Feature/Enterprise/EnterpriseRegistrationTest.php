@@ -181,6 +181,9 @@ class EnterpriseRegistrationTest extends TestCase
     public function test_first_browser_post_with_stateful_origin_succeeds(): void
     {
         config()->set('sanctum.stateful', ['spidernetos.com']);
+        // The stateful pipeline runs EncryptCookies, which needs a key the
+        // phpunit env doesn't otherwise provide.
+        config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $this->app['env'] = 'production'; // make ValidateCsrfToken actually run
 
         $this->postJson('/api/enterprise/register/start', [
