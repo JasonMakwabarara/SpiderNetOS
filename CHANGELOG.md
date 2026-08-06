@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-08-06 — Atlas chat pipeline verified LLM-backed (#88), repo hygiene (#89)
+
+### Atlas chat (#88)
+- Confirmed the canonical `AtlasController::chat()` routes every message
+  through `AtlasDiscoveryService` (absorb + evaluate) → `AtlasClarityGate`
+  (clarify/confirm) → `MetaPlanner::processAtlasRequest` →
+  `AtlasJarvisAugmentor`/OpenJarvis (`/v1/ask`, flag `atlas.openjarvis`,
+  default on) → `TransformationEngine` contract. The keyword-matching
+  implementation the issue cites lived only in the stale `backend/backend/`
+  duplicate tree (since deleted); there is no `/api/agents/chat` regex twin.
+- `tests/Feature/Atlas/AtlasChatPipelineTest` pins the acceptance criteria:
+  free-form messages get a dynamic pipeline response (never a canned
+  command list), discovery/clarity are invoked on the chat path, and
+  slash commands keep their fast path.
+- Correction to the 2026-06-22 entry below: its "Atlas discovery mode in
+  `AtlasController::chat()`" claim is accurate for the canonical tree as of
+  this date; it predated the wiring in the now-removed duplicate copy.
+
+### Repo hygiene (#89)
+- Removed duplicated nested trees (`docs/docs`, plus `backend/backend` and
+  `cockpit/cockpit` upstream; `v1/v1`, `inference/inference`,
+  `integrations/integrations`, `deploy/deploy`,
+  `hermes-runtime/hermes-runtime` verified identical/stale against
+  top-level by blob hash) and `Atlas.vue.backup*` files; `.gitignore`
+  deduplicated with backup-file patterns added.
+
+### Prod fixes (hotfix/registration-cockpit, deployed 2026-08-06)
+- CSRF 419 on first browser POST: public funnel + login routes exempted
+  (`bootstrap/app.php`) — registration and first-visit sign-in work again.
+- "Opening Cockpit…" hang: cockpit now also deployed nested at
+  `spidernetos.com/cockpit/` (same-origin auth handoff), built with base
+  `/cockpit/`.
+- Cockpit is an installable PWA (manifest + service worker + install
+  prompt + offline page) with a TWA/APK scaffold (`cockpit/PWA.md`).
+
 ## 2026-06-23 — Atlas inference plane + real flow execution
 
 ### Inference (Gemma via Ollama)
