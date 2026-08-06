@@ -1,7 +1,13 @@
-# Environment
+# Environment and credential files
 .env
 .env.*
 !.env.example
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+.gitnexus
 
 # Dependencies
 node_modules/
@@ -11,6 +17,11 @@ vendor/
 dist/
 build/
 *.log
+
+# Backup/scratch copies — use git history instead (issue #89)
+*.backup*
+*_backup*
+backup_*
 
 # IDE
 .vscode/
@@ -35,63 +46,10 @@ __pycache__/
 # Database
 *.sqlite
 *.db
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-.gitnexus
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
 
 # Laravel runtime artifacts (generated)
 backend/storage/framework/views/*.php
+backend/storage/framework/cache/data/
+backend/storage/framework/sessions/
 backend/storage/app/feature-packs/
 backend/.env
