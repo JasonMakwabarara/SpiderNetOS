@@ -23,6 +23,22 @@ return Application::configure(basePath: dirname(__DIR__))
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
+        // Public, unauthenticated browser endpoints. Sanctum's stateful
+        // pipeline (above) runs the CSRF check on any request whose
+        // Origin/Referer matches a stateful domain — but neither SPA ever
+        // calls /sanctum/csrf-cookie, so the FIRST browser POST of a fresh
+        // session 419s (visitors could not register or sign in). These
+        // routes grant no cookie-session privileges — credentials travel in
+        // the body and auth comes back as a Bearer token — so CSRF adds no
+        // protection here.
+        $middleware->validateCsrfTokens(except: [
+            'api/auth/login',
+            'api/auth/register',
+            'api/enterprise/register/*',
+            'api/enterprise/auth/*',
+            'api/public/lead-capture/*',
+        ]);
+
         $middleware->alias([
             'tenant'            => \App\Http\Middleware\ResolveTenant::class,
             'agent.permission'  => \App\Http\Middleware\CheckAgentPermission::class,

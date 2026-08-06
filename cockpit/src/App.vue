@@ -258,6 +258,9 @@
 
     <CommandBar ref="cmdBarRef" />
   </div>
+
+  <!-- PWA install banner (hidden on public share pages) -->
+  <InstallPrompt v-if="!route.meta.public" />
 </template>
 
 <script setup>
@@ -271,6 +274,7 @@ import { useFlowsStore } from './stores/flows.js'
 import CommandBar from './components/CommandBar.vue'
 import RoleBadge from './components/security/RoleBadge.vue'
 import ImpersonationBanner from './components/impersonation/ImpersonationBanner.vue'
+import InstallPrompt from './components/InstallPrompt.vue'
 import { useApprovalsStore } from './stores/approvals.js'
 import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
