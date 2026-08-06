@@ -1,13 +1,47 @@
 {
+  "id": "./",
   "name": "SpiderNetOS Cockpit",
   "short_name": "SpiderNetOS",
-  "description": "The operator console for your autonomous business.",
-  "start_url": "/",
-  "scope": "/",
+  "description": "The operator console for your autonomous business — agents, flows, approvals and traces in one flight deck.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#05070A",
   "theme_color": "#05070A",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "launch_handler": { "client_mode": "focus-existing" },
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Atlas",
+      "short_name": "Atlas",
+      "description": "Talk to Atlas, your AI chief of staff",
+      "url": "./atlas",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Agents",
+      "short_name": "Agents",
+      "description": "Manage your agent fleet",
+      "url": "./agents",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Approvals",
+      "short_name": "Approvals",
+      "description": "Review pending approvals",
+      "url": "./approvals",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }
