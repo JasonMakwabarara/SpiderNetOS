@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-asyncpg
-redis
-httpx
-pydantic
