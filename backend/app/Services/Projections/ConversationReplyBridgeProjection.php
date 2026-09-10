@@ -30,7 +30,15 @@ class ConversationReplyBridgeProjection
 
     public function accepts(Event $event): bool
     {
-        return $event->event_type === 'conversation.message.received';
+        if ($event->event_type !== 'conversation.message.received') {
+            return false;
+        }
+
+        // Partner-outreach conversations are answered by the Laravel recruiter
+        // loop; their events carry bridge=laravel_outreach and must not be
+        // double-handled by the Python CRM agent. Legacy producers (WhatsApp)
+        // carry no bridge key and keep flowing.
+        return ($event->payload['bridge'] ?? 'python') === 'python';
     }
 
     public function handle(Event $event): void
@@ -46,7 +54,7 @@ class ConversationReplyBridgeProjection
                 return;
             }
 
-            $payload = is_array($event->payload) ? $event->payload : [];
+            $payload = $event->payload;
             $conversationId = (string) ($payload['conversation_id'] ?? $event->aggregate_id);
 
             $job = json_encode([

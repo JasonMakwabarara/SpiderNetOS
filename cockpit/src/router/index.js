@@ -30,6 +30,9 @@ const SalesLeads      = () => import('../views/sales/Leads.vue')
 const FunnelSetup     = () => import('../views/sales/FunnelSetup.vue')
 const ScriptStudio    = () => import('../views/sales/ScriptStudio.vue')
 const SalesInbox      = () => import('../views/sales/Inbox.vue')
+const Partners        = () => import('../views/sales/Partners.vue')
+const PartnerDmQueue  = () => import('../views/sales/PartnerDmQueue.vue')
+const PartnerSettings = () => import('../views/sales/PartnerSettings.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 const Operating       = () => import('../views/operating/Operating.vue')
 
@@ -103,6 +106,9 @@ const routes = [
   { path: '/sales/funnel-setup', name: 'FunnelSetup', component: FunnelSetup, meta: { requiresAuth: true } },
   { path: '/sales/script-studio', name: 'ScriptStudio', component: ScriptStudio, meta: { requiresAuth: true } },
   { path: '/sales/inbox', name: 'SalesInbox', component: SalesInbox, meta: { requiresAuth: true } },
+  { path: '/sales/partners', name: 'Partners', component: Partners, meta: { requiresAuth: true } },
+  { path: '/sales/partners/dm-queue', name: 'PartnerDmQueue', component: PartnerDmQueue, meta: { requiresAuth: true } },
+  { path: '/sales/partners/settings', name: 'PartnerSettings', component: PartnerSettings, meta: { requiresAuth: true } },
   { path: '/compliance', name: 'ComplianceHome', component: ComplianceHome, meta: { requiresAuth: true } },
   { path: '/operating', name: 'Operating', component: Operating, meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },

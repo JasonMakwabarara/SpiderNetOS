@@ -43,7 +43,12 @@ class ConversationController extends Controller
             'body' => 'required|string|max:4000',
         ]);
 
-        $result = $this->dispatch->send($conversation->lead, $conversation->channel, $validated['body'], null, null, (string) $request->user()->id);
+        $lead = $conversation->lead;
+        if ($lead === null) {
+            return response()->json(['message' => 'Conversation has no lead.'], 422);
+        }
+
+        $result = $this->dispatch->send($lead, $conversation->channel, $validated['body'], null, null, (string) $request->user()->id);
 
         if ($result['success']) {
             $conversation->update(['status' => 'open']);
