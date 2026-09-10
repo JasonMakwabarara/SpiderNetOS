@@ -94,6 +94,21 @@ abstract class OutreachTestCase extends TestCase
         });
     }
 
+    /** Store affonso credentials (API key, program, group, webhook secret) as a connected integration. */
+    protected function connectAffonso(string $webhookSecret = 'whsec_test', array $extra = []): void
+    {
+        $credentials = $extra + [
+            'api_key' => 'sk_live_test', 'program_id' => 'prog_1', 'group_id' => 'grp_1',
+            'webhook_secret' => $webhookSecret, 'portal_subdomain' => 'hannah',
+        ];
+        $ref = app(TenantKeyManager::class)->storeSecret((string) $this->tenant->id, 'integration.affonso', (string) json_encode($credentials));
+
+        TenantIntegration::create([
+            'tenant_id' => $this->tenant->id, 'provider' => 'affonso', 'type' => 'affiliate',
+            'credentials_ref' => $ref, 'is_active' => true, 'status' => 'connected',
+        ]);
+    }
+
     /**
      * Write a CSV in the Affonso Finder export shape and return its path.
      *

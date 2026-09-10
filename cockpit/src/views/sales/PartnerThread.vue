@@ -13,6 +13,19 @@
       <RouterLink to="/sales/partners" class="px-4 py-2 rounded-lg text-sm border" style="border-color: var(--border); color: var(--text-secondary);">Back</RouterLink>
     </div>
 
+    <div v-if="prospect && (prospect.status === 'handoff' || prospect.needs_human_at)" class="sn-card p-4 mb-4 flex items-start justify-between gap-4" data-testid="needs-human">
+      <div>
+        <p class="text-sm font-medium" style="color: var(--text-primary);">Waiting on a human</p>
+        <p class="text-xs mt-1" style="color: var(--text-muted);">
+          {{ prospect.needs_human_reason ? prospect.needs_human_reason.replace(/_/g, ' ') : 'The recruiter bot paused this thread.' }}
+          Reply below, then hand the thread back so the bot answers again.
+        </p>
+      </div>
+      <button v-if="prospect.status === 'handoff'" type="button" class="sn-btn" :disabled="handingBack" @click="handBack">
+        {{ handingBack ? 'Handing back…' : 'Hand back to bot' }}
+      </button>
+    </div>
+
     <p v-if="loading" class="text-sm" style="color: var(--text-muted);">Loading…</p>
     <p v-else-if="!conversations.length" class="text-sm mb-6" style="color: var(--text-muted);">No messages yet.</p>
 
@@ -64,6 +77,23 @@ const body = ref('')
 const sending = ref(false)
 const notice = ref('')
 const noticeError = ref(false)
+const handingBack = ref(false)
+
+async function handBack() {
+  handingBack.value = true
+  notice.value = ''
+  noticeError.value = false
+  try {
+    await store.handBack(prospect.value.id)
+    notice.value = 'The bot will answer the next message.'
+    await load()
+  } catch (err) {
+    noticeError.value = true
+    notice.value = err?.response?.data?.message || 'Could not hand back.'
+  } finally {
+    handingBack.value = false
+  }
+}
 
 async function load() {
   loading.value = true

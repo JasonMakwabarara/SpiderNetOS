@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-09-10 — Partner outreach, PR4: recruiter bot, approvals, Affonso webhook + create-affiliate
+
+The conversation half (stacked on PR3). Off by default: drafts only happen when
+`outreach.bot_replies` is on for the tenant, and `create_affiliate` only calls Affonso when
+`outreach.affonso_actions` is on as well.
+
+- **Reply loop**: `OutreachReplyProjection` (registered in `config/projections.php`) turns a
+  `conversation.message.received` event tagged `bridge=laravel_outreach` into one
+  `DraftPartnerReplyJob` on the `intelligence` queue (claim on `reply_claim_message_id`, so a
+  replayed event is a no-op). `RecruiterBot` runs deterministic gates first (legal, privacy,
+  complaint, press, paperwork, upfront pay, rate negotiation → handoff with no model call;
+  per-thread and per-tenant daily caps), builds a FACTS-only prompt (`RecruiterPromptBuilder`,
+  `recruiter-v1`) from `settings.outreach.program` plus the thread, asks the inference plane
+  (`InferencePlaneClient::generate` gained a temperature argument; drafts use 0.3), then
+  `ReplyPostFilter` refuses any figure, link or promise the FACTS do not cover. Refusals and
+  model failures become handoffs, never emails.
+- **Approve-first**: the draft is a `conversation_messages` row (`status draft`,
+  `sent_by recruiter_bot`, `draft_action`, `draft_meta`) plus an `outreach_reply` approval.
+  Approving (cockpit or `POST /api/approvals/{id}/approve`) sends the current body through the
+  tenant mailbox with threading headers and applies the action (`signed_up`, `unsubscribe`,
+  `decline_close`, `create_affiliate`); rejecting freezes the draft and flags the prospect for a
+  human. `PATCH /api/sales/partners/drafts/{id}` edits a pending draft (and its approval card).
+  `settings.outreach.replies.mode = auto` sends without the approval step.
+- **Handoffs**: prospect `handoff` + `bot_paused_at`, an `escalation` approval on the
+  `outreach_thread`; the thread view shows "Waiting on a human" and
+  `POST /api/sales/partners/{id}/hand-back` resumes the bot. Partners list gains a
+  "needs a human" filter.
+- **Affonso webhook**: `POST /api/webhooks/affonso/{tenant}` verified by `VerifyAffonsoSignature`
+  (`X-Affonso-Signature: t=…,v1=…`, HMAC-SHA256 over `t.body`, 5-minute skew, per-tenant secret
+  from the affonso connector; generic 404 for unknown tenants), recorded once in
+  `webhook_receipts` (redeliveries acknowledged as duplicates), processed by
+  `HandleAffonsoWebhookJob`: match by `externalUserId` (lead id) → `metadata.prospect_token` →
+  email, store affiliate/tracking ids and status, mark the prospect `signed_up` (Lead `won`,
+  sequence stopped); unmatched events stay in the ledger with `error=unmatched`.
+- **create_affiliate**: `OutreachReplyService` creates the affiliate through `AffonsoClient`
+  (idempotent on email; `external_user_id` = lead id, `metadata.prospect_token`, the connector's
+  default group), stores the ids and marks the prospect signed up; with the flag off, or without a
+  connector or email, it flags a human instead.
+- Cockpit: `Approvals.vue` renders recruiter drafts (editable before approving) and handoff cards
+  with the creator's message; `PartnerThread.vue` hand-back control.
+- Suites: `ReplyPostFilterTest`, `AffonsoSignatureTest` (CiFast);
+  `tests/Feature/Outreach/RecruiterBotTest`, `AffonsoWebhookTest`.
+
 ## 2026-09-10 — Partner outreach, PR3: inbound email (IMAP), classification, operator replies
 
 Replies now come back into SpiderNet (stacked on PR2). Off by default: the poller

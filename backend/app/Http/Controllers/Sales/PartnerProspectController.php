@@ -12,6 +12,7 @@ use App\Services\EventStore;
 use App\Services\FeatureFlag;
 use App\Services\Messaging\MessageDispatchService;
 use App\Services\Messaging\TenantMailerFactory;
+use App\Services\Outreach\Bot\OutreachReplyService;
 use App\Services\Outreach\Import\ProspectImportService;
 use App\Services\Outreach\OutreachSender;
 use App\Services\Outreach\OutreachSettings;
@@ -35,6 +36,7 @@ class PartnerProspectController extends Controller
         private readonly TenantMailerFactory $mailers,
         private readonly EventStore $events,
         private readonly MessageDispatchService $dispatch,
+        private readonly OutreachReplyService $replies,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -239,6 +241,43 @@ class PartnerProspectController extends Controller
         }
 
         return response()->json(['data' => $result['message'] ?? null, 'prospect' => $prospect->refresh()], 201);
+    }
+
+    /** Edit a recruiter-bot draft before approving it; the approval card follows. */
+    public function updateDraft(Request $request, string $messageId): JsonResponse
+    {
+        $tenant = $request->attributes->get('tenant');
+        $draft = ConversationMessage::forTenant($tenant->id)->findOrFail($messageId);
+        if ($draft->status !== 'draft') {
+            return response()->json(['message' => 'Only pending drafts can be edited.'], 409);
+        }
+        $validated = $request->validate(['body' => 'required|string|max:10000']);
+
+        $draft->update([
+            'body' => $validated['body'],
+            'draft_meta' => ((array) $draft->draft_meta) + ['edited_by' => (string) $request->user()->id, 'edited_at' => now()->toIso8601String()],
+        ]);
+
+        $approval = DB::table('approvals')->where('tenant_id', $tenant->id)->where('resource_type', 'outreach_reply')
+            ->where('resource_id', $draft->id)->where('status', 'pending')->first();
+        if ($approval !== null) {
+            $context = json_decode((string) $approval->context, true) ?: [];
+            $context['draft_body'] = $validated['body'];
+            DB::table('approvals')->where('id', $approval->id)->update(['context' => json_encode($context), 'updated_at' => now()]);
+        }
+
+        return response()->json(['data' => $draft->refresh()]);
+    }
+
+    /** A human handled the escalation: let the bot resume on this thread. */
+    public function handBack(Request $request, string $id): JsonResponse
+    {
+        $prospect = PartnerProspect::forTenant($request->attributes->get('tenant')->id)->findOrFail($id);
+        if (! $this->replies->handBack($prospect)) {
+            return response()->json(['message' => 'Prospect is not waiting on a human.'], 409);
+        }
+
+        return response()->json(['data' => $prospect->refresh()]);
     }
 
     public function pause(Request $request, string $id): JsonResponse

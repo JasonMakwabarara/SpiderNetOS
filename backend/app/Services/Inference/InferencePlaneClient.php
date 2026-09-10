@@ -31,6 +31,7 @@ class InferencePlaneClient
         float $costCeiling = 0.50,
         int $maxTokens = 2048,
         bool $heavy = false,
+        ?float $temperature = null,
     ): array {
         $request = Http::baseUrl($this->baseUrl())
             ->timeout($this->timeoutSeconds())
@@ -51,7 +52,7 @@ class InferencePlaneClient
             'tenant_tier' => $tenantTier,
             'cost_ceiling' => $costCeiling,
             'max_tokens' => $maxTokens,
-            'temperature' => 0.2, // runbook steps want precision, not creativity
+            'temperature' => $temperature ?? 0.2, // runbook steps want precision, not creativity
         ];
 
         if ($model !== '' && $model !== 'off') {

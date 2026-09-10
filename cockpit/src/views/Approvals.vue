@@ -99,6 +99,37 @@
               <p class="text-sm" style="color: var(--text-primary);">{{ selected.summary || selected.reason }}</p>
             </section>
 
+            <!-- Partner outreach: recruiter-bot draft / escalation -->
+            <section v-if="outreach">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">
+                {{ selected.resource_type === 'outreach_reply' ? 'Recruiter bot draft' : 'Recruiter bot handoff' }}
+              </h3>
+              <p class="text-xs" style="color: var(--text-muted);">
+                {{ outreach.display_name || (outreach.handle ? '@' + outreach.handle : 'prospect') }}
+                <span v-if="outreach.platform"> · {{ outreach.platform }}</span>
+                <span v-if="outreach.action"> · action: {{ outreach.action }}</span>
+                <span v-if="outreach.reason"> · {{ outreach.reason }}</span>
+              </p>
+              <p v-if="outreach.inbound_excerpt" class="text-xs mt-2 rounded-md px-3 py-2"
+                 style="background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); white-space: pre-line;">
+                {{ outreach.inbound_excerpt }}
+              </p>
+              <template v-if="selected.resource_type === 'outreach_reply'">
+                <textarea v-if="selected.status === 'pending'" v-model="draftBody" rows="6" class="w-full mt-2 text-sm"
+                          data-testid="outreach-draft-body"></textarea>
+                <p v-else class="text-sm mt-2" style="color: var(--text-primary); white-space: pre-line;">{{ outreach.draft_body }}</p>
+                <div v-if="selected.status === 'pending'" class="flex items-center gap-2 mt-2">
+                  <button class="sn-btn" :disabled="draftSaving || draftBody === savedDraft" @click="saveDraft">
+                    {{ draftSaving ? 'Saving…' : 'Save edit' }}
+                  </button>
+                  <span class="text-xs" style="color: var(--text-muted);">{{ draftNotice }}</span>
+                </div>
+              </template>
+              <RouterLink v-if="outreach.prospect_id" :to="`/sales/partners/${outreach.prospect_id}`" class="text-xs underline mt-2 inline-block" style="color: var(--accent);">
+                Open the thread
+              </RouterLink>
+            </section>
+
             <!-- Diff -->
             <section v-if="selected.diff">
               <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Diff</h3>
@@ -205,14 +236,46 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useApprovalsStore } from '../stores/approvals.js'
 import ConfirmDialog from '../components/feedback/ConfirmDialog.vue'
 import TypedConfirmDialog from '../components/feedback/TypedConfirmDialog.vue'
+import api from '../services/api.js'
 
 const approvalsStore = useApprovalsStore()
 
 const activeFilter = ref('pending')
+
+// Partner outreach approvals carry the draft in context (JSON string from the raw row).
+const draftBody = ref('')
+const savedDraft = ref('')
+const draftSaving = ref(false)
+const draftNotice = ref('')
+const outreach = computed(() => {
+  const s = selected.value
+  if (!s || !['outreach_reply', 'outreach_thread'].includes(s.resource_type)) return null
+  let ctx = s.context
+  if (typeof ctx === 'string') { try { ctx = JSON.parse(ctx) } catch { ctx = {} } }
+  return ctx || {}
+})
+watch(() => selected.value?.id, () => {
+  draftBody.value = outreach.value?.draft_body || ''
+  savedDraft.value = draftBody.value
+  draftNotice.value = ''
+}, { immediate: true })
+async function saveDraft() {
+  draftSaving.value = true
+  draftNotice.value = ''
+  try {
+    await api.patch(`/api/sales/partners/drafts/${selected.value.resource_id}`, { body: draftBody.value })
+    savedDraft.value = draftBody.value
+    draftNotice.value = 'Saved; approve to send this version.'
+  } catch (err) {
+    draftNotice.value = err?.response?.data?.message || 'Could not save.'
+  } finally {
+    draftSaving.value = false
+  }
+}
 const selectedId = ref(null)
 
 const tabs = computed(() => {

@@ -82,6 +82,10 @@ Route::prefix('whatsapp')->middleware(['throttle:voice_webhook', 'voice.verify_t
 });
 
 // Dodo Payments — purchase webhooks (no auth, signature-verified)
+// Affonso affiliate webhooks (no auth; X-Affonso-Signature verified per tenant)
+Route::post('/webhooks/affonso/{tenant}', [\App\Http\Controllers\Webhooks\AffonsoWebhookController::class, 'handle'])
+    ->middleware(['affonso.verify_signature', 'throttle:payment_webhook']);
+
 Route::post('/webhooks/dodo', [\App\Http\Controllers\Webhooks\DodoWebhookController::class, 'handle'])
     ->middleware(['throttle:payment_webhook', 'dodo.verify_signature']);
 
@@ -571,6 +575,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::post('/partners/import', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'import'])->middleware('role:admin');
         Route::post('/partners/run', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'run'])->middleware('role:admin');
         Route::post('/partners/messages/{messageId}/mark-sent', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'markDmSent']);
+        Route::patch('/partners/drafts/{messageId}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'updateDraft']);
         Route::get('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'show']);
         Route::patch('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'update']);
         Route::post('/partners/{id}/dm-reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmReply']);
@@ -578,6 +583,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::post('/partners/{id}/pause', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'pause']);
         Route::post('/partners/{id}/resume', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'resume']);
         Route::post('/partners/{id}/retire', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'retire']);
+        Route::post('/partners/{id}/hand-back', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'handBack']);
 
         // Inbox — conversations across email + WhatsApp
         Route::get('/conversations', [\App\Http\Controllers\Sales\ConversationController::class, 'index']);
