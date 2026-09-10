@@ -57,7 +57,7 @@ class PublicOutreachController extends Controller
             return null;
         }
 
-        return PartnerProspect::where('invite_token', $token)->first();
+        return PartnerProspect::where('invite_token', strtolower($token))->first();
     }
 
     private function page(string $title, string $body, int $status): Response

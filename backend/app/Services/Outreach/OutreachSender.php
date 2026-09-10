@@ -159,27 +159,13 @@ class OutreachSender
         $composed = $this->composer->compose($tenant, $prospect, (string) $step['template'], 'email');
         $sender = $this->mailers->senderFor($this->mailers->credentialsFor((string) $tenant->id));
         $program = (array) $config['program'];
-        $domain = Str::after($sender['address'], '@') ?: 'outreach.local';
-        $messageId = Str::uuid().'.'.$prospect->invite_token.'@'.$domain;
+        $messageId = $this->messageId($prospect, $sender['address']);
         [$inReplyTo, $references] = $this->threading($prospect);
 
-        $mailable = new PartnerOutreachMail(
-            subjectLine: (string) ($composed['subject'] ?? 'Partnering with '.($program['brand'] ?? 'us')),
-            bodyText: $composed['body'],
-            sender: $sender,
-            replyToAddress: Str::before($sender['address'], '@').'+'.$prospect->invite_token.'@'.$domain,
-            messageId: $messageId,
-            inReplyTo: $inReplyTo,
-            references: $references,
-            footer: [
-                'legal_name' => (string) ($program['operator_legal_name'] ?? ''),
-                'postal_address' => $program['postal_address'] ?? null,
-                'reason' => 'You are receiving this because you publicly create content for people who run marketing; we contact creators a few times at most about partnerships (legitimate interest). Reply STOP or use the link below to never hear from us again.',
-                'unsubscribe_url' => $this->composer->unsubscribeUrl($prospect),
-            ],
-        );
+        $subject = (string) ($composed['subject'] ?? 'Partnering with '.($program['brand'] ?? 'us'));
+        $mailable = $this->mailable($prospect, $subject, $composed['body'], $sender, $program, $messageId, $inReplyTo, $references);
 
-        $result = $this->dispatch->send($lead, 'email', $composed['body'], $composed['subject'], $composed['template_key'], self::SENT_BY, [
+        $result = $this->dispatch->send($lead, 'email', $composed['body'], $subject, $composed['template_key'], self::SENT_BY, [
             'mailable' => $mailable,
             'message_id' => $messageId,
             'in_reply_to' => $inReplyTo,
@@ -210,7 +196,88 @@ class OutreachSender
         return 'sent';
     }
 
-    /** @return array{0: ?string, 1: list<string>} In-Reply-To + References from our earlier emails in the thread */
+    /**
+     * A human-written reply in the prospect's email thread, sent the same way
+     * the sequence sends (tenant mailbox, threading headers, footer).
+     *
+     * @return array{success: bool, error?: string, message?: ConversationMessage}
+     */
+    public function sendOperatorReply(Tenant $tenant, PartnerProspect $prospect, string $body, ?string $subject = null, string $sentBy = 'operator'): array
+    {
+        $lead = $prospect->lead;
+        if ($lead === null || empty($lead->email)) {
+            return ['success' => false, 'error' => 'Prospect has no email address.'];
+        }
+        $credentials = $this->mailers->credentialsFor((string) $tenant->id);
+        if (! $this->mailers->hasSmtp($credentials)) {
+            return ['success' => false, 'error' => 'No partner mailbox connected.'];
+        }
+
+        $config = $this->settings->for($tenant);
+        $program = (array) $config['program'];
+        $sender = $this->mailers->senderFor($credentials);
+        $subject = trim((string) $subject) ?: $this->replySubject($prospect, (string) ($program['brand'] ?? ''));
+        $messageId = $this->messageId($prospect, $sender['address']);
+        [$inReplyTo, $references] = $this->threading($prospect);
+        $mailable = $this->mailable($prospect, $subject, $body, $sender, $program, $messageId, $inReplyTo, $references);
+
+        $result = $this->dispatch->send($lead, 'email', $body, $subject, null, $sentBy, [
+            'mailable' => $mailable, 'message_id' => $messageId, 'in_reply_to' => $inReplyTo, 'references' => $references, 'require_tenant_mailer' => true,
+        ]);
+
+        if ($result['success'] && $prospect->status === PartnerProspect::STATUS_REPLIED) {
+            $this->lifecycle->transition($prospect, PartnerProspect::STATUS_NEGOTIATING, ['last_sent_at' => now()], [PartnerProspect::STATUS_REPLIED]);
+        } elseif ($result['success']) {
+            PartnerProspect::whereKey($prospect->id)->update(['last_sent_at' => now()]);
+        }
+
+        return $result;
+    }
+
+    private function replySubject(PartnerProspect $prospect, string $brand): string
+    {
+        $conversation = Conversation::forTenant((string) $prospect->tenant_id)->where('lead_id', $prospect->lead_id)->where('channel', 'email')->first();
+        $last = $conversation
+            ? ConversationMessage::where('conversation_id', $conversation->id)->whereNotNull('subject')->orderByDesc('created_at')->value('subject')
+            : null;
+        $last = trim((string) $last);
+        if ($last === '') {
+            return 'Re: Partnering with '.$brand;
+        }
+
+        return preg_match('/^re:/i', $last) === 1 ? $last : 'Re: '.$last;
+    }
+
+    private function messageId(PartnerProspect $prospect, string $senderAddress): string
+    {
+        $domain = Str::after($senderAddress, '@') ?: 'outreach.local';
+
+        return Str::uuid().'.'.$prospect->invite_token.'@'.$domain;
+    }
+
+    /** @param array{address: string, name: ?string} $sender */
+    private function mailable(PartnerProspect $prospect, string $subject, string $body, array $sender, array $program, string $messageId, ?string $inReplyTo, array $references): PartnerOutreachMail
+    {
+        $domain = Str::after($sender['address'], '@') ?: 'outreach.local';
+
+        return new PartnerOutreachMail(
+            subjectLine: $subject,
+            bodyText: $body,
+            sender: $sender,
+            replyToAddress: Str::before($sender['address'], '@').'+'.$prospect->invite_token.'@'.$domain,
+            messageId: $messageId,
+            inReplyTo: $inReplyTo,
+            references: $references,
+            footer: [
+                'legal_name' => (string) ($program['operator_legal_name'] ?? ''),
+                'postal_address' => $program['postal_address'] ?? null,
+                'reason' => 'You are receiving this because you publicly create content for people who run marketing; we contact creators a few times at most about partnerships (legitimate interest). Reply STOP or use the link below to never hear from us again.',
+                'unsubscribe_url' => $this->composer->unsubscribeUrl($prospect),
+            ],
+        );
+    }
+
+    /** @return array{0: ?string, 1: list<string>} In-Reply-To + References from the thread so far */
     private function threading(PartnerProspect $prospect): array
     {
         $conversation = Conversation::forTenant((string) $prospect->tenant_id)
@@ -220,7 +287,7 @@ class OutreachSender
         }
 
         $ids = ConversationMessage::where('conversation_id', $conversation->id)
-            ->where('direction', 'out')->whereNotNull('message_id_header')
+            ->whereNotNull('message_id_header')
             ->orderBy('created_at')->pluck('message_id_header')->all();
         $ids = array_slice(array_values($ids), -5);
 

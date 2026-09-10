@@ -40,6 +40,9 @@ Schedule::job(new \App\Jobs\ProcessSequenceStepsJob)->everyMinute()->withoutOver
 // self-gated per tenant on the outreach.sending flag (see OutreachSender)
 Schedule::job(new \App\Jobs\ProcessOutreachStepsJob)->everyMinute()->withoutOverlapping();
 
+// Partner outreach: poll the tenant mailboxes for replies / bounces / STOP (every 2 min)
+Schedule::job(new \App\Jobs\PollPartnerMailboxJob)->everyTwoMinutes()->withoutOverlapping();
+
 // Priestley "Activity" A — perfect repeatable week (Monday priorities, Friday check-in)
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('priorities'))->weeklyOn(1, '06:30');
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');

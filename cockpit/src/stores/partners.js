@@ -92,6 +92,11 @@ export const usePartnersStore = defineStore('partners', () => {
     dmQueue.value = dmQueue.value.filter((m) => m.message_id !== messageId)
   }
 
+  async function reply(prospectId, body, channel = 'email', subject = null) {
+    const { data } = await api.post(`/api/sales/partners/${prospectId}/reply`, { body, channel, subject })
+    return data
+  }
+
   async function dmReply(prospectId, body) {
     const { data } = await api.post(`/api/sales/partners/${prospectId}/dm-reply`, { body })
     return data
@@ -129,7 +134,7 @@ export const usePartnersStore = defineStore('partners', () => {
   return {
     prospects, pagination, summary, dmQueue, settings, settingsMeta, loading, error,
     fetchProspects, fetchProspect, updateProspect, importCsv,
-    fetchDmQueue, markDmSent, dmReply, action,
+    fetchDmQueue, markDmSent, dmReply, reply, action,
     fetchSettings, saveSettings, runTick,
   }
 })

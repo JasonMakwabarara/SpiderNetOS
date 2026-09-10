@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-09-10 — Partner outreach, PR3: inbound email (IMAP), classification, operator replies
+
+Replies now come back into SpiderNet (stacked on PR2). Off by default: the poller
+runs only when `outreach.inbound_poll` is on for the tenant and the mailbox has an
+IMAP password.
+
+- **IMAP reader seam**: `ImapMailboxReader` (bound to `WebklexImapReader`, new dependency
+  `webklex/php-imap`), `InboundMessage` DTO. `PollPartnerMailboxJob` every two minutes /
+  `outreach:poll-inbox`: fetch since the last UID (never flags mail as read), dedupe on
+  Message-ID, remember the high-water mark in `settings.outreach.mailbox`.
+- **Classification** (`InboundEmailClassifier` + `DsnParser`): bounce (RFC 3464 report or
+  mailer-daemon with a status), auto-responder (Auto-Submitted, X-Autoreply, Precedence,
+  List-Id, OOO subjects), STOP/unsubscribe, decline, reply; quoted history and signatures
+  are stripped so only what the creator wrote is stored.
+- **Matching** (`ThreadMatcher`): plus-address token in Reply-To first, then our own
+  Message-IDs via In-Reply-To/References, then the sender address; all tenant-scoped.
+- **Effects** (`InboundIngestor`): hard bounce → prospect `bounced` + consent `bounced`;
+  soft bounce → retry tomorrow; STOP → `unsubscribed` + consent `stopped`, never wakes the
+  bot; reply/decline → prospect `replied`, Lead `engaged`, event
+  `conversation.message.received` tagged `bridge=laravel_outreach`; auto-replies and our own
+  mail are recorded/ignored; unmatched mail is logged, nothing stored.
+- **Operator reply**: `POST /api/sales/partners/{id}/reply` sends a human reply through the
+  tenant mailbox with threading headers and the legal footer (`OutreachSender::sendOperatorReply`,
+  which now shares the mailable builder with the sequence; threading follows both directions),
+  or queues a DM draft. Cockpit thread view (`/sales/partners/:id`).
+- `zoho_mail` connector test now also logs in over IMAP when an IMAP password is stored.
+- Suites: `InboundEmailClassifierTest` (CiFast), `tests/Feature/Outreach/InboxPollTest`.
+
 ## 2026-09-10 — Partner outreach, PR2: prospects, import, tenant mailer, sequence, DM queue
 
 The outreach engine itself (stacked on PR1). Still off by default: nothing sends until

@@ -93,7 +93,7 @@
           <tr v-else-if="!store.prospects.length"><td colspan="7" class="p-4" style="color: var(--text-muted);">No prospects yet. Import a CSV to start.</td></tr>
           <tr v-for="p in store.prospects" :key="p.id" style="border-top: 1px solid var(--border);">
             <td class="p-3">
-              <div class="font-medium" style="color: var(--text-primary);">{{ p.display_name || p.handle || '—' }}</div>
+              <RouterLink :to="`/sales/partners/${p.id}`" class="font-medium underline" style="color: var(--text-primary);">{{ p.display_name || p.handle || '—' }}</RouterLink>
               <a :href="p.profile_url" target="_blank" rel="noopener noreferrer" class="text-xs underline" style="color: var(--accent);">{{ p.handle ? '@' + p.handle : p.profile_url }}</a>
             </td>
             <td class="p-3" style="color: var(--text-secondary);">{{ p.platform }}</td>
