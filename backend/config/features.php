@@ -185,4 +185,28 @@ return [
     /** Enterprise — deep multi-hop research agent (background Atlas augmentation). */
     'atlas.jarvis.deep_research' => env('FEATURE_ATLAS_JARVIS_DEEP_RESEARCH', 'on'),
 
+    // -----------------------------------------------------------------------
+    // Partner outreach (affiliate recruitment). All OFF until a tenant is
+    // bootstrapped with `outreach:tenant` and its mailbox/Affonso connected.
+    // Flip per tenant: `php artisan feature set outreach.sending on --tenant=<uuid>`.
+    // -----------------------------------------------------------------------
+
+    /** Master switch for the outreach module (cockpit pages + API). */
+    'outreach.enabled' => env('FEATURE_OUTREACH_ENABLED', 'off'),
+
+    /** Outbound sequence sends (invite / nudge / last call). */
+    'outreach.sending' => env('FEATURE_OUTREACH_SENDING', 'off'),
+
+    /** IMAP polling of the tenant partner mailbox for replies and bounces. */
+    'outreach.inbound_poll' => env('FEATURE_OUTREACH_INBOUND_POLL', 'off'),
+
+    /** Recruiter-bot drafts (approve-first by default; settings.outreach.replies.mode). */
+    'outreach.bot_replies' => env('FEATURE_OUTREACH_BOT_REPLIES', 'off'),
+
+    /** Let the bot create affiliates through the Affonso API (else it hands off). */
+    'outreach.affonso_actions' => env('FEATURE_OUTREACH_AFFONSO_ACTIONS', 'off'),
+
+    /** Public-profile contact enrichment (terms grey area; stays a stub until reviewed). */
+    'outreach.profile_enrichment' => env('FEATURE_OUTREACH_PROFILE_ENRICHMENT', 'off'),
+
 ];

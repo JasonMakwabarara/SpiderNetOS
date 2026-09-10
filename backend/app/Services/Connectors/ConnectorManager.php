@@ -44,6 +44,8 @@ class ConnectorManager
             'slack' => new SlackConnector($tenantId, $creds, $config),
             'webhook' => new WebhookConnector($tenantId, $creds, $config),
             'http_api' => new HttpApiConnector($tenantId, $creds, $config),
+            'affonso' => new AffonsoConnector($tenantId, $creds, $config),
+            'zoho_mail' => new ZohoMailConnector($tenantId, $creds, $config),
             'google_calendar', 'cal_com' => new CalendarConnectorBridge($tenantId, $integration->provider, $creds),
             'hubspot', 'salesforce' => new CrmConnectorBridge($tenantId, $integration->provider, $creds),
             default => null,
@@ -81,7 +83,7 @@ class ConnectorManager
      * Run a catalogue-declared action. Unknown actions are refused before the
      * provider is touched, so agents can't invoke undeclared capabilities.
      *
-     * @param array<string,mixed> $params
+     * @param  array<string,mixed>  $params
      * @return array{success: bool, data?: mixed, error?: string}
      */
     public function execute(TenantIntegration $integration, string $action, array $params = []): array
