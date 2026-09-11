@@ -128,7 +128,16 @@ class OutreachReplyService
 
         switch ((string) $draft->draft_action) {
             case 'signed_up':
-                $this->lifecycle->transition($prospect, PartnerProspect::STATUS_SIGNED_UP, ['signed_up_at' => now(), 'next_send_at' => null], $nonTerminal);
+                // The creator says they joined, so stop writing to them. Until an
+                // Affonso event (or an operator) confirms an affiliate exists, the
+                // signup stays flagged: measured runs show the model reads "ok I'm
+                // in" as a signup, and a silent false positive loses the prospect.
+                $extra = ['signed_up_at' => now(), 'next_send_at' => null];
+                if (empty($prospect->affonso_affiliate_id)) {
+                    $extra['needs_human_at'] = now();
+                    $extra['needs_human_reason'] = 'verify_signup';
+                }
+                $this->lifecycle->transition($prospect, PartnerProspect::STATUS_SIGNED_UP, $extra, $nonTerminal);
                 break;
             case 'unsubscribe':
                 $this->lifecycle->optOut($prospect, 'bot_request', ['draft_id' => $draft->id]);

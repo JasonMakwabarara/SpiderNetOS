@@ -193,6 +193,9 @@ class RecruiterBotTest extends OutreachTestCase
         $this->assertNotNull($prospect->signed_up_at);
         $this->assertNull($prospect->next_send_at);
         $this->assertSame('won', $prospect->lead->stage);
+        // Nobody has confirmed an affiliate exists yet, so it stays flagged for a human.
+        $this->assertSame('verify_signup', $prospect->needs_human_reason);
+        $this->assertNotNull($prospect->needs_human_at);
 
         // Resolved drafts are frozen.
         $this->actingAs($this->admin, 'sanctum')->patchJson("/api/sales/partners/drafts/{$draft->id}", ['body' => 'x'])->assertStatus(409);
@@ -336,6 +339,7 @@ class RecruiterBotTest extends OutreachTestCase
         $this->assertSame('ACTIVE', $second->affiliate_status);
         $this->assertSame(PartnerProspect::STATUS_SIGNED_UP, $second->status);
         $this->assertSame('won', $second->lead->stage);
+        $this->assertNull($second->needs_human_reason, 'an API-created affiliate needs no verification');
         $this->assertTrue(Event::where('tenant_id', $this->tenant->id)->where('event_type', 'outreach.affiliate.created')->exists());
         Mail::assertSent(PartnerOutreachMail::class, 4);
     }

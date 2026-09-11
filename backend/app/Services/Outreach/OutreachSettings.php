@@ -37,6 +37,10 @@ class OutreachSettings
                 'terms_url' => 'https://hannah-ai.world/affiliate-terms',
                 'join_url' => null,
                 'portal_name' => 'Affonso',
+                // Set true only once the operator has seen Affonso email an
+                // API-created affiliate (outreach:spike affonso). While false the
+                // bot sends the join link instead of promising an inbox.
+                'api_signup_emails' => false,
                 'operator_legal_name' => 'Apex Synchronia LLC',
                 'postal_address' => null,
                 'exclusions' => ['Enterprise plans', 'self-referrals', 'brand bidding', 'coupon sites'],
