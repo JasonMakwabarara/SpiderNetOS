@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-09-10 — Partner outreach, PR2: prospects, import, tenant mailer, sequence, DM queue
+
+The outreach engine itself (stacked on PR1). Still off by default: nothing sends until
+`outreach.sending` is on for the tenant and a partner mailbox is connected.
+
+- **Prospects**: `partner_prospects` (1:1 with `leads`; platform, handle, canonical
+  profile URL + hash, invite token, lifecycle status, sequence position, claims) and a
+  generic `webhook_receipts` ledger; `conversation_messages` gains subject, RFC
+  Message-ID / In-Reply-To / References, classification, draft bookkeeping and `sent_at`
+  (partial unique on tenant + Message-ID for inbound dedupe).
+- **Import**: `outreach:import {tenant} {csv}` and `POST /api/sales/partners/import` read
+  Affonso Finder shortlist exports (BOM-safe), dedupe on the normalised profile URL, and
+  re-imports never touch email, status or timestamps. Finder-supplied emails are accepted
+  through `EmailValidator` (syntax, role/disposable, MX) with a `legitimate_interest_b2b`
+  consent record; everyone else parks in `needs_email`.
+- **Sending**: `ProcessOutreachStepsJob` (every minute) / `outreach:send-due` runs one tick
+  per tenant: DM drafts for prospects without email, retirement after the last call, then
+  due email steps inside the warm-up / hourly / min-gap budget and outside quiet hours.
+  Every send is claimed first (conditional UPDATE) and goes out AS the tenant mailbox via
+  `TenantMailerFactory` with our own Message-ID, threading headers, `List-Unsubscribe`
+  (mailto + one-click) and a CAN-SPAM/GDPR footer. `MessageDispatchService::send()` gained
+  an `$options` passthrough and a `manual_dm` channel (operator drafts, never sent by us);
+  `EmailChannel` sends a prebuilt Mailable through the tenant mailer and reports the real
+  Message-ID.
+- **Bridge gate**: `ConversationReplyBridgeProjection` skips events tagged
+  `bridge=laravel_outreach`, so outreach replies never reach the Python CRM agent.
+- **API** (`/api/sales/partners/*`, sales-crm gated): list/show/patch prospects, import,
+  DM queue + mark-sent + paste-reply, pause/resume/retire, settings (validated, admin),
+  manual dry-run tick. Public `GET|POST /api/public/outreach/unsubscribe/{token}`.
+- **Cockpit**: Partners list (import, filters, inline email), DM queue (copy / mark sent /
+  paste reply), Outreach settings; card on the Sales home.
+- Suites: `tests/Unit/Outreach` (CiFast), `tests/Feature/Outreach/{ProspectImportTest,
+  OutreachSendTest, PartnerApiTest}`.
+
 ## 2026-09-10 — Partner outreach, PR1: tenant bootstrap + Affonso / mailbox connectors
 
 Groundwork for running Hannah AI's affiliate-recruitment outreach on SpiderNet

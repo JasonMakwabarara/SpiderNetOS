@@ -36,6 +36,10 @@ Schedule::job(new \App\Jobs\ComputeTransformationScoreJob)->everyFiveMinutes()->
 // Sales-crm pack: nurture sequence steps (email/WhatsApp follow-ups) — every minute
 Schedule::job(new \App\Jobs\ProcessSequenceStepsJob)->everyMinute()->withoutOverlapping();
 
+// Partner outreach: DM drafts, retirements and due email steps — every minute,
+// self-gated per tenant on the outreach.sending flag (see OutreachSender)
+Schedule::job(new \App\Jobs\ProcessOutreachStepsJob)->everyMinute()->withoutOverlapping();
+
 // Priestley "Activity" A — perfect repeatable week (Monday priorities, Friday check-in)
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('priorities'))->weeklyOn(1, '06:30');
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');

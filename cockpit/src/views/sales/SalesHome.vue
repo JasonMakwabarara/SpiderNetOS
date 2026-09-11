@@ -41,6 +41,18 @@
         Or use the guided first-win wizard →
       </RouterLink>
     </div>
+
+    <div class="sn-card p-5 space-y-3 mt-6">
+      <h2 class="font-medium" style="color: var(--text-primary);">Partner outreach</h2>
+      <p class="text-sm" style="color: var(--text-secondary);">
+        Recruit creators into your affiliate program: import a shortlist, send the invite sequence from your own mailbox, work the DM queue.
+      </p>
+      <div class="flex flex-wrap items-center gap-3">
+        <RouterLink to="/sales/partners" class="sn-btn px-4 py-2 rounded-lg text-sm font-semibold">Open prospects</RouterLink>
+        <RouterLink to="/sales/partners/dm-queue" class="text-sm underline" style="color: var(--accent);">DM queue →</RouterLink>
+        <RouterLink to="/sales/partners/settings" class="text-sm underline" style="color: var(--text-muted);">Settings</RouterLink>
+      </div>
+    </div>
   </div>
 </template>
 

@@ -37,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/enterprise/register/*',
             'api/enterprise/auth/*',
             'api/public/lead-capture/*',
+            // One-click unsubscribe (RFC 8058) is POSTed by mail clients, never
+            // by a browser session; token-gated, grants nothing.
+            'api/public/outreach/*',
         ]);
 
         $middleware->alias([

@@ -16,6 +16,7 @@
             <directory suffix="Test.php">./tests/Unit/Payments</directory>
             <directory suffix="Test.php">./tests/Unit/Billing</directory>
             <directory suffix="Test.php">./tests/Unit/Mfa</directory>
+            <directory suffix="Test.php">./tests/Unit/Outreach</directory>
         </testsuite>
     </testsuites>
 

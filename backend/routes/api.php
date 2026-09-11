@@ -47,6 +47,13 @@ Route::get('/public/approvals/{token}', [ShareLinkController::class, 'publicAppr
 Route::post('/public/lead-capture/{tenant}', [\App\Http\Controllers\Sales\PublicLeadController::class, 'store'])
     ->middleware('throttle:lead_capture');
 
+// Partner outreach unsubscribe (token-gated; GET confirms, POST acts — also
+// the RFC 8058 one-click target advertised in List-Unsubscribe).
+Route::get('/public/outreach/unsubscribe/{token}', [\App\Http\Controllers\Sales\PublicOutreachController::class, 'confirm'])
+    ->middleware('throttle:lead_capture');
+Route::post('/public/outreach/unsubscribe/{token}', [\App\Http\Controllers\Sales\PublicOutreachController::class, 'unsubscribe'])
+    ->middleware('throttle:lead_capture');
+
 // V2 intelligence layer — proxied through Laravel (Sanctum required except health)
 Route::prefix('v2/intelligence')->group(function () {
     Route::get('/health', [IntelligenceProxyController::class, 'health']);
@@ -554,6 +561,22 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::post('/funnel-setup/request-revision', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'requestRevision']);
         Route::post('/scripts/{scriptId}/submit', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'submitScript']);
         Route::post('/scripts/{scriptId}/revise', [\App\Http\Controllers\Sales\FunnelSetupController::class, 'reviseScript']);
+
+        // Partner outreach (affiliate recruitment): prospects, DM queue, settings.
+        // Static paths first so they never match the {id} routes below.
+        Route::get('/partners', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'index']);
+        Route::get('/partners/dm-queue', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmQueue']);
+        Route::get('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'settings']);
+        Route::put('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
+        Route::post('/partners/import', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'import'])->middleware('role:admin');
+        Route::post('/partners/run', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'run'])->middleware('role:admin');
+        Route::post('/partners/messages/{messageId}/mark-sent', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'markDmSent']);
+        Route::get('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'show']);
+        Route::patch('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'update']);
+        Route::post('/partners/{id}/dm-reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmReply']);
+        Route::post('/partners/{id}/pause', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'pause']);
+        Route::post('/partners/{id}/resume', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'resume']);
+        Route::post('/partners/{id}/retire', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'retire']);
 
         // Inbox — conversations across email + WhatsApp
         Route::get('/conversations', [\App\Http\Controllers\Sales\ConversationController::class, 'index']);

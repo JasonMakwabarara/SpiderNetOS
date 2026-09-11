@@ -25,11 +25,13 @@ class Conversation extends Model
         return $query->where('tenant_id', $tenantId);
     }
 
+    /** @return BelongsTo<Lead, $this> */
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
     }
 
+    /** @return HasMany<ConversationMessage, $this> */
     public function messages(): HasMany
     {
         return $this->hasMany(ConversationMessage::class)->orderBy('created_at');
