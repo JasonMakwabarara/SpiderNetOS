@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Connectors;
 
 use App\Services\Messaging\TenantMailerFactory;
+use App\Services\Outreach\Inbound\ImapMailboxReader;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Log;
 
@@ -59,15 +60,21 @@ class ZohoMailConnector implements ConnectorContract
             return ['ok' => false, 'error' => 'SMTP test failed: '.$e->getMessage()];
         }
 
-        return [
-            'ok' => true,
-            'detail' => [
-                'smtp' => 'Authenticated; a test email was sent to '.$sender['address'].'.',
-                'imap' => empty($this->credentials['imap_password'])
-                    ? 'No IMAP password stored: replies cannot be read until it is added.'
-                    : 'Stored; verified by the inbox poller.',
-            ],
-        ];
+        $detail = ['smtp' => 'Authenticated; a test email was sent to '.$sender['address'].'.'];
+
+        if (empty($this->credentials['imap_password'])) {
+            $detail['imap'] = 'No IMAP password stored: replies cannot be read until it is added.';
+
+            return ['ok' => true, 'detail' => $detail];
+        }
+
+        $imap = app(ImapMailboxReader::class)->checkLogin($this->credentials);
+        if (! $imap['ok']) {
+            return ['ok' => false, 'error' => (string) ($imap['error'] ?? 'IMAP login failed.'), 'detail' => $detail];
+        }
+        $detail['imap'] = 'Login OK; the inbox poller can read replies.';
+
+        return ['ok' => true, 'detail' => $detail];
     }
 
     public function execute(string $action, array $params = []): array

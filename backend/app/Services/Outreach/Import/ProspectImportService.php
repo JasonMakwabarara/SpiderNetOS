@@ -130,7 +130,8 @@ class ProspectImportService
                 'source' => $source,
                 'source_meta' => $this->metaFrom($row, $emails),
                 'affonso_shortlist_item_id' => $this->nullableString($row['external_id'] ?? null, 64),
-                'invite_token' => Str::random(22),
+                // Lower-case: mail servers may fold the local part of partners+<token>@.
+                'invite_token' => Str::lower(Str::random(22)),
                 'status' => PartnerProspect::STATUS_NEW,
             ]);
 

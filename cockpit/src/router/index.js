@@ -33,6 +33,7 @@ const SalesInbox      = () => import('../views/sales/Inbox.vue')
 const Partners        = () => import('../views/sales/Partners.vue')
 const PartnerDmQueue  = () => import('../views/sales/PartnerDmQueue.vue')
 const PartnerSettings = () => import('../views/sales/PartnerSettings.vue')
+const PartnerThread   = () => import('../views/sales/PartnerThread.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 const Operating       = () => import('../views/operating/Operating.vue')
 
@@ -109,6 +110,7 @@ const routes = [
   { path: '/sales/partners', name: 'Partners', component: Partners, meta: { requiresAuth: true } },
   { path: '/sales/partners/dm-queue', name: 'PartnerDmQueue', component: PartnerDmQueue, meta: { requiresAuth: true } },
   { path: '/sales/partners/settings', name: 'PartnerSettings', component: PartnerSettings, meta: { requiresAuth: true } },
+  { path: '/sales/partners/:id', name: 'PartnerThread', component: PartnerThread, meta: { requiresAuth: true } },
   { path: '/compliance', name: 'ComplianceHome', component: ComplianceHome, meta: { requiresAuth: true } },
   { path: '/operating', name: 'Operating', component: Operating, meta: { requiresAuth: true } },
   { path: '/memory',        name: 'Memory',        component: Memory,      meta: { requiresAuth: true } },

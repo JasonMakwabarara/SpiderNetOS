@@ -574,6 +574,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::get('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'show']);
         Route::patch('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'update']);
         Route::post('/partners/{id}/dm-reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmReply']);
+        Route::post('/partners/{id}/reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'reply']);
         Route::post('/partners/{id}/pause', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'pause']);
         Route::post('/partners/{id}/resume', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'resume']);
         Route::post('/partners/{id}/retire', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'retire']);

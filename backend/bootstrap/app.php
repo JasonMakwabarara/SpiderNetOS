@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         \App\Providers\SecurityServiceProvider::class,
+        \App\Providers\OutreachServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Global — applied to every HTTP response. Security headers must run

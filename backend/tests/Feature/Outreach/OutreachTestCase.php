@@ -66,14 +66,19 @@ abstract class OutreachTestCase extends TestCase
     }
 
     /** Store zoho_mail credentials and route the tenant mailer to Mail::fake(). */
-    protected function connectMailbox(string $from = 'partners@hannah-ai.test'): void
+    protected function connectMailbox(string $from = 'partners@hannah-ai.test', bool $withImap = false): void
     {
         Mail::fake();
 
-        $ref = app(TenantKeyManager::class)->storeSecret((string) $this->tenant->id, 'integration.zoho_mail', (string) json_encode([
+        $credentials = [
             'from_address' => $from, 'from_name' => 'Hannah AI Partnerships',
             'smtp_host' => 'smtp.zoho.com', 'smtp_port' => '587', 'smtp_username' => $from, 'smtp_password' => 'app-pass',
-        ]));
+        ];
+        if ($withImap) {
+            $credentials += ['imap_host' => 'imap.zoho.com', 'imap_port' => '993', 'imap_username' => $from, 'imap_password' => 'imap-pass'];
+        }
+
+        $ref = app(TenantKeyManager::class)->storeSecret((string) $this->tenant->id, 'integration.zoho_mail', (string) json_encode($credentials));
 
         TenantIntegration::create([
             'tenant_id' => $this->tenant->id, 'provider' => 'zoho_mail', 'type' => 'email',

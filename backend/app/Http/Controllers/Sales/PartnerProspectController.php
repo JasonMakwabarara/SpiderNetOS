@@ -34,6 +34,7 @@ class PartnerProspectController extends Controller
         private readonly OutreachSender $sender,
         private readonly TenantMailerFactory $mailers,
         private readonly EventStore $events,
+        private readonly MessageDispatchService $dispatch,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -205,6 +206,39 @@ class PartnerProspectController extends Controller
         ]);
 
         return response()->json(['data' => $message, 'prospect' => $prospect->refresh()], 201);
+    }
+
+    /**
+     * A human reply in the prospect's thread: email goes out through the
+     * tenant mailbox with threading headers; manual_dm becomes a queue draft.
+     */
+    public function reply(Request $request, string $id): JsonResponse
+    {
+        $tenant = $request->attributes->get('tenant');
+        $prospect = PartnerProspect::forTenant($tenant->id)->with('lead')->findOrFail($id);
+        $validated = $request->validate([
+            'body' => 'required|string|max:10000',
+            'channel' => 'sometimes|in:email,manual_dm',
+            'subject' => 'sometimes|nullable|string|max:255',
+        ]);
+        $channel = (string) ($validated['channel'] ?? 'email');
+        $sentBy = (string) $request->user()->id;
+
+        if ($channel === MessageDispatchService::MANUAL_DM) {
+            $lead = $prospect->lead;
+            if ($lead === null) {
+                return response()->json(['message' => 'Prospect has no lead.'], 422);
+            }
+            $result = $this->dispatch->send($lead, MessageDispatchService::MANUAL_DM, $validated['body'], null, null, $sentBy);
+        } else {
+            $result = $this->sender->sendOperatorReply($tenant, $prospect, $validated['body'], $validated['subject'] ?? null, $sentBy);
+        }
+
+        if (! $result['success']) {
+            return response()->json(['message' => (string) ($result['error'] ?? 'Reply failed.')], 422);
+        }
+
+        return response()->json(['data' => $result['message'] ?? null, 'prospect' => $prospect->refresh()], 201);
     }
 
     public function pause(Request $request, string $id): JsonResponse
