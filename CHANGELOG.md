@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-10 — Partner outreach, PR1: tenant bootstrap + Affonso / mailbox connectors
+
+Groundwork for running Hannah AI's affiliate-recruitment outreach on SpiderNet
+(tenant `hannah-ai`). Nothing sends yet; every `outreach.*` flag ships `off`.
+
+- **`php artisan outreach:tenant {slug} --name= --admin-email= --automation-level=assisted`**
+  creates or repairs an outreach tenant in one idempotent step: tenant row with
+  onboarding marked complete (so the API gate opens), admin user (random
+  password, first login via the reset flow), cost budget row, event-signing key,
+  `settings.outreach` defaults (program facts, caps, 3-step sequence, reply mode
+  `approve`), and the sales-crm pack entitlement through
+  `spidernet:pack-install --grant` (no Dodo purchase). Pack agents stay inactive.
+- **Connectors**: `affonso` (API key + program id; actions `find_affiliate` and
+  `create_affiliate`, idempotent on email; stores the webhook signing secret for
+  the later webhook receiver) and `zoho_mail` (tenant-owned SMTP/IMAP mailbox;
+  connecting sends a test email to the From address). Credentials are encrypted
+  in `tenant_secrets` exactly like the existing connectors.
+- `TenantMailerFactory` builds an on-demand SMTP mailer from the tenant mailbox
+  credentials, so outreach mail is sent AS the tenant, not through the platform
+  transport. `AffonsoClient` wraps the Affonso REST API (list/find/create
+  affiliates, portal token).
+- Suites: `tests/Feature/Outreach/TenantBootstrapTest`,
+  `tests/Feature/Outreach/OutreachConnectorsTest` (both run on sqlite).
+
 ## 2026-08-06 (later) — Enterprise sign-in methods wired to Laravel
 
 The marketing-site sign-in page's SSO / magic-link / TOTP / WebAuthn tabs called

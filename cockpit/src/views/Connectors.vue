@@ -98,7 +98,10 @@ const grouped = computed(() => {
 })
 
 function categoryLabel(c) {
-  return { messaging: 'Messaging', automation: 'Automation & custom', calendar: 'Calendar', crm: 'CRM' }[c] || c
+  return {
+    messaging: 'Messaging', automation: 'Automation & custom', calendar: 'Calendar', crm: 'CRM',
+    affiliate: 'Affiliate program', email: 'Email & mailbox',
+  }[c] || c
 }
 function statusLabel(s) {
   return { connected: 'Connected', error: 'Needs attention', pending: 'Pending', not_connected: 'Not connected' }[s] || s
@@ -121,7 +124,7 @@ function openConnect(c) {
   active.value = c
   dialogError.value = ''
   for (const k of Object.keys(form)) delete form[k]
-  for (const f of c.fields || []) form[f.key] = ''
+  for (const f of c.fields || []) form[f.key] = f.default ?? ''
 }
 
 async function save() {

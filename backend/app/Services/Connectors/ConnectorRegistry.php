@@ -113,6 +113,43 @@ class ConnectorRegistry
             'actions' => ['upsert_contact', 'log_activity', 'create_task'],
             'docs_url' => 'https://developer.salesforce.com/docs',
         ],
+
+        // ─── Partner outreach (affiliate recruitment) ───────────────
+        'affonso' => [
+            'name' => 'Affonso',
+            'category' => 'affiliate',
+            'auth' => 'api_key',
+            'description' => 'Affiliate program API: look up and create affiliates, receive signed signup webhooks, and read the Finder shortlist.',
+            'fields' => [
+                ['key' => 'api_key', 'label' => 'API key (sk_live_…)', 'secret' => true, 'required' => true],
+                ['key' => 'program_id', 'label' => 'Program ID', 'secret' => false, 'required' => true],
+                ['key' => 'webhook_secret', 'label' => 'Webhook signing secret', 'secret' => true, 'required' => false],
+                ['key' => 'portal_subdomain', 'label' => 'Portal subdomain (….affonso.io)', 'secret' => false, 'required' => false],
+                ['key' => 'group_id', 'label' => 'Default affiliate group ID', 'secret' => false, 'required' => false],
+            ],
+            'actions' => ['find_affiliate', 'create_affiliate'],
+            'docs_url' => 'https://docs.affonso.io/api/introduction',
+        ],
+        'zoho_mail' => [
+            'name' => 'Zoho Mail (partner mailbox)',
+            'category' => 'email',
+            'auth' => 'basic',
+            'description' => 'Send partner outreach as your own mailbox and read the replies from it (SMTP + IMAP). Any SMTP/IMAP mailbox works; connecting sends a test email to the From address.',
+            'fields' => [
+                ['key' => 'from_address', 'label' => 'From address', 'secret' => false, 'required' => true],
+                ['key' => 'from_name', 'label' => 'From name', 'secret' => false, 'required' => false],
+                ['key' => 'smtp_host', 'label' => 'SMTP host', 'secret' => false, 'required' => true, 'default' => 'smtp.zoho.com'],
+                ['key' => 'smtp_port', 'label' => 'SMTP port', 'secret' => false, 'required' => true, 'default' => '587'],
+                ['key' => 'smtp_username', 'label' => 'SMTP username', 'secret' => false, 'required' => true],
+                ['key' => 'smtp_password', 'label' => 'SMTP password (app password)', 'secret' => true, 'required' => true],
+                ['key' => 'imap_host', 'label' => 'IMAP host', 'secret' => false, 'required' => false, 'default' => 'imap.zoho.com'],
+                ['key' => 'imap_port', 'label' => 'IMAP port', 'secret' => false, 'required' => false, 'default' => '993'],
+                ['key' => 'imap_username', 'label' => 'IMAP username', 'secret' => false, 'required' => false],
+                ['key' => 'imap_password', 'label' => 'IMAP password', 'secret' => true, 'required' => false],
+            ],
+            'actions' => ['send_email'],
+            'docs_url' => 'https://www.zoho.com/mail/help/zoho-smtp.html',
+        ],
     ];
 
     /** @return array<string, array<string,mixed>> */
@@ -163,7 +200,7 @@ class ConnectorRegistry
     {
         $missing = [];
         foreach ((array) (self::CATALOGUE[$provider]['fields'] ?? []) as $field) {
-            if (($field['required'] ?? false) && empty($credentials[$field['key']])) {
+            if (! empty($field['required']) && empty($credentials[$field['key']])) {
                 $missing[] = $field['key'];
             }
         }
