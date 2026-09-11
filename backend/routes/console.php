@@ -43,6 +43,10 @@ Schedule::job(new \App\Jobs\ProcessOutreachStepsJob)->everyMinute()->withoutOver
 // Partner outreach: poll the tenant mailboxes for replies / bounces / STOP (every 2 min)
 Schedule::job(new \App\Jobs\PollPartnerMailboxJob)->everyTwoMinutes()->withoutOverlapping();
 
+// Partner outreach: hourly sweep that sends each tenant its digest at 08:30 local
+// time and auto-pauses sending when the bounce rate crosses the threshold
+Schedule::job(new \App\Jobs\OutreachDailyDigestJob)->hourly()->withoutOverlapping();
+
 // Priestley "Activity" A — perfect repeatable week (Monday priorities, Friday check-in)
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('priorities'))->weeklyOn(1, '06:30');
 Schedule::job(new \App\Jobs\WeeklyRhythmJob('checkin'))->weeklyOn(5, '15:00');

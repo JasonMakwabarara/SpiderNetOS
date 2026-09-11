@@ -16,7 +16,7 @@ class ReplyPostFilter
     private const BANNED = '/\b(guarantee[ds]?|earn up to|make \$?\d|get rich|risk[- ]free|exclusive rate|special rate|custom commission|higher commission|discount code|coupon)\b/i';
 
     /**
-     * @param  array<string, string|int>  $facts
+     * @param  array<string, bool|int|string>  $facts
      * @return array{ok: bool, reason: ?string, reply: string, action: string, extracted: array<string, ?string>, confidence: float}
      */
     public function check(string $raw, array $facts): array

@@ -53,6 +53,13 @@ class HandleAffonsoWebhookJob implements ShouldQueue
 
         DB::transaction(function () use ($prospect, $data, $type, $status, $lifecycle) {
             $locked = PartnerProspect::whereKey($prospect->id)->lockForUpdate()->firstOrFail();
+            // Affonso is the source of truth, so a confirmed affiliate clears a
+            // "verify_signup" flag the bot raised on the creator's word alone.
+            if ($locked->needs_human_reason === 'verify_signup' && ! empty($data['affiliateId'])) {
+                $locked->needs_human_at = null;
+                $locked->needs_human_reason = null;
+            }
+
             $locked->forceFill([
                 'affonso_affiliate_id' => $data['affiliateId'] ?? $locked->affonso_affiliate_id,
                 'affonso_tracking_id' => $data['trackingId'] ?? $locked->affonso_tracking_id,

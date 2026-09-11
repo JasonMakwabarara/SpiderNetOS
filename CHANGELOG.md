@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-09-11 — Partner outreach, PR5: rollout ops, digest + bounce auto-pause, Finder over MCP, spikes
+
+The operator half (stacked on PR4). Everything new is off or read-only by default.
+
+- **Pre-flight** (`OutreachHealth`, `outreach:doctor {tenant} --probe`): every precondition for
+  the send, bot and affiliate stages (entitlement, SMTP, IMAP, join URL, postal address, Affonso
+  key, webhook secret, prospects with email, bounce rate, stale drafts, handoffs), each with its
+  fix, plus the next command to run. `--probe` checks that `APP_URL` answers `/api/health` over
+  HTTPS.
+- **Rollout switch** (`outreach:enable {send|bot|affiliate|digest|finder|auto} --tenant= [--off]`):
+  lifts the flags for one stage and refuses while a blocking check fails. `send` starts the
+  warm-up clock once and never restarts it. `auto` requires 20 approved drafts with no edits. A
+  flag Redis cannot store is reported, never assumed.
+- **Daily digest + auto-pause** (`OutreachDigest`, `OutreachDailyDigestJob` hourly at 08:xx
+  tenant-local, `outreach:digest`, flag `outreach.digest`): yesterday's sends, replies,
+  signups, bounces, pipeline and what is waiting on a human, pushed to admins. When the trailing
+  bounce rate (distinct prospects over the last 50 partner emails) passes 5% on at least 20
+  sends, sending is switched off for the tenant and an `escalation` approval says how to resume.
+- **Finder over MCP** (`AffonsoMcpClient`, `outreach:finder-sync`, flags `outreach.finder_sync`
+  and `outreach.finder_writeback`): JSON-RPC over Streamable HTTP, JSON or SSE framing, items
+  mapped onto the import row contract; write-back pushes our status onto the shortlist item.
+  Unverified against the live server until the spike runs, so CSV stays the primary path.
+- **Spikes** (`outreach:spike {json|finder|affonso|mail|webhook} {tenant}`): each pre-launch
+  unknown from the plan is one command with a verdict. `json` runs 20 synthetic threads through
+  the real prompt and post-filter; measured on the live plane: 20/20 valid JSON, 19/20 accepted,
+  18/20 the expected action.
+- **Bot hardening from the measurements**: one colder retry when the model returns malformed JSON
+  (content refusals are never retried); a bot-claimed signup stops the sequence but stays flagged
+  `verify_signup` until an Affonso event confirms the affiliate, which clears the flag;
+  `program.api_signup_emails` (default false) decides whether the bot may promise an Affonso
+  email after `create_affiliate` or must send the join link.
+- `outreach:settings {tenant} --set=a.b=value` for scripted setup.
+- Runbook: `docs/outreach-rollout.md`.
+- Suites: `AffonsoMcpClientTest` (CiFast), `tests/Feature/Outreach/OutreachOpsTest`.
+
 ## 2026-09-10 — Partner outreach, PR4: recruiter bot, approvals, Affonso webhook + create-affiliate
 
 The conversation half (stacked on PR3). Off by default: drafts only happen when

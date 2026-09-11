@@ -206,6 +206,15 @@ return [
     /** Let the bot create affiliates through the Affonso API (else it hands off). */
     'outreach.affonso_actions' => env('FEATURE_OUTREACH_AFFONSO_ACTIONS', 'off'),
 
+    /** Daily 08:30 digest to admins, and the bounce-rate auto-pause that rides with it. */
+    'outreach.digest' => env('FEATURE_OUTREACH_DIGEST', 'off'),
+
+    /** Pull the Affonso Finder shortlist over MCP (CSV import is the fallback). */
+    'outreach.finder_sync' => env('FEATURE_OUTREACH_FINDER_SYNC', 'off'),
+
+    /** Push our prospect status back onto the Finder shortlist item. */
+    'outreach.finder_writeback' => env('FEATURE_OUTREACH_FINDER_WRITEBACK', 'off'),
+
     /** Public-profile contact enrichment (terms grey area; stays a stub until reviewed). */
     'outreach.profile_enrichment' => env('FEATURE_OUTREACH_PROFILE_ENRICHMENT', 'off'),
 

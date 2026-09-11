@@ -22,6 +22,10 @@ class RecruiterBot
 {
     public const SENT_BY = 'recruiter_bot';
 
+    private const REPAIR_SUFFIX = '
+
+Your previous answer was not valid JSON. Reply with the JSON object only: no prose, no markdown fence, no trailing text.';
+
     private const HANDOFF_PATTERN = '/\b(lawyer|legal|attorney|lawsuit|sue you|gdpr|privacy|data protection|where did you get|how did you get my|complaint|complain|report you|spam|harass|press|journalist|w-?9|w-?8|tax form|contract|invoice|upfront|up-front|retainer|flat fee|per post|exclusive|custom (?:rate|deal|commission)|higher (?:rate|commission)|negotiat)/i';
 
     public function __construct(
@@ -76,18 +80,25 @@ class RecruiterBot
         $facts = $this->prompts->facts($tenant, $prospect);
 
         try {
-            $completion = $this->inference->generate(
-                $built['prompt'], $built['system'], (string) ($tenant->plan ?: 'starter'), 0.05, 600, false, 0.3,
-            );
+            $completion = $this->ask($tenant, $built['prompt'], $built['system']);
+            $this->recordCost($tenantId, $prospect, $completion);
+            $checked = $this->filter->check((string) $completion['text'], $facts);
+
+            // Malformed JSON is a formatting miss, not a judgement call: ask once
+            // more, colder and blunter. Content refusals are never retried — a
+            // second try at an unverifiable figure just invents a different one.
+            if (($checked['reason'] ?? null) === 'invalid_json') {
+                $completion = $this->ask($tenant, $built['prompt'].self::REPAIR_SUFFIX, $built['system'], 0.0);
+                $this->recordCost($tenantId, $prospect, $completion);
+                $checked = $this->filter->check((string) $completion['text'], $facts);
+                $checked['repaired'] = $checked['ok'];
+            }
         } catch (\Throwable $e) {
             Log::warning('recruiter bot inference failed', ['prospect_id' => $prospect->id, 'error' => $e->getMessage()]);
 
             return $this->replies->handoff($tenant, $prospect, $inbound, 'llm_error');
         }
 
-        $this->recordCost($tenantId, $prospect, $completion);
-
-        $checked = $this->filter->check((string) $completion['text'], $facts);
         if (! $checked['ok'] || $checked['action'] === 'handoff') {
             return $this->replies->handoff($tenant, $prospect, $inbound, (string) ($checked['reason'] ?? 'model_requested'), [
                 'model_reply' => mb_substr((string) $checked['reply'], 0, 1000),
@@ -112,6 +123,7 @@ class RecruiterBot
                 'prompt_version' => RecruiterPromptBuilder::VERSION,
                 'cost' => $completion['cost'],
                 'mode' => $mode,
+                'repaired' => (bool) ($checked['repaired'] ?? false),
             ],
         ]);
 
@@ -126,6 +138,18 @@ class RecruiterBot
         $approval = $this->replies->requestApproval($tenant, $prospect, $draft, $inbound);
 
         return ['outcome' => 'drafted', 'message_id' => (string) $draft->id, 'approval_id' => (string) ($approval['id'] ?? '')];
+    }
+
+    /**
+     * One inference-plane call with the draft settings.
+     *
+     * @return array{text: string, model: string, tokens_used: int, cost: float, provider: string}
+     */
+    private function ask(Tenant $tenant, string $prompt, string $system, float $temperature = 0.3): array
+    {
+        return $this->inference->generate(
+            $prompt, $system, (string) ($tenant->plan ?: 'starter'), 0.05, 600, false, $temperature,
+        );
     }
 
     private function bumpCounter(PartnerProspect $prospect, string $today, int $threadToday): void

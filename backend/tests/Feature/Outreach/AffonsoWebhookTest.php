@@ -114,6 +114,23 @@ class AffonsoWebhookTest extends OutreachTestCase
         $this->assertSame(PartnerProspect::STATUS_SIGNED_UP, $prospect->status);
     }
 
+    public function test_a_confirmed_affiliate_clears_a_bot_claimed_signup_flag(): void
+    {
+        $prospect = $this->invited();
+        // What the bot leaves behind when a creator says "I already joined".
+        PartnerProspect::whereKey($prospect->id)->update([
+            'status' => PartnerProspect::STATUS_SIGNED_UP, 'signed_up_at' => now(),
+            'needs_human_at' => now(), 'needs_human_reason' => 'verify_signup',
+        ]);
+
+        $this->deliver($this->event('affiliate.confirmed', ['externalUserId' => $prospect->lead_id]))->assertOk();
+
+        $prospect->refresh();
+        $this->assertSame('aff_1', $prospect->affonso_affiliate_id);
+        $this->assertNull($prospect->needs_human_at);
+        $this->assertNull($prospect->needs_human_reason);
+    }
+
     public function test_matches_by_prospect_token_then_email_and_parks_strangers(): void
     {
         $alpha = $this->invited('alpha', 'alpha@example.test');
