@@ -102,6 +102,14 @@ export const usePartnersStore = defineStore('partners', () => {
     return data
   }
 
+  /** After a handoff: let the recruiter bot resume on this thread. */
+  async function handBack(id) {
+    try {
+      const res = await api.post(`/api/sales/partners/${id}/hand-back`)
+      return res.data.data
+    } catch (err) { fail(err, 'Could not hand the thread back to the bot.') }
+  }
+
   async function action(id, verb) {
     const { data } = await api.post(`/api/sales/partners/${id}/${verb}`)
     const i = prospects.value.findIndex((p) => p.id === id)
@@ -134,7 +142,7 @@ export const usePartnersStore = defineStore('partners', () => {
   return {
     prospects, pagination, summary, dmQueue, settings, settingsMeta, loading, error,
     fetchProspects, fetchProspect, updateProspect, importCsv,
-    fetchDmQueue, markDmSent, dmReply, reply, action,
+    fetchDmQueue, markDmSent, dmReply, reply, action, handBack,
     fetchSettings, saveSettings, runTick,
   }
 })

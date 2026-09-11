@@ -65,6 +65,10 @@
         <option value="1">Has email</option>
         <option value="0">No email</option>
       </select>
+      <select v-model="filters.needs_human" class="sn-input" @change="load">
+        <option value="">Bot: any</option>
+        <option value="1">Needs a human</option>
+      </select>
       <input v-model="filters.q" class="sn-input" placeholder="Search name, handle, URL" @keyup.enter="load" />
       <button type="button" class="px-3 py-2 rounded-lg text-sm border" style="border-color: var(--border); color: var(--text-secondary);" :disabled="ticking" @click="tick">
         {{ ticking ? 'Running…' : 'Dry-run tick' }}
@@ -125,7 +129,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { usePartnersStore, PROSPECT_STATUSES } from '../../stores/partners.js'
 
 const store = usePartnersStore()
-const filters = reactive({ status: '', platform: '', has_email: '', q: '' })
+const filters = reactive({ status: '', platform: '', has_email: '', needs_human: '', q: '' })
 const showImport = ref(false)
 const importFile = ref(null)
 const importDryRun = ref(true)

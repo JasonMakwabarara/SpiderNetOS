@@ -564,6 +564,10 @@ class ApprovalEngine
                 }
                 break;
 
+            case 'outreach_reply':
+                app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
+                break;
+
             case 'payment':
                 $paymentService = app(\App\Services\Financial\PaymentService::class);
                 if (method_exists($paymentService, 'onApprovalResolved')) {

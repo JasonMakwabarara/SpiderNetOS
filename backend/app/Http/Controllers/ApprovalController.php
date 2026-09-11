@@ -176,6 +176,9 @@ class ApprovalController extends Controller
         if ($approval->resource_type === 'sales_script') {
             app(\App\Services\Sales\FunnelSetupService::class)->activateFromApproval($tenantId, $approval->resource_id);
         }
+        if ($approval->resource_type === 'outreach_reply') {
+            app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, true, (string) $request->input('reason', ''));
+        }
 
         return response()->json([
             'id' => $id,
@@ -259,6 +262,9 @@ class ApprovalController extends Controller
 
         if ($approval->resource_type === 'sales_script') {
             app(\App\Services\Sales\FunnelSetupService::class)->rejectFromApproval($tenantId, $approval->resource_id, $request->input('reason'));
+        }
+        if ($approval->resource_type === 'outreach_reply') {
+            app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, false, (string) $request->input('reason', ''));
         }
 
         return response()->json([

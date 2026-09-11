@@ -8,6 +8,7 @@ return [
         \App\Services\Projections\StateTransitionProjection::class,
         \App\Services\Projections\SpendAutomationProjection::class,
         \App\Services\Projections\ConversationReplyBridgeProjection::class,
+        \App\Services\Projections\OutreachReplyProjection::class,
     ],
 
     'map' => [
