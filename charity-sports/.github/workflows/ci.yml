@@ -1,0 +1,31 @@
+# Runs on pull requests: the server test suite plus a syntax check on every
+# file the browser loads, so a stray comma never reaches the live site.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check the browser files parse
+        run: |
+          node --check data/site-data.js
+          for file in assets/js/*.js admin/js/*.js admin/js/screens/*.js; do
+            node --check "$file"
+          done
+
+      - name: Server tests
+        run: npm test

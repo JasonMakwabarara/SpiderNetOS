@@ -1,0 +1,43 @@
+# Publishes the website to GitHub Pages on every push to main.
+#
+# One-time setup, which a workflow cannot do for you:
+#   Settings → Pages → Source → GitHub Actions
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race each other.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the content file is valid JavaScript
+        run: node --check data/site-data.js
+
+      - uses: actions/configure-pages@v5
+
+      # The whole repository is published. The server and admin folders are
+      # inert static files there, and robots.txt keeps them out of search.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
