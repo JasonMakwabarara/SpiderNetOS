@@ -17,3 +17,6 @@ content/backups/*
 *.log
 .DS_Store
 Thumbs.db
+
+# Server-generated snapshot backups
+data/site-data.js.bak
