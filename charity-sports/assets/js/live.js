@@ -12,8 +12,9 @@
   var CS = (window.CS = window.CS || {});
 
   var SECTIONS = [
-    'org', 'hero', 'impact', 'about', 'causes', 'events',
-    'waysToSupport', 'sponsorTiers', 'sponsors', 'sponsorsMeta', 'gallery', 'donate', 'contact'
+    'org', 'hero', 'impact', 'about', 'accountability', 'causes', 'events',
+    'waysToSupport', 'sponsorTiers', 'sponsors', 'sponsorsMeta', 'gallery',
+    'share', 'signup', 'donate', 'contact'
   ];
 
   function endpoint(snapshot) {

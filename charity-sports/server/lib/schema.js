@@ -8,7 +8,8 @@
 
 const SCHEMA_VERSION = 1;
 
-const SECTIONS = ['org', 'hero', 'impact', 'about', 'donate', 'contact', 'sponsorsMeta', 'sponsorTiers', 'api'];
+const SECTIONS = ['org', 'hero', 'impact', 'about', 'accountability', 'share', 'signup', 'donate',
+  'contact', 'sponsorsMeta', 'sponsorTiers', 'api'];
 const COLLECTIONS = ['causes', 'events', 'sponsors', 'gallery', 'waysToSupport'];
 
 const ICONS = ['target', 'racket', 'heart', 'star', 'camera', 'calendar', 'pin', 'clock', 'whatsapp', 'mail', 'arrow'];
@@ -264,6 +265,8 @@ const SHAPES = {
   impact: T.object({
     livesHelped: T.integer({ min: 0, max: 1e9 }),
     goal: T.integer({ min: 1, max: 1e9 }),
+    raisedTotalUsd: T.integer({ min: 0, max: 1e9 }),
+    raisedLabel: T.string({ max: 60 }),
     milestones: T.arrayOf(T.integer({ min: 1, max: 1e9 }), { max: 8 }),
     lastUpdated: T.date(),
     heading: T.string({ max: 120 }),
@@ -277,6 +280,27 @@ const SHAPES = {
     }), { max: 6 })
   }),
 
+  /* Facts a donor can check the charity against. Every field is optional and
+     the section hides itself while they are all empty, so nothing unverified
+     is ever shown. */
+  accountability: T.object({
+    heading: T.string({ max: 120 }),
+    intro: T.string({ max: 600 }),
+    registrationLabel: T.string({ max: 60 }),
+    registrationNumber: T.string({ max: 60 }),
+    bankedWith: T.string({ max: 120 }),
+    financeContactName: T.string({ max: 80 }),
+    financeContactRole: T.string({ max: 60 }),
+    financeContactEmail: (value, path, ctx) => {
+      if (value === null || value === undefined || value === '') return '';
+      const text = cleanString(value);
+      if (text.length > 254 || !EMAIL.test(text)) return ctx.fail(path, 'Must be an email address.');
+      return text;
+    },
+    receiptsPolicy: T.string({ max: 400 }),
+    statements: T.arrayOf(T.string({ max: 300 }), { max: 6 })
+  }),
+
   about: T.object({
     heading: T.string({ max: 120 }),
     paragraphs: T.arrayOf(T.string({ max: 900 }), { max: 8 }),
@@ -285,6 +309,22 @@ const SHAPES = {
       title: T.string({ max: 40 }),
       text: T.string({ max: 240 })
     }), { max: 6 })
+  }),
+
+  share: T.object({
+    label: T.string({ max: 40 }),
+    message: T.string({ max: 300 })
+  }),
+
+  signup: T.object({
+    heading: T.string({ max: 120 }),
+    text: T.string({ max: 600 }),
+    nameLabel: T.string({ max: 60 }),
+    contactLabel: T.string({ max: 60 }),
+    buttonLabel: T.string({ max: 40 }),
+    successText: T.string({ max: 300 }),
+    fallbackLabel: T.string({ max: 60 }),
+    privacyNote: T.string({ max: 400 })
   }),
 
   donate: T.object({

@@ -47,11 +47,13 @@ async function emit(pipeline, outPath, encode) {
 }
 
 /** Write a .jpg + .webp pair, resized to fit inside `w` without enlarging. */
-async function pair(src, outBase, w, { thumb = false, extract = null, rotate = 0 } = {}) {
+async function pair(src, outBase, w, { thumb = false, extract = null, rotate = 0, height = null } = {}) {
   let p = sharp(src);
   if (rotate) p = p.rotate(rotate);
   if (extract) p = p.extract(extract);
-  p = p.resize({ width: w, withoutEnlargement: true });
+  /* A height cap matters for the tall posters: they are narrow, so a width
+     cap never bites and the bytes all sit in the vertical dimension. */
+  p = p.resize({ width: w, height: height, fit: 'inside', withoutEnlargement: true });
   const info = await emit(p, `${outBase}.jpg`, (x) => x.jpeg(thumb ? JPEG_THUMB : JPEG));
   await emit(p, `${outBase}.webp`, (x) => x.webp(thumb ? WEBP_THUMB : WEBP));
   return info;
@@ -104,10 +106,13 @@ function circleMask(size) {
   await pair(FLYER_R, O('img/gallery/flyer-and-tickets'), 1400, { rotate: 90 });
   await pair(FLYER_R, O('img/gallery/flyer-and-tickets-480'), 480, { rotate: 90, thumb: true });
 
-  await pair(ESCAPE, O('img/gallery/poster-padel-escape'), 1400);
+  /* Posters are only ever seen full size inside the lightbox, so 1200px at a
+     slightly lower quality is plenty. They were the two heaviest files on the
+     site, which matters on Zimbabwean mobile data. */
+  await pair(ESCAPE, O('img/gallery/poster-padel-escape'), 1200, { thumb: true, height: 1100 });
   await pair(ESCAPE, O('img/gallery/poster-padel-escape-480'), 480, { thumb: true });
 
-  await pair(BARGAIN, O('img/gallery/poster-padel-bargain'), 1400);
+  await pair(BARGAIN, O('img/gallery/poster-padel-bargain'), 1200, { thumb: true, height: 1100 });
   await pair(BARGAIN, O('img/gallery/poster-padel-bargain-480'), 480, { thumb: true });
 
   // --- Hannah AI ------------------------------------------------------------

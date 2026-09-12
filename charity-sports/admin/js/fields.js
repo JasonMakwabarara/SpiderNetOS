@@ -44,6 +44,10 @@
           stepper: [1, 5, 20] },
         { key: 'goal', type: 'number', label: 'Goal', min: 1, max: 1000000000,
           hint: 'The number the bar fills towards. Currently one million.' },
+        { key: 'raisedTotalUsd', type: 'number', label: 'Total raised so far, in US dollars', min: 0, max: 1000000000,
+          hint: 'Appears beside the counter. Leave empty and nothing is shown. ' +
+                'People give more readily when they can see that others already have.' },
+        { key: 'raisedLabel', type: 'text', label: 'Wording beside that figure', max: 60 },
         { key: 'lastUpdated', type: 'date', label: 'Last updated',
           hint: 'Shown under the counter. Set to today when you change the number.', today: true },
         { key: 'milestones', type: 'repeat', itemType: 'number', label: 'Milestones',
@@ -103,6 +107,59 @@
             { key: 'title', type: 'text', label: 'Step', max: 40 },
             { key: 'text', type: 'textarea', label: 'Explanation', max: 240 }
           ] }
+      ]
+    },
+
+    accountability: {
+      title: 'Accountability',
+      intro: 'What a donor can check you against. This whole section stays hidden on the ' +
+             'website until at least one thing here is filled in, so nothing unverified is ever shown. ' +
+             'It is the single most useful thing you can complete: people give to organisations ' +
+             'they can hold to account.',
+      fields: [
+        { key: 'heading', type: 'text', label: 'Heading', max: 120 },
+        { key: 'intro', type: 'textarea', label: 'Opening paragraph', max: 600 },
+        { key: 'registrationLabel', type: 'text', label: 'What the number is called', max: 60,
+          hint: 'For example "Trust registration number".' },
+        { key: 'registrationNumber', type: 'text', label: 'The number itself', max: 60,
+          hint: 'Leave empty until you have it in front of you. Do not guess.' },
+        { key: 'bankedWith', type: 'text', label: 'Where the money is held', max: 120,
+          hint: 'For example "Held in the Charity Sport Trust account". No account numbers.' },
+        { key: 'financeContactName', type: 'text', label: 'Who answers questions about money', max: 80 },
+        { key: 'financeContactRole', type: 'text', label: 'Their role', max: 60 },
+        { key: 'financeContactEmail', type: 'text', label: 'Their email', max: 254 },
+        { key: 'receiptsPolicy', type: 'textarea', label: 'Receipts', max: 400,
+          hint: 'Say plainly whether a donor gets one, and how.' },
+        { key: 'statements', type: 'repeat', itemType: 'textarea', label: 'Promises you can keep', max: 6,
+          hint: 'Short, checkable statements. Only put things here that are true today.' }
+      ]
+    },
+
+    share: {
+      title: 'Sharing',
+      intro: 'What gets written into the message when somebody taps the share button.',
+      fields: [
+        { key: 'label', type: 'text', label: 'Button text', max: 40 },
+        { key: 'message', type: 'textarea', label: 'The message', max: 300,
+          hint: 'The web address is added to the end automatically.' }
+      ]
+    },
+
+    signup: {
+      title: 'Sign-up form',
+      intro: 'The short form asking people to leave a name so you can tell them about the next ' +
+             'event. It only appears on the website when this server is reachable; otherwise the ' +
+             'website shows a WhatsApp link instead, so nothing is ever lost.',
+      fields: [
+        { key: 'heading', type: 'text', label: 'Heading', max: 120 },
+        { key: 'text', type: 'textarea', label: 'Paragraph', max: 600 },
+        { key: 'nameLabel', type: 'text', label: 'Label on the name box', max: 60 },
+        { key: 'contactLabel', type: 'text', label: 'Label on the contact box', max: 60 },
+        { key: 'buttonLabel', type: 'text', label: 'Button text', max: 40 },
+        { key: 'successText', type: 'text', label: 'What they see afterwards', max: 300 },
+        { key: 'fallbackLabel', type: 'text', label: 'WhatsApp link text, used when this server is not reachable', max: 60 },
+        { key: 'privacyNote', type: 'textarea', label: 'What you do with their details', max: 400,
+          hint: 'Say plainly what you will and will not do. People read this one.' }
       ]
     },
 

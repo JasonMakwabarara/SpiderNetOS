@@ -41,6 +41,8 @@
     "impact": {
       "livesHelped": 20,
       "goal": 1000000,
+      "raisedTotalUsd": null,
+      "raisedLabel": "Raised so far",
       "milestones": [
         1000,
         10000,
@@ -94,6 +96,36 @@
           "text": "Funds go to the people doing the work, and the lives-helped counter moves once it has actually landed."
         }
       ]
+    },
+    "accountability": {
+      "heading": "Where the money goes, and who to ask",
+      "intro": "We are asking you for money, so here is what you can hold us to. If anything here is unclear, ask us before you give, not after.",
+      "registrationLabel": "Trust registration number",
+      "registrationNumber": null,
+      "bankedWith": null,
+      "financeContactName": null,
+      "financeContactRole": null,
+      "financeContactEmail": "",
+      "receiptsPolicy": null,
+      "statements": [
+        "The doctors operate for free. No donation pays a surgeon.",
+        "Money raised for a cause goes to that cause. When one is fully funded we close it and say so.",
+        "Donations are handled by Contipay, not by us. We never ask for card details over WhatsApp."
+      ]
+    },
+    "share": {
+      "label": "Share this",
+      "message": "Charity Sports is raising money for children's surgery in Mhangura and disaster relief in Kariba. Have a look, and come and play."
+    },
+    "signup": {
+      "heading": "Hear when the next one is on",
+      "text": "Events are announced a couple of weeks ahead. Leave a name and a number and we will tell you when the golf day has a date.",
+      "nameLabel": "Your name",
+      "contactLabel": "WhatsApp number or email",
+      "buttonLabel": "Keep me posted",
+      "successText": "Thank you. We will be in touch when the next event is set.",
+      "fallbackLabel": "Message us on WhatsApp instead",
+      "privacyNote": "We keep this to tell you about events and nothing else. No lists are sold or shared. Ask us any time and we will delete it."
     },
     "donate": {
       "url": "https://donate.contipay.co.zw/",

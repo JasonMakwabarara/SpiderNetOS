@@ -68,13 +68,20 @@ function createAudit({ auditPath, logLevel = 'info' }) {
       return row;
     },
 
-    /** Newest first, paged with a simple offset cursor. */
-    async read({ limit = 50, before = 0 } = {}) {
+    /**
+     * Newest first, paged with a simple offset cursor.
+     * Filtering happens here rather than in the browser, so narrowing by
+     * person or action searches the whole history instead of only the page
+     * that happens to be on screen.
+     */
+    async read({ limit = 50, before = 0, actor = null, action = null } = {}) {
       let text = '';
       try {
         text = await fsp.readFile(auditPath, 'utf8');
       } catch (err) {
-        if (err.code === 'ENOENT') return { entries: [], total: 0, nextCursor: null };
+        if (err.code === 'ENOENT') {
+          return { entries: [], total: 0, nextCursor: null, actors: [], actions: [] };
+        }
         throw err;
       }
       const lines = text.split('\n').filter(Boolean);
@@ -82,12 +89,27 @@ function createAudit({ auditPath, logLevel = 'info' }) {
       for (let i = lines.length - 1; i >= 0; i--) {
         try { parsed.push(JSON.parse(lines[i])); } catch (err) { /* skip a torn line */ }
       }
+
+      /* The choices offered in the filters come from the whole log, so a
+         person who only appears in old entries is still selectable. */
+      const actors = Array.from(new Set(parsed
+        .map((row) => row.actor && row.actor.username).filter(Boolean))).sort();
+      const actions = Array.from(new Set(parsed.map((row) => row.action).filter(Boolean))).sort();
+
+      const matching = parsed.filter((row) => {
+        if (actor && (!row.actor || row.actor.username !== actor)) return false;
+        if (action && row.action !== action) return false;
+        return true;
+      });
+
       const start = Number(before) || 0;
-      const page = parsed.slice(start, start + limit);
+      const page = matching.slice(start, start + limit);
       return {
         entries: page,
-        total: parsed.length,
-        nextCursor: start + limit < parsed.length ? start + limit : null
+        total: matching.length,
+        nextCursor: start + limit < matching.length ? start + limit : null,
+        actors,
+        actions
       };
     },
 

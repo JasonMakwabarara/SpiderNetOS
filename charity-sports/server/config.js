@@ -75,6 +75,11 @@ function load(overrides = {}) {
     loginMaxLockMinutes: int('LOGIN_MAX_LOCK_MINUTES', 240),
     rateLimitApiPerMin: int('RATE_LIMIT_API_PER_MIN', 120),
     rateLimitLoginPer15: int('RATE_LIMIT_LOGIN_PER_15', 20),
+    /* Sign-ups are limited per address. Mobile networks in Zimbabwe put many
+       people behind one address, and a whole padel night signing up from the
+       same wifi is the case this has to survive, so the ceiling is generous
+       and adjustable. */
+    signupRatePerMin: int('SIGNUP_RATE_PER_MIN', 10),
 
     uploadMaxBytes: int('UPLOAD_MAX_BYTES', 8 * 1024 * 1024),
     allowSvgUpload: bool('ALLOW_SVG_UPLOAD', false),

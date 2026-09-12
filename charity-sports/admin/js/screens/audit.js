@@ -19,7 +19,9 @@
     reorder: 'reordered',
     upload: 'uploaded an image',
     delete_upload: 'deleted an image',
-    publish: 'published to the live site'
+    publish: 'published to the live site',
+    backup: 'downloaded a backup',
+    restore: 'restored from a backup'
   };
 
   function describe(entry) {
@@ -51,7 +53,36 @@
     async render(root) {
       var el = A.ui.el;
       var cursor = 0;
+      var filters = { actor: '', action: '' };
       var body = el('tbody');
+      var countLine = el('p', { class: 'hint' });
+
+      var actorSelect = el('select', { id: 'filterActor' });
+      var actionSelect = el('select', { id: 'filterAction' });
+      var filtersBuilt = false;
+
+      function buildFilters(page) {
+        if (filtersBuilt) return;
+        filtersBuilt = true;
+        actorSelect.appendChild(el('option', { value: '', text: 'Everyone' }));
+        (page.actors || []).forEach(function (name) {
+          actorSelect.appendChild(el('option', { value: name, text: name }));
+        });
+        actionSelect.appendChild(el('option', { value: '', text: 'Everything' }));
+        (page.actions || []).forEach(function (name) {
+          actionSelect.appendChild(el('option', { value: name, text: WORDS[name] || name }));
+        });
+      }
+
+      function onFilterChange() {
+        filters.actor = actorSelect.value;
+        filters.action = actionSelect.value;
+        cursor = 0;
+        A.ui.clear(body);
+        load();
+      }
+      actorSelect.addEventListener('change', onFilterChange);
+      actionSelect.addEventListener('change', onFilterChange);
 
       var table = el('table', { class: 'table' }, [
         el('thead', null, [el('tr', null, [
@@ -68,7 +99,11 @@
       async function load() {
         more.disabled = true;
         try {
-          var page = await A.api.audit(cursor);
+          var page = await A.api.audit(cursor, filters);
+          buildFilters(page);
+          countLine.textContent = page.total === 1
+            ? '1 entry'
+            : page.total + ' entries' + (filters.actor || filters.action ? ' match these filters' : '');
           (page.entries || []).forEach(function (entry) {
             body.appendChild(el('tr', null, [
               el('td', null, [el('time', { text: A.ui.fmtDateTime(entry.ts) })]),
@@ -78,7 +113,12 @@
             ]));
           });
           if (!page.entries.length && !cursor) {
-            body.appendChild(el('tr', null, [el('td', { colspan: '4', text: 'Nothing recorded yet.' })]));
+            body.appendChild(el('tr', null, [el('td', {
+              colspan: '4',
+              text: (filters.actor || filters.action)
+                ? 'Nothing matches those filters.'
+                : 'Nothing recorded yet.'
+            })]));
           }
           cursor = page.nextCursor;
           more.hidden = !cursor;
@@ -94,7 +134,19 @@
       root.appendChild(el('p', { class: 'screen-intro',
         text: 'Every sign-in, edit, upload and publish. Kept so you can see who changed what, ' +
               'and so an unexpected change is easy to trace.' }));
-      root.appendChild(el('div', { class: 'card' }, [el('div', { class: 'table-wrap' }, [table]), more]));
+      root.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'field-row' }, [
+          el('div', { class: 'field' }, [
+            el('label', { for: 'filterActor', text: 'Who' }), actorSelect
+          ]),
+          el('div', { class: 'field' }, [
+            el('label', { for: 'filterAction', text: 'What they did' }), actionSelect
+          ])
+        ]),
+        countLine,
+        el('div', { class: 'table-wrap' }, [table]),
+        more
+      ]));
 
       await load();
     }

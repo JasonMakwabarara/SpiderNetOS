@@ -8,6 +8,11 @@
   var BASE = '../api';
   var state = { updatedAt: null, user: null };
 
+  /* Requests in flight when the page unloads fail in a way that means nothing. */
+  var unloading = false;
+  window.addEventListener('beforeunload', function () { unloading = true; });
+  window.addEventListener('pagehide', function () { unloading = true; });
+
   function csrfToken() {
     var match = /(?:^|;\s*)cs_csrf=([^;]+)/.exec(document.cookie);
     return match ? decodeURIComponent(match[1]) : '';
@@ -20,17 +25,22 @@
       .then(function (body) { return body.token; });
   }
 
-  /** Thrown for anything the caller might want to react to specifically. */
+  /** Thrown for anything the caller might want to react to specifically.
+   *  A real Error subclass, so it carries a stack: without one an unexpected
+   *  rejection shows up in the console as the bare word "ApiError" with no way
+   *  to tell where it came from. */
   function ApiError(status, body) {
-    this.name = 'ApiError';
-    this.status = status;
-    this.body = body || {};
-    this.code = this.body.error || 'error';
-    this.errors = this.body.errors || null;
-    this.message = this.body.message ||
-      (this.errors ? 'Some fields need attention.' : 'Something went wrong.');
+    var payload = body || {};
+    var message = payload.message ||
+      (payload.errors ? 'Some fields need attention.' : 'Something went wrong.');
+    var error = new Error(message);
+    error.name = 'ApiError';
+    error.status = status;
+    error.body = payload;
+    error.code = payload.error || 'error';
+    error.errors = payload.errors || null;
+    return error;
   }
-  ApiError.prototype = Object.create(Error.prototype);
 
   function request(method, path, options) {
     var opts = options || {};
@@ -82,7 +92,13 @@
           }
           throw new ApiError(res.status, body);
         });
-      }, function () {
+      }, function (err) {
+        /* A request cut short because the page is going away is not a failure
+           anybody needs to hear about, and turning it into a rejection nobody
+           is waiting on shows up as an unexplained console error. */
+        if (unloading || (err && err.name === 'AbortError')) {
+          return new Promise(function () { /* never settles; the page is leaving */ });
+        }
         throw new ApiError(0, { message: 'Could not reach the server. Check your connection.' });
       });
   }
@@ -128,7 +144,19 @@
     resetUserPassword: function (id) { return request('POST', '/admin/users/' + encodeURIComponent(id) + '/reset-password', { body: {} }); },
     deleteUser: function (id) { return request('DELETE', '/admin/users/' + encodeURIComponent(id)); },
 
-    audit: function (before) { return request('GET', '/admin/audit?limit=50&before=' + (before || 0)); },
+    audit: function (before, filters) {
+      var params = ['limit=50', 'before=' + (before || 0)];
+      if (filters && filters.actor) params.push('actor=' + encodeURIComponent(filters.actor));
+      if (filters && filters.action) params.push('action=' + encodeURIComponent(filters.action));
+      return request('GET', '/admin/audit?' + params.join('&'));
+    },
+
+    signups: function () { return request('GET', '/admin/signups'); },
+    deleteSignup: function (id) { return request('DELETE', '/admin/signups/' + encodeURIComponent(id)); },
+    signupsCsvUrl: BASE + '/admin/signups/csv',
+
+    backupUrl: BASE + '/admin/backup',
+    restore: function (content) { return request('POST', '/admin/backup/restore', { body: { content: content } }); },
 
     publishStatus: function () { return request('GET', '/admin/publish/status'); },
     publish: function () { return request('POST', '/admin/publish', { body: {} }); },

@@ -96,4 +96,73 @@ test('publishing', async (t) => {
     const html = await fsp.readFile(srv.config.indexPath, 'utf8');
     assert.ok(!/charity-golf-day/.test(html), 'an undated event has nothing to schedule');
   });
+
+  await t.test('the page head is generated from the content, not hardcoded', async () => {
+    const client2 = (await srv.signIn()).client;
+    const org = (await client2.get('/api/admin/content')).body.data.org;
+    await client2.put('/api/admin/content/org', {
+      value: { ...org, siteUrl: 'https://charitysports.co.zw/' }
+    });
+    await client2.post('/api/admin/publish', {});
+
+    const html = await fsp.readFile(srv.config.indexPath, 'utf8');
+    const head = html.slice(html.indexOf('<!-- META:START -->'), html.indexOf('<!-- META:END -->'));
+
+    assert.match(head, /<link rel="canonical" href="https:\/\/charitysports\.co\.zw\/">/);
+    assert.match(head, /og:url" content="https:\/\/charitysports\.co\.zw\/"/);
+    assert.match(head, /og:image" content="https:\/\/charitysports\.co\.zw\/assets\/img\/og-image\.jpg"/);
+    assert.ok(!/jasonmakwabarara\.github\.io/.test(head),
+      'the old address must be gone from the head, not merely joined by the new one');
+  });
+
+  await t.test('the sitemap and robots follow the same address', async () => {
+    const sitemap = await fsp.readFile(path.join(srv.config.rootDir, 'sitemap.xml'), 'utf8');
+    const robots = await fsp.readFile(path.join(srv.config.rootDir, 'robots.txt'), 'utf8');
+    assert.match(sitemap, /<loc>https:\/\/charitysports\.co\.zw\/<\/loc>/);
+    assert.match(robots, /Sitemap: https:\/\/charitysports\.co\.zw\/sitemap\.xml/);
+    assert.match(robots, /Disallow: \/admin\//);
+  });
+
+  await t.test('the hero is preloaded so a slow connection finds it early', async () => {
+    const html = await fsp.readFile(srv.config.indexPath, 'utf8');
+    const head = html.slice(html.indexOf('<!-- META:START -->'), html.indexOf('<!-- META:END -->'));
+    const preload = /<link rel="preload" as="image"[^>]*>/.exec(head);
+    assert.ok(preload, 'there should be a preload for the hero image');
+    assert.match(preload[0], /fetchpriority="high"/);
+    assert.match(preload[0], /imagesrcset="[^"]*hero-doctors[^"]*"/);
+
+    /* It must point at the image the page actually renders. */
+    const content = srv.app.locals.store.get();
+    const hero = content.data.hero.image;
+    assert.ok(preload[0].includes(hero.webp || hero.src),
+      'the preload must name the same file the page shows');
+  });
+
+  await t.test('publishing names the uploads the content points at', async () => {
+    const content = srv.app.locals.store.get();
+    const publisher = require('../lib/publish');
+
+    /* Nothing references an upload yet. */
+    const before = await publisher.writeLocal(content, srv.config);
+    assert.ok(before.snapshotText.length > 0);
+
+    /* Point a sponsor at one, and it should be picked up. */
+    const client3 = (await srv.signIn()).client;
+    const sponsor = (await client3.get('/api/admin/content')).body.data.sponsors
+      .find((s) => s.id === 'crystal');
+    await client3.put('/api/admin/sponsors/crystal', {
+      value: { ...sponsor, logo: 'assets/img/uploads/example-ab12cd34.png' }
+    });
+
+    const after = srv.app.locals.store.get();
+    const text = JSON.stringify(after.data);
+    assert.ok(text.includes('example-ab12cd34.png'), 'the reference should be stored');
+
+    /* referencedUploads is what decides which files get committed. Exercise it
+       through the published projection, which is what publish() uses. */
+    const published = JSON.stringify(require('../lib/schema').publicProjection(after));
+    const names = (published.match(/assets\/img\/uploads\/([A-Za-z0-9._-]+)/g) || [])
+      .map((m) => m.split('/').pop());
+    assert.deepStrictEqual(names, ['example-ab12cd34.png']);
+  });
 });

@@ -118,6 +118,43 @@ video needs `type: "video"`, `provider: "youtube"` and the YouTube address in
 `alt` is the sentence a blind visitor hears in place of the picture. It is not
 optional and the site will tell you so.
 
+### Telling people what you can be held to
+
+`accountability` holds the facts a donor checks before giving: your trust
+registration number, who answers questions about money, whether you issue a
+receipt, and a few short promises.
+
+**Every fact ships empty and the section hides itself until you fill something
+in.** Nothing unverified is ever shown. Fill in one field and it appears.
+
+```js
+accountability: {
+  registrationNumber: null,     // ← your trust number, once you have it in front of you
+  financeContactName: null,     // ← who a donor asks about money
+  receiptsPolicy: null,         // ← say plainly whether they get one
+```
+
+This is the single most valuable thing on the list still to complete. You are
+asking strangers for money; this is what lets them check you.
+
+### Showing how much has been raised
+
+Two numbers, both kept by hand like the lives figure.
+
+```js
+impact: {
+  raisedTotalUsd: null,   // ← total raised, shown beside the counter
+```
+
+```js
+causes: [{
+  targetUsd: 3200,
+  raisedUsd: null,        // ← put a figure here and a progress bar appears
+```
+
+Both are empty on purpose. An invented number would be worse than none. Put
+real figures in and people can see momentum, which is what moves a donation.
+
 ### Changing where the Donate button goes
 
 One line, in `donate`:
@@ -129,6 +166,17 @@ donate: {
 
 Change it and check it. Every Donate button on the site points at this
 one value.
+
+### The share button and the sign-up form
+
+`share.message` is what gets written into the message when somebody taps the
+share button. The web address is added automatically. In Zimbabwe most people
+find the site through a WhatsApp forward, so this is worth a sentence of care.
+
+`signup` is the short form asking people to leave a name so you can tell them
+when the next event is on. **It only appears when the admin server is
+reachable.** On a plain static host there is nowhere to put a name, so the
+website shows a WhatsApp link instead and nothing is lost.
 
 ### Adding your own pictures without the admin panel
 
@@ -165,8 +213,11 @@ handover and should not be kept.
 | Gallery | Photos, posters and videos |
 | Ways to support | The cards telling people how they can help |
 | Front page top, About, Donations, Contact, Organisation | The words |
+| Accountability | Your registration number, who to ask about money, receipts |
+| Sharing, Sign-up form | The wording people see when they share or sign up |
+| Supporters | Everyone who left their details, with a spreadsheet download |
 | People | Who can sign in |
-| History | Every sign-in, edit, upload and publish |
+| History | Every sign-in, edit, upload and publish, filtered by person or action |
 
 ### What Publish does
 
@@ -177,6 +228,19 @@ above, so both ways of editing stay in step.
 
 If the server is set up to publish to GitHub, it also commits that file and
 the live site rebuilds in about a minute.
+
+### Taking a backup
+
+**Dashboard → Backup → Download a backup** gives you a file holding all the
+words, numbers, events and sponsors. Take one before any big change.
+
+Restoring is on the same card. It replaces everything, asks you to confirm
+first, and saves your current content before it does, so a restore can itself
+be undone from the server. Nothing reaches the public site until you press
+Publish afterwards.
+
+The file does not contain the pictures themselves, only the references to
+them, and it never contains accounts or passwords.
 
 ### Adding more people
 
@@ -236,9 +300,11 @@ A `Dockerfile` is included for Fly or a plain server.
 ./tools/move-to-own-repo.sh https://github.com/YOUR-NAME/charity-sports.git
 ```
 
-The site is self-contained, so this is the whole job. Afterwards, update
-`org.siteUrl` in `data/site-data.js`, plus `robots.txt`, `sitemap.xml` and the
-canonical tags in `index.html`, to the address you end up with.
+The site is self-contained, so this is the whole job. Afterwards, change
+`org.siteUrl` in `data/site-data.js` to the address you end up with. That one
+value now feeds the sharing card, the canonical link, `robots.txt` and
+`sitemap.xml`, which the server rewrites when you publish. There is nothing to
+edit in the HTML by hand.
 
 ---
 
@@ -303,7 +369,8 @@ tools/                  image pipeline and browser verification
 ```
 
 ```bash
-npm test                             # 78 server tests, node:test
+npm test                             # server tests, node:test
+node tools/check-contrast.cjs        # every colour pair against WCAG AA
 npm run seed                         # rebuild the seed from data/site-data.js
 python3 -m http.server 8080          # serve the static site on its own
 node tools/verify-public.cjs --url http://127.0.0.1:8080/
@@ -315,11 +382,24 @@ API for anything newer. Every failure of that request, including the 404 you
 get on a static host, leaves the built-in content exactly as it is. That is
 what makes the server optional rather than load-bearing.
 
+`sw.js` sits at the site root on purpose: a service worker can only control
+pages at or below its own directory, so one served from `assets/` would cover
+nothing. It never touches `/admin` or `/api`, and the content file and the page
+itself are fetched network-first so a published edit is never hidden behind a
+cached copy.
+
+The head tags between the `META` markers in `index.html` are generated by the
+publisher from `org.siteUrl`. Do not hand-edit them; they are overwritten.
+
 ---
 
 ## Still to confirm
 
 - The exact Contipay donation page. `donate.url` holds a placeholder.
+- The accountability details: trust registration number, who answers questions
+  about money, and your receipt policy. The section stays hidden until these
+  arrive, so the site is not claiming anything it cannot back up.
+- A real fundraising total, so visitors can see that other people have given.
 - The golf day's date, course and format.
 - One sponsor on the comic posters is illegible in the photograph, something
   ending "ship Hub". It is in the data as inactive until somebody names it.

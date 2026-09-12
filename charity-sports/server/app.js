@@ -25,6 +25,8 @@ const { createUserRoutes } = require('./routes/users');
 const { createUploadRoutes } = require('./routes/uploads');
 const { createPublishRoutes } = require('./routes/publish');
 const { createAuditRoutes } = require('./routes/audit');
+const { createBackupRoutes } = require('./routes/backup');
+const { createSignupRoutes, createSignupAdminRoutes } = require('./routes/signup');
 
 async function createApp(config) {
   const audit = createAudit({ auditPath: config.auditPath, logLevel: config.logLevel });
@@ -68,6 +70,7 @@ async function createApp(config) {
 
   /* -------------------------------------------------------------- public */
   app.use('/api', createPublicRoutes({ config, store, schema }));
+  app.use('/api/signup', createSignupRoutes({ config, audit }));
 
   /* ---------------------------------------------------------------- auth */
   const requireCsrf = createRequireCsrf(config);
@@ -89,6 +92,8 @@ async function createApp(config) {
   admin.use('/uploads', createUploadRoutes({ config, store, audit }));
   admin.use('/publish', createPublishRoutes({ config, store, audit }));
   admin.use('/audit', createAuditRoutes({ audit }));
+  admin.use('/backup', createBackupRoutes({ store, audit }));
+  admin.use('/signups', createSignupAdminRoutes({ config, audit }));
   admin.use(createContentRoutes({ store, audit }));
   app.use('/api/admin', admin);
 

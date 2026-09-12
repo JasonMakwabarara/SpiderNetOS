@@ -12,7 +12,8 @@
 
   --c-ink:       #111318;
   --c-ink-soft:  #4C515C;
-  --c-ink-faint: #767C88;
+  /* Same correction as the public site: the old value failed AA on cream. */
+  --c-ink-faint: #636974;
   --c-on-dark:   #F6F2E9;
   --c-on-dark-soft: #A9AFBB;
 
@@ -21,7 +22,8 @@
   --c-green:      #1E8A4C;
   --c-green-ink:  #166B3B;
   --c-gold:       #F2B705;
-  --c-gold-deep:  #8A6604;
+  /* Dark enough to read on the gold "unpublished changes" wash. */
+  --c-gold-deep:  #6B4F03;
   --c-red:        #C8102E;
 
   --c-line:      #E2DCCC;

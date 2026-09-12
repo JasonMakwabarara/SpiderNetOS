@@ -16,7 +16,9 @@
   /* Ink */
   --c-ink:       #111318;
   --c-ink-soft:  #4C515C;
-  --c-ink-faint: #767C88;
+  /* 5.16:1 on --c-bg and 4.73:1 on --c-bg-alt. The old #767C88 measured
+     3.92 and 3.59, which fails WCAG AA for the small text this is used on. */
+  --c-ink-faint: #636974;
   --c-on-dark:   #F6F2E9;
   --c-on-dark-soft: #A9AFBB;
 
@@ -555,6 +557,80 @@ button { font: inherit; color: inherit; }
 .funded-strip b { font-family: var(--f-display); }
 .funded-strip span { color: var(--c-ink-faint); }
 
+/* ----------------------------------------------------- 9b. accountability */
+.section-trust { background: var(--c-bg-alt); }
+.trust-grid { display: grid; gap: var(--s-5); align-items: start; }
+/* While the charity has not supplied its registration details, the facts list
+   is empty. Drop it entirely rather than leaving a blank column beside the
+   statements. */
+.trust-facts:empty, .trust-statements:empty { display: none; }
+
+.trust-facts { display: grid; gap: var(--s-3); align-content: start; }
+.trust-facts li {
+  display: grid;
+  gap: var(--s-1);
+  padding: var(--s-4);
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-left: 4px solid var(--c-green);
+  border-radius: var(--r-sm);
+}
+.trust-facts dt, .trust-label {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--c-ink-faint);
+}
+.trust-value { font-family: var(--f-display); font-weight: 700; font-size: var(--t-md); }
+.trust-value a { color: var(--c-orange-ink); }
+
+.trust-statements { display: grid; gap: var(--s-3); align-content: start; max-width: 64ch; }
+.trust-statements li {
+  position: relative;
+  padding-left: var(--s-6);
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+}
+.trust-statements li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: .15em;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: rgba(30, 138, 76, .16);
+}
+.trust-statements li::after {
+  content: "";
+  position: absolute;
+  left: 6px; top: .52em;
+  width: 8px; height: 4px;
+  border-left: 2px solid var(--c-green-ink);
+  border-bottom: 2px solid var(--c-green-ink);
+  transform: rotate(-45deg);
+}
+
+.counter-raised {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-left: 5px solid var(--c-gold);
+  border-radius: var(--r-sm);
+}
+.counter-raised strong {
+  font-family: var(--f-display);
+  font-size: var(--t-lg);
+  font-weight: 800;
+  color: var(--c-green-ink);
+  font-variant-numeric: tabular-nums;
+}
+.counter-raised span { font-size: var(--t-sm); color: var(--c-ink-soft); }
+
 /* ------------------------------------------------------------- 10. events */
 .event-featured {
   display: grid;
@@ -673,6 +749,62 @@ button { font: inherit; color: inherit; }
   border-radius: var(--r-md);
   color: var(--c-ink-soft);
 }
+
+/* --------------------------------------------------------- 10b. share + signup */
+.btn-share {
+  background: var(--c-card);
+  color: var(--c-green-ink);
+  border-color: var(--c-green-ink);
+}
+.btn-share:hover { background: var(--c-green-ink); color: #fff; }
+
+.donate-share { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--s-4); }
+.donate-share-note { font-size: var(--t-sm); color: var(--c-ink-soft); }
+
+.section-signup { background: var(--c-bg-alt); }
+.signup-inner { display: grid; gap: var(--s-5); align-items: start; }
+.signup-copy p { color: var(--c-ink-soft); max-width: 54ch; }
+.signup-privacy { font-size: var(--t-sm); color: var(--c-ink-faint); }
+
+.signup-form {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
+}
+.signup-form .field { display: grid; gap: var(--s-1); margin: 0; }
+.signup-form label { font-weight: 700; font-size: var(--t-sm); }
+.signup-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-card);
+  border: 2px solid var(--c-line);
+  border-radius: var(--r-sm);
+  font: inherit;
+  color: var(--c-ink);
+}
+.signup-form input:focus { border-color: var(--c-orange-ink); }
+.signup-form .field.has-error input { border-color: var(--c-red); }
+.field-error { font-size: var(--t-sm); font-weight: 700; color: #8A0C20; }
+
+/* The honeypot: off-screen rather than display:none, so a script that skips
+   hidden fields still fills it in. */
+.signup-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px; height: 1px;
+  overflow: hidden;
+}
+
+.signup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin: var(--s-2) 0 0; }
+.signup-state { font-size: var(--t-sm); font-weight: 700; }
+.signup-state.is-ok { color: var(--c-green-ink); }
+.signup-state.is-err { color: #8A0C20; }
+.signup-fallback { margin-top: var(--s-4); }
 
 /* ------------------------------------------------------------ 11. support */
 .support-grid { display: grid; gap: var(--s-4); }
@@ -1013,10 +1145,12 @@ button { font: inherit; color: inherit; }
   .hero { padding-block: var(--s-8) var(--s-9); }
   .hero-inner { grid-template-columns: 1.05fr .95fr; align-items: center; gap: var(--s-7); }
   .about-grid { grid-template-columns: 1.1fr .9fr; gap: var(--s-7); }
+  .trust-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--s-7); }
   .how-list { gap: var(--s-3); }
   .event-featured { grid-template-columns: .85fr 1.15fr; }
   .event-poster img { max-height: 620px; }
   .donate-inner { grid-template-columns: 1.25fr .75fr; align-items: start; }
+  .signup-inner { grid-template-columns: 1.1fr .9fr; gap: var(--s-7); }
   .sponsor-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .gallery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 

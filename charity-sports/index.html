@@ -6,8 +6,11 @@
 <title>Charity Sports — sport that changes lives | Harare, Zimbabwe</title>
 <meta name="description" content="Charity Sports raises money through sport for the causes that need it most. Padel now, a golf day next. Funding surgery for children in Mhangura and disaster relief in Kariba.">
 <meta name="theme-color" content="#FBF7EE">
+<!-- Everything between these markers is generated from data/site-data.js when
+     you publish: the web address, the sharing card and the hero preload. Change
+     org.siteUrl in the content file rather than editing these by hand. -->
+<!-- META:START -->
 <link rel="canonical" href="https://jasonmakwabarara.github.io/charity-sports/">
-
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Charity Sports">
 <meta property="og:title" content="Charity Sports — sport that changes lives">
@@ -16,12 +19,14 @@
 <meta property="og:image" content="https://jasonmakwabarara.github.io/charity-sports/assets/img/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A medical outreach team walking towards a rural clinic in Zimbabwe.">
+<meta property="og:image:alt" content="Doctors and nurses in scrubs carry medical cases towards a rural clinic.">
 <meta property="og:locale" content="en_ZW">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Charity Sports — sport that changes lives">
 <meta name="twitter:description" content="We turn a game into food, shelter and surgery. Come play, enjoy, and lend your support.">
 <meta name="twitter:image" content="https://jasonmakwabarara.github.io/charity-sports/assets/img/og-image.jpg">
+<link rel="preload" as="image" fetchpriority="high" href="assets/img/hero-doctors-1280.webp" imagesrcset="assets/img/hero-doctors-800.webp 800w, assets/img/hero-doctors-1280.webp 1280w" imagesizes="(min-width: 900px) 46vw, 100vw" type="image/webp">
+<!-- META:END -->
 
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/logos/hannah-ai-mark-256.png">
@@ -79,6 +84,7 @@
         <li><a href="#impact">Impact</a></li>
         <li><a href="#about">About</a></li>
         <li><a href="#causes">Causes</a></li>
+        <li><a href="#accountability" id="trustNavLink" hidden>Accountability</a></li>
         <li><a href="#events">Events</a></li>
         <li><a href="#sponsors">Sponsors</a></li>
         <li><a href="#gallery">Gallery</a></li>
@@ -102,6 +108,10 @@
         <p class="hero-actions">
           <a class="btn btn-primary btn-lg" id="heroPrimary" href="#donate">Donate now</a>
           <a class="btn btn-ghost btn-lg" id="heroSecondary" href="#events">See what’s on</a>
+          <button class="btn btn-share btn-lg" type="button" data-share hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-whatsapp"></use></svg>
+            <span data-share-label>Share this</span>
+          </button>
         </p>
         <p class="hero-chip" id="heroChip" hidden>
           <strong id="heroChipValue">0</strong>
@@ -128,6 +138,10 @@
         </div>
 
         <ol class="milestones" id="milestones"></ol>
+        <p class="counter-raised" id="counterRaised" hidden>
+          <strong id="counterRaisedValue"></strong>
+          <span id="counterRaisedLabel"></span>
+        </p>
         <p class="counter-meta"><span id="counterUpdated"></span></p>
       </div>
 
@@ -145,6 +159,19 @@
       <div class="about-grid">
         <div class="about-copy" id="aboutCopy"></div>
         <ol class="how-list" id="howItWorks"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ accountability -->
+  <section class="section section-trust" id="accountability" aria-labelledby="trustTitle" hidden>
+    <div class="container">
+      <p class="eyebrow">Before you give</p>
+      <h2 id="trustTitle" data-bind="accountability.heading">Where the money goes, and who to ask</h2>
+      <p class="section-lede" data-bind="accountability.intro"></p>
+      <div class="trust-grid">
+        <ul class="trust-facts" id="trustFacts"></ul>
+        <ul class="trust-statements" id="trustStatements"></ul>
       </div>
     </div>
   </section>
@@ -175,6 +202,38 @@
         <summary><span id="pastEventsLabel">Past events</span></summary>
         <div id="pastEventList"></div>
       </details>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------------- signup -->
+  <section class="section section-signup" id="signup" aria-labelledby="signupTitle" hidden>
+    <div class="container signup-inner">
+      <div class="signup-copy">
+        <h2 id="signupTitle" data-bind="signup.heading">Hear when the next one is on</h2>
+        <p data-bind="signup.text"></p>
+        <p class="signup-privacy" data-bind="signup.privacyNote"></p>
+      </div>
+      <form class="signup-form" id="signupForm" novalidate>
+        <p class="field">
+          <label for="signupName" data-bind="signup.nameLabel">Your name</label>
+          <input id="signupName" name="name" type="text" autocomplete="name" required>
+          <span class="field-error" data-error-for="name" hidden></span>
+        </p>
+        <p class="field">
+          <label for="signupContact" data-bind="signup.contactLabel">WhatsApp number or email</label>
+          <input id="signupContact" name="contact" type="text" autocomplete="tel" required>
+          <span class="field-error" data-error-for="contact" hidden></span>
+        </p>
+        <p class="signup-trap" aria-hidden="true">
+          <label for="signupWebsite">Leave this empty</label>
+          <input id="signupWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+        </p>
+        <p class="signup-actions">
+          <button class="btn btn-primary" type="submit" id="signupSubmit" data-bind="signup.buttonLabel">Keep me posted</button>
+          <span class="signup-state" id="signupState" role="status"></span>
+        </p>
+      </form>
+      <p class="signup-fallback" id="signupFallback" hidden></p>
     </div>
   </section>
 
@@ -221,6 +280,13 @@
           </a>
         </p>
         <p class="donate-provider">Handled by <span data-bind="donate.provider">Contipay</span>. Card and mobile money.</p>
+        <p class="donate-share">
+          <button class="btn btn-share" type="button" data-share hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-whatsapp"></use></svg>
+            <span data-share-label>Share this</span>
+          </button>
+          <span class="donate-share-note">Cannot give today? Passing it on helps just as much.</span>
+        </p>
         <p class="payment-note" id="paymentNote"></p>
         <ul class="alt-contact" id="donateContact"></ul>
       </div>
@@ -296,6 +362,7 @@
 <script defer src="assets/js/events.js"></script>
 <script defer src="assets/js/sponsors.js"></script>
 <script defer src="assets/js/gallery.js"></script>
+<script defer src="assets/js/engage.js"></script>
 <script defer src="assets/js/live.js"></script>
 <script defer src="assets/js/main.js"></script>
 </body>

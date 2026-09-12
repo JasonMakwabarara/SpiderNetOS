@@ -61,6 +61,14 @@ window.CHARITY_DATA = {
     livesHelped: 20,
     goal: 1000000,
     milestones: [1000, 10000, 100000, 1000000],
+
+    /* Total raised to date, in US dollars. Left empty on purpose: nobody has
+       supplied a real figure, and an invented one would be worse than none.
+       Put the real number here and it appears beside the counter. Donors give
+       more readily when they can see that other people already have. */
+    raisedTotalUsd: null,
+    raisedLabel: "Raised so far",
+
     lastUpdated: "2026-09-12",
     heading: "Lives helped so far",
     blurb:
@@ -96,6 +104,37 @@ window.CHARITY_DATA = {
     ]
   },
 
+  /* -------------------------------------------------------------------------
+     What a donor can check you against.
+     Every field here is empty until Charity Sports supplies the real details.
+     While they are all empty the whole section stays hidden, so the site never
+     shows an unverified claim. Fill any of them in and it appears.
+     ---------------------------------------------------------------------- */
+  accountability: {
+    heading: "Where the money goes, and who to ask",
+    intro:
+      "We are asking you for money, so here is what you can hold us to. " +
+      "If anything here is unclear, ask us before you give, not after.",
+
+    registrationLabel: "Trust registration number",
+    registrationNumber: null,        // ← the Charity Sport Trust number
+
+    bankedWith: null,                // ← e.g. "Held in the trust account at X Bank"
+
+    financeContactName: null,        // ← who answers questions about money
+    financeContactRole: null,        // ← e.g. "Treasurer"
+    financeContactEmail: null,
+
+    receiptsPolicy: null,            // ← e.g. "We issue a receipt for every donation over US$20."
+
+    /* Statements that are true today and need no confirmation. */
+    statements: [
+      "The doctors operate for free. No donation pays a surgeon.",
+      "Money raised for a cause goes to that cause. When one is fully funded we close it and say so.",
+      "Donations are handled by Contipay, not by us. We never ask for card details over WhatsApp."
+    ]
+  },
+
   /* status: "current" shows in the main grid. "funded" and "closed" move the
      cause into the "What we have funded" strip underneath. */
   causes: [
@@ -120,6 +159,8 @@ window.CHARITY_DATA = {
         { value: "$0", label: "Charged by the doctors" }
       ],
       targetUsd: 3200,
+      /* Put the real amount raised here and a progress bar appears on the
+         card. Left empty because no figure has been supplied. */
       raisedUsd: null,
       beneficiaries: 20,
       period: "2026",
@@ -198,8 +239,8 @@ window.CHARITY_DATA = {
       poster: {
         src: "assets/img/gallery/poster-padel-escape.jpg",
         webp: "assets/img/gallery/poster-padel-escape.webp",
-        width: 853,
-        height: 1280,
+        width: 733,
+        height: 1100,
         alt: "Comic-style poster for the Charity Padel Tournament 2026 titled The Great Padel Escape."
       },
       ctas: [
@@ -374,8 +415,8 @@ window.CHARITY_DATA = {
       webp: "assets/img/gallery/poster-padel-escape.webp",
       thumb: "assets/img/gallery/poster-padel-escape-480.jpg",
       thumbWebp: "assets/img/gallery/poster-padel-escape-480.webp",
-      width: 853,
-      height: 1280,
+      width: 733,
+      height: 1100,
       alt: "Comic-book style poster showing two characters running from a prison towards padel courts, with the tournament dates and venue listed beside them.",
       provider: null,
       youtubeId: null,
@@ -393,8 +434,8 @@ window.CHARITY_DATA = {
       webp: "assets/img/gallery/poster-padel-bargain.webp",
       thumb: "assets/img/gallery/poster-padel-bargain-480.jpg",
       thumbWebp: "assets/img/gallery/poster-padel-bargain-480.webp",
-      width: 793,
-      height: 1280,
+      width: 681,
+      height: 1100,
       alt: "Comic-book style poster of a couple in a supermarket aisle negotiating over a padel racket, with tournament details listed beneath.",
       provider: null,
       youtubeId: null,
@@ -440,6 +481,33 @@ window.CHARITY_DATA = {
       poster: null
     }
   ],
+
+  /* In Zimbabwe a link travels by WhatsApp forward more than by anything else,
+     so sharing gets a button rather than being left to the browser menu. */
+  share: {
+    label: "Share this",
+    message:
+      "Charity Sports is raising money for children's surgery in Mhangura and disaster relief in Kariba. " +
+      "Have a look, and come and play."
+  },
+
+  /* The sign-up form only appears when the admin server is reachable, because
+     there is nowhere to put a name on a static host. Without it, the block
+     falls back to the WhatsApp link, which always works. */
+  signup: {
+    heading: "Hear when the next one is on",
+    text:
+      "Events are announced a couple of weeks ahead. Leave a name and a number " +
+      "and we will tell you when the golf day has a date.",
+    nameLabel: "Your name",
+    contactLabel: "WhatsApp number or email",
+    buttonLabel: "Keep me posted",
+    successText: "Thank you. We will be in touch when the next event is set.",
+    fallbackLabel: "Message us on WhatsApp instead",
+    privacyNote:
+      "We keep this to tell you about events and nothing else. No lists are sold or shared. " +
+      "Ask us any time and we will delete it."
+  },
 
   donate: {
     /* THE MONEY LINK. Replace this with the exact Charity Sports donation page

@@ -16,6 +16,18 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const { writeTextAtomic } = require('./atomic');
 const serialize = require('./serialize');
+const schema = require('./schema');
+
+/** Every uploaded file the published content actually points at. */
+function referencedUploads(content, config) {
+  const text = JSON.stringify(schema.publicProjection(content));
+  const prefix = config.uploadUrlBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(prefix + '\\/([A-Za-z0-9._-]+)', 'g');
+  const names = new Set();
+  let match;
+  while ((match = re.exec(text))) names.add(match[1]);
+  return Array.from(names);
+}
 
 async function writeLocal(content, config) {
   const snapshotText = serialize.snapshot(content);
@@ -23,58 +35,109 @@ async function writeLocal(content, config) {
   const snapshotChanged = previous !== snapshotText;
   if (snapshotChanged) await writeTextAtomic(config.snapshotPath, snapshotText);
 
-  let jsonLdChanged = false;
+  /* The page's head and its structured data are both generated from the
+     content, so the web address only ever has to be right in one place. */
+  let indexChanged = false;
   let indexText = null;
   try {
     const html = await fsp.readFile(config.indexPath, 'utf8');
-    const result = serialize.replaceJsonLd(html, serialize.jsonLd(content, config.siteUrl));
-    if (result.replaced && result.html !== html) {
-      await writeTextAtomic(config.indexPath, result.html);
-      jsonLdChanged = true;
-      indexText = result.html;
-    } else if (result.replaced) {
-      indexText = result.html;
+    const withMeta = serialize.replaceMeta(html, content, config.siteUrl);
+    const withBoth = serialize.replaceJsonLd(withMeta.html, serialize.jsonLd(content, config.siteUrl));
+    indexText = withBoth.html;
+    if (indexText !== html) {
+      await writeTextAtomic(config.indexPath, indexText);
+      indexChanged = true;
     }
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
   }
 
-  return { snapshotText, snapshotChanged, jsonLdChanged, indexText };
+  /* robots.txt and sitemap.xml carry the address too. */
+  const root = config.rootDir;
+  const sitemapText = serialize.sitemap(content, config.siteUrl);
+  const robotsText = serialize.robots(content, config.siteUrl);
+  const sitemapPath = path.join(root, 'sitemap.xml');
+  const robotsPath = path.join(root, 'robots.txt');
+  const sitemapChanged = (await fsp.readFile(sitemapPath, 'utf8').catch(() => null)) !== sitemapText;
+  const robotsChanged = (await fsp.readFile(robotsPath, 'utf8').catch(() => null)) !== robotsText;
+  if (sitemapChanged) await writeTextAtomic(sitemapPath, sitemapText);
+  if (robotsChanged) await writeTextAtomic(robotsPath, robotsText);
+
+  return {
+    snapshotText, snapshotChanged,
+    indexText, indexChanged,
+    sitemapText, sitemapChanged,
+    robotsText, robotsChanged
+  };
 }
 
 /* ------------------------------------------------------------------ GitHub */
 
-async function githubPut(config, repoPath, text, message) {
-  const api = `https://api.github.com/repos/${config.githubRepo}/contents/${encodeURI(repoPath)}`;
-  const headers = {
+const GITHUB_TIMEOUT_MS = 20000;
+
+function githubHeaders(config) {
+  return {
     Authorization: `Bearer ${config.githubToken}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'charity-sports-admin'
   };
+}
 
-  let sha;
-  const head = await fetch(`${api}?ref=${encodeURIComponent(config.githubBranch)}`, { headers });
-  if (head.ok) {
-    const json = await head.json();
-    sha = json.sha;
-  } else if (head.status !== 404) {
-    throw new Error(`GitHub read failed (${head.status}). Check GITHUB_TOKEN and GITHUB_REPO.`);
+function contentsUrl(config, repoPath) {
+  return `https://api.github.com/repos/${config.githubRepo}/contents/${encodeURI(repoPath)}`;
+}
+
+/** Every call is bounded: a hung request must not wedge the publish button. */
+function githubFetch(url, options) {
+  const init = { ...options };
+  if (AbortSignal && AbortSignal.timeout) {
+    try { init.signal = AbortSignal.timeout(GITHUB_TIMEOUT_MS); } catch (err) { /* older node */ }
   }
+  return fetch(url, init).catch((err) => {
+    if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new Error(`GitHub did not answer within ${GITHUB_TIMEOUT_MS / 1000} seconds.`);
+    }
+    throw new Error(`GitHub could not be reached: ${err.message}`);
+  });
+}
 
-  const res = await fetch(api, {
+/** The sha of a file already on the branch, or null if it is not there. */
+async function githubSha(config, repoPath) {
+  const res = await githubFetch(
+    `${contentsUrl(config, repoPath)}?ref=${encodeURIComponent(config.githubBranch)}`,
+    { headers: githubHeaders(config) }
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`GitHub read failed (${res.status}). Check GITHUB_TOKEN and GITHUB_REPO.`);
+  }
+  const json = await res.json();
+  return json.sha || null;
+}
+
+async function githubHas(config, repoPath) {
+  return (await githubSha(config, repoPath)) !== null;
+}
+
+/** @param {string|Buffer} body text for a file, or raw bytes for an image. */
+async function githubPut(config, repoPath, body, message) {
+  const sha = await githubSha(config, repoPath);
+  const bytes = Buffer.isBuffer(body) ? body : Buffer.from(body, 'utf8');
+
+  const res = await githubFetch(contentsUrl(config, repoPath), {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
+    headers: { ...githubHeaders(config), 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message,
-      content: Buffer.from(text, 'utf8').toString('base64'),
+      content: bytes.toString('base64'),
       branch: config.githubBranch,
-      sha
+      sha: sha || undefined
     })
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`GitHub write failed (${res.status}): ${body.slice(0, 200)}`);
+    const text = await res.text().catch(() => '');
+    throw new Error(`GitHub write failed (${res.status}): ${text.slice(0, 200)}`);
   }
   const json = await res.json();
   return json.commit && json.commit.html_url;
@@ -100,16 +163,29 @@ async function publish(content, config, { actor } = {}) {
   const relSnapshot = path.relative(config.rootDir, config.snapshotPath).split(path.sep).join('/');
   const relIndex = path.relative(config.rootDir, config.indexPath).split(path.sep).join('/');
 
+  const relUploadBase = config.uploadUrlBase.replace(/^\/+|\/+$/g, '');
+
   const result = {
     target: config.publishTarget,
     wroteSnapshot: local.snapshotChanged,
-    wroteJsonLd: local.jsonLdChanged,
+    wroteJsonLd: local.indexChanged,
+    wroteSitemap: local.sitemapChanged || local.robotsChanged,
+    uploadsCommitted: 0,
     committed: false,
     commitUrl: null,
     message: null
   };
 
-  if (!local.snapshotChanged && !local.jsonLdChanged) {
+  const anythingChanged = local.snapshotChanged || local.indexChanged ||
+    local.sitemapChanged || local.robotsChanged;
+
+  /* Images uploaded through the panel live outside the repository, so they
+     have to be committed too. Without this, a logo added in the admin shows
+     on the server but 404s on the published site, and on a host with no
+     persistent disk it disappears entirely at the next restart. */
+  const uploads = referencedUploads(content, config);
+
+  if (!anythingChanged && config.publishTarget === 'file') {
     result.message = 'The live site already matches. Nothing to publish.';
     return result;
   }
@@ -118,20 +194,48 @@ async function publish(content, config, { actor } = {}) {
 
   try {
     if (config.publishTarget === 'github') {
-      result.commitUrl = await githubPut(config, relSnapshot, local.snapshotText, message);
-      if (local.jsonLdChanged && local.indexText) {
-        await githubPut(config, relIndex, local.indexText, message + ' (structured data)');
+      if (local.snapshotChanged) {
+        result.commitUrl = await githubPut(config, relSnapshot, local.snapshotText, message);
       }
+      if (local.indexChanged && local.indexText) {
+        result.commitUrl = await githubPut(config, relIndex, local.indexText, message + ' (page head)');
+      }
+      if (local.sitemapChanged) await githubPut(config, 'sitemap.xml', local.sitemapText, message + ' (sitemap)');
+      if (local.robotsChanged) await githubPut(config, 'robots.txt', local.robotsText, message + ' (robots)');
+
+      for (const name of uploads) {
+        const already = await githubHas(config, `${relUploadBase}/${name}`);
+        if (already) continue;
+        const bytes = await fsp.readFile(path.join(config.uploadDir, name)).catch(() => null);
+        if (!bytes) continue;                       // referenced but missing: skip quietly
+        await githubPut(config, `${relUploadBase}/${name}`, bytes, message + ` (image ${name})`);
+        result.uploadsCommitted++;
+      }
+
       result.committed = true;
-      result.message = 'Published. GitHub Pages usually rebuilds within a minute.';
+      result.message = result.uploadsCommitted
+        ? `Published with ${result.uploadsCommitted} new image${result.uploadsCommitted === 1 ? '' : 's'}. ` +
+          'GitHub Pages usually rebuilds within a minute.'
+        : 'Published. GitHub Pages usually rebuilds within a minute.';
     } else if (config.publishTarget === 'git') {
-      const files = [relSnapshot];
-      if (local.jsonLdChanged) files.push(relIndex);
-      const sha = await gitCommit(config, files, message);
+      const files = [];
+      if (local.snapshotChanged) files.push(relSnapshot);
+      if (local.indexChanged) files.push(relIndex);
+      if (local.sitemapChanged) files.push('sitemap.xml');
+      if (local.robotsChanged) files.push('robots.txt');
+      /* Only add uploads that sit inside the repository; on a host with the
+         uploads on a mounted disk there is nothing for git to add. */
+      if (uploads.length && isInsideRepo(config)) {
+        uploads.forEach((name) => files.push(`${relUploadBase}/${name}`));
+        result.uploadsCommitted = uploads.length;
+      }
+      const sha = files.length ? await gitCommit(config, files, message) : null;
       result.committed = !!sha;
       result.message = sha ? 'Published and pushed.' : 'Published. Nothing new to commit.';
     } else {
-      result.message = 'Published to this server. The public site here is up to date.';
+      result.message = anythingChanged
+        ? 'Published to this server. The public site here is up to date.'
+        : 'The live site already matches. Nothing to publish.';
     }
   } catch (err) {
     /* The local write already succeeded, so say so rather than implying
@@ -141,6 +245,13 @@ async function publish(content, config, { actor } = {}) {
   }
 
   return result;
+}
+
+/** Is the uploads folder inside the repository git can see? */
+function isInsideRepo(config) {
+  const uploads = path.resolve(config.uploadDir);
+  const root = path.resolve(config.rootDir);
+  return uploads === root || uploads.startsWith(root + path.sep);
 }
 
 /** Is the published snapshot behind the live content? */

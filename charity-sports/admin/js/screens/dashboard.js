@@ -12,6 +12,47 @@
       var data = app.content.data;
       var impact = data.impact || {};
 
+      /* ------------------------------------------------- what is still missing
+         Two things suppress donations more than anything technical: a visitor
+         who cannot see that anyone else has given, and a charity that offers
+         nothing to be checked against. Say so here rather than in a document
+         nobody opens. */
+      var trust = data.accountability || {};
+      var hasTrustFacts = !!(trust.registrationNumber || trust.bankedWith ||
+        trust.financeContactName || trust.financeContactEmail || trust.receiptsPolicy);
+      var hasRaised = typeof impact.raisedTotalUsd === 'number';
+
+      if (!hasTrustFacts || !hasRaised) {
+        var missing = el('div', { class: 'card' }, [
+          el('div', { class: 'card-head' }, [el('h2', { text: 'Worth completing' })])
+        ]);
+
+        if (!hasRaised) {
+          missing.appendChild(el('p', null, [
+            el('b', { text: 'No fundraising total is published. ' }),
+            'A visitor cannot see that a single dollar has been given. People give more ' +
+            'readily when they can see that others already have.'
+          ]));
+          missing.appendChild(el('p', { class: 'quick-links' }, [
+            el('a', { class: 'btn btn-quiet btn-sm', href: '#/impact', text: 'Add the total raised' })
+          ]));
+        }
+
+        if (!hasTrustFacts) {
+          missing.appendChild(el('p', null, [
+            el('b', { text: 'Nothing on the site says who you are accountable to. ' }),
+            'The registration number, who answers questions about money, and whether you ' +
+            'issue receipts. The section stays hidden until you fill it in, so nothing ' +
+            'unverified is showing in the meantime.'
+          ]));
+          missing.appendChild(el('p', { class: 'quick-links' }, [
+            el('a', { class: 'btn btn-quiet btn-sm', href: '#/accountability', text: 'Fill in accountability' })
+          ]));
+        }
+
+        root.appendChild(missing);
+      }
+
       /* ------------------------------------------------------ lives helped */
       var number = el('input', { type: 'number', min: 0, step: 1, id: 'livesInput' });
       number.value = impact.livesHelped === null || impact.livesHelped === undefined ? '' : String(impact.livesHelped);
@@ -100,6 +141,82 @@
           : el('p', { class: 'empty', text: 'Nothing dated is coming up. Add one, or give the next event a date.' })
       ]));
 
+      /* ------------------------------------------------- backup and restore */
+      var restoreInput = el('input', {
+        type: 'file', accept: 'application/json,.json', id: 'restoreFile'
+      });
+
+      restoreInput.addEventListener('change', async function () {
+        var file = restoreInput.files && restoreInput.files[0];
+        if (!file) return;
+
+        var text;
+        try {
+          text = await file.text();
+        } catch (err) {
+          A.ui.toast('That file could not be read.', 'err');
+          restoreInput.value = '';
+          return;
+        }
+
+        var parsed;
+        try {
+          parsed = JSON.parse(text);
+        } catch (err) {
+          A.ui.toast('That is not a backup file. It should be the .json file you downloaded from here.', 'err');
+          restoreInput.value = '';
+          return;
+        }
+
+        var when = parsed && parsed.updatedAt ? A.ui.fmtDateTime(parsed.updatedAt) : 'an unknown date';
+        var yes = await A.ui.confirmDialog({
+          title: 'Restore everything from this backup?',
+          lines: [
+            'This replaces all the content on the site with the copy in that file, from ' + when + '.',
+            'Your current content is saved first, so this can be undone, but only from the server.',
+            'Nothing reaches the public site until you press Publish afterwards.'
+          ],
+          confirmLabel: 'Restore it',
+          tone: 'danger'
+        });
+        restoreInput.value = '';
+        if (!yes) return;
+
+        try {
+          await A.api.restore(parsed);
+          await app.reload();
+          app.refreshPublishState();
+          A.ui.toast('Restored. Check the site looks right, then press Publish.', 'ok', 9000);
+          app.rerender();
+        } catch (err) {
+          if (err.errors && err.errors.length) {
+            A.ui.toast('That backup was refused: ' + err.errors[0].message, 'err', 10000);
+          } else {
+            A.ui.toast(err.message, 'err');
+          }
+        }
+      });
+
+      root.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'card-head' }, [el('h2', { text: 'Backup' })]),
+        el('p', { text: 'Take a copy before you change anything big. The file holds all the words, ' +
+                        'numbers, events and sponsors, but not the pictures themselves.' }),
+        el('p', { class: 'quick-links' }, [
+          el('a', {
+            class: 'btn btn-quiet btn-sm',
+            href: A.api.backupUrl,
+            download: 'charity-sports-backup.json'
+          }, [A.ui.icon('down'), ' Download a backup'])
+        ]),
+        el('div', { class: 'field' }, [
+          el('label', { for: 'restoreFile', text: 'Restore from a backup file' }),
+          restoreInput,
+          el('span', { class: 'hint',
+            text: 'Replaces everything. You will be asked to confirm, and the current content is ' +
+                  'saved first so it can be undone.' })
+        ])
+      ]));
+
       /* --------------------------------------------------------- shortcuts */
       root.appendChild(el('div', { class: 'card' }, [
         el('div', { class: 'card-head' }, [el('h2', { text: 'Common jobs' })]),
@@ -108,7 +225,8 @@
           el('a', { class: 'btn btn-quiet btn-sm', href: '#/events/new', text: 'Add an event' }),
           el('a', { class: 'btn btn-quiet btn-sm', href: '#/sponsors/new', text: 'Add a sponsor' }),
           el('a', { class: 'btn btn-quiet btn-sm', href: '#/gallery/new', text: 'Add a photo' }),
-          el('a', { class: 'btn btn-quiet btn-sm', href: '#/donate', text: 'Change the donate link' })
+          el('a', { class: 'btn btn-quiet btn-sm', href: '#/donate', text: 'Change the donate link' }),
+          el('a', { class: 'btn btn-quiet btn-sm', href: '#/accountability', text: 'Accountability details' })
         ])
       ]));
     }

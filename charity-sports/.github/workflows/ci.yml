@@ -23,9 +23,15 @@ jobs:
       - name: Check the browser files parse
         run: |
           node --check data/site-data.js
+          node --check sw.js
           for file in assets/js/*.js admin/js/*.js admin/js/screens/*.js; do
             node --check "$file"
           done
+
+      # A contrast failure is invisible to whoever made the change, so it is
+      # checked rather than left to somebody noticing.
+      - name: Check colour contrast
+        run: node tools/check-contrast.cjs
 
       - name: Server tests
         run: npm test

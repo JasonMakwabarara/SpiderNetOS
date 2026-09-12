@@ -223,6 +223,72 @@ async function noOverflow(page) {
     });
     check('no duplicate element ids', dupeIds.length === 0, dupeIds.join(', '));
 
+    /* ------------------------------------------------- accountability */
+    const trustVisible = await page.evaluate(() => !document.getElementById('accountability').hidden);
+    check('the accountability section appears', trustVisible === true);
+
+    const trustFacts = await page.locator('#trustFacts li').count();
+    const trustStatements = await page.locator('#trustStatements li').count();
+    check('it shows the statements that are true', trustStatements >= 3, `${trustStatements}`);
+    check('and claims nothing the charity has not supplied', trustFacts === 0,
+      `${trustFacts} unverified facts are showing`);
+
+    const emptyTrust = await page.evaluate(() => {
+      const before = document.getElementById('accountability').hidden;
+      /* Blank it out and re-render: the section must disappear rather than
+         show an empty panel. */
+      const data = JSON.parse(JSON.stringify(window.CHARITY_DATA));
+      data.accountability = { heading: 'x', intro: 'y', statements: [] };
+      window.CS.renderAll(data, ['accountability']);
+      const after = document.getElementById('accountability').hidden;
+      window.CS.renderAll(window.CHARITY_DATA, ['accountability']);
+      return { before, after };
+    });
+    check('with nothing to say, it hides itself entirely',
+      emptyTrust.before === false && emptyTrust.after === true, JSON.stringify(emptyTrust));
+
+    /* ------------------------------------------------------ money raised */
+    const raisedHidden = await page.evaluate(() => document.getElementById('counterRaised').hidden);
+    check('no fundraising total is invented when none was supplied', raisedHidden === true);
+
+    const raisedShown = await page.evaluate(() => {
+      const data = JSON.parse(JSON.stringify(window.CHARITY_DATA));
+      data.impact.raisedTotalUsd = 1450;
+      window.CS.renderAll(data, ['impact']);
+      const node = document.getElementById('counterRaised');
+      const text = document.getElementById('counterRaisedValue').textContent;
+      const hidden = node.hidden;
+      window.CS.renderAll(window.CHARITY_DATA, ['impact']);
+      return { hidden, text };
+    });
+    check('a real total appears beside the counter when set',
+      raisedShown.hidden === false && /US\$1,450/.test(raisedShown.text), JSON.stringify(raisedShown));
+
+    /* ----------------------------------------------------------- sharing */
+    const shareButtons = await page.locator('[data-share]:not([hidden])').count();
+    check('share buttons are offered', shareButtons === 2, `${shareButtons}`);
+
+    /* --------------------------------------------------------- hero preload */
+    const preload = await page.evaluate(() => {
+      const link = document.querySelector('link[rel="preload"][as="image"]');
+      if (!link) return null;
+      const img = document.querySelector('.hero-figure img');
+      const source = document.querySelector('.hero-figure source');
+      return {
+        href: link.getAttribute('href'),
+        srcset: link.getAttribute('imagesrcset') || '',
+        priority: link.getAttribute('fetchpriority'),
+        rendered: (source && source.getAttribute('srcset')) || (img && img.getAttribute('src')) || ''
+      };
+    });
+    check('the hero is preloaded', !!preload);
+    if (preload) {
+      check('the preload is high priority', preload.priority === 'high', preload.priority);
+      check('and names the image the page actually shows',
+        preload.rendered.includes(preload.href.split('/').pop()),
+        `${preload.href} vs ${preload.rendered.slice(0, 60)}`);
+    }
+
     const dims = await noOverflow(page);
     check('no horizontal overflow at 1280px', dims.scroll <= dims.client, `${dims.scroll} > ${dims.client}`);
 
@@ -258,6 +324,71 @@ async function noOverflow(page) {
     await page.waitForTimeout(200);
 
     if (args.shots) await page.screenshot({ path: path.join(args.shots, 'mobile-400.png'), fullPage: true });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------- sign-up fallback */
+  {
+    const { context, page } = await newPage(browser, 1280, 900);
+    await page.goto(args.url, { waitUntil: 'networkidle' });
+    await page.waitForSelector('html[data-ready="1"]', { timeout: 8000 });
+    await page.waitForTimeout(1500);
+
+    const signup = await page.evaluate(() => {
+      const section = document.getElementById('signup');
+      const form = document.getElementById('signupForm');
+      const fallback = document.getElementById('signupFallback');
+      const link = fallback && fallback.querySelector('a');
+      return {
+        sectionHidden: section.hidden,
+        formHidden: form.hidden,
+        fallbackHidden: fallback ? fallback.hidden : true,
+        href: link ? link.getAttribute('href') : null
+      };
+    });
+    check('with no server behind it, the sign-up form is not shown',
+      signup.formHidden === true, JSON.stringify(signup));
+    check('and a WhatsApp link takes its place instead',
+      signup.fallbackHidden === false && /wa\.me\//.test(signup.href || ''), signup.href);
+    check('so the section still offers a way through', signup.sectionHidden === false);
+    await context.close();
+  }
+
+  /* -------------------------------------------------------- service worker */
+  if (/^https?:/.test(args.url)) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(args.url, { waitUntil: 'networkidle' });
+    await page.waitForSelector('html[data-ready="1"]', { timeout: 8000 });
+    await page.waitForTimeout(2500);
+
+    const registered = await page.evaluate(async () => {
+      if (!('serviceWorker' in navigator)) return 'unsupported';
+      const reg = await navigator.serviceWorker.getRegistration();
+      return reg ? 'registered' : 'none';
+    });
+    check('a service worker takes charge of the site', registered === 'registered', registered);
+
+    const privateCached = await page.evaluate(async () => {
+      const names = await caches.keys();
+      for (const name of names) {
+        const keys = await (await caches.open(name)).keys();
+        if (keys.some((r) => r.url.includes('/admin') || r.url.includes('/api/'))) return true;
+      }
+      return false;
+    });
+    check('it never caches the admin panel or the API', privateCached === false);
+
+    await context.setOffline(true);
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+    await page.waitForTimeout(1500);
+    const offline = await page.evaluate(() => ({
+      ready: document.documentElement.dataset.ready || null,
+      heading: (document.querySelector('h1') || {}).textContent || ''
+    }));
+    check('and the page still opens with the connection gone',
+      offline.ready === '1' && offline.heading.trim().length > 0, JSON.stringify(offline));
+    await context.setOffline(false);
     await context.close();
   }
 

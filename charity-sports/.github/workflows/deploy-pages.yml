@@ -31,6 +31,9 @@ jobs:
       - name: Check the content file is valid JavaScript
         run: node --check data/site-data.js
 
+      - name: Check colour contrast
+        run: node tools/check-contrast.cjs
+
       - uses: actions/configure-pages@v5
 
       # The whole repository is published. The server and admin folders are

@@ -16,11 +16,14 @@
     { group: 'Words and settings' },
     { hash: 'hero', icon: 'list', screen: function () { return A.screens.section('hero'); } },
     { hash: 'about', icon: 'list', screen: function () { return A.screens.section('about'); } },
+    { hash: 'accountability', icon: 'check', screen: function () { return A.screens.section('accountability'); } },
     { hash: 'donate', icon: 'heart', screen: function () { return A.screens.section('donate'); } },
     { hash: 'contact', icon: 'gear', screen: function () { return A.screens.section('contact'); } },
     { hash: 'org', icon: 'gear', screen: function () { return A.screens.section('org'); } },
     { hash: 'sponsorsMeta', icon: 'star', screen: function () { return A.screens.section('sponsorsMeta'); } },
+    { hash: 'signup', icon: 'people', label: 'Sign-up form', screen: function () { return A.screens.section('signup'); } },
     { group: 'Admin' },
+    { hash: 'signups', icon: 'people', label: 'Supporters', screen: function () { return A.screens.signups; } },
     { hash: 'users', icon: 'people', label: 'People', screen: function () { return A.screens.users; } },
     { hash: 'audit', icon: 'list', label: 'History', screen: function () { return A.screens.audit; } },
     { hash: 'password', icon: 'gear', label: 'Your password', screen: function () { return A.screens.password; } }
@@ -68,6 +71,7 @@
   async function refreshPublishState() {
     var badge = document.getElementById('publishState');
     var button = document.getElementById('publishBtn');
+    if (!badge || !button) return;      // screen already torn down
     try {
       var status = await A.api.publishStatus();
       app.publish = status;
@@ -137,8 +141,12 @@
       ],
       confirmLabel: 'Reload'
     }).then(function (yes) {
-      if (yes) { reload().then(rerender); }
-    });
+      if (yes) {
+        reload().then(rerender).catch(function (err) {
+          A.ui.toast(err.message || 'Could not reload.', 'err');
+        });
+      }
+    }).catch(function () { /* the dialog was dismissed */ });
   }
 
   /* --------------------------------------------------------------- routing */
@@ -179,7 +187,7 @@
 
     try {
       var screen = route.screen();
-      if (!app.content && target.hash !== 'password') {
+      if (!app.content && target.hash !== 'password' && !(app.user && app.user.mustChangePassword)) {
         await reload();
       }
       A.ui.clear(root);
@@ -199,6 +207,25 @@
   function rerender() { render(); }
 
   /* ------------------------------------------------------------------ boot */
+
+  /* While somebody still owes a password change the server refuses every other
+     admin request, which is exactly what it should do. Several of those
+     requests are started in parallel during boot, so one can land after its
+     caller has already moved on and end up as an unexplained console error.
+     It is an expected condition, not a fault, so it is absorbed here by name.
+     Anything else that goes unhandled is worth telling the person about. */
+  window.addEventListener('unhandledrejection', function (event) {
+    var reason = event.reason || {};
+    if (reason.code === 'password_change_required' || reason.status === 401) {
+      event.preventDefault();
+      return;
+    }
+    if (reason.name === 'ApiError') {
+      event.preventDefault();
+      A.ui.toast(reason.message || 'Something went wrong.', 'err');
+    }
+  });
+
   async function boot() {
     Object.assign(app, { reload, rerender, refreshPublishState, offerReload, loadUser });
 
@@ -245,18 +272,20 @@
       return;
     }
 
-    try {
-      await reload();
-    } catch (err) {
-      /* Someone who still owes a password change cannot read the content yet.
-         That is expected: show the password screen rather than a dead panel. */
-      if (err.code !== 'password_change_required') {
+    /* Someone who still owes a password change is refused every admin request
+       by design. Rather than firing them off and handling the refusals, skip
+       them: the password screen needs none of it, and they run as soon as the
+       change is done. */
+    if (!app.user.mustChangePassword) {
+      try {
+        await reload();
+      } catch (err) {
         A.ui.toast(err.message || 'The content could not be loaded.', 'err');
       }
     }
 
     await render();
-    await refreshPublishState();
+    if (!app.user.mustChangePassword) await refreshPublishState();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

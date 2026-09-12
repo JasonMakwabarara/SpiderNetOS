@@ -87,6 +87,57 @@
     }
   }
 
+  /* Accountability. The whole section stays hidden until the charity has
+     supplied at least one fact or statement, so the site never displays a
+     half-filled "to be confirmed" panel to somebody deciding whether to give. */
+  function renderAccountability(data) {
+    var section = document.getElementById('accountability');
+    var factList = document.getElementById('trustFacts');
+    var statementList = document.getElementById('trustStatements');
+    var navLink = document.getElementById('trustNavLink');
+    if (!section || !factList || !statementList) return;
+
+    var block = CS.get(data, 'accountability', {}) || {};
+
+    var facts = [];
+    if (block.registrationNumber) {
+      facts.push({ label: block.registrationLabel || 'Registration number', value: block.registrationNumber });
+    }
+    if (block.bankedWith) facts.push({ label: 'Funds held', value: block.bankedWith });
+    if (block.financeContactName) {
+      facts.push({
+        label: block.financeContactRole || 'Questions about money',
+        value: block.financeContactName,
+        email: block.financeContactEmail || null
+      });
+    } else if (block.financeContactEmail) {
+      facts.push({ label: 'Questions about money', value: block.financeContactEmail, email: block.financeContactEmail });
+    }
+    if (block.receiptsPolicy) facts.push({ label: 'Receipts', value: block.receiptsPolicy });
+
+    var statements = (block.statements || []).filter(Boolean);
+
+    CS.clear(factList);
+    facts.forEach(function (fact) {
+      var value = fact.email
+        ? CS.el('p', { class: 'trust-value' }, [CS.link('mailto:' + fact.email, null, fact.value)])
+        : CS.el('p', { class: 'trust-value', text: fact.value });
+      factList.appendChild(CS.el('li', null, [
+        CS.el('span', { class: 'trust-label', text: fact.label }),
+        value
+      ]));
+    });
+
+    CS.clear(statementList);
+    statements.forEach(function (line) {
+      statementList.appendChild(CS.el('li', { text: line }));
+    });
+
+    var hasSomething = facts.length > 0 || statements.length > 0;
+    section.hidden = !hasSomething;
+    if (navLink) navLink.hidden = !hasSomething;
+  }
+
   function renderSupport(data, links) {
     var grid = document.getElementById('supportGrid');
     if (!grid) return;
@@ -164,6 +215,7 @@
     bindScalars(data, links);
     if (wants('hero') || wants('org')) renderHero(data);
     if (wants('about')) renderAbout(data);
+    if (wants('accountability')) renderAccountability(data);
     if (wants('impact')) safely('counter', function () { CS.counter.render(data); });
     if (wants('causes')) safely('causes', function () { CS.causes.render(data); });
     if (wants('events') || wants('contact')) safely('events', function () { CS.events.render(data); });
@@ -174,6 +226,7 @@
     if (wants('gallery')) safely('gallery', function () { CS.gallery.render(data); });
     if (wants('donate') || wants('contact')) renderDonate(data, links);
     if (wants('contact') || wants('org')) renderFooter(data, links);
+    if (wants('share')) safely('share', function () { CS.engage.render(data); });
   }
 
   /** One broken section must never take the rest of the page down with it. */
@@ -194,6 +247,7 @@
     bindScalars(data, links);
     renderHero(data);
     renderAbout(data);
+    renderAccountability(data);
     safely('causes', function () { CS.causes.init(data); });
     safely('events', function () { CS.events.init(data); });
     renderSupport(data, links);
@@ -202,8 +256,25 @@
     renderDonate(data, links);
     renderFooter(data, links);
     safely('counter', function () { CS.counter.render(data); CS.counter.init(data); });
+    safely('engage', function () { CS.engage.init(data); });
 
     document.documentElement.dataset.ready = '1';
+
+    /* A repeat visit on a dropped connection still gets the page. Only over
+       http(s): there is no worker on a file:// path, and registering inside
+       the admin panel would risk caching a signed-in response. */
+    if ('serviceWorker' in navigator &&
+        /^https?:$/.test(window.location.protocol) &&
+        window.location.pathname.indexOf('/admin') === -1) {
+      window.addEventListener('load', function () {
+        /* Registered from the site root so its scope is the whole site.
+           A worker under assets/ could only ever control assets/. */
+        navigator.serviceWorker.register('sw.js').catch(function () {
+          /* Unsupported, blocked, or served from a path it cannot control.
+             The site works exactly as before without it. */
+        });
+      });
+    }
 
     safely('live', function () {
       CS.live.start(data, function (merged, changed) {

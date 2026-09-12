@@ -81,6 +81,19 @@
           : '';
       }
 
+      /* The running total appears only when a real figure exists. An invented
+         one would be worse than none at all. */
+      var raised = document.getElementById('counterRaised');
+      if (raised) {
+        var amount = impact.raisedTotalUsd;
+        var has = typeof amount === 'number' && isFinite(amount) && amount >= 0;
+        raised.hidden = !has;
+        if (has) {
+          document.getElementById('counterRaisedValue').textContent = 'US$' + CS.fmtInt(amount);
+          document.getElementById('counterRaisedLabel').textContent = impact.raisedLabel || 'raised so far';
+        }
+      }
+
       var a11y = document.getElementById('counterA11y');
       if (a11y) a11y.textContent = CS.fmtInt(value) + ' lives helped so far, out of a goal of ' + CS.fmtInt(goal) + '.';
 
