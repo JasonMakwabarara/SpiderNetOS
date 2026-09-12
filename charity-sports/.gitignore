@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Runtime content store (the seed under content/seed/ IS committed)
+content/*
+!content/seed/
+!content/seed/**
+!content/backups/
+content/backups/*
+!content/backups/.gitkeep
+
+# Logs and OS noise
+*.log
+.DS_Store
+Thumbs.db
