@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin/
-Disallow: /server/
-Disallow: /content/
-
-Sitemap: https://jasonmakwabarara.github.io/charity-sports/sitemap.xml
