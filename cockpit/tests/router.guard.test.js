@@ -76,4 +76,38 @@ describe('router guard decide()', () => {
                      stubAuth())
     expect(d.to).toBe('/')
   })
+
+  // ── Slice-0 surfaces: skills / map / voice / systems ─────────────
+  // All four are plain requiresAuth routes (no role, no capability).
+  const AUTH_ONLY = { requiresAuth: true }
+
+  it('sends an unauthenticated visitor to /skills/:slug to login with return_to', () => {
+    const d = decide({ path: '/skills/cold-outreach', fullPath: '/skills/cold-outreach', meta: AUTH_ONLY },
+                     { isAuthenticated: false, requiresOnboarding: () => false, has: () => false })
+    expect(d.to).toBe('/login')
+    expect(d.query.return_to).toBe('/skills/cold-outreach')
+  })
+
+  it('gates /map behind onboarding', () => {
+    const d = decide({ path: '/map', fullPath: '/map', meta: AUTH_ONLY }, stubAuth({ onboarded: false }))
+    expect(d.to).toBe('/onboarding')
+  })
+
+  it('lets a plain user into /settings/voice', () => {
+    const d = decide({ path: '/settings/voice', fullPath: '/settings/voice', meta: AUTH_ONLY },
+                     stubAuth({ role: 'user', caps: [] }))
+    expect(d.to).toBe(null)
+  })
+
+  it('lets a plain user into /operate/systems', () => {
+    const d = decide({ path: '/operate/systems', fullPath: '/operate/systems', meta: AUTH_ONLY },
+                     stubAuth({ role: 'user', caps: [] }))
+    expect(d.to).toBe(null)
+  })
+
+  it('still lets an onboarded plain user reach /brain and /agents/runs', () => {
+    for (const path of ['/brain', '/agents/runs', '/agents/runs/run_1', '/gods-eye']) {
+      expect(decide({ path, fullPath: path, meta: AUTH_ONLY }, stubAuth({ role: 'user' })).to).toBe(null)
+    }
+  })
 })

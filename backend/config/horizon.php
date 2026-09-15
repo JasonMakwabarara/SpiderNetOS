@@ -20,6 +20,7 @@ return [
         'redis:intelligence' => 60,
         'redis:default' => 60,
         'redis:broadcasts' => 60,
+        'redis:agents' => 120,
     ],
 
     'trim' => [
@@ -60,6 +61,24 @@ return [
             'timeout' => 300,
             'nice' => 0,
         ],
+
+        // PHP skill runtime (ADR-0002): RunSkillJob / ResumeAgentRunJob on
+        // their own supervisor so long agent runs never starve projections.
+        // `tries` is 1 — a failed run is finalised as `failed` by the job
+        // itself; retry is an explicit `agents:run --retry`, not Horizon.
+        'agents-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['agents'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 4,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 5,
+        ],
     ],
 
     'environments' => [
@@ -69,11 +88,19 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+            'agents-supervisor' => [
+                'maxProcesses' => 12,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
                 'maxProcesses' => 5,
+            ],
+            'agents-supervisor' => [
+                'maxProcesses' => 4,
             ],
         ],
     ],

@@ -1,0 +1,422 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spidernet.io/schemas/skill-card/v1",
+  "title": "SpiderNetOS Skill Card",
+  "description": "Schema for packages/skills/<slug>/card.yaml — the content model behind the full-screen skill card, the catalogue row (skills.card) and the runtime contract for RunSkillJob. Validated by `php artisan skills:validate`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "display_name",
+    "version",
+    "pillar",
+    "map_node",
+    "core_agent",
+    "runs_on",
+    "at_a_glance",
+    "covers",
+    "pipeline",
+    "brain",
+    "inputs",
+    "outputs",
+    "tools",
+    "triggers",
+    "cost_budget",
+    "approval",
+    "mode",
+    "run"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Card slug; must equal the folder name under packages/skills/."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 60
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version; bump on any prompt or contract change (feeds skill_outcomes.prompt_version)."
+    },
+    "pillar": {
+      "type": "string",
+      "enum": ["sales", "deals", "marketing", "operations", "intelligence", "customer", "back_office", "people", "founder"]
+    },
+    "map_node": {
+      "type": "string",
+      "description": "Where the skill sits on the business map, e.g. \"Sales › Outreach writing\".",
+      "minLength": 3
+    },
+    "core_agent": {
+      "type": "string",
+      "enum": ["atlas", "hannah", "forge", "sentinel", "prism", "nexus"],
+      "description": "The core character this skill's identity reports to (must match identities.yaml reports_to for runs_on)."
+    },
+    "runs_on": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Identity key from packages/skills/identities.yaml (growth, crm, richard, recruiter_bot, prism...)."
+    },
+    "pack_id": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Feature pack that provides/entitles the skill; null for platform skills."
+    },
+    "at_a_glance": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 400,
+      "description": "One or two sentences: what it is and what it produces."
+    },
+    "covers": {
+      "type": "string",
+      "minLength": 10,
+      "description": "The map node it covers, in words (\"the first written touch to a stranger\")."
+    },
+    "breaks_into": {
+      "type": "array",
+      "description": "Sub-capabilities shown as chips; each becomes a skill_relations breaks_into edge.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "does"],
+        "properties": {
+          "name": { "type": "string", "minLength": 3 },
+          "does": { "type": "string", "minLength": 10 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Optional: another card this sub-capability actually is." }
+        }
+      }
+    },
+    "builds_on": {
+      "type": "array",
+      "description": "Cards, brain sections and principles it depends on; each becomes a builds_on edge.",
+      "items": { "$ref": "#/definitions/ref" }
+    },
+    "replaces": {
+      "type": "array",
+      "description": "What it replaces (role, agency, tool, or the work that never got done) with a cost band.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["what", "cost", "kind"],
+        "properties": {
+          "what": { "type": "string", "minLength": 3 },
+          "cost": { "type": "string", "description": "Human cost band, e.g. \"$60–80k/yr\", \"$2–4k/mo\", \"never gets done\"." },
+          "kind": { "type": "string", "enum": ["salary", "retainer", "tool", "time", "undone"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_level", "ladder", "stage_copy", "promotion_gate"],
+      "properties": {
+        "default_level": { "$ref": "#/definitions/autonomy_level" },
+        "ladder": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/autonomy_level" },
+          "description": "Levels this skill can be set to, in order (some skills never go autonomous)."
+        },
+        "stage_copy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["human_led", "assisted", "autonomous"],
+          "properties": {
+            "human_led": { "$ref": "#/definitions/stage" },
+            "assisted": { "$ref": "#/definitions/stage" },
+            "autonomous": { "$ref": "#/definitions/stage" }
+          }
+        },
+        "promotion_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clean_drafts"],
+          "properties": {
+            "clean_drafts": { "type": "integer", "minimum": 1, "description": "Approved drafts with edit distance < 0.05 required before autonomous (outreach uses 20)." },
+            "resets_on_edit": { "type": "boolean", "default": true },
+            "demote_when": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Human-readable tripwires, e.g. \"bounce > 5% on 20+ sends\"."
+            },
+            "shadow_agreement": { "type": "number", "minimum": 0, "maximum": 1, "description": "Min agreement in shadow mode (D8 #9), default 0.95." },
+            "shadow_decisions": { "type": "integer", "minimum": 1, "description": "Min shadow decisions, default 30." }
+          }
+        }
+      }
+    },
+    "brain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requires"],
+      "properties": {
+        "requires": {
+          "type": "array",
+          "description": "Files/sections that must be ready or the run blocks with the manifest's question (422 missing_brain).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "$ref": "#/definitions/brain_path" },
+              "sections": { "type": "array", "items": { "type": "string" } },
+              "key": { "type": "string", "pattern": "^[a-z_]+(\\.[a-z_]+)*$", "description": "Manifest key (voice.tone) — alternative to path#section." }
+            }
+          }
+        },
+        "reads": {
+          "type": "array",
+          "description": "Files read when present (never block).",
+          "items": { "$ref": "#/definitions/brain_path" }
+        },
+        "writes": {
+          "type": "array",
+          "description": "Paths the skill may propose changes to (brain.propose_update only; never direct).",
+          "items": { "$ref": "#/definitions/brain_path" }
+        }
+      }
+    },
+    "hands_off_to": {
+      "type": "array",
+      "description": "Who takes over next; each becomes a hands_off_to edge (to_slug for skills, to_ref otherwise).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "name", "when"],
+        "properties": {
+          "type": { "type": "string", "enum": ["skill", "identity", "character", "product", "human"] },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Required when type=skill." },
+          "ref": { "type": "string", "description": "Required otherwise: identity key (richard), character (sentinel), product (hannah_ai), or human role." },
+          "name": { "type": "string" },
+          "when": { "type": "string", "minLength": 5 }
+        },
+        "oneOf": [
+          { "required": ["slug"] },
+          { "required": ["ref"] }
+        ]
+      }
+    },
+    "one_step_further": {
+      "type": "object",
+      "description": "\"Goes one step further\" (plan D8): what the skill does beyond the brief; steps become outputs.next_steps[] proposals.",
+      "additionalProperties": false,
+      "required": ["summary", "allow_dynamic", "steps"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 20 },
+        "allow_dynamic": { "type": "boolean", "description": "May the model add next_steps of origin=model beyond these? (validator still checks skill + paths)" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "does", "skill", "when", "risk"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+              "label": { "type": "string", "minLength": 3, "maxLength": 80 },
+              "does": { "type": "string", "minLength": 10 },
+              "skill": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Card to run; skills:validate fails on an unknown slug." },
+              "inputs_from": {
+                "type": "object",
+                "description": "Target input name → dotted path into this run's inputs/outputs (e.g. outputs.sequence_id); skills:validate fails on an unknown path.",
+                "additionalProperties": { "type": "string", "pattern": "^(inputs|outputs)(\\.[A-Za-z0-9_\\[\\]]+)+$" }
+              },
+              "when": {
+                "type": "string",
+                "pattern": "^(always|on_success|on_approval_applied|on_outcome:[a-z_]+)$"
+              },
+              "requires_brain": { "type": "array", "items": { "$ref": "#/definitions/brain_path" } },
+              "risk": { "type": "string", "enum": ["read", "write", "send", "irreversible"] },
+              "cost_hint_usd": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "description": "JSON Schema (draft-07 subset) for POST /api/skills/{slug}/run inputs; rendered as the run form.",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "object" },
+        "properties": { "type": "object" },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "description": "What a successful run produces.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "description"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["draft_email", "draft_sequence", "draft_reply", "caption", "report", "note", "classification", "meeting_proposal", "brain_proposal", "route", "record"]
+          },
+          "description": { "type": "string" },
+          "key_pattern": { "type": "string", "description": "e.g. outreach.<campaign>.step{n}.{a|b}" },
+          "count": { "type": "string", "description": "e.g. \"steps × variants\", \"1\"" }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Tool allowlist (ToolCatalogue names). skills:validate fails on unknown tools.",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" }
+    },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "type": "string", "enum": ["manual", "event", "scheduled"] },
+          "event": { "type": "string", "pattern": "^[a-z_]+(\\.[a-z_]+)+$", "description": "event_log event_type, required when type=event." },
+          "filter": { "type": "object", "description": "Optional payload/metadata match, e.g. {channel: whatsapp}." },
+          "cron": { "type": "string", "description": "5-field cron, required when type=scheduled (coalesced by trigger_ref cron:{slug}:{minute})." },
+          "timezone": { "type": "string", "description": "Defaults to the tenant/user timezone." },
+          "quiet_day_shift": { "type": "boolean", "description": "Shift to the next working day (customer-newsletter)." }
+        },
+        "allOf": [
+          { "if": { "properties": { "type": { "const": "event" } } }, "then": { "required": ["event"] } },
+          { "if": { "properties": { "type": { "const": "scheduled" } } }, "then": { "required": ["cron"] } }
+        ]
+      }
+    },
+    "cost_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["daily_limit_usd", "per_run_usd"],
+      "properties": {
+        "daily_limit_usd": { "type": "number", "minimum": 0 },
+        "per_run_usd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_type", "required"],
+      "properties": {
+        "resource_type": {
+          "type": "string",
+          "enum": ["agent_artifact", "agent_tool_call", "brain_proposal", "skill_run", "outreach_reply", "outreach_sequence", "social_post", "hannah_run", "meeting_booking", "business_plan", "board_verdict", "none"]
+        },
+        "required": {
+          "type": "string",
+          "enum": ["always", "by_ladder", "never"],
+          "description": "always = every run ends in an approval regardless of level; by_ladder = human_led everything, assisted sends/irreversible, autonomous irreversible only."
+        },
+        "policy_hint": { "type": "string", "description": "ApprovalPolicy conditions hint (segment, max_recipients, tainted...)." }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "heavy": { "type": "boolean", "default": false, "description": "Use inference.model.heavy instead of inference.model." },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "max_tokens": { "type": "integer", "minimum": 64, "maximum": 32768 },
+        "json_mode": { "type": "boolean" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_iterations": { "type": "integer", "minimum": 1, "maximum": 50, "description": "Agentic loop cap (ignored for single_shot)." },
+        "max_tool_calls": { "type": "integer", "minimum": 0 },
+        "max_artifacts": { "type": "integer", "minimum": 1 },
+        "timeout_seconds": { "type": "integer", "minimum": 10, "maximum": 240 }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["single_shot", "agentic"]
+    },
+    "run": {
+      "type": "object",
+      "description": "How Run/Open behaves (plan D5 run kinds).",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["route", "interview", "job", "agent", "flow", "service"] },
+        "entry_path": { "type": "string", "pattern": "^/", "description": "Cockpit route to open (route kind, or after a run)." },
+        "interview": { "type": "string", "description": "interview kind: path to a questions.yaml relative to the pack." },
+        "job": { "type": "string", "description": "job kind: fully-qualified Job class." },
+        "flow": { "type": "string", "description": "flow kind: flow id." },
+        "service": { "type": "string", "description": "service kind: fully-qualified service class (e.g. App\\Services\\Outreach\\Bot\\RecruiterBot)." },
+        "prompt": { "type": "string", "default": "prompts/task.md", "description": "agent kind: task prompt relative to the card folder." },
+        "post_actions": { "type": "array", "items": { "type": "string" }, "description": "single_shot: actions after the model reply (save_drafts, submit_for_review, file_note...)." }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "route" } } }, "then": { "required": ["entry_path"] } },
+        { "if": { "properties": { "kind": { "const": "interview" } } }, "then": { "required": ["interview"] } },
+        { "if": { "properties": { "kind": { "const": "job" } } }, "then": { "required": ["job"] } },
+        { "if": { "properties": { "kind": { "const": "flow" } } }, "then": { "required": ["flow"] } },
+        { "if": { "properties": { "kind": { "const": "service" } } }, "then": { "required": ["service"] } }
+      ]
+    },
+    "evals": {
+      "type": "object",
+      "description": "Optional pointer to evals/{cases.yaml,rubric.md} (D8 #14).",
+      "additionalProperties": false,
+      "properties": {
+        "cases": { "type": "string" },
+        "rubric": { "type": "string" },
+        "min_score": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "autonomy_level": {
+      "type": "string",
+      "enum": ["human_led", "assisted", "autonomous"]
+    },
+    "brain_path": {
+      "type": "string",
+      "pattern": "^[a-z0-9_\\-<>/.*]+\\.(md|yaml)(#.+)?$|^[a-z0-9_\\-<>/.*]+/\\*\\*$",
+      "description": "A manifest path with optional #section, e.g. brand/voice.md#Tone, people/team/<slug>.md, notes/research/**."
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Another card." },
+        "ref": { "type": "string", "description": "brain:<path>#<section>, principle:<id>, identity:<key>, product:<id>." },
+        "why": { "type": "string" }
+      },
+      "oneOf": [
+        { "required": ["slug"] },
+        { "required": ["ref"] }
+      ]
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["your_role", "atlas_role"],
+      "properties": {
+        "your_role": { "type": "string", "minLength": 10 },
+        "atlas_role": { "type": "string", "minLength": 10, "description": "What the OS (the identity, via its core character) does at this level." },
+        "summary": { "type": "string" },
+        "default": { "type": "boolean" }
+      }
+    }
+  }
+}

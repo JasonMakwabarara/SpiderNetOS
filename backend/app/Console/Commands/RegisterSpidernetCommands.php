@@ -24,9 +24,20 @@ class RegisterSpidernetCommands extends Command
             ReplayDetectDivergence::class,
             SpidernetPackInstall::class,
             SpidernetPackValidate::class,
+            // `php artisan inference:doctor` — ModelArk/DeepSeek end-to-end
+            // preflight (PR 0). The class ships in the inference-doctor change
+            // set; until it lands this line reports "missing" instead of throwing.
+            \App\Console\Commands\InferenceDoctor::class,
+            \App\Console\Commands\VoiceRenderPreviews::class,
         ];
 
         foreach ($commands as $commandClass) {
+            if (! class_exists($commandClass)) {
+                $this->warn("missing:    {$commandClass}");
+
+                continue;
+            }
+
             $this->line("registered: {$commandClass}");
         }
 

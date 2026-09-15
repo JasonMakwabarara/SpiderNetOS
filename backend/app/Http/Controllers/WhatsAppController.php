@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\MessagingNumber;
 use App\Models\SequenceEnrollment;
 use App\Services\EventStore;
+use App\Services\Messaging\OwnerNumberAllowlist;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -21,7 +22,7 @@ class WhatsAppController extends Controller
 {
     private const STOP_KEYWORDS = ['stop', 'unsubscribe', 'cancel', 'opt out', 'optout'];
 
-    public function inbound(Request $request, EventStore $eventStore): Response
+    public function inbound(Request $request, EventStore $eventStore, OwnerNumberAllowlist $owners): Response
     {
         $from = $this->stripWhatsappPrefix((string) $request->input('From', ''));
         $to = $this->stripWhatsappPrefix((string) $request->input('To', ''));
@@ -39,6 +40,22 @@ class WhatsAppController extends Controller
         }
 
         $tenantId = $number->tenant_id;
+
+        // The owner (or a team member) texting their own number is not a
+        // prospect: never create a Lead for them. Route the message to the
+        // owner channel instead (Atlas / the daily brief pick it up from the
+        // event log); opt-out keywords are meaningless here.
+        if ($owners->isOwnerNumber($tenantId, $from)) {
+            $eventStore->append($tenantId, 'tenant', $tenantId, 'owner.message.received', [
+                'channel' => 'whatsapp',
+                'from' => $from,
+                'to' => $to,
+                'body' => $body,
+                'provider_message_id' => $messageSid,
+            ]);
+
+            return response('', 200)->header('Content-Type', 'text/xml');
+        }
 
         $lead = Lead::forTenant($tenantId)->where('whatsapp_number', $from)->first();
         if (! $lead) {

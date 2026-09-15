@@ -192,10 +192,9 @@ async function submitAwareness() {
 </script>
 
 <style scoped>
-.sn-eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
 .sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
 .sn-btn { background: linear-gradient(135deg, #00E5C8, #087D6E); color: #05070A; }
-.sn-input, .sn-textarea {
+.sn-input {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-primary);
@@ -203,5 +202,4 @@ async function submitAwareness() {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
 }
-.sn-textarea { width: 100%; resize: vertical; }
 </style>

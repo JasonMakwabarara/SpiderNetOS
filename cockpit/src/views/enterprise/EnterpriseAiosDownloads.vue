@@ -181,7 +181,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.sn-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); opacity: 0.85; }
 .sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
 .sn-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 .sn-input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); padding: 0.55rem 0.85rem; border-radius: 8px; color: var(--text-primary); outline: none; }

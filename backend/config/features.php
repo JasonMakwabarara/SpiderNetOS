@@ -218,4 +218,86 @@ return [
     /** Public-profile contact enrichment (terms grey area; stays a stub until reviewed). */
     'outreach.profile_enrichment' => env('FEATURE_OUTREACH_PROFILE_ENRICHMENT', 'off'),
 
+    // -----------------------------------------------------------------------
+    // Operating brain — PHP skill runtime (ADR-0002, config/agents.php).
+    // All OFF until a tenant is enabled per skill; the runtime never sends
+    // or publishes directly (every write is a draft/proposal + approval).
+    // -----------------------------------------------------------------------
+
+    /** Master switch: MetaPlanner::dispatchRun() → RunSkillJob on the `agents` queue. */
+    'agents.runtime' => env('FEATURE_AGENTS_RUNTIME', 'off'),
+
+    /** ToolGateway::call() at all (read tools + draft-only writes). */
+    'agents.tools' => env('FEATURE_AGENTS_TOOLS', 'off'),
+
+    /** Allow risk=send tools to be *proposed* (still applied only via ApprovalEngine). */
+    'agents.tools.send' => env('FEATURE_AGENTS_TOOLS_SEND', 'off'),
+
+    /** Allow risk=irreversible tools to be proposed (publish, delete, pay). */
+    'agents.tools.irreversible' => env('FEATURE_AGENTS_TOOLS_IRREVERSIBLE', 'off'),
+
+    /** AgentHeartbeatJob: minute cron that fires scheduled card triggers (needs D8 #4 first). */
+    'agents.heartbeat' => env('FEATURE_AGENTS_HEARTBEAT', 'off'),
+
+    /** SkillTriggerProjection: event_log events start runs (skips automation_level=manual tenants). */
+    'agents.event_triggers' => env('FEATURE_AGENTS_EVENT_TRIGGERS', 'off'),
+
+    /** Native JSON-schema function calling on POST /generate (Phase 4) instead of the text ToolCallParser. */
+    'agents.native_tool_calling' => env('FEATURE_AGENTS_NATIVE_TOOL_CALLING', 'off'),
+
+    /** Shadow autonomy level: run as assisted, record `would_have`, score agreement (D8 #9). */
+    'agents.shadow_mode' => env('FEATURE_AGENTS_SHADOW_MODE', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Knowledge brain — versioned virtual filesystem (brain_files).
+    // -----------------------------------------------------------------------
+
+    /** BrainStore + /api/brain/* (files, tree, versions, proposals, sync). */
+    'brain.enabled' => env('FEATURE_BRAIN_ENABLED', 'on'),
+
+    /** BrainIndexer: chunk → POST /embed → memory_nodes (pgsql only; no-op on sqlite). */
+    'brain.embed' => env('FEATURE_BRAIN_EMBED', 'on'),
+
+    // -----------------------------------------------------------------------
+    // Atlas — brain context, "one step further", research on demand.
+    // -----------------------------------------------------------------------
+
+    /** Append the BRAIN block (AtlasBrainContext) to AtlasPromptStack::systemPrompt(). */
+    'atlas.brain_context' => env('FEATURE_ATLAS_BRAIN_CONTEXT', 'off'),
+
+    /** NEXT/ASK blocks: one proposed next step + exactly one question after every answer. */
+    'atlas.one_more_question' => env('FEATURE_ATLAS_ONE_MORE_QUESTION', 'off'),
+
+    /** Research toggle (/research, context.research=true) → deep-research via Prism. */
+    'atlas.research' => env('FEATURE_ATLAS_RESEARCH', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Atlas voice (cockpit playback; telephony flags are above under voice.*).
+    // -----------------------------------------------------------------------
+
+    /** POST /api/atlas/speak + the cockpit SpeakButton / per-message play. */
+    'voice.atlas_speak' => env('FEATURE_VOICE_ATLAS_SPEAK', 'off'),
+
+    /** Azure Speech provider (en-ZA / en-NG / en-KE personas); ElevenLabs fallback when off. */
+    'voice.azure' => env('FEATURE_VOICE_AZURE', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Cockpit, briefs, newsletters, evals.
+    // -----------------------------------------------------------------------
+
+    /** God's Eye board: GET /api/godseye/snapshot + /gods-eye (all agents, runs, spend at once). */
+    'cockpit.gods_eye' => env('FEATURE_COCKPIT_GODS_EYE', 'off'),
+
+    /** Needs-You Today brief: 07:00 reports/daily + GET /api/today (replaces the dead daily_brief intent). */
+    'brief.enabled' => env('FEATURE_BRIEF_ENABLED', 'off'),
+
+    /** C-Suite newsletter: internal, positive, rides with the Monday letter (never a third-party list). */
+    'newsletter.csuite' => env('FEATURE_NEWSLETTER_CSUITE', 'off'),
+
+    /** Customer newsletter every 12 days via the customer-newsletter skill (always an approval). */
+    'newsletter.customer' => env('FEATURE_NEWSLETTER_CUSTOMER', 'off'),
+
+    /** `skills:eval {slug}` harness over packages/skills/<slug>/evals (CI on card changes). */
+    'skills.eval_harness' => env('FEATURE_SKILLS_EVAL_HARNESS', 'off'),
+
 ];

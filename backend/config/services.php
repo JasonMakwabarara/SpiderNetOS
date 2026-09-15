@@ -12,6 +12,10 @@ return [
         'url' => env('INFERENCE_URL', 'http://localhost:9000'),
         'token' => env('INFERENCE_TOKEN', ''),
         'timeout' => (int) env('INFERENCE_TIMEOUT', 60),
+        // Local checkout of the inference plane, for `inference:doctor` and
+        // `voice:render-previews` (prod: INFERENCE_PATH=/opt/spidernet-inference).
+        'path' => env('INFERENCE_PATH', ''),
+        'python' => env('INFERENCE_PYTHON', ''),
     ],
 
     'intelligence_gateway' => [
