@@ -1,0 +1,18 @@
+# Production is deployed by streaming `git archive` from Windows checkouts,
+# where Git for Windows sets core.autocrlf=true and archives would come out
+# CRLF. Keep LF in the repository, in checkouts and in archives regardless.
+* text=auto eol=lf
+
+# Windows-only launchers keep CRLF in the working tree.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries tracked today. Only mark an extension binary if every tracked file
+# with it is already binary: `git add --renormalize` would otherwise commit the
+# CRLF bytes of a Windows working tree.
+*.png binary
+*.pdf binary
+*.docx binary
+
+# Never add export-ignore here: deploys rsync --delete the archive into
+# production, so an ignored path would be deleted on the server.
