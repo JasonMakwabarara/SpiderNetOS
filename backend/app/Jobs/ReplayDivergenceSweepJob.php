@@ -41,7 +41,10 @@ class ReplayDivergenceSweepJob implements ShouldQueue
                 try {
                     $report = $replayDivergence->detectDivergence((string) $tenantId, (string) $executionId);
 
-                    if (($report['status'] ?? 'clean') !== 'clean') {
+                    // Only a new or changed divergence is worth waking anyone
+                    // for: the service hands back the previous report
+                    // unchanged while nothing moves.
+                    if (($report['status'] ?? 'clean') !== 'clean' && ($report['unchanged'] ?? false) !== true) {
                         Log::warning('Replay divergence detected', [
                             'tenant_id' => (string) $tenantId,
                             'execution_id' => (string) $executionId,

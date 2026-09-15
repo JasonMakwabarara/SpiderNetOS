@@ -7,6 +7,16 @@ use Illuminate\Support\Str;
 
 class ReplayDivergenceService
 {
+    /** Events DagExecutionService writes that move execution or node state. */
+    private const REPLAYED_EVENT_TYPES = [
+        'flow.execution_started',
+        'flow.node_started',
+        'flow.node_completed',
+        'flow.execution_failed',
+        'flow.execution_completed',
+        'approval.required',
+    ];
+
     public function buildExecutionFingerprint(string $tenantId, string $flowId, array $dag, array $context): string
     {
         return hash('sha256', json_encode([
@@ -79,6 +89,7 @@ class ReplayDivergenceService
         // on Postgres the bad column poisons the surrounding transaction).
         $liveNodes = DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
+            ->orderBy('node_id')
             ->get()
             ->keyBy('node_id')
             ->map(function ($n) {
@@ -91,20 +102,17 @@ class ReplayDivergenceService
             })
             ->toArray();
 
+        // DagExecutionService appends flow.* events in EventStore's short form,
+        // so their aggregate is "flow" with a fresh random aggregate_id: the
+        // execution is only named in payload.execution_id (approval.required
+        // carries it there too). Matching on aggregate_id found no events at
+        // all, and every checked execution read as diverged.
+        // Portable JSON path (compiles to ->> on pgsql, json_extract on
+        // sqlite); raw JSON_EXTRACT is MySQL-only and throws on Postgres jsonb.
         $events = DB::table('event_log')
             ->where('tenant_id', $tenantId)
-            ->where(function ($q) use ($executionId) {
-                $q->where(function ($q2) use ($executionId) {
-                    $q2->where('aggregate_type', 'flow_execution')
-                        ->where('aggregate_id', $executionId);
-                })->orWhere(function ($q2) use ($executionId) {
-                    // Portable JSON path (compiles to ->> on pgsql,
-                    // json_extract on sqlite) — raw JSON_EXTRACT is MySQL-only
-                    // and throws on Postgres jsonb.
-                    $q2->where('aggregate_type', 'approval_checkpoint')
-                        ->where('payload->execution_id', (string) $executionId);
-                });
-            })
+            ->whereIn('event_type', self::REPLAYED_EVENT_TYPES)
+            ->where('payload->execution_id', (string) $executionId)
             ->orderBy('sequence_num')
             ->get();
 
@@ -137,12 +145,26 @@ class ReplayDivergenceService
                     break;
                 case 'flow.execution_failed':
                     $replay['execution_status'] = 'failed';
+                    // Exhausted retries fail the node and the execution in one
+                    // step, and the node is only named here as failed_node.
+                    if (!empty($payload['failed_node'])) {
+                        $replay['nodes'][$payload['failed_node']] = array_merge(
+                            $replay['nodes'][$payload['failed_node']] ?? [],
+                            ['status' => 'failed']
+                        );
+                    }
                     break;
                 case 'flow.execution_completed':
                     $replay['execution_status'] = 'completed';
                     break;
                 case 'approval.required':
                     $replay['execution_status'] = 'paused';
+                    if (!empty($payload['node_id'])) {
+                        $replay['nodes'][$payload['node_id']] = array_merge(
+                            $replay['nodes'][$payload['node_id']] ?? [],
+                            ['status' => 'waiting_approval']
+                        );
+                    }
                     break;
             }
         }
@@ -160,19 +182,24 @@ class ReplayDivergenceService
         foreach ($liveNodes as $nodeId => $liveNodeState) {
             $replayedNode = $replay['nodes'][$nodeId] ?? null;
             if (!$replayedNode) {
-                $divergences[] = [
-                    'type' => 'node_missing_in_replay',
-                    'node_id' => $nodeId,
-                ];
+                // A node that never started has no events, which only
+                // diverges when the live row says it got past pending.
+                if (($liveNodeState['status'] ?? null) !== 'pending') {
+                    $divergences[] = [
+                        'type' => 'node_missing_in_replay',
+                        'node_id' => $nodeId,
+                        'live' => $liveNodeState['status'] ?? null,
+                    ];
+                }
                 continue;
             }
 
-            if (($liveNodeState['status'] ?? null) !== ($replayedNode['status'] ?? null)) {
+            if (($liveNodeState['status'] ?? null) !== $replayedNode['status']) {
                 $divergences[] = [
                     'type' => 'node_status_mismatch',
                     'node_id' => $nodeId,
                     'live' => $liveNodeState['status'] ?? null,
-                    'replay' => $replayedNode['status'] ?? null,
+                    'replay' => $replayedNode['status'],
                 ];
             }
         }
@@ -192,7 +219,27 @@ class ReplayDivergenceService
             'divergences' => $divergences,
             'divergence_count' => count($divergences),
             'created_at' => now(),
+            'unchanged' => false,
         ];
+
+        // The sweep re-checks the same executions every ten minutes. An
+        // outcome identical to the last report is not news, so hand that
+        // report back instead of storing (and alerting on) it again.
+        $previous = DB::table('replay_divergence_reports')
+            ->where('tenant_id', $tenantId)
+            ->where('execution_id', $executionId)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($previous
+            && $previous->status === $status
+            && $this->sameDivergences(json_decode($previous->divergences, true) ?? [], $divergences)) {
+            return array_merge($report, [
+                'id' => $previous->id,
+                'created_at' => $previous->created_at,
+                'unchanged' => true,
+            ]);
+        }
 
         DB::table('replay_divergence_reports')->insert([
             'id' => $report['id'],
@@ -226,6 +273,15 @@ class ReplayDivergenceService
                   ->orWhereRaw("JSON_SEARCH(JSON_EXTRACT(metadata, '$.related_agents'), 'one', ?) IS NOT NULL", [$agentId]);
             })
             ->delete();
+    }
+
+    /**
+     * @param  array<int, mixed>  $stored
+     * @param  array<int, mixed>  $current
+     */
+    private function sameDivergences(array $stored, array $current): bool
+    {
+        return json_encode($this->normalize($stored)) === json_encode($this->normalize($current));
     }
 
     private function normalize(mixed $value): mixed
