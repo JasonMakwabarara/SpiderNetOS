@@ -333,6 +333,19 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/autonomy', [OutcomesController::class, 'autonomy']);
         Route::put('/autonomy', [OutcomesController::class, 'updateAutonomy']);
     });
+
+    // ─── Brain / Workspaces / Skills program (ADR-0002) ──────────────
+    // One route file per stream so parallel work never edits this file:
+    //   routes/api/brain.php   → /api/brain/*            (Knowledge brain)
+    //   routes/api/skills.php  → /api/skills/*           (catalogue, cards, run)
+    //   routes/api/agents.php  → /api/agent-runs/*, /api/artifacts/*, /api/agents/breaker
+    //   routes/api/founder.php → /api/today, /api/atlas/sessions/*, /api/notifications/*
+    foreach (['brain', 'skills', 'agents', 'founder'] as $programRoutes) {
+        $programRoutesPath = __DIR__.'/api/'.$programRoutes.'.php';
+        if (is_file($programRoutesPath)) {
+            require $programRoutesPath;
+        }
+    }
 });
 
 // ─── Admin workspace (role:admin) ───────────────────────────────
@@ -594,6 +607,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
 // Backend-internal — called by Python intelligence workers only (never the
 // cockpit). Shared-key auth via X-Internal-Key, tenant scope via X-Tenant-Id.
 Route::prefix('internal')->middleware('internal.key')->group(function () {
+    // Program internal routes (tool gateway / brain reads for the Python plane)
+    if (is_file(__DIR__.'/api/internal.php')) {
+        require __DIR__.'/api/internal.php';
+    }
     Route::post('/sales/leads/{id}/stage', [\App\Http\Controllers\Internal\SalesController::class, 'updateStage']);
     Route::post('/sales/leads/{id}/score', [\App\Http\Controllers\Internal\SalesController::class, 'updateScore']);
     Route::post('/sales/leads/{id}/message', [\App\Http\Controllers\Internal\SalesController::class, 'sendMessage']);

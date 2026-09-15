@@ -29,6 +29,20 @@ class RegisterSpidernetCommands extends Command
             // set; until it lands this line reports "missing" instead of throwing.
             \App\Console\Commands\InferenceDoctor::class,
             \App\Console\Commands\VoiceRenderPreviews::class,
+            // Brain / Workspaces / Skills program (PR 1+). Each class ships in its
+            // own change set; class_exists() below keeps this list additive.
+            \App\Console\Commands\BrainSync::class,
+            \App\Console\Commands\BrainGaps::class,
+            \App\Console\Commands\BrainExport::class,
+            \App\Console\Commands\BrainImport::class,
+            \App\Console\Commands\SkillsSeed::class,
+            \App\Console\Commands\SkillsValidate::class,
+            \App\Console\Commands\SkillsInstall::class,
+            \App\Console\Commands\SkillsEval::class,
+            \App\Console\Commands\AgentsRun::class,
+            \App\Console\Commands\AgentsRuns::class,
+            \App\Console\Commands\AgentsDoctor::class,
+            \App\Console\Commands\BriefToday::class,
         ];
 
         foreach ($commands as $commandClass) {
