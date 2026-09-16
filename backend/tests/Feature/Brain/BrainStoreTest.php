@@ -62,8 +62,11 @@ class BrainStoreTest extends TestCase
             'brain_file_id' => $file->id, 'version' => 1, 'author_type' => 'user', 'author_ref' => 'user-1', 'change_summary' => 'first draft',
         ]);
         $this->assertDatabaseHas('event_log', ['tenant_id' => (string) $tenant->id, 'event_type' => 'brain.file.updated', 'aggregate_id' => $file->id]);
-        $event = Event::where('event_type', 'brain.file.updated')->first();
-        $this->assertSame(['path' => 'business/profile.md', 'version' => 1, 'source' => 'human'], array_intersect_key($event->payload, array_flip(['path', 'version', 'source'])));
+        // Compared key by key: jsonb hands the payload back with its keys re-sorted, so a whole-array assertSame is driver-dependent.
+        $payload = (array) Event::where('event_type', 'brain.file.updated')->first()->payload;
+        $this->assertSame('business/profile.md', $payload['path']);
+        $this->assertSame(1, $payload['version']);
+        $this->assertSame('human', $payload['source']);
     }
 
     public function test_second_write_bumps_version_and_identical_write_is_a_noop(): void

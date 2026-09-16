@@ -8,6 +8,7 @@ use App\Jobs\ResumeAgentRunJob;
 use App\Models\AgentRun;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Approval hook for resource type `agent_tool_call` (config/approvals.php).
@@ -23,7 +24,7 @@ final class AgentRunResumer
 
     public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void
     {
-        $run = AgentRun::forTenant($tenantId)->find($resourceId);
+        $run = Str::isUuid($resourceId) ? AgentRun::forTenant($tenantId)->find($resourceId) : null;
         if ($run === null || $run->status !== AgentRun::STATUS_WAITING_APPROVAL) {
             Log::debug('agent_tool_call approval resolved for a run that is not waiting', ['run_id' => $resourceId, 'status' => $run?->status]);
 

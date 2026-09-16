@@ -12,6 +12,7 @@ use App\Services\Tools\ToolCatalogue;
 use App\Services\Tools\ToolGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * /api/internal/tools/* — the tool gateway for the Python plane and the
@@ -51,7 +52,8 @@ class InternalToolController extends Controller
             'params' => 'sometimes|array',
         ]);
 
-        $run = AgentRun::forTenant($tenantId)->find((string) $validated['run_id']);
+        $runId = (string) $validated['run_id'];
+        $run = Str::isUuid($runId) ? AgentRun::forTenant($tenantId)->find($runId) : null;
         if ($run === null) {
             return response()->json(['message' => 'Run not found.'], 404);
         }

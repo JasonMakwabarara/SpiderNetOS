@@ -68,12 +68,16 @@ class ApprovalHookRegistryTest extends TestCase
 
     public function test_outreach_reply_fires_on_the_single_stage_approve_and_reject_paths(): void
     {
-        $mock = $this->mock(OutreachReplyService::class);
-        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, 'draft-approve', true, 'Looks good.');
-        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, 'draft-reject', false, 'Not our voice.');
+        // approvals.resource_id is a uuid column: Postgres rejects anything else.
+        $draftApprove = (string) Str::uuid();
+        $draftReject = (string) Str::uuid();
 
-        $approveId = $this->approval('outreach_reply', 'draft-approve');
-        $rejectId = $this->approval('outreach_reply', 'draft-reject');
+        $mock = $this->mock(OutreachReplyService::class);
+        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, $draftApprove, true, 'Looks good.');
+        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, $draftReject, false, 'Not our voice.');
+
+        $approveId = $this->approval('outreach_reply', $draftApprove);
+        $rejectId = $this->approval('outreach_reply', $draftReject);
 
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/approvals/{$approveId}/approve", ['reason' => 'Looks good.'])->assertOk()
             ->assertJsonPath('status', 'approved');
@@ -92,11 +96,12 @@ class ApprovalHookRegistryTest extends TestCase
         ]);
         ApprovalPolicyStep::create(['approval_policy_id' => $policy->id, 'step_order' => 1, 'approver_type' => 'role', 'approver_role' => 'admin']);
 
+        $draftChain = (string) Str::uuid();
         $mock = $this->mock(OutreachReplyService::class);
-        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, 'draft-chain', true, 'Ship it.');
+        $mock->shouldReceive('onApprovalResolved')->once()->with((string) $this->tenant->id, $draftChain, true, 'Ship it.');
 
         $approval = app(ApprovalEngine::class)->createChainedApproval(
-            (string) $this->tenant->id, (string) $this->admin->id, 'outreach_reply', 'outreach_reply', 'draft-chain', 'test', ['action' => 'submit'],
+            (string) $this->tenant->id, (string) $this->admin->id, 'outreach_reply', 'outreach_reply', $draftChain, 'test', ['action' => 'submit'],
         );
         $this->assertSame(1, $approval['current_step']);
 
@@ -107,7 +112,7 @@ class ApprovalHookRegistryTest extends TestCase
     public function test_a_hook_whose_class_is_missing_is_skipped_without_failing_the_approval(): void
     {
         config()->set('approvals.resource_hooks.ghost_thing', ['App\\Nope\\GhostService', 'onApprovalResolved']);
-        $id = $this->approval('ghost_thing', 'g-1');
+        $id = $this->approval('ghost_thing', (string) Str::uuid());
 
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/approvals/{$id}/approve", ['reason' => 'ok'])->assertOk();
 

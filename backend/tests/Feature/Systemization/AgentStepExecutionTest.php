@@ -11,7 +11,10 @@ use App\Models\BusinessSystem;
 use App\Models\Flow;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\DagExecutionService;
+use App\Services\Systemization\ProcessRunRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -28,6 +31,7 @@ class AgentStepExecutionTest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private BusinessProcess $process;
 
     protected function setUp(): void
@@ -37,7 +41,7 @@ class AgentStepExecutionTest extends TestCase
         $this->tenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Runtime Co',
-            'slug' => 'runtime-' . Str::lower(Str::random(6)),
+            'slug' => 'runtime-'.Str::lower(Str::random(6)),
             'status' => 'active',
             'plan' => 'growth',
         ]);
@@ -45,7 +49,7 @@ class AgentStepExecutionTest extends TestCase
         Sanctum::actingAs(User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Founder',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),
@@ -196,6 +200,11 @@ class AgentStepExecutionTest extends TestCase
             'inference.model' => 'deepseek-v4-pro',
             'inference.ark_model_id' => 'ep-custom-arkendpoint-123',
         ]));
+        // FeatureFlag::value() memoises for 5s through the cache store; on a
+        // shared store (the Postgres lane ran on Redis) an earlier test's
+        // resolution of these two flags would outlive this override.
+        Cache::forget('featureflag:inference.model');
+        Cache::forget('featureflag:inference.ark_model_id');
 
         $this->publishSopAndAssignAgent();
         $this->postJson("/api/systemization/processes/{$this->process->id}/run")->assertOk();
@@ -257,7 +266,7 @@ class AgentStepExecutionTest extends TestCase
             'updated_at' => now()->subHour(),
         ]);
 
-        (new FailStaleExecutionNodesJob())->handle(app(\App\Services\DagExecutionService::class));
+        (new FailStaleExecutionNodesJob)->handle(app(DagExecutionService::class));
 
         $this->assertSame('failed', DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)->where('node_id', 'step_1')->value('status'));
@@ -283,7 +292,7 @@ class AgentStepExecutionTest extends TestCase
             'updated_at' => now()->subMinutes(2),
         ]);
 
-        (new SystemizationRunSweepJob())->handle(app(\App\Services\Systemization\ProcessRunRecorder::class));
+        (new SystemizationRunSweepJob)->handle(app(ProcessRunRecorder::class));
 
         $this->process->refresh();
         $this->assertSame('passed', $this->process->last_run_status);
@@ -291,7 +300,7 @@ class AgentStepExecutionTest extends TestCase
 
         // Idempotent: sweeping again with no new execution changes nothing.
         $before = $this->process->updated_at;
-        (new SystemizationRunSweepJob())->handle(app(\App\Services\Systemization\ProcessRunRecorder::class));
+        (new SystemizationRunSweepJob)->handle(app(ProcessRunRecorder::class));
         $this->assertSame($executionId, $this->process->fresh()->last_execution_id);
     }
 }

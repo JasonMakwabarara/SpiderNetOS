@@ -9,6 +9,7 @@ use App\Models\SkillRelation;
 use App\Services\Skills\SkillCatalogue;
 use App\Services\Skills\SkillRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\Yaml\Yaml;
 use Tests\TestCase;
 
 /**
@@ -110,7 +111,15 @@ class SkillCatalogueSeedTest extends TestCase
 
         $replaces = $edges->where('relation', SkillRelation::REPLACES)->values();
         $this->assertCount(3, $replaces);
-        $this->assertSame(['what' => "An SDR's core written output", 'cost' => '$60–80k/yr', 'kind' => 'salary', 'note' => 'The sequence writing, not the sending or the judgement.'], $replaces[0]->meta);
+        // The seed stores exactly what the card says; compare against the card, key order aside (jsonb re-sorts it).
+        $cardReplaces = (array) (Yaml::parseFile(rtrim((string) config('agents.skills_root'), '/').'/cold-email-drafting/card.yaml')['replaces'][0] ?? []);
+        $this->assertSame("An SDR's core written output", $cardReplaces['what']);
+        $expected = ['what' => null, 'cost' => null, 'kind' => null, 'note' => null];
+        $expected = array_replace($expected, array_intersect_key($cardReplaces, $expected));
+        $meta = (array) $replaces[0]->meta;
+        ksort($expected);
+        ksort($meta);
+        $this->assertSame($expected, $meta);
         $this->assertSame('undone', $replaces[2]->meta['kind']);
 
         $handsOff = $edges->where('relation', SkillRelation::HANDS_OFF_TO)->values();

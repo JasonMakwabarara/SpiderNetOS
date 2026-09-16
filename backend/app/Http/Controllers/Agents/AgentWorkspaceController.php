@@ -11,6 +11,7 @@ use App\Models\TenantSkill;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * /api/agent-workspaces — the God's Eye board, server-side: one row per
@@ -64,8 +65,9 @@ class AgentWorkspaceController extends AgentsController
     public function show(Request $request, string $slug): JsonResponse
     {
         $tenantId = $this->tenantId($request);
+        // Slug first; the id fallback only runs for a real uuid (Postgres rejects anything else with a 500).
         $workspace = AgentWorkspace::forTenant($tenantId)->with('agent')->where('slug', $slug)->first()
-            ?? AgentWorkspace::forTenant($tenantId)->with('agent')->find($slug);
+            ?? (Str::isUuid($slug) ? AgentWorkspace::forTenant($tenantId)->with('agent')->find($slug) : null);
         if ($workspace === null) {
             return response()->json(['error' => 'workspace_not_found'], 404);
         }

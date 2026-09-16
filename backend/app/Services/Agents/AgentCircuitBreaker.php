@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * AgentCircuitBreaker (plan D8 #6).
@@ -31,6 +32,16 @@ use Illuminate\Support\Facades\Schema;
 class AgentCircuitBreaker
 {
     public const RISK_ORDER = ['read' => 0, 'write' => 1, 'send' => 2, 'irreversible' => 3];
+
+    /**
+     * Tables seen to exist, memoised per process. isPaused() runs on every
+     * tool call, often inside a transaction; on Postgres an information_schema
+     * probe after any failed statement dies with "current transaction is
+     * aborted", so the schema is checked once and only a positive answer is kept.
+     *
+     * @var array<string, true>
+     */
+    private static array $tables = [];
 
     /** Tool risks a demoted scope may no longer use. */
     public const DEMOTED_BLOCKS = ['send', 'irreversible'];
@@ -49,7 +60,7 @@ class AgentCircuitBreaker
      */
     public function isPaused(string $tenantId, ?string $agentId = null, ?string $skillSlug = null, ?string $toolRisk = null): ?string
     {
-        if (! Schema::hasTable('tenant_agent_states')) {
+        if (! self::hasTable('tenant_agent_states')) {
             return null;
         }
 
@@ -131,7 +142,7 @@ class AgentCircuitBreaker
     /** @return list<array<string, mixed>> every state row for the tenant (tripped first). */
     public function states(string $tenantId): array
     {
-        if (! Schema::hasTable('tenant_agent_states')) {
+        if (! self::hasTable('tenant_agent_states')) {
             return [];
         }
 
@@ -152,7 +163,7 @@ class AgentCircuitBreaker
      */
     public function evaluate(string $tenantId, string $skillSlug): ?string
     {
-        if (! Schema::hasTable('tenant_agent_states')) {
+        if (! self::hasTable('tenant_agent_states')) {
             return null;
         }
 
@@ -192,11 +203,11 @@ class AgentCircuitBreaker
 
     private function consecutiveRejections(string $tenantId, string $skillSlug, int $n, ?Carbon $since): ?string
     {
-        if ($n <= 0 || ! Schema::hasTable('approvals')) {
+        if ($n <= 0 || ! self::hasTable('approvals')) {
             return null;
         }
 
-        $artifactApprovalIds = Schema::hasTable('agent_artifacts')
+        $artifactApprovalIds = self::hasTable('agent_artifacts')
             ? DB::table('agent_artifacts')->where('tenant_id', $tenantId)->where('skill_slug', $skillSlug)
                 ->whereNotNull('approval_id')->pluck('approval_id')->all()
             : [];
@@ -233,7 +244,7 @@ class AgentCircuitBreaker
 
     private function validatorRejectRate(string $tenantId, string $skillSlug, float $rate, int $window, ?Carbon $since): ?string
     {
-        if ($window <= 0 || ! Schema::hasTable('agent_runs') || ! Schema::hasTable('agent_run_steps')) {
+        if ($window <= 0 || ! self::hasTable('agent_runs') || ! self::hasTable('agent_run_steps')) {
             return null;
         }
 
@@ -325,7 +336,7 @@ class AgentCircuitBreaker
 
     private function dropAutonomyRung(string $tenantId, string $skillSlug, TenantAgentState $state): void
     {
-        if (! Schema::hasTable('tenant_skills')) {
+        if (! self::hasTable('tenant_skills')) {
             return;
         }
         $skill = TenantSkill::forTenant($tenantId)->where('skill_slug', $skillSlug)->first();
@@ -354,7 +365,7 @@ class AgentCircuitBreaker
 
     private function restoreAutonomyRung(string $tenantId, string $skillSlug, string $level): void
     {
-        if (! Schema::hasTable('tenant_skills') || ! in_array($level, TenantSkill::AUTONOMY_LEVELS, true)) {
+        if (! self::hasTable('tenant_skills') || ! in_array($level, TenantSkill::AUTONOMY_LEVELS, true)) {
             return;
         }
         TenantSkill::forTenant($tenantId)->where('skill_slug', $skillSlug)->update(['autonomy_level' => $level, 'updated_at' => now()]);
@@ -395,7 +406,8 @@ class AgentCircuitBreaker
 
     private function agentSlug(string $tenantId, ?string $agentId): ?string
     {
-        if ($agentId === null || ! Schema::hasTable('agents')) {
+        // agents.id is a uuid column; a slug or any other hint is matched directly in matches().
+        if ($agentId === null || ! Str::isUuid($agentId) || ! self::hasTable('agents')) {
             return null;
         }
         try {
@@ -405,6 +417,20 @@ class AgentCircuitBreaker
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private static function hasTable(string $table): bool
+    {
+        if (isset(self::$tables[$table])) {
+            return true;
+        }
+        if (Schema::hasTable($table)) {
+            self::$tables[$table] = true;
+
+            return true;
+        }
+
+        return false;
     }
 
     private function assertScope(string $scope): string

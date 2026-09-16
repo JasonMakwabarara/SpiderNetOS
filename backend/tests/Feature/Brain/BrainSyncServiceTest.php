@@ -119,6 +119,25 @@ class BrainSyncServiceTest extends TestCase
         ]);
     }
 
+    /**
+     * Recursive ksort so two arrays with the same keys and values compare
+     * equal under assertSame regardless of the order the driver returned them in.
+     *
+     * @param  array<array-key, mixed>  $data
+     * @return array<array-key, mixed>
+     */
+    private static function keySorted(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = self::keySorted($value);
+            }
+        }
+        ksort($data);
+
+        return $data;
+    }
+
     private function seedOutreach(): void
     {
         $settings = app(OutreachSettings::class);
@@ -240,7 +259,10 @@ class BrainSyncServiceTest extends TestCase
 
         $file = $this->store->read($tenantId, 'programs/affiliate.md');
         $this->assertNotNull($file);
-        $this->assertSame(app(OutreachSettings::class)->for($this->tenant->fresh())['program'], $file->frontmatter);
+        // Same facts, same scalar types; key order is the driver's business (jsonb re-sorts it).
+        $expected = BrainMarkdown::normalizeScalars(app(OutreachSettings::class)->for($this->tenant->fresh())['program']);
+        $this->assertSame(self::keySorted($expected), self::keySorted((array) $file->frontmatter));
+        $this->assertSame(30, $file->frontmatter['commission_pct']);
         $this->assertTrue($file->managed, 'the affiliate file is wholly projection-owned');
         $facts = BrainMarkdown::section($file->content, 'Facts');
         $this->assertStringContainsString('Commission: 30% for 12 months', $facts);

@@ -43,7 +43,29 @@ final class BrainMarkdown
             $parsed = [];
         }
 
-        return [is_array($parsed) ? $parsed : [], $body];
+        return [is_array($parsed) ? self::normalizeScalars($parsed) : [], $body];
+    }
+
+    /**
+     * Frontmatter scalars in one deterministic shape on every path in and out
+     * of the store: ints stay ints, and a float that carries no fraction
+     * (30.0 from a YAML or JSON round-trip) comes back as the int it was.
+     * Strings, bools and nulls are left exactly as they are.
+     *
+     * @param  array<array-key, mixed>  $data
+     * @return array<array-key, mixed>
+     */
+    public static function normalizeScalars(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = self::normalizeScalars($value);
+            } elseif (is_float($value) && is_finite($value) && floor($value) === $value && abs($value) < PHP_INT_MAX) {
+                $data[$key] = (int) $value;
+            }
+        }
+
+        return $data;
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Services\EventStore;
 use App\Services\Tools\Drafts\DraftsSubmitForReviewTool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Approval hook for resource type `agent_artifact` (config/approvals.php).
@@ -34,8 +35,11 @@ final class AgentArtifactApprovals
 
     public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void
     {
-        $artifact = AgentArtifact::forTenant($tenantId)->find($resourceId)
-            ?? AgentArtifact::forTenant($tenantId)->where('approval_id', $resourceId)->orderByRaw("case when kind = 'draft_sequence' then 0 else 1 end")->first();
+        // id and approval_id are uuid columns; a non-uuid resource id can only be "unknown".
+        $artifact = Str::isUuid($resourceId)
+            ? (AgentArtifact::forTenant($tenantId)->find($resourceId)
+                ?? AgentArtifact::forTenant($tenantId)->where('approval_id', $resourceId)->orderByRaw("case when kind = 'draft_sequence' then 0 else 1 end")->first())
+            : null;
 
         if ($artifact === null) {
             Log::warning('agent_artifact approval resolved for an unknown artifact', ['tenant_id' => $tenantId, 'resource_id' => $resourceId]);

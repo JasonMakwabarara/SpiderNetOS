@@ -461,7 +461,9 @@ final class BrainSyncService
         if ($c['outreach'] === null) {
             return [];
         }
-        $program = (array) ($c['outreach']['program'] ?? []);
+        // The frontmatter is the program facts verbatim, scalars normalised so
+        // the projection reads identically whether the column is json or jsonb.
+        $program = BrainMarkdown::normalizeScalars((array) ($c['outreach']['program'] ?? []));
 
         $facts = self::lines([
             ! empty($program['brand']) ? 'Brand: '.$program['brand'] : null,

@@ -155,7 +155,8 @@ final class ArtifactApplier
                 $variants[] = ['key' => 'a', 'subject' => $subject, 'body' => $body];
             }
 
-            $child = ! empty($step['artifact_id']) ? AgentArtifact::forTenant($tenantId)->find((string) $step['artifact_id']) : null;
+            $childId = (string) ($step['artifact_id'] ?? '');
+            $child = Str::isUuid($childId) ? AgentArtifact::forTenant($tenantId)->find($childId) : null;
             if ($child !== null) {
                 $childMeta = (array) $child->meta;
                 $original = (string) ($childMeta['original_content'] ?? '');

@@ -11,6 +11,7 @@ use App\Models\AgentRunStep;
 use App\Services\Agents\Exceptions\AgentRuntimeException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Shared serialisation + error mapping for the runtime controllers.
@@ -25,6 +26,38 @@ abstract class AgentsController extends Controller
     protected function fail(AgentRuntimeException $e): JsonResponse
     {
         return response()->json($e->toResponse(), $e->httpStatus);
+    }
+
+    /**
+     * Tenant-scoped run lookup that never queries a uuid column with a
+     * non-uuid value: Postgres raises `invalid input syntax for type uuid`
+     * (and aborts the surrounding transaction) where sqlite just finds nothing.
+     */
+    protected function findRun(Request $request, string $id): ?AgentRun
+    {
+        return Str::isUuid($id) ? AgentRun::forTenant($this->tenantId($request))->find($id) : null;
+    }
+
+    protected function findArtifact(Request $request, string $id): ?AgentArtifact
+    {
+        return Str::isUuid($id) ? AgentArtifact::forTenant($this->tenantId($request))->find($id) : null;
+    }
+
+    /**
+     * Comma-separated query filter values; when the column is a uuid, drop
+     * anything that is not one so the query stays valid on every driver (an
+     * all-invalid filter matches nothing, which is what "no such id" means).
+     *
+     * @return list<string>
+     */
+    protected function filterValues(Request $request, string $key, bool $uuid = false): array
+    {
+        $values = array_values(array_filter(array_map('trim', explode(',', (string) $request->query($key, ''))), fn (string $v): bool => $v !== ''));
+        if ($uuid) {
+            $values = array_values(array_filter($values, fn (string $v): bool => Str::isUuid($v)));
+        }
+
+        return $values;
     }
 
     /** @return array<string, mixed> */

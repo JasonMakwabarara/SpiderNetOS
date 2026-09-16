@@ -28,10 +28,10 @@ class ArtifactController extends AgentsController
     {
         $query = AgentArtifact::forTenant($this->tenantId($request))->orderByDesc('created_at');
 
-        foreach (['run_id', 'kind', 'status', 'workspace_id', 'skill_slug'] as $filter) {
-            $value = (string) $request->query($filter, '');
-            if ($value !== '') {
-                $query->whereIn($filter, array_filter(array_map('trim', explode(',', $value))));
+        // run_id / workspace_id are uuid columns: a non-uuid filter matches nothing rather than erroring on Postgres.
+        foreach (['run_id' => true, 'kind' => false, 'status' => false, 'workspace_id' => true, 'skill_slug' => false] as $filter => $uuid) {
+            if ((string) $request->query($filter, '') !== '') {
+                $query->whereIn($filter, $this->filterValues($request, $filter, $uuid));
             }
         }
 
@@ -43,7 +43,7 @@ class ArtifactController extends AgentsController
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $artifact = AgentArtifact::forTenant($this->tenantId($request))->find($id);
+        $artifact = $this->findArtifact($request, $id);
         if ($artifact === null) {
             return response()->json(['error' => 'artifact_not_found'], 404);
         }
@@ -59,7 +59,7 @@ class ArtifactController extends AgentsController
             'title' => 'nullable|string|max:255',
         ]);
 
-        $artifact = AgentArtifact::forTenant($this->tenantId($request))->find($id);
+        $artifact = $this->findArtifact($request, $id);
         if ($artifact === null) {
             return response()->json(['error' => 'artifact_not_found'], 404);
         }
@@ -107,7 +107,7 @@ class ArtifactController extends AgentsController
 
     public function submit(Request $request, string $id, RunContextFactory $contexts, DraftsSubmitForReviewTool $tool): JsonResponse
     {
-        $artifact = AgentArtifact::forTenant($this->tenantId($request))->find($id);
+        $artifact = $this->findArtifact($request, $id);
         if ($artifact === null) {
             return response()->json(['error' => 'artifact_not_found'], 404);
         }
@@ -139,7 +139,7 @@ class ArtifactController extends AgentsController
 
     public function apply(Request $request, string $id, ArtifactApplier $applier): JsonResponse
     {
-        $artifact = AgentArtifact::forTenant($this->tenantId($request))->find($id);
+        $artifact = $this->findArtifact($request, $id);
         if ($artifact === null) {
             return response()->json(['error' => 'artifact_not_found'], 404);
         }

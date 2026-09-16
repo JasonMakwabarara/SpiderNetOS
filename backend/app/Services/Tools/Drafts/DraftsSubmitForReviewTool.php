@@ -12,6 +12,7 @@ use App\Services\ApprovalEngine;
 use App\Services\Tools\ToolContract;
 use App\Services\Tools\ToolResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Turn a draft artifact into ONE `agent_artifact` approval. For a
@@ -62,7 +63,8 @@ final class DraftsSubmitForReviewTool implements ToolContract
 
     public function execute(RunContext $ctx, array $params): ToolResult
     {
-        $artifact = AgentArtifact::forTenant($ctx->tenantId)->find((string) ($params['artifact_id'] ?? ''));
+        $artifactId = (string) ($params['artifact_id'] ?? '');
+        $artifact = Str::isUuid($artifactId) ? AgentArtifact::forTenant($ctx->tenantId)->find($artifactId) : null;
         if ($artifact === null) {
             return ToolResult::fail('artifact_not_found');
         }

@@ -22,17 +22,18 @@ class AgentRunController extends AgentsController
     {
         $query = AgentRun::forTenant($this->tenantId($request))->orderByDesc('created_at');
 
-        if (($status = (string) $request->query('status', '')) !== '') {
-            $query->whereIn('status', array_filter(array_map('trim', explode(',', $status))));
+        if (($status = $this->filterValues($request, 'status')) !== []) {
+            $query->whereIn('status', $status);
         }
         if (($skill = (string) $request->query('skill', '')) !== '') {
             $query->where('skill_slug', $skill);
         }
-        if (($agentId = (string) $request->query('agent_id', '')) !== '') {
-            $query->where('agent_id', $agentId);
+        // agent_id / workspace_id are uuid columns: a non-uuid filter matches nothing rather than erroring on Postgres.
+        if ((string) $request->query('agent_id', '') !== '') {
+            $query->whereIn('agent_id', $this->filterValues($request, 'agent_id', uuid: true));
         }
-        if (($workspaceId = (string) $request->query('workspace_id', '')) !== '') {
-            $query->where('workspace_id', $workspaceId);
+        if ((string) $request->query('workspace_id', '') !== '') {
+            $query->whereIn('workspace_id', $this->filterValues($request, 'workspace_id', uuid: true));
         }
 
         $page = $query->paginate(max(1, min(100, (int) $request->query('per_page', 20))));
@@ -91,7 +92,7 @@ class AgentRunController extends AgentsController
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $run = AgentRun::forTenant($this->tenantId($request))->find($id);
+        $run = $this->findRun($request, $id);
         if ($run === null) {
             return response()->json(['error' => 'run_not_found'], 404);
         }
@@ -101,7 +102,7 @@ class AgentRunController extends AgentsController
 
     public function trace(Request $request, string $id): JsonResponse
     {
-        $run = AgentRun::forTenant($this->tenantId($request))->find($id);
+        $run = $this->findRun($request, $id);
         if ($run === null) {
             return response()->json(['error' => 'run_not_found'], 404);
         }
@@ -116,7 +117,7 @@ class AgentRunController extends AgentsController
 
     public function cancel(Request $request, string $id): JsonResponse
     {
-        $run = AgentRun::forTenant($this->tenantId($request))->find($id);
+        $run = $this->findRun($request, $id);
         if ($run === null) {
             return response()->json(['error' => 'run_not_found'], 404);
         }
@@ -131,7 +132,7 @@ class AgentRunController extends AgentsController
 
     public function retry(Request $request, string $id): JsonResponse
     {
-        $run = AgentRun::forTenant($this->tenantId($request))->find($id);
+        $run = $this->findRun($request, $id);
         if ($run === null) {
             return response()->json(['error' => 'run_not_found'], 404);
         }
@@ -154,7 +155,7 @@ class AgentRunController extends AgentsController
             'answers.*.text' => 'required|string|max:20000',
         ]);
 
-        $run = AgentRun::forTenant($this->tenantId($request))->find($id);
+        $run = $this->findRun($request, $id);
         if ($run === null) {
             return response()->json(['error' => 'run_not_found'], 404);
         }
