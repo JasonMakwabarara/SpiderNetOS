@@ -192,7 +192,13 @@ class InboxPollTest extends OutreachTestCase
             && $m->subjectLine === 'Re: Partnering with Hannah AI: 30% recurring for your audience'
             && str_contains($m->bodyText, 'Monthly via Affonso'));
 
-        $out = ConversationMessage::forTenant($this->tenant->id)->where('direction', 'out')->orderByDesc('created_at')->first();
+        // Select the operator reply by what it says, not by created_at: the invite
+        // and the reply are written in the same second, and Postgres timestamps are
+        // second-precision, so "latest" is non-deterministic there (sqlite happens
+        // to return insertion order).
+        $out = ConversationMessage::forTenant($this->tenant->id)->where('direction', 'out')
+            ->where('body', 'like', '%Monthly via Affonso%')->first();
+        $this->assertNotNull($out);
         $this->assertSame('q@creator.test', $out->in_reply_to);
         $this->assertSame((string) $this->admin->id, $out->sent_by);
 
