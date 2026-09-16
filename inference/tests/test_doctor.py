@@ -349,10 +349,13 @@ def test_inference_generate_pass_when_served_by_modelark_and_warn_on_fallback():
 
 
 def test_tts_names_only():
-    check = check_tts({"ELEVENLABS_API_KEY": "el-secret-value-123456", "AZURE_SPEECH_KEY": "az", "AZURE_SPEECH_REGION": "southafricanorth", "DEEPGRAM_API_KEY": "dg"})
+    check = check_tts({"ELEVENLABS_API_KEY": "el-secret-value-123456", "FISH_AUDIO_API_KEY": "fish-secret", "INTRON_API_KEY": "intron-secret",
+                       "AZURE_SPEECH_KEY": "az", "AZURE_SPEECH_REGION": "southafricanorth", "DEEPGRAM_API_KEY": "dg"})
     assert check.status == PASS
-    assert "azure/elevenlabs" in check.detail and "deepgram" in check.detail
-    assert "el-secret-value-123456" not in check.detail
+    assert "tts=elevenlabs/fishaudio/intron/azure" in check.detail and "deepgram" in check.detail
+    assert "el-secret-value-123456" not in check.detail and "fish-secret" not in check.detail and "intron-secret" not in check.detail
+    assert check_tts({"FISH_AUDIO_API_KEY": "f"}).status == PASS
+    assert check_tts({"INTRON_API_KEY": "i"}).status == PASS
 
     assert check_tts({}).status == WARN
     assert check_tts({"PIPER_URL": "http://localhost:5000"}).status == WARN

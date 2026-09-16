@@ -337,12 +337,16 @@ def check_inference_generate(client: httpx.Client, base_url: str, model: str, la
 def check_tts(env: Mapping[str, str]) -> Check:
     """Names only. Which speech providers have credentials configured."""
     configured = []
-    if env.get("AZURE_SPEECH_KEY") and env.get("AZURE_SPEECH_REGION"):
-        configured.append("azure")
     if env.get("ELEVENLABS_API_KEY"):
         configured.append("elevenlabs")
+    if env.get("FISH_AUDIO_API_KEY"):
+        configured.append("fishaudio")
+    if env.get("INTRON_API_KEY"):
+        configured.append("intron")
     if env.get("PIPER_URL"):
         configured.append("piper")
+    if env.get("AZURE_SPEECH_KEY") and env.get("AZURE_SPEECH_REGION"):
+        configured.append("azure")  # disabled by default for voice previews; listed for completeness
     stt = []
     if env.get("DEEPGRAM_API_KEY"):
         stt.append("deepgram")

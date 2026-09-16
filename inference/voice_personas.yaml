@@ -1,0 +1,1081 @@
+# SpiderNetOS — Atlas voice persona catalogue (plan D7 §7, slice 0) — v2
+#
+# Jason (2026-09-16): "I do not like any of the Azure voice options." Every Azure persona has been
+# removed. The Azure renderer stays in voice_previews.py behind --include-azure (providers.azure
+# below is disabled_by_default) for any future catalogue that lists Azure voices.
+#
+# Read by inference/voice_previews.py (renders the listening page) and, in PR 5, by
+# VoicePersonaSeeder into the voice_personas table. One entry per candidate voice.
+#
+# Fields: slug, display_name, provider (elevenlabs|fishaudio|intron|piper|azure), provider_voice_id,
+#   language, accent, gender, style, style_degree, rate, pitch, output_format,
+#   cost_per_1k_chars (null = unverified — re-check pricing before setting),
+#   tags[], recommended_for[] (atlas | board:<seat> | character:<slug>), consent {type: stock}.
+# Optional: kind: design (ElevenLabs Voice Design candidate: voice_description, design_model_id, seed),
+#   discover {accent|title, language} for placeholders, fish_model, intron {voice_language,
+#   voice_accent, voice_gender}, notes.
+#
+# Providers and what they need (endpoints verified against vendor docs 2026-09-16):
+#   elevenlabs  ELEVENLABS_API_KEY   POST /v1/text-to-speech/{id} (eleven_multilingual_v2);
+#                                    GET /v1/shared-voices?accent=…; POST /v1/text-to-voice/design
+#                                    (eleven_multilingual_ttv_v2) -> previews[]{audio_base_64, generated_voice_id}
+#   fishaudio   FISH_AUDIO_API_KEY   POST https://api.fish.audio/v1/tts, header model: s2.1-pro, reference_id;
+#                                    GET https://api.fish.audio/model?title=… (public library)
+#   intron      INTRON_API_KEY       POST https://infer.voice.intron.io/tts/v1/enqueue -> data.text_id;
+#                                    GET …/tts/v1/status/{text_id} -> TTS_TEXT_AUDIO_GENERATED + audio_path
+#   piper       PIPER_URL            local HTTP server, POST /synthesize (as speech.py)
+#   azure       AZURE_SPEECH_KEY + AZURE_SPEECH_REGION — disabled by default, no personas listed
+#
+# Board seats (D7 §6): offer_architect, producer, leverage_philosopher, compounder, greenlight;
+# the chairman uses the tenant's Atlas persona. Characters (D5): hannah, forge, sentinel, prism, nexus.
+# Atlas default candidate: elevenlabs-design-zimbabwean-man. Seats are spread across providers; the
+# first persona in file order that lists a seat is the one the page preselects.
+
+version: 2
+sample_lines_note: Rendered lines live in inference/voice_previews.py (SAMPLE_LINES); voice design uses all three
+  in one clip.
+providers:
+  elevenlabs:
+    env:
+    - ELEVENLABS_API_KEY
+    disabled_by_default: false
+  fishaudio:
+    env:
+    - FISH_AUDIO_API_KEY
+    disabled_by_default: false
+    model: s2.1-pro
+  intron:
+    env:
+    - INTRON_API_KEY
+    disabled_by_default: false
+  piper:
+    env:
+    - PIPER_URL
+    disabled_by_default: false
+  azure:
+    env:
+    - AZURE_SPEECH_KEY
+    - AZURE_SPEECH_REGION
+    disabled_by_default: true
+    note: Removed at Jason's request (2026-09-16). Renderer kept; pass --include-azure to enable.
+personas:
+- slug: elevenlabs-design-zimbabwean-man
+  display_name: Voice Design — Zimbabwean man, 50s (Atlas default candidate)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Zimbabwean English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - zimbabwean
+  recommended_for:
+  - atlas
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A wise, calm Zimbabwean man in his 50s. Crisp diction, warm and unhurried, Southern African
+    English. Sounds like a trusted chairman giving a clear verdict: precise, kind, never rushed.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 41
+  notes: Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is created
+    in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice (voice_name, voice_description,
+    generated_voice_id) — documented, not automatic.
+- slug: elevenlabs-design-kenyan-man
+  display_name: Voice Design — Kenyan man, 40s
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Kenyan English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - kenyan
+  recommended_for:
+  - board:compounder
+  consent:
+    type: stock
+  kind: design
+  voice_description: A composed Kenyan man in his 40s, East African English. Measured and precise, warm but direct,
+    a calm executive adviser who explains numbers without hurry.
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 42
+  notes: Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is created
+    in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice (voice_name, voice_description,
+    generated_voice_id) — documented, not automatic.
+- slug: elevenlabs-design-nigerian-man
+  display_name: Voice Design — Nigerian man, 40s
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Nigerian English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - nigerian
+  recommended_for:
+  - board:offer_architect
+  consent:
+    type: stock
+  kind: design
+  voice_description: A confident Nigerian man in his 40s, West African English. Crisp and articulate, warm authority,
+    unhurried; a seasoned strategist who states the decision and the reason.
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 43
+  notes: Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is created
+    in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice (voice_name, voice_description,
+    generated_voice_id) — documented, not automatic.
+- slug: elevenlabs-design-south-african-woman
+  display_name: Voice Design — South African woman, 40s
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: South African English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - south
+  recommended_for:
+  - board:greenlight
+  consent:
+    type: stock
+  kind: design
+  voice_description: A warm, wise South African woman in her 40s, clear Southern African English. Calm, precise
+    and encouraging; a mentor who is direct and kind, never saccharine.
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 44
+  notes: Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is created
+    in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice (voice_name, voice_description,
+    generated_voice_id) — documented, not automatic.
+- slug: elevenlabs-nz-nigerian-man
+  display_name: NZ The African Man – Nigerian Voice Pro
+  provider: elevenlabs
+  provider_voice_id: gsyHQ9kWCDIipR26RqQ1
+  language: en
+  accent: Nigerian English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - nigerian
+  - warm
+  - deep
+  recommended_for:
+  - character:forge
+  - atlas
+  consent:
+    type: stock
+  notes: ElevenLabs voice library entry; rendered with eleven_multilingual_v2.
+- slug: elevenlabs-olufunmilola
+  display_name: Olufunmilola
+  provider: elevenlabs
+  provider_voice_id: 9Dbo4hEvXQ5l7MXGZFQA
+  language: en
+  accent: Nigerian English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - nigerian
+  - warm
+  recommended_for:
+  - character:hannah
+  consent:
+    type: stock
+  notes: ElevenLabs voice library entry; rendered with eleven_multilingual_v2.
+- slug: elevenlabs-library-nigerian-1
+  display_name: Library voice — Nigerian English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Nigerian English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - nigerian
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: nigerian
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-south-african-1
+  display_name: Library voice — South African English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: South African English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - south-african
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: south african
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-kenyan-1
+  display_name: Library voice — Kenyan English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Kenyan English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - kenyan
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: kenyan
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-ghanaian-1
+  display_name: Library voice — Ghanaian English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Ghanaian English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - ghanaian
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: ghanaian
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-zimbabwean-1
+  display_name: Library voice — Zimbabwean English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Zimbabwean English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - zimbabwean
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: zimbabwean
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: fishaudio-zimbabwe-male
+  display_name: African Male from Zimbabwe
+  provider: fishaudio
+  provider_voice_id: 7e484c38e51d4de5a5bef5bd7e115572
+  language: en
+  accent: Zimbabwean English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - zimbabwean
+  - deep
+  - calm
+  - serious
+  - narration
+  recommended_for:
+  - board:leverage_philosopher
+  - atlas
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by Malvin Marombedza (431 generations at research time). Rendered with
+    POST /v1/tts, header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-chiedza-zimbabwe
+  display_name: Chiedza — Zimbabwe English Accent
+  provider: fishaudio
+  provider_voice_id: 8ed6035e73cb4398a1d671bb8272d99c
+  language: en
+  accent: Zimbabwean English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - zimbabwean
+  - clear
+  - crisp
+  - energetic
+  recommended_for:
+  - character:nexus
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by Alexander R Vose (90 generations at research time). Rendered with POST
+    /v1/tts, header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-nigerian-male-calm
+  display_name: Nigerian Male Voice (deep, calm, reflective)
+  provider: fishaudio
+  provider_voice_id: 4287969fde684ef68a6a72a314d773cf
+  language: en
+  accent: Nigerian English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - nigerian
+  - deep
+  - calm
+  - smooth
+  - conversational
+  recommended_for:
+  - atlas
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by King Agugo (727 generations at research time). Rendered with POST /v1/tts,
+    header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-nigerian-storyteller
+  display_name: Nigerian Storyteller
+  provider: fishaudio
+  provider_voice_id: f248b08382a244a087ab5ee5fda8f6c2
+  language: en
+  accent: Nigerian English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - nigerian
+  - warm
+  - expressive
+  - narration
+  recommended_for:
+  - character:hannah
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by josidi6264 (3074 generations at research time). Rendered with POST
+    /v1/tts, header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-south-african-narrator
+  display_name: South African Narrator (calm, measured)
+  provider: fishaudio
+  provider_voice_id: 2a0efd7d79b440a1b4541c038119de13
+  language: en
+  accent: South African English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - south
+  - calm
+  - measured
+  - clear
+  - narration
+  recommended_for:
+  - board:producer
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by Khaya Motha (286 generations at research time). Rendered with POST
+    /v1/tts, header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-kenyan-male
+  display_name: Kenyan male (deep, warm, philosophical)
+  provider: fishaudio
+  provider_voice_id: 97896edf24ee424f86eef9b97457c349
+  language: en
+  accent: Kenyan English
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - kenyan
+  - deep
+  - warm
+  - measured
+  - narration
+  recommended_for:
+  - character:prism
+  - atlas
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  notes: 'Fish Audio public library model by Kwabena Adu Gyamfi (48 generations at research time). Rendered with
+    POST /v1/tts, header model: s2.1-pro, reference_id = this id.'
+- slug: fishaudio-library-ghanaian-1
+  display_name: Library voice — Ghanaian English (to discover)
+  provider: fishaudio
+  provider_voice_id: null
+  language: en
+  accent: Ghanaian English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3
+  cost_per_1k_chars: null
+  tags:
+  - fishaudio
+  - library
+  - placeholder
+  - ghanaian
+  recommended_for: []
+  consent:
+    type: stock
+  fish_model: s2.1-pro
+  discover:
+    title: Ghana
+    language: en
+  notes: 'Placeholder: filled from GET https://api.fish.audio/model?title=Ghana when FISH_AUDIO_API_KEY is present.'
+- slug: intron-en-zulu-male
+  display_name: Intron — Zulu-accented English, male
+  provider: intron
+  provider_voice_id: en/zulu/male
+  language: en
+  accent: Zulu-accented English (South Africa)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - zulu
+  - south-africa
+  recommended_for:
+  - character:sentinel
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: zulu
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-zulu-female
+  display_name: Intron — Zulu-accented English, female
+  provider: intron
+  provider_voice_id: en/zulu/female
+  language: en
+  accent: Zulu-accented English (South Africa)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - zulu
+  - south-africa
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: zulu
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-xhosa-male
+  display_name: Intron — Xhosa-accented English, male
+  provider: intron
+  provider_voice_id: en/xhosa/male
+  language: en
+  accent: Xhosa-accented English (South Africa)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - xhosa
+  - south-africa
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: xhosa
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-xhosa-female
+  display_name: Intron — Xhosa-accented English, female
+  provider: intron
+  provider_voice_id: en/xhosa/female
+  language: en
+  accent: Xhosa-accented English (South Africa)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - xhosa
+  - south-africa
+  recommended_for:
+  - board:producer
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: xhosa
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-swahili-male
+  display_name: Intron — Swahili-accented English, male
+  provider: intron
+  provider_voice_id: en/swahili/male
+  language: en
+  accent: Swahili-accented English (Kenya / Tanzania)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - swahili
+  - kenya
+  recommended_for:
+  - character:prism
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: swahili
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-swahili-female
+  display_name: Intron — Swahili-accented English, female
+  provider: intron
+  provider_voice_id: en/swahili/female
+  language: en
+  accent: Swahili-accented English (Kenya / Tanzania)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - swahili
+  - kenya
+  recommended_for:
+  - character:nexus
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: swahili
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-yoruba-male
+  display_name: Intron — Yoruba-accented English, male
+  provider: intron
+  provider_voice_id: en/yoruba/male
+  language: en
+  accent: Yoruba-accented English (Nigeria)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - yoruba
+  - nigeria
+  recommended_for:
+  - character:forge
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: yoruba
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-yoruba-female
+  display_name: Intron — Yoruba-accented English, female
+  provider: intron
+  provider_voice_id: en/yoruba/female
+  language: en
+  accent: Yoruba-accented English (Nigeria)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - yoruba
+  - nigeria
+  recommended_for:
+  - board:leverage_philosopher
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: yoruba
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-igbo-male
+  display_name: Intron — Igbo-accented English, male
+  provider: intron
+  provider_voice_id: en/igbo/male
+  language: en
+  accent: Igbo-accented English (Nigeria)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - igbo
+  - nigeria
+  recommended_for:
+  - board:offer_architect
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: igbo
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-igbo-female
+  display_name: Intron — Igbo-accented English, female
+  provider: intron
+  provider_voice_id: en/igbo/female
+  language: en
+  accent: Igbo-accented English (Nigeria)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - igbo
+  - nigeria
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: igbo
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-hausa-male
+  display_name: Intron — Hausa-accented English, male
+  provider: intron
+  provider_voice_id: en/hausa/male
+  language: en
+  accent: Hausa-accented English (Nigeria)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - hausa
+  - nigeria
+  recommended_for:
+  - character:sentinel
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: hausa
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-hausa-female
+  display_name: Intron — Hausa-accented English, female
+  provider: intron
+  provider_voice_id: en/hausa/female
+  language: en
+  accent: Hausa-accented English (Nigeria)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - hausa
+  - nigeria
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: hausa
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-sepedi-male
+  display_name: Intron — Sepedi-accented English, male
+  provider: intron
+  provider_voice_id: en/sepedi/male
+  language: en
+  accent: Sepedi-accented English (South Africa)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - sepedi
+  - south-africa
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: sepedi
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-sepedi-female
+  display_name: Intron — Sepedi-accented English, female
+  provider: intron
+  provider_voice_id: en/sepedi/female
+  language: en
+  accent: Sepedi-accented English (South Africa)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - sepedi
+  - south-africa
+  recommended_for:
+  - board:greenlight
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: sepedi
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-setswana-male
+  display_name: Intron — Setswana-accented English, male
+  provider: intron
+  provider_voice_id: en/setswana/male
+  language: en
+  accent: Setswana-accented English (South Africa / Botswana)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - setswana
+  - south-africa
+  recommended_for:
+  - board:compounder
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: setswana
+    voice_gender: male
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-en-setswana-female
+  display_name: Intron — Setswana-accented English, female
+  provider: intron
+  provider_voice_id: en/setswana/female
+  language: en
+  accent: Setswana-accented English (South Africa / Botswana)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - setswana
+  - south-africa
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: en
+    voice_accent: setswana
+    voice_gender: female
+  notes: Intron voice = (voice_language, voice_accent, voice_gender); there is no voice id. Rendered via POST /tts/v1/enqueue
+    then GET /tts/v1/status/{text_id} until TTS_TEXT_AUDIO_GENERATED, then the audio_path is downloaded (wav).
+- slug: intron-sn-shona-male
+  display_name: Intron — Shona (sn) native voice, male — experimental
+  provider: intron
+  provider_voice_id: sn/shona/male
+  language: sn
+  accent: Shona (Zimbabwe) — native-language voice
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - shona
+  - zimbabwe
+  - experimental
+  recommended_for:
+  - atlas
+  consent:
+    type: stock
+  intron:
+    voice_language: sn
+    voice_accent: shona
+    voice_gender: male
+  notes: Intron lists Shona (sn) as a TTS language — the first Shona voice found at any provider. The English sample
+    lines are pushed through a Shona-language voice, so treat the result as a Zimbabwean-accent experiment; for
+    a Shona greeting, feed Shona text.
+- slug: intron-sn-shona-female
+  display_name: Intron — Shona (sn) native voice, female — experimental
+  provider: intron
+  provider_voice_id: sn/shona/female
+  language: sn
+  accent: Shona (Zimbabwe) — native-language voice
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: null
+  tags:
+  - intron
+  - sahara
+  - shona
+  - zimbabwe
+  - experimental
+  recommended_for: []
+  consent:
+    type: stock
+  intron:
+    voice_language: sn
+    voice_accent: shona
+    voice_gender: female
+  notes: Intron lists Shona (sn) as a TTS language — the first Shona voice found at any provider. The English sample
+    lines are pushed through a Shona-language voice, so treat the result as a Zimbabwean-accent experiment; for
+    a Shona greeting, feed Shona text.
+- slug: piper-en-us-lessac-medium
+  display_name: Piper en_US-lessac-medium (dev baseline)
+  provider: piper
+  provider_voice_id: en_US-lessac-medium
+  language: en-US
+  accent: American English
+  gender: unspecified
+  style: null
+  style_degree: null
+  rate: 1.0
+  pitch: null
+  output_format: wav
+  cost_per_1k_chars: 0.0
+  tags:
+  - piper
+  - local
+  - dev
+  - baseline
+  recommended_for: []
+  consent:
+    type: stock
+  notes: Local, free; the development baseline speech.py already falls back to. Not an Atlas candidate — here so
+    the page always has one playable row without any key.
