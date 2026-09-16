@@ -162,7 +162,7 @@ class PropertyChecker
 
                 return [$ok ? 'passed' : 'failed', $ok ? 'matches pattern' : "no match for {$pattern}"];
 
-            // --------------------------------------------------------- string form
+                // --------------------------------------------------------- string form
             case 'valid_json':
                 return [is_array($output) ? 'passed' : 'failed', is_array($output) ? 'JSON object' : 'output is not a JSON object'];
 

@@ -28,7 +28,7 @@ class SkillCatalogueSeedTest extends TestCase
 
     private function catalogue(): SkillCatalogue
     {
-        return new SkillCatalogue(new SkillRegistry());
+        return new SkillCatalogue(new SkillRegistry);
     }
 
     public function test_seed_is_idempotent(): void

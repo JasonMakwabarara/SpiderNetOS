@@ -17,6 +17,7 @@ use App\Services\Brain\BrainStore;
 use App\Services\Brain\BrainSyncService;
 use App\Services\EventStore;
 use App\Services\Outreach\OutreachSettings;
+use App\Services\Projections\BrainProjection;
 use App\Services\Sales\FunnelSetupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -281,7 +282,7 @@ class BrainSyncServiceTest extends TestCase
         // detach it so this test measures the recordAnswer() hook alone.
         config(['projections.projectors' => array_values(array_diff(
             (array) config('projections.projectors'),
-            [\App\Services\Projections\BrainProjection::class],
+            [BrainProjection::class],
         ))]);
 
         $tenantId = (string) $this->tenant->id;

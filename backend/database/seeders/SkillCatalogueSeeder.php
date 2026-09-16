@@ -17,7 +17,7 @@ class SkillCatalogueSeeder extends Seeder
 {
     public function run(): void
     {
-        $summary = (new SkillCatalogue(new SkillRegistry()))->seed();
+        $summary = (new SkillCatalogue(new SkillRegistry))->seed();
 
         if ($this->command) {
             $this->command->info(sprintf(

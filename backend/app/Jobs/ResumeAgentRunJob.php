@@ -19,7 +19,7 @@ use Illuminate\Queue\SerializesModels;
  * approval was decided (AgentRunResumer). Same queue, uniqueness and slot
  * rules as RunSkillJob.
  */
-class ResumeAgentRunJob implements ShouldQueue, ShouldBeUnique
+class ResumeAgentRunJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

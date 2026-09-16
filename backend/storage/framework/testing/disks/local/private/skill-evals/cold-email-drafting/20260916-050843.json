@@ -1,10 +1,10 @@
 {
     "slug": "cold-email-drafting",
     "mode": "deterministic",
-    "cases_file": "C:\\Users\\HP\\AppData\\Local\\Temp/sn-eval-6aaa1bc38ce1c.yaml",
+    "cases_file": "C:\\Users\\HP\\AppData\\Local\\Temp/sn-eval-6aaa245ae62f8.yaml",
     "model": null,
     "prompt_version": null,
-    "ran_at": "2026-09-16T04:32:03+00:00",
+    "ran_at": "2026-09-16T05:08:43+00:00",
     "cases": [
         {
             "status": "passed",

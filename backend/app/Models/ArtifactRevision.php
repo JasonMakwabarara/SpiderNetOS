@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Revisions\RevisionRecorder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -61,6 +62,6 @@ class ArtifactRevision extends Model
     /** Below the 5 % edit-distance threshold (named apart from Eloquent's dirty-tracking isClean()). */
     public function isCleanDraft(): bool
     {
-        return (float) $this->distance < \App\Services\Revisions\RevisionRecorder::CLEAN_THRESHOLD;
+        return (float) $this->distance < RevisionRecorder::CLEAN_THRESHOLD;
     }
 }

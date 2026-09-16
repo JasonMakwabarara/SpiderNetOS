@@ -50,7 +50,7 @@ MD;
         $out = BrainMarkdown::upsertSection(self::DOC, 'What makes us different', 'Nobody else ships in a day.');
 
         $this->assertStringContainsString("---\nname: Acme\ntags: [a, b]\n---", $out, 'raw frontmatter is byte-preserved');
-        $this->assertStringContainsString("Intro paragraph.", $out);
+        $this->assertStringContainsString('Intro paragraph.', $out);
         $this->assertSame('Nobody else ships in a day.', BrainMarkdown::section($out, 'What makes us different'));
         $this->assertStringContainsString('### Detail', BrainMarkdown::section($out, 'what we do') ?? '', 'lookup is case-insensitive');
 
@@ -66,7 +66,7 @@ MD;
         $this->assertTrue(BrainMarkdown::hasManagedBlock($doc, 'profile.what_we_do'));
         $this->assertStringContainsString("We sell widgets.\n\n### Detail", $doc, 'human prose before the block survives');
 
-        $replaced = BrainMarkdown::replaceManagedBlock($doc, 'profile.what_we_do', "New $1 line with \\ backslash.");
+        $replaced = BrainMarkdown::replaceManagedBlock($doc, 'profile.what_we_do', 'New $1 line with \\ backslash.');
         $this->assertStringContainsString('New $1 line with \\ backslash.', $replaced, 'replacement text is literal');
         $this->assertStringNotContainsString('Projected line.', $replaced);
         $this->assertStringContainsString('We sell widgets.', $replaced);

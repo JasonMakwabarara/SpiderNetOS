@@ -18,6 +18,7 @@ use App\Services\AtlasPromptStack;
 use App\Services\MetaPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Mockery;
@@ -269,8 +270,8 @@ class AtlasOneMoreQuestionTest extends TestCase
 
         config(['features' => array_merge((array) config('features'), ['atlas.one_more_question' => 'on'])]);
         // FeatureFlag caches the resolved value for 5 s (array cache in tests; no Redis here).
-        \Illuminate\Support\Facades\Cache::forget('featureflag:atlas.one_more_question:t:'.$this->tenant->id);
-        \Illuminate\Support\Facades\Cache::forget('featureflag:atlas.one_more_question');
+        Cache::forget('featureflag:atlas.one_more_question:t:'.$this->tenant->id);
+        Cache::forget('featureflag:atlas.one_more_question');
         $on = app(AtlasController::class)->chat($request(['message' => 'Draft the Acme outreach sequence for Q4']))->getData(true);
 
         $this->assertSame('Which segment first? (or say skip)', $on['one_step']['question']);

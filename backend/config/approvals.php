@@ -1,5 +1,10 @@
 <?php
 
+use App\Services\Agents\AgentArtifactApprovals;
+use App\Services\Agents\AgentRunResumer;
+use App\Services\Brain\BrainProposalService;
+use App\Services\Outreach\Bot\OutreachReplyService;
+
 /**
  * SpiderNet OS — approval resource hooks (plan D3, ADR-0002).
  *
@@ -21,17 +26,17 @@ return [
     'resource_hooks' => [
         // Recruiter bot draft replies (Outreach). Kept byte-for-byte: the
         // handler receives (tenantId, draftId, granted, response).
-        'outreach_reply' => [\App\Services\Outreach\Bot\OutreachReplyService::class, 'onApprovalResolved'],
+        'outreach_reply' => [OutreachReplyService::class, 'onApprovalResolved'],
 
         // Draft artifacts from skill runs (sequences, emails, replies…):
         // approved → ArtifactApplier, rejected → artifact rejected.
-        'agent_artifact' => [\App\Services\Agents\AgentArtifactApprovals::class, 'onApprovalResolved'],
+        'agent_artifact' => [AgentArtifactApprovals::class, 'onApprovalResolved'],
 
         // A tool call the autonomy ladder parked: resumes the run.
-        'agent_tool_call' => [\App\Services\Agents\AgentRunResumer::class, 'onApprovalResolved'],
+        'agent_tool_call' => [AgentRunResumer::class, 'onApprovalResolved'],
 
         // Proposed Knowledge-brain changes (Stream A / PR 3).
-        'brain_proposal' => [\App\Services\Brain\BrainProposalService::class, 'onApprovalResolved'],
+        'brain_proposal' => [BrainProposalService::class, 'onApprovalResolved'],
     ],
 
 ];

@@ -124,7 +124,7 @@ class SkillInstaller
                 'tenant_id' => $tenantId,
                 'name' => (string) ($identity['display_name'] ?? Str::headline((string) $identity['key'])),
                 'slug' => $slug,
-                'description' => "Runs ".$card->displayName.' (identity '.$identity['key'].', reports to '.($identity['reports_to'] ?? $card->coreAgent).')',
+                'description' => 'Runs '.$card->displayName.' (identity '.$identity['key'].', reports to '.($identity['reports_to'] ?? $card->coreAgent).')',
                 'type' => ($identity['pack'] ?? null) ? 'dynamic' : 'core',
                 'status' => 'active',
                 'capabilities' => [],

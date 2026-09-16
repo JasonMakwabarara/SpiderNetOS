@@ -11,6 +11,7 @@ use App\Services\Agents\WorkspaceProvisioner;
 use App\Services\ApprovalEngine;
 use App\Services\Tools\ToolContract;
 use App\Services\Tools\ToolResult;
+use Illuminate\Support\Collection;
 
 /**
  * Turn a draft artifact into ONE `agent_artifact` approval. For a
@@ -139,9 +140,9 @@ final class DraftsSubmitForReviewTool implements ToolContract
     /**
      * The artifact plus, for a sequence, every step email that belongs to it.
      *
-     * @return \Illuminate\Support\Collection<int, AgentArtifact>
+     * @return Collection<int, AgentArtifact>
      */
-    public static function bundle(AgentArtifact $artifact): \Illuminate\Support\Collection
+    public static function bundle(AgentArtifact $artifact): Collection
     {
         $bundle = collect([$artifact]);
         if ($artifact->kind !== AgentArtifact::KIND_DRAFT_SEQUENCE) {

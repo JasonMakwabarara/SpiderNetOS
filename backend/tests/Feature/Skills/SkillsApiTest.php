@@ -10,6 +10,7 @@ use App\Models\FeaturePack;
 use App\Models\Tenant;
 use App\Models\TenantSkill;
 use App\Models\User;
+use App\Services\Billing\PlanEntitlementService;
 use App\Services\Skills\SkillRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -156,7 +157,7 @@ class SkillsApiTest extends TestCase
     /** Plans may include pack slots (PlanEntitlementService::packIncluded); pin it off so the gate is exercised. */
     private function withoutPlanPackSlots(): void
     {
-        $this->mock(\App\Services\Billing\PlanEntitlementService::class)
+        $this->mock(PlanEntitlementService::class)
             ->shouldReceive('packIncluded')
             ->andReturn(false);
     }

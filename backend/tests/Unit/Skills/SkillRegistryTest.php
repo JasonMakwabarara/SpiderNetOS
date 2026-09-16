@@ -34,7 +34,7 @@ class SkillRegistryTest extends TestCase
 
     private function registry(): SkillRegistry
     {
-        return new SkillRegistry();
+        return new SkillRegistry;
     }
 
     public function test_all_eight_cards_load(): void

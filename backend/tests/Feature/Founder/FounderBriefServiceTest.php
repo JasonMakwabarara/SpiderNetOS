@@ -16,6 +16,7 @@ use App\Models\ConversationMessage;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Founder\FounderBriefService;
+use App\Services\Notifications\NotificationBundler;
 use App\Services\Notifications\WebPushService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -196,9 +197,9 @@ class FounderBriefServiceTest extends TestCase
         $this->assertFalse(FounderBriefJob::dueNow($this->tenant, Carbon::parse('2026-09-16 05:00:00', 'UTC')));
         $this->assertFalse(FounderBriefJob::dueNow($this->tenant, Carbon::parse('2026-09-16 03:30:00', 'UTC')));
 
-        (new FounderBriefJob)->handle(app(FounderBriefService::class), app(\App\Services\Notifications\NotificationBundler::class));
+        (new FounderBriefJob)->handle(app(FounderBriefService::class), app(NotificationBundler::class));
         // Second sweep in the same window does not re-send (the mock's once() would fail otherwise).
-        (new FounderBriefJob)->handle(app(FounderBriefService::class), app(\App\Services\Notifications\NotificationBundler::class));
+        (new FounderBriefJob)->handle(app(FounderBriefService::class), app(NotificationBundler::class));
 
         (new GenerateDailyBriefJob('2026-09-16'))->handle(app(FounderBriefService::class));
         $this->assertNotNull(BrainFile::forTenant((string) $this->tenant->id)->where('path', 'reports/daily/2026-09-16.md')->first());

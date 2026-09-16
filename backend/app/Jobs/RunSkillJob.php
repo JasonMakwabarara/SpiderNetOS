@@ -21,7 +21,7 @@ use Illuminate\Queue\SerializesModels;
  * /agent-runs/{id}/retry`, `agents:run --retry`). Only MetaPlanner::dispatchRun
  * dispatches this job (Hard Rule #2).
  */
-class RunSkillJob implements ShouldQueue, ShouldBeUnique
+class RunSkillJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

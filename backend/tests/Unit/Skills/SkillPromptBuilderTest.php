@@ -48,7 +48,7 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_system_prompt_contains_every_block(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $card = $registry->get('cold-email-drafting');
         $builder = new SkillPromptBuilder($registry);
 
@@ -107,7 +107,7 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_task_prompt_and_version(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $card = $registry->get('cold-email-drafting');
         $builder = new SkillPromptBuilder($registry);
 
@@ -130,7 +130,7 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_missing_required_file_and_empty_facts(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $card = $registry->get('cold-email-drafting');
         $builder = new SkillPromptBuilder($registry);
 
@@ -148,7 +148,7 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_context_thread_is_fenced_as_external_data_and_brain_extra_fills_globs(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $card = $registry->get('linkedin-outreach-specialist');
         $builder = new SkillPromptBuilder($registry);
 
@@ -167,7 +167,7 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_each_core_character_has_a_sheet_the_builder_can_read(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $builder = new SkillPromptBuilder($registry);
 
         $expected = [
@@ -186,10 +186,10 @@ class SkillPromptBuilderTest extends TestCase
 
     public function test_rejects_a_snapshot_without_read_at(): void
     {
-        $registry = new SkillRegistry();
+        $registry = new SkillRegistry;
         $builder = new SkillPromptBuilder($registry);
 
         $this->expectException(\InvalidArgumentException::class);
-        $builder->build($registry->get('cold-email-drafting'), new \stdClass(), []);
+        $builder->build($registry->get('cold-email-drafting'), new \stdClass, []);
     }
 }

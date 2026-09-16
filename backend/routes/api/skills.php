@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Agents\SkillRunController;
 use App\Http\Controllers\Skills\SkillsController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,7 +43,7 @@ Route::prefix('skills')->name('skills.')->group(function () {
 
     // The run endpoint belongs to the runtime stream; the controller class is
     // resolved lazily at dispatch, so this file loads before it lands.
-    Route::post('/{slug}/run', [\App\Http\Controllers\Agents\SkillRunController::class, 'run'])
+    Route::post('/{slug}/run', [SkillRunController::class, 'run'])
         ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
         ->name('run');
 });

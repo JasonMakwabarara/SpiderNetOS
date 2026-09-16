@@ -6,6 +6,7 @@ namespace Tests\Feature\Brain;
 
 use App\Models\BrainFile;
 use App\Models\BrainFileVersion;
+use App\Models\Event;
 use App\Models\Tenant;
 use App\Services\Brain\BrainConflictException;
 use App\Services\Brain\BrainStore;
@@ -61,7 +62,7 @@ class BrainStoreTest extends TestCase
             'brain_file_id' => $file->id, 'version' => 1, 'author_type' => 'user', 'author_ref' => 'user-1', 'change_summary' => 'first draft',
         ]);
         $this->assertDatabaseHas('event_log', ['tenant_id' => (string) $tenant->id, 'event_type' => 'brain.file.updated', 'aggregate_id' => $file->id]);
-        $event = \App\Models\Event::where('event_type', 'brain.file.updated')->first();
+        $event = Event::where('event_type', 'brain.file.updated')->first();
         $this->assertSame(['path' => 'business/profile.md', 'version' => 1, 'source' => 'human'], array_intersect_key($event->payload, array_flip(['path', 'version', 'source'])));
     }
 
@@ -78,7 +79,7 @@ class BrainStoreTest extends TestCase
         $same = $this->store->write($tenantId, 'business/profile.md', self::PROFILE."\nMore.\n");
         $this->assertSame(2, $same->version, 'unchanged content does not bump the version');
         $this->assertSame(2, BrainFileVersion::where('brain_file_id', $v2->id)->count());
-        $this->assertSame(2, \App\Models\Event::where('event_type', 'brain.file.updated')->count());
+        $this->assertSame(2, Event::where('event_type', 'brain.file.updated')->count());
     }
 
     public function test_inline_frontmatter_is_lifted_into_the_column(): void

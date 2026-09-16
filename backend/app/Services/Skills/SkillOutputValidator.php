@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Skills;
 
+use App\Models\Skill;
+
 /**
  * Parses the model's reply and refuses anything the card or the FACTS do not
  * cover (ReplyPostFilter generalised to every skill):
@@ -22,13 +24,13 @@ class SkillOutputValidator
     public function __construct(private ?SkillRegistry $registry = null) {}
 
     /**
-     * @param  SkillCard|\App\Models\Skill|string  $card  the card DTO; a `skills` row or a
-     *                                                     slug is resolved through the registry
-     *                                                     (the eval harness calls it that way)
+     * @param  SkillCard|Skill|string  $card  the card DTO; a `skills` row or a
+     *                                        slug is resolved through the registry
+     *                                        (the eval harness calls it that way)
      * @param  array<string, mixed>  $facts  as returned by SkillPromptBuilder::facts()
      *                                       (+ optional banned_phrases[], never_say[])
      */
-    public function validate(SkillCard|\App\Models\Skill|string $card, string $raw, array $facts = []): ValidationResult
+    public function validate(SkillCard|Skill|string $card, string $raw, array $facts = []): ValidationResult
     {
         $card = $this->resolveCard($card);
 
@@ -85,18 +87,18 @@ class SkillOutputValidator
     }
 
     /** A `skills` row or a slug becomes the SkillCard DTO from the registry (or the row's own card). */
-    private function resolveCard(SkillCard|\App\Models\Skill|string $card): SkillCard
+    private function resolveCard(SkillCard|Skill|string $card): SkillCard
     {
         if ($card instanceof SkillCard) {
             return $card;
         }
-        $this->registry ??= new SkillRegistry();
-        $slug = $card instanceof \App\Models\Skill ? (string) $card->slug : $card;
+        $this->registry ??= new SkillRegistry;
+        $slug = $card instanceof Skill ? (string) $card->slug : $card;
         $resolved = $this->registry->get($slug);
         if ($resolved !== null) {
             return $resolved;
         }
-        if ($card instanceof \App\Models\Skill && is_array($card->card)) {
+        if ($card instanceof Skill && is_array($card->card)) {
             return SkillCard::fromArray($card->card + ['id' => $card->slug], $this->registry->root().'/'.$card->slug);
         }
 

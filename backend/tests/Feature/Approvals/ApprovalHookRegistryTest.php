@@ -117,7 +117,8 @@ class ApprovalHookRegistryTest extends TestCase
     public function test_engine_hook_is_public_and_config_driven(): void
     {
         $seen = [];
-        $handler = new class($seen) {
+        $handler = new class($seen)
+        {
             public function __construct(private array &$seen) {}
 
             public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void

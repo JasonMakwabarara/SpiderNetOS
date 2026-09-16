@@ -32,12 +32,12 @@ class SkillOutputValidatorTest extends TestCase
 
     private function card(): SkillCard
     {
-        return (new SkillRegistry())->get('cold-email-drafting');
+        return (new SkillRegistry)->get('cold-email-drafting');
     }
 
     private function validator(): SkillOutputValidator
     {
-        return new SkillOutputValidator(new SkillRegistry());
+        return new SkillOutputValidator(new SkillRegistry);
     }
 
     /** @return array<string, mixed> a schema-valid draft_sequence */
@@ -47,7 +47,7 @@ class SkillOutputValidatorTest extends TestCase
             'step' => $n,
             'beat' => $beat,
             'subjects' => ["Your month-end, closed by the 5th ({$n})", "Books off your desk by Tuesday ({$n})"],
-            'body' => "Morning — one specific idea for you, thirty seconds to read. Most café owners we meet still do month-end at the kitchen table. We close your books by the 5th, every month. Café Roux cut month-end from 9 days to 2. Worth a 15-minute look? https://cal.example/northbeam/15",
+            'body' => 'Morning — one specific idea for you, thirty seconds to read. Most café owners we meet still do month-end at the kitchen table. We close your books by the 5th, every month. Café Roux cut month-end from 9 days to 2. Worth a 15-minute look? https://cal.example/northbeam/15',
             'send_day' => $day,
             'cta' => 'Worth a 15-minute look?',
         ];

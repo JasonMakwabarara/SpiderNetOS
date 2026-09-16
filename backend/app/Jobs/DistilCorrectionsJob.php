@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\ArtifactRevision;
 use App\Models\BrainProposal;
 use App\Services\Founder\BrainWriter;
+use App\Services\Revisions\RevisionRecorder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -67,7 +68,7 @@ class DistilCorrectionsJob implements ShouldQueue
     public function distil(string $tenantId, \DateTimeInterface $since, BrainWriter $writer): array
     {
         $revisions = ArtifactRevision::forTenant($tenantId)->where('created_at', '>=', $since)
-            ->where('distance', '>=', \App\Services\Revisions\RevisionRecorder::CLEAN_THRESHOLD)->get();
+            ->where('distance', '>=', RevisionRecorder::CLEAN_THRESHOLD)->get();
 
         $rules = self::rulesFor($revisions->all());
         if ($rules === []) {
