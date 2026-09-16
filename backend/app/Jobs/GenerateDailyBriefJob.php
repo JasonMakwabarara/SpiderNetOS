@@ -2,24 +2,26 @@
 
 namespace App\Jobs;
 
+use App\Services\Founder\FounderBriefService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
 
 /**
  * GenerateDailyBriefJob
  *
- * Publishes a `daily_brief` dispatch message to the Redis agent queue for every
- * active tenant.  The Python intelligence worker (Atlas agent) picks these up
- * and generates the morning briefing that surfaces on the dashboard.
+ * Composes the deterministic "Needs-You Today" brief (FounderBriefService,
+ * plan D8 #3) for every active tenant and files it under reports/daily/.
+ * This replaces the dead `daily_brief` Redis intent the Python plane never
+ * consumed; the class name is kept so the schedule and callers stay valid.
+ * Delivery (brief_ready at 06:55–07:05 tenant-local) is FounderBriefJob's.
  *
- * Scheduled daily via `console.php` (typically 06:00 UTC).
+ * Scheduled daily via `console.php` (06:00 UTC).
  */
 class GenerateDailyBriefJob implements ShouldQueue
 {
@@ -39,7 +41,7 @@ class GenerateDailyBriefJob implements ShouldQueue
         $this->targetDate = $date ?? now()->toDateString();
     }
 
-    public function handle(): void
+    public function handle(FounderBriefService $briefs): void
     {
         $tenants = DB::table('tenants')
             ->where('status', 'active')
@@ -50,26 +52,24 @@ class GenerateDailyBriefJob implements ShouldQueue
             return;
         }
 
-        $dispatched = 0;
+        $for = Carbon::parse($this->targetDate);
+        $composed = 0;
 
         foreach ($tenants as $tenantId) {
-            $message = json_encode([
-                'id'        => (string) Str::uuid(),
-                'tenant_id' => $tenantId,
-                'agent_id'  => 'atlas',
-                'intent'    => 'daily_brief',
-                'context'   => [
-                    'date'         => $this->targetDate,
-                    'requested_at' => now()->toIso8601String(),
-                ],
-                'priority'  => 'low',
-                'version'   => '3.2',
-            ]);
-
-            Redis::rpush('agent:dispatch', $message);
-            $dispatched++;
+            try {
+                $brief = $briefs->compose((string) $tenantId, $for);
+                $composed++;
+                Log::info('[DailyBrief] Composed', [
+                    'tenant_id' => $tenantId,
+                    'date' => $brief['date'],
+                    'items' => count($brief['items']),
+                    'path' => $brief['path'],
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('[DailyBrief] Failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            }
         }
 
-        Log::info("[DailyBrief] Dispatched {$dispatched} daily_brief messages for {$this->targetDate}.");
+        Log::info("[DailyBrief] Composed {$composed} brief(s) for {$this->targetDate}.");
     }
 }

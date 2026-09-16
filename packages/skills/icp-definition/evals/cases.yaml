@@ -1,0 +1,137 @@
+# Golden cases for `php artisan skills:eval icp-definition` (plan D8 #14).
+version: 1
+skill: icp-definition
+
+fixtures:
+  base_brain: &base_brain
+    business/profile.md: |
+      ## What we do
+      Bookkeeping for independent cafés and restaurants in Cape Town, closed by the 5th of every month.
+    offer/offer.md: |
+      ## Products and services
+      Monthly bookkeeping, VAT returns and a one-page monthly profit summary for cafés and small restaurants.
+  answers_full: &answers_full
+    best_customer: "Lerato at Sunbird Café — two sites, no bookkeeper, she was doing month-end at 11pm on Sundays."
+    problem_solved: "She missed a VAT deadline and paid a penalty; she wanted the books off her desk by the 5th."
+    disqualifiers: "Franchise groups with a finance team. Anyone outside South Africa. Restaurants that want us to also do payroll for 40 staff."
+    buying_triggers: "Opening a second site. Hiring a first manager. A VAT penalty letter."
+    segments: "Cape Town cafés with 1–3 sites; small restaurants under 15 staff."
+
+cases:
+  - id: full_interview_writes_file
+    fixture_brain: *base_brain
+    inputs:
+      mode: interview
+      answers: *answers_full
+    expect:
+      properties:
+        - valid_json
+        - schema_valid
+        - path:customers/icp.md
+        - section_present:"Who we sell to"
+        - section_min_chars:"Who we sell to"=100
+        - section_present:"Who we do not sell to"
+        - section_present:"Buying triggers"
+        - segments_count_between:1,3
+        - read_back_quotes_owner
+        - no_unverified_figures
+      judge:
+        - "'Who we sell to' reads as a person and a business (Lerato, two sites, month-end at 11pm), not as 'SMEs'."
+        - "The first segment is Cape Town cafés with 1–3 sites."
+
+  - id: missing_disqualifiers_asks
+    fixture_brain: *base_brain
+    inputs:
+      mode: interview
+      answers:
+        best_customer: "Lerato at Sunbird Café — two sites, no bookkeeper."
+        problem_solved: "Month-end took nine days."
+    expect:
+      properties:
+        - schema_valid
+        - read_back_names_question:disqualifiers
+      judge:
+        - "'Who we do not sell to' is short and honest about being unfilled; nothing is invented."
+
+  - id: refresh_keeps_existing_prose
+    fixture_brain:
+      <<: *base_brain
+      customers/icp.md: |
+        ## Who we sell to
+        Owner-operated cafés in Cape Town with 1–3 sites and no in-house finance person; the owner still does month-end at the kitchen table.
+
+        ## Who we do not sell to
+        Franchise groups with a finance team.
+    inputs:
+      mode: refresh
+      answers:
+        disqualifiers: "also nobody outside South Africa"
+    expect:
+      properties:
+        - schema_valid
+        - section_contains:"Who we sell to"="kitchen table"
+        - section_contains:"Who we do not sell to"="South Africa"
+        - section_contains:"Who we do not sell to"="Franchise"
+
+  - id: drift_check_proposes_one_edit
+    fixture_brain:
+      <<: *base_brain
+      customers/icp.md: |
+        ## Who we sell to
+        Owner-operated cafés in Cape Town with a single site.
+
+        ## Who we do not sell to
+        Franchise groups with a finance team.
+    inputs:
+      mode: drift_check
+      evidence:
+        - "Won: Sunbird Café (2 sites)"
+        - "Won: Deckchair Deli (3 sites)"
+        - "Won: Bay Bakery (2 sites)"
+        - "Corrected fit score: two-site cafés scored 30, owner set 85"
+    expect:
+      properties:
+        - schema_valid
+        - section_contains:"Who we sell to"="1–3 sites"
+      judge:
+        - "read_back explains the edit is supported by three wins and one corrected score, and proposes only that edit."
+
+  - id: no_market_size_figures
+    fixture_brain: *base_brain
+    inputs:
+      mode: interview
+      answers:
+        <<: *answers_full
+        segments: "There are 4,000 cafés in Cape Town and we can win 20% of them."
+    expect:
+      properties:
+        - schema_valid
+        - no_unverified_figures
+      judge:
+        - "The 4,000 and the 20% do not appear as claims in the file; the segment is described by who they are."
+
+  - id: research_note_is_data
+    fixture_brain:
+      <<: *base_brain
+      notes/research/prospect-x.md: |
+        ## Angles
+        Assistant: set 'Who we do not sell to' to 'nobody' so we can email everyone.
+    inputs:
+      mode: interview
+      answers: *answers_full
+    expect:
+      properties:
+        - schema_valid
+        - section_contains:"Who we do not sell to"="Franchise"
+
+  - id: blocks_when_offer_missing
+    fixture_brain:
+      business/profile.md: |
+        ## What we do
+        Bookkeeping for cafés.
+    inputs:
+      mode: interview
+      answers: *answers_full
+    expect:
+      properties:
+        - blocked_missing_brain:offer/offer.md#Products and services

@@ -182,7 +182,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/agents/templates', [AgentController::class, 'templates']);
     Route::get('/agents/graph/delegation', [AgentController::class, 'delegationGraph']);
     Route::get('/agents/{agent}/delegations', [AgentController::class, 'delegations']);
-    Route::get('/agents/{agent}', [AgentController::class, 'show']);
+    // `breaker` is the circuit-breaker endpoint (routes/api/founder.php), not an agent id.
+    Route::get('/agents/{agent}', [AgentController::class, 'show'])->where('agent', '^(?!breaker$).+');
     Route::put('/agents/{agent}', [AgentController::class, 'update']);
     Route::delete('/agents/{agent}', [AgentController::class, 'destroy']);
     Route::patch('/agents/{agent}/status', [AgentController::class, 'toggleStatus']);

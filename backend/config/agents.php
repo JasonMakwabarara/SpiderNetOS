@@ -67,6 +67,7 @@ return [
         'brain.search' => 0.001,
         'brain.propose_update' => 0.0,
         'drafts.save' => 0.0,
+        'drafts.save_sequence' => 0.0,
         'drafts.submit_for_review' => 0.0,
 
         'inbox.list_unread' => 0.001,

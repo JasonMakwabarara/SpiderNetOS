@@ -9,6 +9,7 @@ return [
         \App\Services\Projections\SpendAutomationProjection::class,
         \App\Services\Projections\ConversationReplyBridgeProjection::class,
         \App\Services\Projections\OutreachReplyProjection::class,
+        \App\Services\Projections\BrainProjection::class,
     ],
 
     'map' => [

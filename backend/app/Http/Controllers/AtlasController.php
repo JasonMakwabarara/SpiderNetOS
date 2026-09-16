@@ -102,6 +102,9 @@ class AtlasController extends Controller
             'message' => 'required|string|max:4000',
             'session_id' => 'nullable|string',
             'style' => 'sometimes|string|in:concise,balanced,emotional,analytical,directive',
+            // "One step further" (plan D8): the context thread and how this message relates to the last ASK.
+            'thread_id' => 'sometimes|nullable|string|uuid',
+            'mode' => 'sometimes|nullable|string|in:chat,answer,skip,run',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -111,11 +114,18 @@ class AtlasController extends Controller
         $style = $request->input('style', config('services.spidernet.atlas_default_style', 'balanced'));
         $interactionId = (string) Str::uuid();
         $startedAt = microtime(true);
+        $threadId = $this->resolveThreadId($tenantId, $request->input('thread_id'), $sessionId);
+        $mode = $request->input('mode') ?: 'chat';
 
         // Learn from user input and check discovery mode (skip for slash commands)
         $this->discoveryService->absorbAnswer($tenantId, $message);
         $discovery = $this->discoveryService->evaluate($tenantId, $message, $this->packGrowth);
         $isSlashCommand = str_starts_with(trim($message), '/');
+
+        // One more question + next step for this turn (flag atlas.one_more_question).
+        // Computed before the branches so a skip/answer stamps the thread even
+        // when Atlas ends up asking a discovery or clarifying question itself.
+        $oneStep = $this->oneStepFor($tenantId, (string) $userId, $threadId, $message, $mode);
 
         if (($discovery['mode'] ?? 'act') === 'discover' && ! $isSlashCommand) {
             $question = ($discovery['questions'][0] ?? 'What task eats the most time in your week?');
@@ -232,7 +242,69 @@ class AtlasController extends Controller
             interactionId: $interactionId,
             request: $request,
             startedAt: $startedAt,
+            oneStep: $oneStep,
         );
+    }
+
+    /**
+     * The thread this message belongs to: an explicit thread_id, else the
+     * session id when it is an atlas_threads row (the cockpit uses the
+     * session created by POST /atlas/sessions as its session_id).
+     */
+    private function resolveThreadId(string $tenantId, mixed $threadId, mixed $sessionId): ?string
+    {
+        foreach ([$threadId, $sessionId] as $candidate) {
+            if (! is_string($candidate) || ! Str::isUuid($candidate)) {
+                continue;
+            }
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('atlas_threads')
+                    && \App\Models\AtlasThread::forTenant($tenantId)->whereKey($candidate)->exists()) {
+                    return $candidate;
+                }
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * "Dig deeper, ask one more question, go one step further" (plan D8):
+     * {question, next_step} for this turn, or null when the flag is off,
+     * the discovery service stays quiet (skip/ack/cooldown) or it fails.
+     *
+     * @return array{question: ?string, next_step: ?array}|null
+     */
+    private function oneStepFor(string $tenantId, string $userId, ?string $threadId, string $message, string $mode): ?array
+    {
+        if (! FeatureFlag::on('atlas.one_more_question', $tenantId)) {
+            return null;
+        }
+
+        try {
+            $result = $this->discoveryService->oneMoreQuestion($tenantId, $userId, $threadId, $message, null, $mode);
+        } catch (\Throwable $e) {
+            Log::warning('[Atlas] one_more_question failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if ($result === null) {
+            return null;
+        }
+
+        return [
+            'question' => $result['question'] ?? null,
+            'next_step' => $result['next_step'] ?? null,
+            'key' => $result['key'] ?? null,
+            'source' => $result['source'] ?? null,
+            'path' => $result['path'] ?? null,
+            'section' => $result['section'] ?? null,
+            'run_id' => $result['run_id'] ?? null,
+            'thread_id' => $result['thread_id'] ?? $threadId,
+        ];
     }
 
     /**
@@ -411,6 +483,7 @@ class AtlasController extends Controller
         string $interactionId,
         Request $request,
         float $startedAt,
+        ?array $oneStep = null,
     ): JsonResponse {
         // Check for onboarding policy override (soft gate)
         $overridePolicy = $this->onboardingPolicy->overrideFor($request->user());
@@ -425,15 +498,23 @@ class AtlasController extends Controller
             ]);
         }
 
+        $plannerContext = [
+            'override_policy' => $overridePolicy,
+            'onboarding_state' => $onboardingState,
+        ];
+        if ($oneStep !== null) {
+            // The prompt stack renders <NEXT_STEP>/<ONE_MORE_QUESTION> plus the
+            // standing rule; the plane appends it to Atlas's system prompt.
+            $plannerContext['one_step'] = $oneStep;
+            $plannerContext['system_prompt'] = app(\App\Services\AtlasPromptStack::class)->systemPrompt(null, $oneStep);
+        }
+
         $result = $this->metaPlanner->processAtlasRequest(
             tenantId: $tenantId,
             userId: $userId,
             message: $message,
             sessionId: $sessionId,
-            context: [
-                'override_policy' => $overridePolicy,
-                'onboarding_state' => $onboardingState,
-            ],
+            context: $plannerContext,
         );
 
         $ast = $this->metaPlanner->parseCommandToAst($message);
@@ -523,6 +604,11 @@ class AtlasController extends Controller
             ],
             'ast' => $result['ast'] ?? null,
             'cost_status' => $result['cost_status'] ?? null,
+            // One step further: the cockpit renders both as chips (answer inline / run / skip).
+            'one_step' => $oneStep !== null && ($oneStep['question'] !== null || $oneStep['next_step'] !== null)
+                ? ['question' => $oneStep['question'], 'next_step' => $oneStep['next_step']]
+                    + array_filter(['key' => $oneStep['key'] ?? null, 'source' => $oneStep['source'] ?? null, 'thread_id' => $oneStep['thread_id'] ?? null], fn ($v) => $v !== null)
+                : null,
         ]);
     }
 

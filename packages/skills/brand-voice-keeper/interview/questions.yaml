@@ -1,0 +1,50 @@
+# Brand Voice Keeper — interview backbone (run.kind = interview).
+# Same shape as packages/feature-packs/sales-crm/interview/questions.yaml so the
+# InterviewRunner extracted from FunnelSetupService (plan D7 prerequisites) can run it.
+# Each question names the brain section it fills (`brain_target`), so answers are
+# projected progressively and BrainGapAnalyzer can ask them in this order.
+
+version: 1
+skill: brand-voice-keeper
+target_file: brand/voice.md
+max_llm_followups_per_section: 1
+
+sections:
+  - id: tone
+    title: "How we sound"
+    questions:
+      - id: tone_adjectives
+        prompt: "How should we sound — give me two adjectives. (This becomes the tone every draft is checked against.)"
+        type: text
+        required: true
+        seed_from: interview_question:preferred_tone
+        brain_target: { file: brand/voice.md, section: "Tone", frontmatter: tone }
+      - id: admired_brand
+        prompt: "Name one brand whose writing you admire, and say why in a line. (It gives the drafts a reference point instead of a rulebook.)"
+        type: text
+        required: false
+        brain_target: { file: brand/voice.md, section: "Tone", frontmatter: admired_brand }
+
+  - id: do_dont
+    title: "What we never say"
+    questions:
+      - id: never_say
+        prompt: "What must our writing never sound like, and which words or claims are off-limits? (Every draft is rejected if it breaks this list.)"
+        type: text
+        required: true
+        seed_from: brain:people/user.md#Never say or offer
+        brain_target: { file: brand/voice.md, section: "Do and don't" }
+      - id: always_say
+        prompt: "Any phrases that are unmistakably yours — the way you say 'your books' or 'by the 5th'? (They make drafts sound like you, not like a template.)"
+        type: text
+        required: false
+        brain_target: { file: brand/voice.md, section: "Do and don't" }
+
+  - id: voice
+    title: "In your own words"
+    questions:
+      - id: sample_sentences
+        prompt: "Paste two or three sentences you have written that sound exactly like you — an email, a post, anything. (Kept verbatim as the reference sample.)"
+        type: longtext
+        required: false
+        brain_target: { file: brand/voice.md, section: "Voice" }

@@ -27,6 +27,9 @@
       </div>
     </header>
 
+    <!-- Needs-You Today: the deterministic morning brief (replaces the hardcoded "Hannah says…" list) -->
+    <NeedsYouToday />
+
     <!-- Status strip -->
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="dashboard-stats">
       <div class="sn-card p-4">
@@ -146,24 +149,6 @@
           </div>
         </div>
 
-        <!-- Hannah guidance -->
-        <div class="sn-card p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">Suggested next actions</div>
-              <h3 class="font-heading text-[15px] font-semibold mt-0.5" style="color: var(--text-primary);">Hannah says…</h3>
-            </div>
-          </div>
-          <ul class="mt-3 space-y-2 text-sm">
-            <li v-for="(s, i) in suggestions" :key="i"
-                class="flex items-start justify-between gap-2 rounded-md px-2.5 py-2 transition-colors"
-                :style="`background: var(--bg-elevated); border: 1px solid var(--border);`">
-              <span style="color: var(--text-primary);">{{ s.text }}</span>
-              <button class="sn-btn py-0.5 px-2 text-[11px]" :data-testid="`hannah-suggestion-${i}`" @click="runSuggestion(s)">Run</button>
-            </li>
-          </ul>
-        </div>
-
         <!-- Quick links -->
         <div class="sn-card p-4">
           <div class="text-[10px] tracking-widest uppercase font-semibold mb-2" style="color: var(--text-muted);">Quick jumps</div>
@@ -180,7 +165,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAgentsStore } from '../stores/agents.js'
@@ -188,7 +173,7 @@ import { useFlowsStore } from '../stores/flows.js'
 import { useUsageStore } from '../stores/usage.js'
 import { useTracesStore } from '../stores/traces.js'
 import { useApprovalsStore } from '../stores/approvals.js'
-import { useAtlasStore } from '../stores/atlas.js'
+import NeedsYouToday from '../components/today/NeedsYouToday.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -197,13 +182,6 @@ const flowsStore = useFlowsStore()
 const usageStore = useUsageStore()
 const tracesStore = useTracesStore()
 const approvalsStore = useApprovalsStore()
-const atlasStore = useAtlasStore()
-
-const suggestions = ref([
-  { text: 'Publish the Invoice Anomaly Sweep flow.',  command: '/flows publish inv-sweep' },
-  { text: "Review this week's budget anomalies.",       command: '/usage anomalies' },
-  { text: 'Promote Lead Qualifier to autonomous mode.', command: '/agents promote ag_1' },
-])
 
 const currentSpendDaily   = computed(() => usageStore.currentSpend?.daily   ?? 0)
 const currentSpendMonthly = computed(() => usageStore.currentSpend?.monthly ?? 0)
@@ -248,11 +226,6 @@ function timeAgo(ts) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   return `${Math.floor(s / 86400)}d ago`
-}
-
-function runSuggestion(s) {
-  atlasStore.sendMessage(s.command).catch(() => {})
-  router.push('/atlas')
 }
 
 onMounted(() => {

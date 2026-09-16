@@ -140,6 +140,14 @@ class FunnelSetupService
         // so PackGrowthService recommendations keep learning across packs.
         $this->discovery->absorbAnswer($setup->tenant_id, $answer);
 
+        // Knowledge brain (ADR-0002 D2): project this answer into its brain
+        // sections progressively. Best-effort — never breaks the interview.
+        try {
+            app(\App\Services\Brain\BrainSyncService::class)->projectInterviewAnswer($setup, $questionId);
+        } catch (\Throwable $e) {
+            Log::warning('FunnelSetupService: brain projection failed', ['question_id' => $questionId, 'error' => $e->getMessage()]);
+        }
+
         return $setup->refresh();
     }
 

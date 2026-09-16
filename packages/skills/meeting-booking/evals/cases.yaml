@@ -1,0 +1,161 @@
+# Golden cases for `php artisan skills:eval meeting-booking` (plan D8 #14).
+# The calendar tool is faked from `calendar_slots` per case.
+version: 1
+skill: meeting-booking
+
+fixtures:
+  base_brain: &base_brain
+    people/user.md: |
+      ---
+      name: Thandi
+      timezone: Africa/Johannesburg
+      calendar_link: https://cal.example/northbeam/15
+      meeting_types: ["15-minute intro call", "45-minute books review"]
+      ---
+      ## Working rhythm
+      Mornings 08:00–12:00 SAST for calls. Never after 16:00. No Fridays.
+
+      ## Calendar and meetings
+      Booking link https://cal.example/northbeam/15. First call is 15 minutes.
+
+      ## Never say or offer
+      Never offer a discount.
+    offer/offer.md: |
+      ---
+      links:
+        - https://northbeam.example/cafes
+      ---
+      ## Products and services
+      Monthly bookkeeping, VAT returns and a one-page monthly profit summary for cafés.
+    brand/voice.md: |
+      ## Tone
+      Warm, direct, slightly dry. Short sentences.
+
+      ## Do and don't
+      Never exclamation marks.
+  slots_ok: &slots_ok
+    - { start: "2026-09-17T08:00:00+02:00", end: "2026-09-17T08:15:00+02:00" }
+    - { start: "2026-09-17T10:30:00+02:00", end: "2026-09-17T10:45:00+02:00" }
+    - { start: "2026-09-21T09:00:00+02:00", end: "2026-09-21T09:15:00+02:00" }
+
+cases:
+  - id: hot_reply_two_slots
+    fixture_brain: *base_brain
+    calendar_slots: *slots_ok
+    thread:
+      - direction: out
+        body: "Would a 15-minute look at your month-end be worth it?"
+      - direction: in
+        body: "Yes — Thursday morning works if you have anything."
+    inputs:
+      thread_id: t1
+      contact: "Lerato Dube"
+    expect:
+      properties:
+        - valid_json
+        - schema_valid
+        - status:proposed
+        - slots_count:2
+        - slots_within_hours:08:00-12:00
+        - duration_minutes:15
+        - single_cta
+        - links_allowlisted
+        - no_unverified_figures
+      judge:
+        - "The message acknowledges Thursday morning and offers the two slots, nothing more."
+
+  - id: prospect_timezone_labels
+    fixture_brain: *base_brain
+    calendar_slots: *slots_ok
+    thread:
+      - direction: in
+        body: "Happy to talk — I'm in London, what works?"
+    inputs:
+      thread_id: t2
+      prospect_timezone: Europe/London
+    expect:
+      properties:
+        - schema_valid
+        - timezone:Europe/London
+        - slots_count:2
+      judge:
+        - "Slot labels are given in London time and the owner's morning window still holds."
+
+  - id: no_slots_asks_owner
+    fixture_brain: *base_brain
+    calendar_slots: []
+    thread:
+      - direction: in
+        body: "Sure, when?"
+    inputs:
+      thread_id: t3
+    expect:
+      properties:
+        - schema_valid
+        - status:needs_hours
+        - slots_count:0
+      judge:
+        - "The message is a one-line question to the owner about which hours to open, not a message to the prospect."
+
+  - id: never_invent_a_slot
+    fixture_brain: *base_brain
+    calendar_slots: []
+    thread:
+      - direction: in
+        body: "Tomorrow 3pm?"
+    inputs:
+      thread_id: t4
+    expect:
+      properties:
+        - schema_valid
+        - status:needs_hours
+        - slots_count:0
+
+  - id: reschedule_gets_two_new_slots
+    fixture_brain: *base_brain
+    calendar_slots: *slots_ok
+    thread:
+      - direction: out
+        body: "Booked: Wed 17 Sep 08:00–08:15 SAST."
+      - direction: in
+        body: "Sorry, something came up Wednesday — can we move it?"
+    inputs:
+      thread_id: t5
+    expect:
+      properties:
+        - schema_valid
+        - status:proposed
+        - slots_count:2
+      judge:
+        - "The message accepts the reschedule graciously and offers two new slots, neither on Wednesday 08:00."
+
+  - id: uses_booking_link_only_when_asked
+    fixture_brain: *base_brain
+    calendar_slots: *slots_ok
+    thread:
+      - direction: in
+        body: "Do you have a link I can pick a time from?"
+    inputs:
+      thread_id: t6
+    expect:
+      properties:
+        - schema_valid
+        - booking_link:https://cal.example/northbeam/15
+        - links_allowlisted
+
+  - id: blocks_without_calendar_section
+    fixture_brain:
+      offer/offer.md: |
+        ## Products and services
+        Monthly bookkeeping.
+      brand/voice.md: |
+        ## Tone
+        Warm and dry.
+      people/user.md: |
+        ## Who I am
+        Thandi, founder.
+    inputs:
+      thread_id: t7
+    expect:
+      properties:
+        - blocked_missing_brain:people/user.md#Calendar and meetings

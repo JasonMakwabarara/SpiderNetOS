@@ -66,6 +66,12 @@
       "pattern": "^[a-z0-9-]+$",
       "description": "Feature pack that provides/entitles the skill; null for platform skills."
     },
+    "intent_keywords": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Phrases SkillRegistry::matchIntent() matches an Atlas message against (lower-case; display_name is always included).",
+      "items": { "type": "string", "minLength": 2 }
+    },
     "at_a_glance": {
       "type": "string",
       "minLength": 40,
@@ -264,7 +270,9 @@
           },
           "description": { "type": "string" },
           "key_pattern": { "type": "string", "description": "e.g. outreach.<campaign>.step{n}.{a|b}" },
-          "count": { "type": "string", "description": "e.g. \"steps × variants\", \"1\"" }
+          "count": { "type": "string", "description": "e.g. \"steps × variants\", \"1\"" },
+          "primary": { "type": "boolean", "description": "The output SkillPromptBuilder puts in the system prompt and SkillOutputValidator validates first (defaults to the first output)." },
+          "schema": { "type": "object", "description": "JSON Schema (draft-07 subset) the model's JSON for this kind must satisfy; enforced by SkillOutputValidator (required, enum, minItems/maxItems, maxLength)." }
         }
       }
     },

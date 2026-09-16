@@ -173,12 +173,15 @@ class ApprovalController extends Controller
 
         // Resource-type hooks: some resources activate a downstream workflow
         // when their approval is granted, rather than resuming a paused DAG.
-        if ($approval->resource_type === 'sales_script') {
-            app(\App\Services\Sales\FunnelSetupService::class)->activateFromApproval($tenantId, $approval->resource_id);
-        }
-        if ($approval->resource_type === 'outreach_reply') {
-            app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, true, (string) $request->input('reason', ''));
-        }
+        // Driven by config/approvals.php through ApprovalEngine so the
+        // single-stage and chained paths fire exactly the same hooks.
+        app(\App\Services\ApprovalEngine::class)->fireResourceHook(
+            (string) $approval->resource_type,
+            $tenantId,
+            (string) $approval->resource_id,
+            true,
+            (string) $request->input('reason', ''),
+        );
 
         return response()->json([
             'id' => $id,
@@ -260,12 +263,14 @@ class ApprovalController extends Controller
             );
         }
 
-        if ($approval->resource_type === 'sales_script') {
-            app(\App\Services\Sales\FunnelSetupService::class)->rejectFromApproval($tenantId, $approval->resource_id, $request->input('reason'));
-        }
-        if ($approval->resource_type === 'outreach_reply') {
-            app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, false, (string) $request->input('reason', ''));
-        }
+        // Same registry-driven hooks as approve() (config/approvals.php).
+        app(\App\Services\ApprovalEngine::class)->fireResourceHook(
+            (string) $approval->resource_type,
+            $tenantId,
+            (string) $approval->resource_id,
+            false,
+            (string) $request->input('reason', ''),
+        );
 
         return response()->json([
             'id' => $id,

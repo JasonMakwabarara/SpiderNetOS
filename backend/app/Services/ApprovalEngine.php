@@ -538,12 +538,40 @@ class ApprovalEngine
     }
 
     /**
-     * Resource-type activation hooks. Failures propagate so the enclosing
-     * transaction rolls back — an approval must not read "approved" while
-     * its downstream effect failed to apply.
+     * Resource-type activation hooks. Driven by config/approvals.php
+     * `resource_hooks` (resource_type => [class, method]); handler classes
+     * are resolved lazily, so an entry whose stream has not shipped yet is
+     * skipped with a log line. Resource types outside the map keep their
+     * legacy inline hooks below. Public so ApprovalController's single-stage
+     * approve/reject fires exactly the hooks the chained path fires.
+     * Failures propagate so the enclosing transaction rolls back — an
+     * approval must not read "approved" while its downstream effect failed
+     * to apply.
      */
-    private function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
     {
+        $hooks = (array) config('approvals.resource_hooks', []);
+
+        if (array_key_exists($resourceType, $hooks)) {
+            $hook = (array) $hooks[$resourceType];
+            $class = $hook[0] ?? $hook['class'] ?? null;
+            $method = $hook[1] ?? $hook['method'] ?? 'onApprovalResolved';
+
+            if (! is_string($class) || $class === '' || ! (app()->bound($class) || class_exists($class))) {
+                Log::warning('Approval resource hook skipped: handler class not available', [
+                    'resource_type' => $resourceType,
+                    'class' => $class,
+                    'resource_id' => $resourceId,
+                ]);
+
+                return;
+            }
+
+            app($class)->{$method}($tenantId, $resourceId, $granted, $response);
+
+            return;
+        }
+
         switch ($resourceType) {
             case 'sales_script':
                 $service = app(\App\Services\Sales\FunnelSetupService::class);
@@ -565,6 +593,7 @@ class ApprovalEngine
                 break;
 
             case 'outreach_reply':
+                // Fallback when config/approvals.php is absent from a cached config.
                 app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
                 break;
 

@@ -280,6 +280,9 @@ import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
 import { useExpensesStore } from './stores/expenses.js'
 import { useApStore } from './stores/ap.js'
+import { useSkillsStore } from './stores/skills.js'
+import { useBrainStore } from './stores/brain.js'
+import { useRunsStore } from './stores/runs.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -292,6 +295,9 @@ const tracesStore = useTracesStore()
 const atlasStore = useAtlasStore()
 const expensesStore = useExpensesStore()
 const apStore = useApStore()
+const skillsStore = useSkillsStore()
+const brainStore = useBrainStore()
+const runsStore = useRunsStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -486,7 +492,14 @@ const autoPillClass = computed(() => {
   return 'sn-pill'
 })
 
-const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore)
+// Slice 0+ stores ride in the trailing `extras` bag:
+//   .skill.updated / .skill.run.updated → skillsStore
+//   .brain.file.updated                 → brainStore
+//   .agent_run.updated / .tool.invoked  → agentRunsStore
+const { isConnected: wsConnected } = useWebSocket(
+  authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore,
+  { skillsStore, brainStore, agentRunsStore: runsStore },
+)
 
 function openCommandBar() {
   cmdBarRef.value?.open?.()

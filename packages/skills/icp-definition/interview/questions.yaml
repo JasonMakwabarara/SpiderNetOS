@@ -1,0 +1,53 @@
+# ICP Definition — interview backbone (run.kind = interview).
+# Same shape as packages/feature-packs/sales-crm/interview/questions.yaml so the
+# InterviewRunner extracted from FunnelSetupService (plan D7 prerequisites) can run it.
+# `seed_from` names the discovery-interview answer that pre-fills the question.
+
+version: 1
+skill: icp-definition
+target_file: customers/icp.md
+max_llm_followups_per_section: 1
+
+sections:
+  - id: best_customer
+    title: "Who we sell to"
+    questions:
+      - id: best_customer
+        prompt: "Who is the customer you would clone if you could — who are they, how big, what situation were they in? (This becomes the centre of your ICP.)"
+        type: longtext
+        required: true
+        seed_from: interview_question:ideal_customer
+        brain_target: { file: customers/icp.md, section: "Who we sell to" }
+      - id: problem_solved
+        prompt: "What problem were they trying to solve when they found you, and what did they say when they bought? (Their words become the drafts' first lines.)"
+        type: longtext
+        required: true
+        brain_target: { file: customers/icp.md, section: "Who we sell to" }
+
+  - id: disqualifiers
+    title: "Who we do not sell to"
+    questions:
+      - id: disqualifiers
+        prompt: "Who is NOT a good fit — wrong size, wrong place, already has a team, a contract elsewhere? (Research applies this first, so nobody wastes a message.)"
+        type: longtext
+        required: true
+        seed_from: interview_question:disqualifiers
+        brain_target: { file: customers/icp.md, section: "Who we do not sell to" }
+
+  - id: triggers
+    title: "Buying triggers"
+    questions:
+      - id: buying_triggers
+        prompt: "What usually happens in a customer's world right before they come looking for you? (Timing is half of outreach.)"
+        type: longtext
+        required: false
+        brain_target: { file: customers/icp.md, section: "Buying triggers", frontmatter: triggers }
+
+  - id: segments
+    title: "Segments"
+    questions:
+      - id: segments
+        prompt: "If you had to split your customers into one to three groups you would write to differently, what are they? (Each becomes a campaign scope.)"
+        type: longtext
+        required: false
+        brain_target: { file: customers/icp.md, section: "Who we sell to", frontmatter: segments }

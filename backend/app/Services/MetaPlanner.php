@@ -4,6 +4,13 @@ namespace App\Services;
 
 use App\Models\Event;
 use App\Models\Tenant;
+use App\Events\AgentRunUpdated;
+use App\Jobs\RunSkillJob;
+use App\Models\AgentRun;
+use App\Services\Agents\AgentRunService;
+use App\Services\Agents\Collaborators;
+use App\Services\Agents\IdentityResolver;
+use App\Services\Agents\SkillCardView;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
@@ -155,6 +162,122 @@ class MetaPlanner
     }
     
     /**
+     * Hard Rule #2 for the PHP skill runtime (ADR-0002 D1): the ONLY way a
+     * RunSkillJob is enqueued. Same gates as dispatch() — CostGovernor
+     * pre-allocation (Hard Rule #4) and the graph permission check with the
+     * intent `run_skill:<slug>` — then the `agent.dispatched` event with
+     * metadata.runtime = 'php_skill'. A gate that fails finalises the run
+     * as `failed` (never an approval). `$inline` runs the job synchronously
+     * in this process (agents:run --sync).
+     */
+    public function dispatchRun(AgentRun $run, bool $inline = false): void
+    {
+        $tenantId = (string) $run->tenant_id;
+        $intent = 'run_skill:'.$run->skill_slug;
+        $agentId = (string) ($run->agent_id ?? '');
+
+        if (! $inline && ! AgentRunService::runtimeEnabled($tenantId)) {
+            $this->failRun($run, 'runtime_disabled', 'The agent runtime is disabled for this tenant (agents.runtime / AGENTS_RUNTIME_ENABLED).');
+
+            return;
+        }
+
+        $automationLevel = $this->getTenantAutomationLevel($tenantId);
+        $estimatedCost = $this->estimateExecutionCost($intent, [
+            'tenant_id' => $tenantId,
+            'agent_id' => $agentId,
+            'run_id' => $run->id,
+            'complexity' => (float) (($run->inputs ?? [])['complexity'] ?? 0.5),
+        ]);
+        $costStatus = $this->costGovernor->canExecute($tenantId, $estimatedCost);
+
+        if (! $costStatus['allowed']) {
+            $this->failRun($run, 'budget_exceeded', 'Tenant budget exhausted before dispatch.', [
+                'cost_status' => $costStatus,
+                'estimated_cost' => $estimatedCost,
+            ]);
+
+            return;
+        }
+
+        if ($agentId === '' || ! $this->canAgentExecute($tenantId, $agentId, $intent)) {
+            $this->failRun($run, 'agent_not_permitted', 'Agent lacks permission for this skill (inactive, or neither config.skills nor identities.yaml maps it).');
+
+            return;
+        }
+
+        $event = $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'agent_dispatch',
+            aggregateId: (string) $run->id,
+            eventType: 'agent.dispatched',
+            payload: [
+                'agent_id' => $agentId,
+                'intent' => $intent,
+                'run_id' => $run->id,
+                'skill_slug' => $run->skill_slug,
+                'workspace_id' => $run->workspace_id,
+                'mode' => $run->mode,
+                'trigger_type' => $run->trigger_type,
+                'trigger_ref' => $run->trigger_ref,
+                'context' => ['automation_level' => $automationLevel, 'inline' => $inline],
+                'cost_status' => $costStatus,
+            ],
+            metadata: [
+                'planner_version' => '3.2',
+                'runtime' => 'php_skill',
+                'degraded' => $costStatus['degraded'],
+                'estimated_cost' => $estimatedCost,
+                'cost_estimate_source' => 'adaptive',
+                'automation_level' => $automationLevel,
+            ]
+        );
+
+        $state = (array) ($run->state ?? []);
+        $state['dispatch_event_id'] = $event->id;
+        $state['estimated_cost'] = $estimatedCost;
+        $state['degraded'] = (bool) $costStatus['degraded'];
+        $run->forceFill(['state' => $state])->save();
+
+        if ($inline) {
+            RunSkillJob::dispatchSync((string) $run->id, $tenantId);
+
+            return;
+        }
+
+        RunSkillJob::dispatch((string) $run->id, $tenantId)->onQueue((string) config('agents.queue', 'agents'));
+    }
+
+    /** A dispatch gate failed: the run ends `failed` with a coded error (never an approval). */
+    private function failRun(AgentRun $run, string $code, string $message, array $detail = []): void
+    {
+        $run->forceFill([
+            'status' => AgentRun::STATUS_FAILED,
+            'error' => $code.': '.$message,
+            'finished_at' => now(),
+        ])->save();
+
+        $this->eventStore->append(
+            tenantId: (string) $run->tenant_id,
+            aggregateType: 'agent_run',
+            aggregateId: (string) $run->id,
+            eventType: 'agent.run.failed',
+            payload: [
+                'run_id' => $run->id,
+                'skill_slug' => $run->skill_slug,
+                'workspace_id' => $run->workspace_id,
+                'agent_id' => $run->agent_id,
+                'code' => $code,
+                'error' => $message,
+                'status' => AgentRun::STATUS_FAILED,
+            ] + $detail,
+            metadata: ['runtime' => 'php_skill'],
+        );
+
+        AgentRunUpdated::safeBroadcast($run);
+    }
+
+    /**
      * Hard Rule #3: Atlas UI and Atlas Agent NEVER share runtime memory
      * Atlas UI requests are processed through Meta-Planner with ephemeral session only.
      */
@@ -222,16 +345,45 @@ class MetaPlanner
             return false;
         }
         
+        // Skill runs (dispatchRun): the agent must list the skill in
+        // config.skills, or be the identity identities.yaml / the card maps
+        // it to. Capabilities are not consulted for run_skill intents.
+        if (str_starts_with($intent, 'run_skill:')) {
+            $slug = substr($intent, strlen('run_skill:'));
+            $config = json_decode((string) $agent->config, true);
+            $skills = is_array($config) ? array_map('strval', (array) ($config['skills'] ?? [])) : [];
+
+            if (in_array($slug, $skills, true) || IdentityResolver::agentOwnsSkill((string) $agent->slug, $slug)) {
+                return true;
+            }
+
+            $registry = Collaborators::skillRegistry();
+            $card = $registry?->get($slug);
+            if ($card !== null) {
+                $identity = SkillCardView::from($card)->runsOn();
+
+                return $identity !== '' && IdentityResolver::agentSlugFor($identity) === (string) $agent->slug;
+            }
+
+            return false;
+        }
+
         $capabilities = json_decode($agent->capabilities, true) ?? [];
-        
+
         // Map intent to required capability
         $requiredCapability = $this->mapIntentToCapability($intent);
-        
+
         return in_array($requiredCapability, $capabilities);
     }
     
     private function mapIntentToCapability(string $intent): string
     {
+        // run_skill:<slug> — the skill itself is the capability; canAgentExecute()
+        // checks it against config.skills / identities.yaml rather than capabilities[].
+        if (str_starts_with($intent, 'run_skill:')) {
+            return $intent;
+        }
+
         return match ($intent) {
             'process_command' => 'nl_compilation',
             'chat' => 'nl_compilation',

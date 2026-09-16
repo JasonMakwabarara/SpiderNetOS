@@ -1,0 +1,82 @@
+{
+  "data": {
+    "folders": [
+      {
+        "key": "business",
+        "title": "Business",
+        "files": [
+          { "path": "business/profile.md", "title": "Business profile", "status": "filled", "version": 4, "updated_at": "2026-09-10T14:02:00Z", "data_class": "internal" }
+        ]
+      },
+      {
+        "key": "offer",
+        "title": "Offer",
+        "files": [
+          { "path": "offer/offer.md", "title": "Offer", "status": "partial", "version": 2, "updated_at": "2026-09-12T09:30:00Z", "data_class": "internal" },
+          { "path": "offer/pricing.md", "title": "Pricing", "status": "missing", "version": 0, "updated_at": null, "data_class": "confidential" }
+        ]
+      },
+      {
+        "key": "brand",
+        "title": "Brand",
+        "files": [
+          { "path": "brand/voice.md", "title": "Brand voice", "status": "filled", "version": 6, "updated_at": "2026-09-12T09:00:00Z", "data_class": "public" }
+        ]
+      },
+      {
+        "key": "customers",
+        "title": "Customers",
+        "files": [
+          { "path": "customers/icp.md", "title": "Ideal customer", "status": "filled", "version": 3, "updated_at": "2026-09-10T14:05:00Z", "data_class": "internal" },
+          { "path": "customers/objections.md", "title": "Objections", "status": "partial", "version": 1, "updated_at": "2026-09-08T16:00:00Z", "data_class": "internal" }
+        ]
+      },
+      {
+        "key": "people",
+        "title": "People",
+        "files": [
+          { "path": "people/user.md", "title": "You", "status": "missing", "version": 0, "updated_at": null, "data_class": "confidential" }
+        ]
+      },
+      {
+        "key": "sales",
+        "title": "Sales",
+        "files": [
+          { "path": "sales/proof.md", "title": "Proof", "status": "missing", "version": 0, "updated_at": null, "data_class": "public" },
+          { "path": "sales/script.md", "title": "Sales script", "status": "filled", "version": 9, "updated_at": "2026-09-05T11:20:00Z", "data_class": "internal" }
+        ]
+      },
+      {
+        "key": "finance",
+        "title": "Finance",
+        "files": [
+          { "path": "finance/assumptions.md", "title": "Assumptions", "status": "missing", "version": 0, "updated_at": null, "data_class": "confidential" }
+        ]
+      }
+    ]
+  },
+  "readiness": {
+    "data": {
+      "pct": 55,
+      "files": [
+        { "path": "business/profile.md", "title": "Business profile", "status": "filled", "required": true },
+        { "path": "offer/offer.md", "title": "Offer", "status": "partial", "required": true },
+        { "path": "offer/pricing.md", "title": "Pricing", "status": "missing", "required": false },
+        { "path": "brand/voice.md", "title": "Brand voice", "status": "filled", "required": true },
+        { "path": "customers/icp.md", "title": "Ideal customer", "status": "filled", "required": true },
+        { "path": "customers/objections.md", "title": "Objections", "status": "partial", "required": false },
+        { "path": "people/user.md", "title": "You", "status": "missing", "required": true },
+        { "path": "sales/proof.md", "title": "Proof", "status": "missing", "required": false },
+        { "path": "sales/script.md", "title": "Sales script", "status": "filled", "required": false },
+        { "path": "finance/assumptions.md", "title": "Assumptions", "status": "missing", "required": false }
+      ]
+    }
+  },
+  "gaps": {
+    "data": [
+      { "path": "offer/offer.md", "section": "differentiators", "question": "What makes you different from the obvious alternative?", "blocks": ["cold-email-drafting"], "value": 3 },
+      { "path": "people/user.md", "section": "calendar", "question": "What is your booking link and how long is a first call?", "blocks": ["meeting-booking"], "value": 2 },
+      { "path": "finance/assumptions.md", "section": "bank_balance", "question": "What was the bank balance on Monday morning?", "blocks": ["cashflow-analyst"], "value": 2 }
+    ]
+  }
+}

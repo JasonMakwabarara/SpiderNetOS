@@ -8,8 +8,17 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
-// Daily Brief Generation (06:00 daily)
+// Daily Brief Generation (06:00 daily) — composes Needs-You Today per tenant (FounderBriefService)
 Schedule::job(new \App\Jobs\GenerateDailyBriefJob)->dailyAt('06:00');
+
+// Needs-You Today delivery (plan D8 #3): hourly sweep that recomposes and
+// pushes brief_ready at 06:55–07:05 in each tenant's own timezone, then
+// flushes due notification bundles (D8 #4) — same pattern as OutreachDailyDigestJob.
+Schedule::job(new \App\Jobs\FounderBriefJob)->hourly()->withoutOverlapping();
+
+// Every edit is a lesson (plan D8 #1): weekly distillation of artifact_revisions
+// into people/user.md proposals ("you always shorten the opener → rule"), Sunday 03:00 UTC
+Schedule::job(new \App\Jobs\DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();
 
 // Usage Aggregation (every 5 minutes — runs only when atlas.usage_aggregates_v2=on)
 Schedule::job(new \App\Jobs\AggregateUsageJob)->everyFiveMinutes();
@@ -79,3 +88,9 @@ Schedule::job(new \App\Jobs\RunScheduledSpendExportsJob)->dailyAt('04:00')->with
 // Accounting (Stage 3): weekly spend digest to tenant admins (Mon 07:30) —
 // gated per tenant by the spend.weekly_digest flag / SPEND_WEEKLY_DIGEST env
 Schedule::job(new \App\Jobs\WeeklySpendDigestJob)->weeklyOn(1, '07:30')->withoutOverlapping();
+
+// Knowledge brain (ADR-0002 D2): hourly re-projection of business context for tenants whose source tables changed
+Schedule::job(new \App\Jobs\BrainSyncJob)->hourly()->withoutOverlapping();
+
+// Operating brain (ADR-0002): free agent runs whose worker lease expired.
+Schedule::job(new \App\Jobs\FailStaleAgentRunsJob)->everyTenMinutes()->withoutOverlapping();
