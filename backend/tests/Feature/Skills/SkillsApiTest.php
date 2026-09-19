@@ -207,7 +207,10 @@ class SkillsApiTest extends TestCase
         $this->assertTrue($handOffs['Follow-up Drafting']['available']);
         $this->assertSame('/skills/follow-up-drafting', $handOffs['Follow-up Drafting']['entry_path']);
         $this->assertSame('identity', $handOffs['Richard']['type']);
-        $this->assertFalse($handOffs['Richard']['available'], 'Richard is planned until PR 7');
+        // Richard's identity went existing -> the hand-off target is real. `available`
+        // here means the target exists in the catalogue, not that this tenant may use
+        // it: the card reports entitlement separately, and asserts it is false below.
+        $this->assertTrue($handOffs['Richard']['available']);
 
         $this->assertSame('object', $card['inputs']['type']);
         $this->assertFalse($card['run_cta']['enabled'], 'no pack + missing brain → run disabled with a reason');
