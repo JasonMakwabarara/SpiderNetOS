@@ -28,7 +28,7 @@
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="spidernet_test"/>
         <env name="DB_USERNAME" value="spidernet"/>
-        <env name="DB_PASSWORD" value="spidernet"/>
+        <env name="DB_PASSWORD" value=""/>
         <!-- config/cache.php reads CACHE_STORE, not CACHE_DRIVER. Without it this
              lane silently ran the cache on the Redis service, so the rate limiter
              and FeatureFlag's memo carried between tests — which is why the login

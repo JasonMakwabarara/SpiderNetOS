@@ -26,3 +26,20 @@ regexes = [
   # Twilio test account SID prefix (AC followed by zeros).
   '''AC0{32}''',
 ]
+
+# gitleaks' default ruleset is built around high-entropy strings and vendor
+# prefixes, so it cannot see a database password that happens to be a dictionary
+# word. GitGuardian caught `PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres`
+# in a workflow and gitleaks did not; this closes that gap in the scanner we
+# actually control.
+#
+# Deliberately narrow: it matches a *literal* only. An expansion —
+# PGPASSWORD="$DB_PASSWORD", PGPASSWORD="${{ secrets.X }}",
+# PGPASSWORD="${DB_PASSWORD:-postgres}" — begins with a quote or a dollar and is
+# not matched, because sourcing a credential from the environment is the fix
+# this rule is pushing people towards.
+[[rules]]
+id = "inline-db-password-literal"
+description = "Database password written as a literal on the command line"
+regex = '''\b(PGPASSWORD|MYSQL_PWD|PGPASS)=(?:[^\s$'"=]+)'''
+tags = ["database", "password", "cleartext"]
