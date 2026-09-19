@@ -41,22 +41,10 @@ suites:
         job: pytest
 
   - path: tests
-    unwired:
-      reason: >
-        Integration, behavioural, chaos and load suites. tests/integration needs
-        testcontainers (Postgres, Redis, Kafka) and tests/load is a locust file,
-        so neither belongs on every pull request. Not wired yet because it would
-        be red on arrival, and a permanently red job is the disease this file is
-        treating: 13 pass, 9 skip, 5 fail and 1 errors. The three causes are
-        distinct and none is a CI problem —
-          * tests/behavioral asks for a kafka_container fixture that only exists
-            in tests/integration/conftest.py;
-          * test_cpl_service expects log_probs.shape == (32,) and gets (1,),
-            which is either policy_network drift or a stale expectation;
-          * test_cpl_convergence imports services.cpl_service, and the directory
-            is services/cpl-service — that import has never resolved, so the
-            test has never passed rather than having rotted.
-        Fix those, then wire this to a scheduled workflow with workflow_dispatch
-        rather than to pull requests.
-      owner: jason
-      review_date: 2026-10-19
+    runs_in:
+      # unit + behavioural need no infrastructure and run on every PR.
+      - workflow: python-ci.yml
+        job: repo-suites
+      # integration/chaos/client bring up containers or need a live server.
+      - workflow: integration-nightly.yml
+        job: integration

@@ -122,6 +122,14 @@ async def startup():
         use_fp16=(device == 'cuda')
     ).to(device)
 
+    # Serving mode. The trunk carries Dropout(0.1) and nn.Module starts in
+    # train(), so without this every action was chosen through a randomly
+    # thinned network — and `deterministic=True` returned a different action
+    # each call. torch.no_grad() at the call site does not help: it disables
+    # gradients, not dropout. StreamingPPOTrainer.update() flips to train() for
+    # the optimisation step and back again.
+    policy_network.eval()
+
     # Compile for speed (PyTorch 2.0)
     if hasattr(torch, 'compile'):
         policy_network = torch.compile(policy_network, mode='reduce-overhead')

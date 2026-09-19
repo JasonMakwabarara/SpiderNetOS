@@ -38,7 +38,7 @@ def discover(root: Path = Path(".")) -> set[str]:
             for f in path.rglob("*") if f.is_file()
         )
         if has_tests:
-            found.add(path.as_posix().lstrip("./"))
+            found.add(path.as_posix().removeprefix("./"))
     return found
 
 

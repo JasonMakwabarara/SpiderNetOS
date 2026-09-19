@@ -132,6 +132,16 @@ class StreamingPPOTrainer:
         return advantages, returns
 
     def update(self, trajectory: Trajectory, budget: float = 50.0) -> Dict[str, float]:
+        # Dropout belongs in the optimisation step and nowhere else; the
+        # service serves in eval mode (see main.py).
+        was_training = self.policy.training
+        self.policy.train()
+        try:
+            return self._update(trajectory, budget)
+        finally:
+            self.policy.train(was_training)
+
+    def _update(self, trajectory: Trajectory, budget: float = 50.0) -> Dict[str, float]:
         """
         PPO policy update from trajectory.
 

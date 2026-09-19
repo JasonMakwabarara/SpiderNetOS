@@ -125,7 +125,7 @@ jobs:
         run: ruff check . --output-format=github
 
   suites-wired:
-    name: every test suite reaches a CI job
+    name: registries match the code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
@@ -137,6 +137,9 @@ jobs:
       # tests/ directory and a workflow are separate artefacts and neither knows
       # about the other. This is what looks.
       - run: python3 .github/check_suites_wired.py
+      # And the same for work that says it is unfinished: a comment is not a
+      # plan unless somebody owns it and it has a date.
+      - run: python3 .github/check_deferred.py
 
   backend-test-full:
     name: backend — full test suite (Postgres + Redis)
