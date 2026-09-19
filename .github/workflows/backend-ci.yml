@@ -48,6 +48,14 @@ jobs:
           sed -i 's/DB_DATABASE=.*/DB_DATABASE=spidernet_test/' .env
           sed -i 's/DB_USERNAME=.*/DB_USERNAME=postgres/' .env
           sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/' .env
+          # The example points at the docker-compose service names; on the runner
+          # Postgres is published on localhost and there is no Redis service, so
+          # keep cache/session/queue off Redis for this job.
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/CACHE_DRIVER=.*/CACHE_DRIVER=array/' .env
+          sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
+          sed -i 's/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
+          grep -q '^CACHE_STORE=' .env && sed -i 's/CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
 
       - name: Generate key and migrate
         run: |
