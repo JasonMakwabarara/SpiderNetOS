@@ -47,6 +47,15 @@ return [
         'token_ttl_seconds' => (int) env('HANNAH_TOKEN_TTL', 900),
     ],
 
+    /*
+     | ZetKai (zetkai.spidernetos.com) — Jason's personal Zettelkasten. Reached
+     | with a per-tenant integration token stored in tenant_secrets, never an
+     | env value: the vault belongs to a person, not to this installation.
+     */
+    'zetkai' => [
+        'timeout' => (int) env('ZETKAI_TIMEOUT', 30),
+    ],
+
     'intelligence_gateway' => [
         // Host dev: localhost:8005 maps to semantic-gateway container :8000
         'url' => env('INTELLIGENCE_GATEWAY_URL', 'http://localhost:8005'),

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Brain\BrainController;
+use App\Http\Controllers\ZetKai\ZetKaiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('brain')->name('brain.')->group(function () {
+    // ZetKai -> the Knowledge brain (plan D7 §4). Reading the status is not
+    // privileged; pulling someone's personal vault on demand is.
+    Route::get('/zetkai/status', [ZetKaiController::class, 'status'])->name('zetkai.status');
+    Route::post('/zetkai/sync-now', [ZetKaiController::class, 'syncNow'])->middleware('role:admin')->name('zetkai.sync');
+
     Route::get('/tree', [BrainController::class, 'tree'])->name('tree');
     Route::get('/readiness', [BrainController::class, 'readiness'])->name('readiness');
     Route::get('/gaps', [BrainController::class, 'gaps'])->name('gaps');

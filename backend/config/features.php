@@ -295,6 +295,19 @@ return [
     /** Re-push brand/voice.md to Hannah whenever it changes, after the first approval. */
     'hannah_ai.brand_autosync' => env('FEATURE_HANNAH_AI_BRAND_AUTOSYNC', 'off'),
 
+    /**
+     * ZetKai <-> SpiderNetOS (plan D7 §4). Off until ZetKai's own side forces
+     * the privacy exclusion for integration tokens: a guard on the consumer
+     * only protects you while the consumer is running the code you think it is.
+     */
+    'zetkai.enabled' => env('FEATURE_ZETKAI_ENABLED', 'off'),
+
+    /** Nightly 02:30 pull of the vault into notes/zetkai/**. */
+    'zetkai.nightly_sync' => env('FEATURE_ZETKAI_NIGHTLY_SYNC', 'off'),
+
+    /** File a note back into ZetKai without an approval. Off: a vault is not a drafts folder. */
+    'zetkai.autofile' => env('FEATURE_ZETKAI_AUTOFILE', 'off'),
+
     /** Board of advisors: GET /api/board/*, five archetype seats plus a chairman. */
     'board.enabled' => env('FEATURE_BOARD_ENABLED', 'off'),
 

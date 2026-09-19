@@ -27,6 +27,10 @@ Schedule::job(new \App\Jobs\MondayLetterJob)->hourly()->withoutOverlapping();
 // tenant by newsletter.customer.
 Schedule::job(new \App\Jobs\CustomerNewsletterJob)->hourly()->withoutOverlapping();
 
+// ZetKai -> Knowledge brain (plan D7 §4): one cursor-driven page a night, per
+// tenant, behind zetkai.enabled + zetkai.nightly_sync.
+Schedule::job(new \App\Jobs\ZetKaiSyncJob)->dailyAt('02:30')->withoutOverlapping();
+
 // Every edit is a lesson (plan D8 #1): weekly distillation of artifact_revisions
 // into people/user.md proposals ("you always shorten the opener → rule"), Sunday 03:00 UTC
 Schedule::job(new \App\Jobs\DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();
