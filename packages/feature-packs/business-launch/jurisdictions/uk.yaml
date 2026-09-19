@@ -1,0 +1,272 @@
+# United Kingdom — business-launch jurisdiction pack.
+#
+# Not legal or financial advice. This file is a map of the usual first-year
+# obligations for a new UK business, written for founders in plain words.
+# Rates, thresholds and deadlines change: every item carries a `confidence`
+# and a link to the official source, and JurisdictionPack raises an
+# awareness item when `valid_as_of` is more than `review_after_days` old.
+#
+# Deadlines: `relative_to: incorporation` offsets are turned into dates when
+# the incorporation date is known; every other `relative_to` is explained in
+# `rule` only (Atlas does not guess dates it cannot know).
+#
+# Owners: founder (you do it) | atlas (SpiderNetOS does it, read-only) |
+# advisor (an accountant, lawyer or registered agent is the right person).
+
+code: uk
+name: "United Kingdom"
+valid_as_of: 2026-09-16
+review_after_days: 180
+currency: GBP
+disclaimer: "Not legal or financial advice. Check with Companies House, HMRC or a qualified adviser before you act."
+
+structures:
+  - id: sole_trader
+    local_name: "Sole trader"
+  - id: partnership
+    local_name: "Partnership (or LLP)"
+  - id: company
+    local_name: "Private company limited by shares (Ltd)"
+
+registration:
+  body: "Companies House"
+  website: "https://www.gov.uk/government/organisations/companies-house"
+  applies_to: [company]
+  api:
+    availability: public_read          # public_read | partner_api | portal_only
+    name: "Companies House Public Data API"
+    docs: "https://developer.company-information.service.gov.uk/"
+    auth: "Free API key (read-only public register data)"
+    notes: "Read access to the public register. Incorporation and filings go through Companies House services or authorised filing software — never through Atlas."
+  identity_verification:
+    law: "Economic Crime and Corporate Transparency Act 2023 (ECCTA)"
+    mandatory_since: 2025-11-18
+    applies_to: [directors, persons_with_significant_control]
+    how: "Verify once with Companies House through GOV.UK One Login, or through an Authorised Corporate Service Provider (ACSP), and keep your Companies House personal code."
+    link: "https://www.gov.uk/guidance/verifying-your-identity-for-companies-house"
+    atlas_checks_field: identity_verification_status
+  atlas_may:
+    - search_company_register
+    - read_company_profile
+    - check_identity_verification_status
+  atlas_never:
+    - incorporate_company
+    - verify_identity_on_behalf_of_a_person
+    - file_documents_with_companies_house
+    - register_for_tax_with_hmrc
+
+tax:
+  authority: "HMRC"
+  website: "https://www.gov.uk/government/organisations/hm-revenue-customs"
+  corporate_rate_pct: 25
+  small_profits_rate_pct: 19
+  notes: "Corporation Tax main rate 25%; small profits rate 19% for lower profits, with marginal relief in between. Sole traders pay Income Tax and National Insurance through Self Assessment instead."
+  confidence: high
+
+tax_registrations:
+  - id: corporation_tax
+    title: "Corporation Tax"
+    applies_to: [company]
+    when: "Within 3 months of starting to do business (trading), not of incorporating."
+    confidence: high
+  - id: self_assessment
+    title: "Self Assessment (sole traders and partners)"
+    applies_to: [sole_trader, partnership]
+    when: "By 5 October after the end of the tax year in which you started trading."
+    confidence: high
+  - id: vat
+    title: "VAT"
+    applies_to: [sole_trader, partnership, company]
+    threshold: 90000
+    threshold_currency: GBP
+    when: "When VAT-taxable turnover passes £90,000 in any rolling 12 months — register within 30 days of the end of the month you went over. Voluntary registration is allowed earlier."
+    confidence: high
+  - id: paye
+    title: "PAYE (as an employer)"
+    applies_to: [sole_trader, partnership, company]
+    when: "Before your first payday, and no more than 2 months before you start paying people. Directors paying themselves a salary usually count."
+    confidence: high
+
+deadlines:
+  - id: uk_ct_register
+    title: "Register for Corporation Tax"
+    relative_to: trading_start
+    offset: { months: 3 }
+    rule: "Within 3 months of starting to trade."
+    confidence: high
+  - id: uk_confirmation_statement
+    title: "First confirmation statement"
+    relative_to: incorporation
+    offset: { months: 12, days: 14 }
+    recurring: annual
+    rule: "At least once every 12 months, due within 14 days after the end of the review period."
+    confidence: high
+  - id: uk_first_accounts
+    title: "First annual accounts to Companies House"
+    relative_to: incorporation
+    offset: { months: 21 }
+    rule: "A new private company's first accounts are due 21 months after the date of incorporation."
+    confidence: high
+  - id: uk_ct600
+    title: "Corporation Tax payment and CT600 return"
+    relative_to: accounting_period_end
+    rule: "Pay 9 months and 1 day after the end of the accounting period; file the CT600 return within 12 months of it."
+    confidence: high
+  - id: uk_vat_register
+    title: "VAT registration"
+    relative_to: threshold_crossed
+    offset: { days: 30 }
+    rule: "Within 30 days of the end of the month in which taxable turnover passed the threshold."
+    confidence: high
+
+checklist:
+  - id: uk_choose_structure
+    title: "Choose how you'll trade: sole trader, partnership or limited company"
+    detail: "This decides your tax, your paperwork and your personal liability. A quick chat with an accountant is worth it."
+    owner: advisor
+    category: registration
+    applies_to: [all]
+    links: ["https://www.gov.uk/set-up-business"]
+    confidence: high
+
+  - id: uk_verify_identity
+    title: "Verify your identity with Companies House (ECCTA)"
+    detail: "Mandatory since 18 November 2025 for new directors and people with significant control. Do it through GOV.UK One Login or an Authorised Corporate Service Provider before the company is registered, and keep your personal code."
+    owner: founder
+    category: registration
+    applies_to: [company]
+    severity: action_needed
+    links: ["https://www.gov.uk/guidance/verifying-your-identity-for-companies-house"]
+    confidence: high
+
+  - id: uk_atlas_check_identity_status
+    title: "Atlas checks identity verification status on the public register"
+    detail: "Read-only: Atlas looks up identity_verification_status for your officers through the Companies House Public Data API (flag launch.registry_checks). Atlas never verifies identity for anyone, never incorporates and never files."
+    owner: atlas
+    category: registration
+    applies_to: [company]
+    links: ["https://developer.company-information.service.gov.uk/"]
+    confidence: medium
+
+  - id: uk_incorporate
+    title: "Register the company with Companies House"
+    detail: "You, your accountant or a formation agent registers the company. You need a name, an appropriate registered office address, a registered email address, at least one director and details of people with significant control."
+    owner: founder
+    category: registration
+    applies_to: [company]
+    severity: action_needed
+    links: ["https://www.gov.uk/limited-company-formation"]
+    confidence: high
+
+  - id: uk_registered_office_and_email
+    title: "Keep an appropriate registered office address and a registered email address"
+    detail: "Required under ECCTA since 4 March 2024. Post and email sent there must reach someone in the company."
+    owner: founder
+    category: registration
+    applies_to: [company]
+    links: ["https://www.gov.uk/limited-company-formation/registered-office-address"]
+    confidence: high
+
+  - id: uk_corporation_tax
+    title: "Register for Corporation Tax"
+    detail: "Within 3 months of starting to trade."
+    owner: founder
+    category: tax
+    applies_to: [company]
+    deadline: uk_ct_register
+    links: ["https://www.gov.uk/limited-company-formation/set-up-your-company-for-corporation-tax"]
+    confidence: high
+
+  - id: uk_self_assessment
+    title: "Register for Self Assessment"
+    detail: "Sole traders and partners register with HMRC by 5 October after the end of the tax year they started trading."
+    owner: founder
+    category: tax
+    applies_to: [sole_trader, partnership]
+    links: ["https://www.gov.uk/register-for-self-assessment"]
+    confidence: high
+
+  - id: uk_confirmation_statement
+    title: "File your confirmation statement every year"
+    owner: founder
+    category: registration
+    applies_to: [company]
+    deadline: uk_confirmation_statement
+    links: ["https://www.gov.uk/file-your-confirmation-statement-with-companies-house"]
+    confidence: high
+
+  - id: uk_first_accounts
+    title: "File your first accounts with Companies House"
+    owner: advisor
+    category: tax
+    applies_to: [company]
+    deadline: uk_first_accounts
+    links: ["https://www.gov.uk/prepare-file-annual-accounts-for-limited-company"]
+    confidence: high
+
+  - id: uk_vat
+    title: "Register for VAT when turnover passes £90,000"
+    detail: "Watch your rolling 12-month turnover. Atlas can flag it from your finance model, but registering is yours or your accountant's job."
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    trigger: vat_threshold
+    deadline: uk_vat_register
+    links: ["https://www.gov.uk/register-for-vat"]
+    confidence: high
+
+  - id: uk_paye
+    title: "Register as an employer (PAYE) before your first payday"
+    owner: founder
+    category: people
+    applies_to: [all]
+    trigger: hires
+    links: ["https://www.gov.uk/register-employer"]
+    confidence: high
+
+  - id: uk_employers_liability
+    title: "Get employers' liability insurance"
+    detail: "Usually a legal requirement as soon as you employ someone."
+    owner: founder
+    category: insurance
+    applies_to: [all]
+    trigger: hires
+    links: ["https://www.gov.uk/employers-liability-insurance"]
+    confidence: high
+
+  - id: uk_ico_fee
+    title: "Check whether you must pay the ICO data protection fee"
+    detail: "Most organisations that handle personal data pay a small yearly fee to the Information Commissioner's Office. Keep a simple record of what you collect and why."
+    owner: founder
+    category: data
+    applies_to: [all]
+    trigger: handles_personal_data
+    links: ["https://ico.org.uk/for-organisations/data-protection-fee/"]
+    confidence: high
+
+  - id: uk_licences
+    title: "Check licences and permits for your activity"
+    detail: "Food, alcohol, financial services, health, transport and childcare usually need a licence or registration — often with your local council or a sector regulator."
+    owner: advisor
+    category: licences
+    applies_to: [all]
+    trigger: regulated_activity
+    links: ["https://www.gov.uk/browse/business"]
+    confidence: medium
+
+  - id: uk_business_bank
+    title: "Open a separate business bank account"
+    detail: "A company must keep its money separate from yours; sole traders benefit from doing the same."
+    owner: founder
+    category: banking
+    applies_to: [all]
+    links: []
+    confidence: high
+
+  - id: uk_records
+    title: "Keep business records for at least 6 years"
+    owner: founder
+    category: records
+    applies_to: [all]
+    links: ["https://www.gov.uk/running-a-limited-company/company-and-accounting-records"]
+    confidence: high

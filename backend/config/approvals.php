@@ -3,6 +3,7 @@
 use App\Services\Agents\AgentArtifactApprovals;
 use App\Services\Agents\AgentRunResumer;
 use App\Services\Brain\BrainProposalService;
+use App\Services\Launch\BusinessLaunchService;
 use App\Services\Outreach\Bot\OutreachReplyService;
 
 /**
@@ -37,6 +38,11 @@ return [
 
         // Proposed Knowledge-brain changes (Stream A / PR 3).
         'brain_proposal' => [BrainProposalService::class, 'onApprovalResolved'],
+
+        // The business plan the business-launch pack drafts (plan D7 §5):
+        // approved -> the launch goes live, rejected -> back to `drafted`
+        // so the founder can revise and resubmit.
+        'business_plan' => [BusinessLaunchService::class, 'onApprovalResolved'],
     ],
 
 ];

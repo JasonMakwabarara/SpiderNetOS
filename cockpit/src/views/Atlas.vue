@@ -17,24 +17,28 @@
       />
     </div>
 
-    <!-- Right Panel: Context (1/3) -->
+    <!-- Right Panel: Context (1/3) — the launch panel takes it over on
+         /atlas?mode=launch (plan D7 §5, cockpit surface E). -->
     <div class="flex w-1/3 min-h-0 flex-col overflow-hidden bg-gray-50">
-      <HannahGuidancePanel
-        :force-onboarding-seed="showHannahBootstrap"
-        @run-command="handleSend"
-        @flow-created="handleFlowCreated"
-      />
-      <AtlasContextPanel
-        class="min-h-0 flex-1"
-        :ast="atlasStore.commandAst"
-        :tasks="atlasStore.tasks"
-        :active-agent="atlasStore.activeAgent"
-        :suggestions="atlasStore.suggestions"
-        :plan-progress="atlasStore.planProgress"
-        :total-cost="atlasStore.totalCost"
-        @dismiss-suggestion="handleDismissSuggestion"
-        @execute-suggestion="handleExecuteSuggestion"
-      />
+      <AtlasLaunchPanel v-if="launchMode" />
+      <template v-else>
+        <HannahGuidancePanel
+          :force-onboarding-seed="showHannahBootstrap"
+          @run-command="handleSend"
+          @flow-created="handleFlowCreated"
+        />
+        <AtlasContextPanel
+          class="min-h-0 flex-1"
+          :ast="atlasStore.commandAst"
+          :tasks="atlasStore.tasks"
+          :active-agent="atlasStore.activeAgent"
+          :suggestions="atlasStore.suggestions"
+          :plan-progress="atlasStore.planProgress"
+          :total-cost="atlasStore.totalCost"
+          @dismiss-suggestion="handleDismissSuggestion"
+          @execute-suggestion="handleExecuteSuggestion"
+        />
+      </template>
     </div>
 
     <!-- Loading overlay for session init -->
@@ -56,6 +60,7 @@ import { useRoute } from 'vue-router'
 import { useAtlasStore } from '../stores/atlas.js'
 import AtlasChatPanel from '../components/AtlasChatPanel.vue'
 import AtlasContextPanel from '../components/AtlasContextPanel.vue'
+import AtlasLaunchPanel from '../components/AtlasLaunchPanel.vue'
 import HannahGuidancePanel from '../components/HannahGuidancePanel.vue'
 
 const route = useRoute()
@@ -63,6 +68,9 @@ const atlasStore = useAtlasStore()
 const showHannahBootstrap = computed(
   () => route.query.seed === 'onboarding' || route.query.hannah === '1'
 )
+
+/** ?mode=launch — "Atlas, I want to start a business". */
+const launchMode = computed(() => route.query.mode === 'launch')
 
 onMounted(async () => {
   const sessionParam = route.query.session
@@ -76,6 +84,20 @@ onMounted(async () => {
     ? `atlas.seed.done.${atlasStore.currentSessionId}`
     : null
 
+  // The launch interview owns the turn: opening the surface asks Atlas for
+  // the question it is waiting on rather than the generic onboarding kickoff.
+  if (launchMode.value) {
+    const launchKey = key ? `${key}.launch` : null
+    if (!launchKey || typeof sessionStorage === 'undefined' || !sessionStorage.getItem(launchKey)) {
+      if (launchKey && typeof sessionStorage !== 'undefined') sessionStorage.setItem(launchKey, '1')
+      await atlasStore.sendMessage(
+        route.query.prefill || 'I want to start a business.',
+        { mode: 'launch' },
+      )
+    }
+    return
+  }
+
   if (showHannahBootstrap.value && key && typeof sessionStorage !== 'undefined') {
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, '1')
@@ -88,7 +110,7 @@ onMounted(async () => {
 })
 
 function handleSend(text) {
-  atlasStore.sendMessage(text)
+  atlasStore.sendMessage(text, launchMode.value ? { mode: 'launch' } : {})
 }
 
 function handleCommand(command) {

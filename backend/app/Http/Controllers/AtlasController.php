@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AtlasThread;
 use App\Services\AtlasClarityGate;
 use App\Services\AtlasDiscoveryService;
-use App\Services\DagExecutionService;
-use App\Services\FlowTemplateBuilder;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
+use App\Services\AtlasPromptStack;
+use App\Services\DagExecutionService;
 use App\Services\EventStore;
 use App\Services\FeatureFlag;
+use App\Services\FlowTemplateBuilder;
+use App\Services\Launch\BusinessLaunchService;
 use App\Services\MetaPlanner;
 use App\Services\Onboarding\OnboardingPolicy;
 use App\Services\PackGrowthService;
@@ -17,17 +20,22 @@ use App\Services\PromptEnhancer;
 use App\Services\TransformationEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class AtlasController extends Controller
 {
     private EventStore $eventStore;
+
     private MetaPlanner $metaPlanner;
+
     private TransformationEngine $transformationEngine;
+
     private AtlasInteractionLogger $interactionLogger;
+
     private OnboardingPolicy $onboardingPolicy;
 
     public function __construct(
@@ -60,31 +68,32 @@ class AtlasController extends Controller
      */
     public function enhancePrompt(Request $request, PromptEnhancer $enhancer): JsonResponse
     {
-        if (!FeatureFlag::on('atlas.enhance_prompt')) {
+        if (! FeatureFlag::on('atlas.enhance_prompt')) {
             return response()->json([
-                'error'   => 'enhance_prompt_disabled',
+                'error' => 'enhance_prompt_disabled',
                 'message' => 'The Enhance Prompt feature is currently disabled for this tenant.',
             ], 503);
         }
 
         $data = $request->validate([
-            'prompt'   => 'required|string|min:1|max:4000',
-            'mode'     => 'sometimes|string|in:concise,balanced,deep',
-            'surface'  => 'sometimes|string|in:atlas_chat,agent_builder,flow_builder,generic',
+            'prompt' => 'required|string|min:1|max:4000',
+            'mode' => 'sometimes|string|in:concise,balanced,deep',
+            'surface' => 'sometimes|string|in:atlas_chat,agent_builder,flow_builder,generic',
             'audience' => 'sometimes|string|in:user,admin,super_admin',
-            'tone'     => 'sometimes|string|in:neutral,concise,deep',
+            'tone' => 'sometimes|string|in:neutral,concise,deep',
         ]);
 
         $started = microtime(true);
 
         $result = $enhancer->enhance($data['prompt'], [
-            'mode'     => $data['mode']     ?? 'balanced',
-            'surface'  => $data['surface']  ?? 'generic',
+            'mode' => $data['mode'] ?? 'balanced',
+            'surface' => $data['surface'] ?? 'generic',
             'audience' => $data['audience'] ?? 'user',
-            'tone'     => $data['tone']     ?? 'neutral',
+            'tone' => $data['tone'] ?? 'neutral',
         ]);
 
         $result['latency_ms'] = (int) round((microtime(true) - $started) * 1000);
+
         return response()->json($result);
     }
 
@@ -104,7 +113,9 @@ class AtlasController extends Controller
             'style' => 'sometimes|string|in:concise,balanced,emotional,analytical,directive',
             // "One step further" (plan D8): the context thread and how this message relates to the last ASK.
             'thread_id' => 'sometimes|nullable|string|uuid',
-            'mode' => 'sometimes|nullable|string|in:chat,answer,skip,run',
+            // `launch` routes the turn into the business-launch interview
+            // (plan D7 §5) instead of the planner.
+            'mode' => 'sometimes|nullable|string|in:chat,answer,skip,run,launch',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -116,6 +127,17 @@ class AtlasController extends Controller
         $startedAt = microtime(true);
         $threadId = $this->resolveThreadId($tenantId, $request->input('thread_id'), $sessionId);
         $mode = $request->input('mode') ?: 'chat';
+
+        // "Atlas, I want to start a business": the launch surface drives the
+        // same chat box, so the turn goes to BusinessLaunchService instead of
+        // the planner. Returns null (and falls through to normal chat) when
+        // the pack is not enabled or the service is unavailable.
+        if ($mode === 'launch') {
+            $launchTurn = $this->launchTurn($tenantId, $message, $sessionId, $interactionId, $threadId, $userId);
+            if ($launchTurn !== null) {
+                return $launchTurn;
+            }
+        }
 
         // Learn from user input and check discovery mode (skip for slash commands)
         $this->discoveryService->absorbAnswer($tenantId, $message);
@@ -247,6 +269,109 @@ class AtlasController extends Controller
     }
 
     /**
+     * One turn of the business-launch interview (plan D7 §5).
+     *
+     * The founder's message is recorded as the answer to whatever question
+     * the launch runner would have asked next; the reply carries the next
+     * question, `metadata.launch` (status, stage, next_question, progress and
+     * the file being filled) and `metadata.brain` readiness so the cockpit
+     * panel can render without a second round trip.
+     *
+     * Returns null when `launch.enabled` is off or anything goes wrong, so
+     * the caller falls back to ordinary Atlas chat.
+     */
+    private function launchTurn(
+        string $tenantId,
+        string $message,
+        string $sessionId,
+        string $interactionId,
+        ?string $threadId,
+        mixed $userId,
+    ): ?JsonResponse {
+        if (! FeatureFlag::on('launch.enabled', $tenantId)) {
+            return null;
+        }
+
+        try {
+            $service = app(BusinessLaunchService::class);
+            $launch = $service->start($tenantId);
+            $result = trim($message) === ''
+                ? $service->state($launch) + ['recorded' => false]
+                : $service->answer($launch, $message);
+            $brain = $service->readiness($tenantId);
+        } catch (\Throwable $e) {
+            Log::warning('AtlasController: launch turn failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'atlas_session',
+            aggregateId: $sessionId,
+            eventType: 'atlas.message.received',
+            payload: [
+                'user_id' => $userId,
+                'role' => 'user',
+                'content' => $message,
+                'interaction_id' => $interactionId,
+                'mode' => 'launch',
+            ],
+        );
+
+        $next = $result['next_question'] ?? null;
+        $nowFilling = $result['now_filling'] ?? null;
+        $disclaimer = (string) ($result['disclaimer'] ?? 'Not legal or financial advice.');
+
+        $contract = [
+            'future_state' => 'Your business brain fills in as you answer, so every agent after this reads the same story.',
+            'value' => 'One question at a time instead of a blank page.',
+            'emotional_shift' => 'Momentum — you can see the plan taking shape.',
+            'action_summary' => $next['prompt'] ?? 'That is everything I need for now. Generate your finance model and plan when you are ready.',
+            'details' => $nowFilling !== null && $nowFilling !== '' ? 'Now filling: '.$nowFilling : null,
+        ];
+
+        return response()->json([
+            'contract_version' => '1',
+            'session_id' => $sessionId,
+            'interaction_id' => $interactionId,
+            'message' => [
+                'id' => (string) Str::uuid(),
+                'role' => 'atlas',
+                'contract' => $contract,
+                'timestamp' => now()->toIso8601String(),
+                'metadata' => [
+                    'intent' => 'launch',
+                    'mode' => 'launch',
+                    'agent_used' => 'launch-guide',
+                    'status' => (string) ($result['status'] ?? 'interviewing'),
+                    'questions' => $next !== null ? [(string) $next['prompt']] : [],
+                    'thread_id' => $threadId,
+                    'disclaimer' => $disclaimer,
+                    'launch' => [
+                        'id' => $result['id'] ?? null,
+                        'status' => $result['status'] ?? null,
+                        'stage' => $result['stage'] ?? null,
+                        'stage_title' => $result['stage_title'] ?? null,
+                        'next_question' => $next,
+                        'now_filling' => $nowFilling,
+                        'progress_pct' => $result['progress_pct'] ?? 0,
+                        'jurisdiction' => $result['jurisdiction'] ?? null,
+                        'jurisdictions' => $result['jurisdictions'] ?? [],
+                        'stages' => $result['stages'] ?? [],
+                        'deliverables' => $result['deliverables'] ?? [],
+                        'approval_id' => $result['approval_id'] ?? null,
+                        'disclaimer' => $disclaimer,
+                    ],
+                    'brain' => $brain,
+                ],
+            ],
+            'ast' => ['type' => 'launch'],
+            'cost_status' => null,
+        ]);
+    }
+
+    /**
      * The thread this message belongs to: an explicit thread_id, else the
      * session id when it is an atlas_threads row (the cockpit uses the
      * session created by POST /atlas/sessions as its session_id).
@@ -258,8 +383,8 @@ class AtlasController extends Controller
                 continue;
             }
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('atlas_threads')
-                    && \App\Models\AtlasThread::forTenant($tenantId)->whereKey($candidate)->exists()) {
+                if (Schema::hasTable('atlas_threads')
+                    && AtlasThread::forTenant($tenantId)->whereKey($candidate)->exists()) {
                     return $candidate;
                 }
             } catch (\Throwable) {
@@ -463,7 +588,7 @@ class AtlasController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $pending
+     * @param  array<string, mixed>  $pending
      */
     private function denyIfNotPendingOwner(array $pending, string|int $userId): ?JsonResponse
     {
@@ -506,7 +631,7 @@ class AtlasController extends Controller
             // The prompt stack renders <NEXT_STEP>/<ONE_MORE_QUESTION> plus the
             // standing rule; the plane appends it to Atlas's system prompt.
             $plannerContext['one_step'] = $oneStep;
-            $plannerContext['system_prompt'] = app(\App\Services\AtlasPromptStack::class)->systemPrompt(null, $oneStep);
+            $plannerContext['system_prompt'] = app(AtlasPromptStack::class)->systemPrompt(null, $oneStep);
         }
 
         $result = $this->metaPlanner->processAtlasRequest(
@@ -542,11 +667,11 @@ class AtlasController extends Controller
 
         if (($result['status'] ?? '') === 'blocked') {
             $contract = [
-                'future_state'    => 'Your request is paused while limits clear.',
-                'value'           => 'You avoid exceeding your current budget.',
+                'future_state' => 'Your request is paused while limits clear.',
+                'value' => 'You avoid exceeding your current budget.',
                 'emotional_shift' => 'No surprise overages, full control preserved.',
-                'action_summary'  => 'I held the request to protect your constraints.',
-                'details'         => $result['reason'] ?? null,
+                'action_summary' => 'I held the request to protect your constraints.',
+                'details' => $result['reason'] ?? null,
             ];
         }
 
@@ -651,7 +776,7 @@ class AtlasController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $pending
+     * @param  array<string, mixed>  $pending
      */
     private function buildConfirmResponse(
         string $sessionId,
@@ -719,7 +844,7 @@ class AtlasController extends Controller
         }
 
         $functionalGoal = $message;
-        if (!empty($jarvisPayload['jarvis']['text'])) {
+        if (! empty($jarvisPayload['jarvis']['text'])) {
             $functionalGoal = $jarvisPayload['jarvis']['text'];
         }
 
@@ -815,7 +940,7 @@ class AtlasController extends Controller
                 'tasks' => $this->buildPlanTasks($ast),
                 'created_at' => now()->toIso8601String(),
             ],
-            'preview' => "Plan: {$ast['type']} with " . count($this->buildPlanTasks($ast)) . " tasks",
+            'preview' => "Plan: {$ast['type']} with ".count($this->buildPlanTasks($ast)).' tasks',
         ]);
     }
 

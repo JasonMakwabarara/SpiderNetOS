@@ -9,12 +9,15 @@ use App\Models\SalesScript;
 use App\Models\Tenant;
 use App\Services\ApprovalEngine;
 use App\Services\AtlasDiscoveryService;
+use App\Services\Brain\BrainSyncService;
 use App\Services\EventStore;
+use App\Services\Interviews\ArrayAnswerStore;
+use App\Services\Interviews\InterviewRunner;
+use App\Services\Interviews\ModelAnswerStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Drives the sales-crm pack's funnel_setup pipeline:
@@ -24,10 +27,17 @@ use Symfony\Component\Yaml\Yaml;
  * `funnel_setups.status` / `sales_scripts.status` are the source of truth for
  * current state (see note in SteEventMappingSeeder — pack chains only get
  * ste_transitions Markov counts, not a live per-tenant state row).
+ *
+ * The interview half (pack files, next question, record answer) now lives in
+ * App\Services\Interviews\InterviewRunner so business-launch reuses it; this
+ * service keeps its own side effects (profile absorption, brain projection).
  */
 class FunnelSetupService
 {
     private const PACK_ID = 'sales-crm';
+
+    /** Pack-file reader with no row behind it (policies, principles). */
+    private ?InterviewRunner $packRunner = null;
 
     public function __construct(
         private readonly EventStore $eventStore,
@@ -87,54 +97,15 @@ class FunnelSetupService
      */
     public function nextQuestion(FunnelSetup $setup): array
     {
-        $questions = $this->loadInterviewQuestions();
-        $sections = $questions['sections'] ?? [];
-        $answers = $setup->interview_answers ?? [];
-
-        $totalQuestions = array_sum(array_map(fn ($s) => count($s['questions'] ?? []), $sections));
-        $answeredCount = count($answers);
-
-        foreach ($sections as $section) {
-            foreach ($section['questions'] ?? [] as $question) {
-                if (! array_key_exists($question['id'], $answers)) {
-                    return [
-                        'done' => false,
-                        'section' => ['id' => $section['id'], 'title' => $section['title'] ?? $section['id']],
-                        'question' => $question,
-                        'progress_pct' => $totalQuestions > 0 ? (int) round(100 * $answeredCount / $totalQuestions) : 0,
-                    ];
-                }
-            }
-        }
-
-        return ['done' => true, 'progress_pct' => 100];
+        return $this->runner($setup)->nextQuestion();
     }
 
     /**
-     * @param array<string, mixed> $context Extra fields absorbed by AtlasDiscoveryService (e.g. free-text for pain point mining).
+     * @param  array<string, mixed>  $context  Extra fields absorbed by AtlasDiscoveryService (e.g. free-text for pain point mining).
      */
     public function recordAnswer(FunnelSetup $setup, string $questionId, string $answer): FunnelSetup
     {
-        $questions = $this->loadInterviewQuestions();
-        $questionDef = $this->findQuestion($questions, $questionId);
-
-        $answers = $setup->interview_answers ?? [];
-        $answers[$questionId] = [
-            'question' => $questionDef['prompt'] ?? $questionId,
-            'answer' => $answer,
-            'answered_at' => now()->toIso8601String(),
-        ];
-
-        $currentSection = null;
-        foreach ($questions['sections'] ?? [] as $section) {
-            foreach ($section['questions'] ?? [] as $q) {
-                if ($q['id'] === $questionId) {
-                    $currentSection = $section['id'];
-                }
-            }
-        }
-
-        $setup->update(['interview_answers' => $answers, 'current_section' => $currentSection]);
+        $this->runner($setup)->recordAnswer($questionId, $answer);
 
         // Mirror generically-useful answers into the ambient business profile
         // so PackGrowthService recommendations keep learning across packs.
@@ -143,7 +114,7 @@ class FunnelSetupService
         // Knowledge brain (ADR-0002 D2): project this answer into its brain
         // sections progressively. Best-effort — never breaks the interview.
         try {
-            app(\App\Services\Brain\BrainSyncService::class)->projectInterviewAnswer($setup, $questionId);
+            app(BrainSyncService::class)->projectInterviewAnswer($setup, $questionId);
         } catch (\Throwable $e) {
             Log::warning('FunnelSetupService: brain projection failed', ['question_id' => $questionId, 'error' => $e->getMessage()]);
         }
@@ -482,8 +453,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $entries
-     * @param array<string, mixed> $context
+     * @param  array<int, array<string, mixed>>  $entries
+     * @param  array<string, mixed>  $context
      * @return array<int, array<string, mixed>>
      */
     private function selectScriptEntries(array $entries, array $context): array
@@ -513,7 +484,7 @@ class FunnelSetupService
      * anything unparseable simply doesn't match (graceful fallback to the
      * deterministic template).
      *
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     private function evaluateContextExpression(string $expression, array $context): bool
     {
@@ -548,12 +519,14 @@ class FunnelSetupService
 
             if (ctype_space($char)) {
                 $i++;
+
                 continue;
             }
 
             if ($char === '(' || $char === ')') {
                 $tokens[] = ['type' => $char, 'value' => $char];
                 $i++;
+
                 continue;
             }
 
@@ -561,18 +534,21 @@ class FunnelSetupService
             if (in_array($two, ['&&', '||', '==', '!=', '>=', '<='], true)) {
                 $tokens[] = ['type' => 'op', 'value' => $two];
                 $i += 2;
+
                 continue;
             }
 
             if ($char === '>' || $char === '<') {
                 $tokens[] = ['type' => 'op', 'value' => $char];
                 $i++;
+
                 continue;
             }
 
             if ($char === '!') {
                 $tokens[] = ['type' => 'op', 'value' => '!'];
                 $i++;
+
                 continue;
             }
 
@@ -583,12 +559,14 @@ class FunnelSetupService
                 }
                 $tokens[] = ['type' => 'string', 'value' => substr($expression, $i + 1, $end - $i - 1)];
                 $i = $end + 1;
+
                 continue;
             }
 
             if (preg_match('/\G-?\d+(\.\d+)?/', $expression, $m, 0, $i)) {
                 $tokens[] = ['type' => 'number', 'value' => (float) $m[0]];
                 $i += strlen($m[0]);
+
                 continue;
             }
 
@@ -605,6 +583,7 @@ class FunnelSetupService
                     $tokens[] = ['type' => 'ident', 'value' => $word];
                 }
                 $i += strlen($word);
+
                 continue;
             }
 
@@ -615,8 +594,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseOrExpression(array $tokens, int &$position, array $context): bool
     {
@@ -632,8 +611,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseAndExpression(array $tokens, int &$position, array $context): bool
     {
@@ -649,8 +628,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseUnaryExpression(array $tokens, int &$position, array $context): bool
     {
@@ -678,8 +657,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseComparison(array $tokens, int &$position, array $context): bool
     {
@@ -707,8 +686,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseOperand(array $tokens, int &$position, array $context): mixed
     {
@@ -768,7 +747,7 @@ class FunnelSetupService
      */
     private function loadInterviewQuestions(): array
     {
-        return $this->loadPackFile('interview/questions.yaml') ?: ['sections' => []];
+        return $this->packRunner()->loadInterviewQuestions();
     }
 
     /**
@@ -779,25 +758,7 @@ class FunnelSetupService
      */
     private function loadPackFile(string $relativePath): array
     {
-        $path = storage_path('app/feature-packs/'.self::PACK_ID.'/'.$relativePath);
-
-        if (! is_readable($path)) {
-            $path = dirname(base_path()).'/packages/feature-packs/'.self::PACK_ID.'/'.$relativePath;
-        }
-
-        if (! is_readable($path)) {
-            return [];
-        }
-
-        try {
-            $parsed = Yaml::parseFile($path);
-        } catch (\Throwable $e) {
-            Log::warning('FunnelSetupService: unreadable pack file', ['path' => $relativePath, 'error' => $e->getMessage()]);
-
-            return [];
-        }
-
-        return is_array($parsed) ? $parsed : [];
+        return $this->packRunner()->loadPackFile($relativePath);
     }
 
     /**
@@ -805,15 +766,19 @@ class FunnelSetupService
      */
     private function findQuestion(array $questions, string $questionId): ?array
     {
-        foreach ($questions['sections'] ?? [] as $section) {
-            foreach ($section['questions'] ?? [] as $question) {
-                if ($question['id'] === $questionId) {
-                    return $question;
-                }
-            }
-        }
+        return $this->packRunner()->findQuestion($questions, $questionId);
+    }
 
-        return null;
+    /** The interview runner bound to one funnel setup's answers. */
+    private function runner(FunnelSetup $setup): InterviewRunner
+    {
+        return new InterviewRunner(self::PACK_ID, new ModelAnswerStore($setup));
+    }
+
+    /** Runner used only as a pack-file reader (no row, no answers). */
+    private function packRunner(): InterviewRunner
+    {
+        return $this->packRunner ??= new InterviewRunner(self::PACK_ID, new ArrayAnswerStore);
     }
 
     private function funnelArchitectAgentId(string $tenantId): ?string

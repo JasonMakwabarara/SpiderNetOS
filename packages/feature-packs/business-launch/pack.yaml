@@ -1,0 +1,109 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: business-launch
+  version: 0.1.0
+  vertical: horizontal
+  displayName: "Start a Business"
+  description: "\"Atlas, I want to start a business\" — a warm, plain-language interview that fills your business brain stage by stage, builds a deterministic finance model, maps registration and tax obligations for the UK, South Africa or Zimbabwe, and drafts a business plan you approve"
+  customer_outcomes:
+    - "Go from an idea to a written business plan without a blank page"
+    - "Know your numbers — cash low point, runway and break-even — from a real spreadsheet, not a guess"
+    - "See every registration, tax and data-protection step for your country, with who does what and when"
+    - "Approve the plan once — your business brain keeps every answer for the agents that come next"
+  disclaimer: "Not legal or financial advice. Check registrations, tax and licences with a qualified adviser in your country."
+
+spec:
+  requires:
+    core_agents: [atlas, hannah, prism, sentinel]
+    min_spidernet_version: 3.2.0
+
+  provides:
+    # `core_agent` names the core character each pack identity runs as
+    # (packages/core-agents/<slug>/CHARACTER.md). Prompts live in
+    # prompts/<id>.md and are loaded by FeaturePackInstaller::packAgentPrompt().
+    dynamic_agents:
+      - id: launch-guide
+        displayName: "Launch Guide"
+        core_agent: hannah
+        capabilities: [launch_interview, one_followup_per_section, stage_commit, plain_language_coaching]
+
+      - id: market-researcher
+        displayName: "Market Researcher"
+        core_agent: prism
+        capabilities: [cited_market_research, comparables, tam_sam_som]
+
+      - id: finance-modeler
+        displayName: "Finance Modeler"
+        core_agent: prism
+        capabilities: [assumption_capture, deterministic_finance_model, runway_and_breakeven]
+
+      - id: plan-writer
+        displayName: "Plan Writer"
+        core_agent: atlas
+        capabilities: [business_plan_narrative, swot_draft, gtm_draft, okr_draft]
+
+      - id: compliance-mapper
+        displayName: "Compliance Mapper"
+        core_agent: sentinel
+        capabilities: [jurisdiction_checklist, registry_status_check, deadline_mapping]
+
+    flows:
+      - id: launch-interview
+        description: "Stage-by-stage interview; each stage commits its brain files in one version write"
+      - id: finance-model
+        description: "finance/assumptions.yaml → deterministic finance/model.xlsx (live formulas) → finance/summary.md"
+      - id: plan-approval
+        description: "Render the business plan from the brain and the model, then submit it for owner approval"
+
+    ste_chains:
+      - id: business_launch
+        description: "Interview through research, modelling and drafting to an approved, live plan"
+        states: [purchased, interviewing, researching, modelling, drafted, awaiting_approval, approved, live]
+
+    targets:
+      - metric: launch_interview_completion_rate
+        goal: ">= 0.6"
+        baseline: 0.2
+      - metric: days_idea_to_approved_plan
+        goal: "<= 7"
+        baseline: 60
+
+  roles:
+    launch-guide: launch_guide
+    market-researcher: head_of_research
+    finance-modeler: fractional_cfo
+    plan-writer: plan_writer
+    compliance-mapper: compliance_officer
+
+  # Interview backbone: sections identity → gtm; every question names the
+  # brain file and section its answer fills (`brain_target`).
+  interview:
+    file: interview/questions.yaml
+
+  # docassemble-style stage map: each artefact lists the interview variables
+  # it requires; the runner asks whichever question defines a missing one.
+  stages:
+    file: stages.yaml
+
+  jurisdictions:
+    directory: jurisdictions
+    codes: [uk, za, zw]
+
+  templates:
+    business_plan: templates/business-plan.md.j2
+    finance_model: templates/finance-model.yaml
+
+  # Free pack: `spec.pricing` is deliberately omitted. FeaturePackInstaller,
+  # RequirePackEntitlement and PackEntitlementResolver treat a missing
+  # pricing block as free (docs/feature-packs/SPEC.md §2), and the schema's
+  # pricing.model enum has no "free" value.
+
+  config:
+    default_automation_level: assisted
+    enable_cross_tenant_learning: false
+
+  signatures:
+    publisher: "spidernet-official"
+    signature: "placeholder-signature-to-be-generated"

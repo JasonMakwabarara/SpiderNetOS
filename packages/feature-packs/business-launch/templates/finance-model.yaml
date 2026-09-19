@@ -1,0 +1,98 @@
+# Finance model layout — consumed by intelligence/services/business_launch/finance_model.py
+#
+# Not legal or financial advice.
+#
+# Deterministic, no LLM. The builder turns finance/assumptions.yaml into
+# finance/model.xlsx with LIVE formulas laid out exactly as declared here,
+# and separately computes the summary in plain Python. formula_eval.py then
+# evaluates these formulas and must reproduce the Python projection to the
+# cent, so the spreadsheet and the summary can never drift apart.
+#
+# Placeholders inside formulas
+#   {r}       this data row            {prev}   the previous data row
+#   {first}   first data row           {last}   last data row
+#   {month}   the month number (1..months)
+#   {A:key}   absolute reference to that assumption's value cell,
+#             e.g. {A:starting_cash} → Assumptions!$B$3
+# A column's `first` formula (optional) replaces `formula` on the first
+# data row. Sheet names containing symbols are quoted in references ('P&L').
+#
+# Model shape (pre-tax, cash basis, no debtors/creditors/depreciation):
+#   units_m    = units_month_one × (1 + growth)^(m − 1)
+#   revenue_m  = units_m × price
+#   cogs_m     = revenue_m × cost_of_sale
+#   gross_m    = revenue_m − cogs_m
+#   opex_m     = fixed + marketing + (set-up costs in month 1)
+#   ebitda_m   = gross_m − opex_m
+#   cash_m     = cash_(m−1) + ebitda_m, starting from starting_cash
+#   balance    : cash = share capital (starting cash) + retained earnings
+
+version: 1
+title: "Finance model"
+disclaimer: "Not legal or financial advice. A simple pre-tax, cash-basis model built from your own assumptions — ask an accountant to review it before you borrow, invest or sign anything."
+default_months: 36
+max_months: 120
+
+assumptions:
+  sheet: Assumptions
+  header: ["Assumption", "Value", "Notes"]
+  first_row: 2
+  rows:
+    - { key: currency, label: "Currency", format: text, note: "Every money cell in this workbook is in this currency." }
+    - { key: starting_cash, label: "Starting cash", format: money, note: "Savings, loans or investment available on day one." }
+    - { key: setup_costs, label: "Set-up costs (month 1)", format: money, note: "One-off costs before the first sale, expensed in month 1." }
+    - { key: price_per_unit, label: "Price per sale", format: money, note: "What a typical customer pays per sale (or per month)." }
+    - { key: units_month_one, label: "Sales in month 1", format: number, note: "Sales in the first full month of trading." }
+    - { key: monthly_growth_pct, label: "Monthly sales growth", format: percent, note: "Compounded month on month." }
+    - { key: cost_of_sale_pct, label: "Cost of each sale", format: percent, note: "Direct costs as a share of revenue." }
+    - { key: fixed_monthly_costs, label: "Fixed costs per month", format: money, note: "Rent, software, phone, salaries." }
+    - { key: marketing_monthly, label: "Marketing per month", format: money, note: "From the go-to-market budget; 0 if none." }
+    - { key: months, label: "Months modelled", format: integer, note: "Horizon of every monthly sheet." }
+
+sheets:
+  - name: Revenue
+    columns:
+      - { header: "Month", formula: "{month}", format: integer }
+      - { header: "Sales", formula: "={A:units_month_one}*(1+{A:monthly_growth_pct})^(A{r}-1)", format: number }
+      - { header: "Price", formula: "={A:price_per_unit}", format: money }
+      - { header: "Revenue", formula: "=B{r}*C{r}", format: money }
+    totals: { label: "Total", columns: [B, D] }
+
+  - name: Costs
+    columns:
+      - { header: "Month", formula: "{month}", format: integer }
+      - { header: "Cost of sales", formula: "=Revenue!D{r}*{A:cost_of_sale_pct}", format: money }
+      - { header: "Fixed costs", formula: "={A:fixed_monthly_costs}", format: money }
+      - { header: "Marketing", formula: "={A:marketing_monthly}", format: money }
+      - { header: "Set-up costs", formula: "=IF(A{r}=1,{A:setup_costs},0)", format: money }
+      - { header: "Total costs", formula: "=SUM(B{r}:E{r})", format: money }
+    totals: { label: "Total", columns: [B, C, D, E, F] }
+
+  - name: P&L
+    columns:
+      - { header: "Month", formula: "{month}", format: integer }
+      - { header: "Revenue", formula: "=Revenue!D{r}", format: money }
+      - { header: "Cost of sales", formula: "=Costs!B{r}", format: money }
+      - { header: "Gross profit", formula: "=B{r}-C{r}", format: money }
+      - { header: "Operating costs", formula: "=Costs!C{r}+Costs!D{r}+Costs!E{r}", format: money }
+      - { header: "EBITDA", formula: "=D{r}-E{r}", format: money }
+    totals: { label: "Total", columns: [B, C, D, E, F] }
+
+  - name: CashFlow
+    columns:
+      - { header: "Month", formula: "{month}", format: integer }
+      - { header: "Opening cash", first: "={A:starting_cash}", formula: "=D{prev}", format: money }
+      - { header: "Net cash flow", formula: "='P&L'!F{r}", format: money }
+      - { header: "Closing cash", formula: "=B{r}+C{r}", format: money }
+    footer:
+      - { label: "Lowest closing cash", formula: "=MIN(D{first}:D{last})", format: money }
+
+  - name: Balance
+    columns:
+      - { header: "Month", formula: "{month}", format: integer }
+      - { header: "Cash", formula: "=CashFlow!D{r}", format: money }
+      - { header: "Total assets", formula: "=B{r}", format: money }
+      - { header: "Share capital", formula: "={A:starting_cash}", format: money }
+      - { header: "Retained earnings", first: "='P&L'!F{r}", formula: "=E{prev}+'P&L'!F{r}", format: money }
+      - { header: "Total equity", formula: "=D{r}+E{r}", format: money }
+      - { header: "Check (should be 0)", formula: "=C{r}-F{r}", format: money }

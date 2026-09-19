@@ -226,6 +226,34 @@ export const useBrainStore = defineStore('brain', () => {
     }
   }
 
+  /**
+   * Adopt a readiness payload that arrived with something else — Atlas
+   * returns `metadata.brain` on every launch turn, so the brain rows on the
+   * launch panel stay in step without a second GET. Accepts either the bare
+   * `{pct, files}` or the `{data: {...}}` envelope, ignores anything that is
+   * not readiness-shaped, and mirrors each file's status into the tree so the
+   * drawer and the tree never disagree.
+   */
+  function applyReadiness(payload) {
+    const next = payload?.data ?? payload
+    if (!next || typeof next !== 'object' || !Array.isArray(next.files)) return readiness.value
+
+    readiness.value = {
+      pct: Number.isFinite(Number(next.pct)) ? Number(next.pct) : 0,
+      files: next.files.map((f) => ({ ...f })),
+    }
+
+    for (const file of readiness.value.files) {
+      if (file?.path && treeEntry(file.path)) {
+        const patch = { status: file.status, version: file.version }
+        Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k])
+        patchTreeEntry(file.path, patch)
+      }
+    }
+
+    return readiness.value
+  }
+
   // ── Real-time handlers ─────────────────────────────────────────────
   function handleFileUpdated(data) {
     const path = data?.path
@@ -247,7 +275,7 @@ export const useBrainStore = defineStore('brain', () => {
     allFiles, fileCount, filledCount, missingCount,
     // actions
     treeEntry, fetchTree, fetchReadiness, fetchGaps, fetchAll,
-    fetchFile, saveFile, fetchVersions, revert, sync,
+    fetchFile, saveFile, fetchVersions, revert, sync, applyReadiness,
     // realtime
     handleFileUpdated,
   }

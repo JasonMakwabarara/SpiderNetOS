@@ -300,4 +300,21 @@ return [
     /** `skills:eval {slug}` harness over packages/skills/<slug>/evals (CI on card changes). */
     'skills.eval_harness' => env('FEATURE_SKILLS_EVAL_HARNESS', 'off'),
 
+    // -----------------------------------------------------------------------
+    // "Atlas, I want to start a business" (business-launch pack, plan D7 §5).
+    // Nothing the pack produces is legal or financial advice.
+    // -----------------------------------------------------------------------
+
+    /** BusinessLaunchService + /api/launch/* — interview, stage commits, approval. */
+    'launch.enabled' => env('FEATURE_LAUNCH_ENABLED', 'off'),
+
+    /** Cited market research; off = the founder's own view of the market, labelled as such. */
+    'launch.web_research' => env('FEATURE_LAUNCH_WEB_RESEARCH', 'off'),
+
+    /** Read-only company-register lookups (Companies House, CIPC) — Atlas never incorporates or files. */
+    'launch.registry_checks' => env('FEATURE_LAUNCH_REGISTRY_CHECKS', 'off'),
+
+    /** POST /docgen/render: business plan md → docx → pdf from the brain and the finance model. */
+    'launch.docgen' => env('FEATURE_LAUNCH_DOCGEN', 'off'),
+
 ];
