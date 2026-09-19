@@ -1,7 +1,7 @@
+from typing import Any, Dict, List
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
-import json
 
 app = FastAPI(title="DAG Compiler Service")
 
@@ -28,10 +28,10 @@ async def validate_dag(dag: ProposedDAG):
     # 1. Check node limit
     if len(dag.steps) > MAX_NODES:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Graph rejection: Node limit exceeded ({len(dag.steps)} > {MAX_NODES})"
         )
-    
+
     # 2. Check allowed action types
     for step in dag.steps:
         if step.type not in ALLOWED_ACTIONS:
@@ -39,12 +39,12 @@ async def validate_dag(dag: ProposedDAG):
                 status_code=400,
                 detail=f"Security validation breach: Action variant unauthorized: {step.type}"
             )
-    
+
     # 3. Topological sort and cycle detection
     graph = {step.id: step.depends_on for step in dag.steps}
     visited = set()
     rec_stack = set()
-    
+
     def dfs(node, depth=0):
         if depth > MAX_DEPTH:
             return True  # Cycle or too deep
@@ -59,11 +59,11 @@ async def validate_dag(dag: ProposedDAG):
         rec_stack.remove(node)
         visited.add(node)
         return False
-    
+
     for node in graph:
         if dfs(node):
             raise HTTPException(status_code=400, detail="Circular dependency detected or max depth exceeded")
-    
+
     return {
         "status": "valid",
         "message": "DAG is acyclic and within limits",

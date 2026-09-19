@@ -24,8 +24,8 @@ Usage:
 from __future__ import annotations
 
 import os
-import time
 import threading
+import time
 from typing import Any
 
 import redis as _redis_pkg

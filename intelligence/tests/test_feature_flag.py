@@ -9,20 +9,19 @@ Verifies:
   - Cache TTL behaviour (in-process cache)
   - Python/PHP parity (documented contract)
 """
-import os
-import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Patch Redis before import so the module doesn't try to connect
 _mock_redis = MagicMock()
 _mock_redis.get.return_value = None
 
 import atlas.feature_flag as ff_module
+
 ff_module._redis = _mock_redis
 
 
-from atlas.feature_flag import FeatureFlag, _cache, _cache_bust
+from atlas.feature_flag import FeatureFlag, _cache
 
 
 class TestFeatureFlagDefaults(unittest.TestCase):

@@ -37,9 +37,9 @@ try:
 except ImportError:
     HAS_PSYCOPG2 = False
 
-from config import DATABASE_URL
 from atlas.feature_flag import FeatureFlag
-from atlas.rt_scorer import RTScorer, CopyUnit
+from atlas.rt_scorer import RTScorer
+from config import DATABASE_URL
 
 # ---------------------------------------------------------------------------
 # Constants

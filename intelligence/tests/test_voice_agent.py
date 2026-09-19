@@ -12,8 +12,8 @@ Tests:
 """
 
 import asyncio
-import pytest
 
+import pytest
 from agents.voice_agent import VoiceAgent, VoiceContext
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────

@@ -37,14 +37,13 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
-import redis as _redis_pkg
-
 from config import REDIS_URL
+
+import redis as _redis_pkg
 
 # ---------------------------------------------------------------------------
 # Redis feature store

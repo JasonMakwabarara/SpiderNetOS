@@ -2,9 +2,9 @@
 SpiderNet OS — Per-Model Success Rate Tracking
 Tracks success/failure rates per model for policy routing optimization.
 """
-import redis.asyncio as aioredis
-
 from config import REDIS_URL
+
+import redis.asyncio as aioredis
 
 _redis = None
 
@@ -32,14 +32,14 @@ async def get_success_rate(model: str) -> float:
     """Get success rate for a model (0.0 to 1.0)."""
     r = await get_redis()
     data = await r.hgetall(f"spidernet:model_metrics:{model}")
-    
+
     success = int(data.get("success", 0))
     failure = int(data.get("failure", 0))
     total = success + failure
-    
+
     if total == 0:
         return 1.0
-    
+
     return success / total
 
 
@@ -52,9 +52,9 @@ async def get_all_success_rates() -> dict:
     """Get success rates for all models."""
     r = await get_redis()
     rates = {}
-    
+
     async for key in r.scan_iter("spidernet:model_metrics:*"):
         model = key.split(":")[-1]
         rates[model] = await get_success_rate(model)
-    
+
     return rates

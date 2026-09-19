@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 import httpx
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="SpiderNetOS OpenJarvis Bridge", version="1.0.0")

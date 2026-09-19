@@ -8,11 +8,9 @@ import os
 from typing import Optional
 
 import httpx
+from config import OLLAMA_URL
 from fastapi import HTTPException
 from pydantic import BaseModel
-
-from config import OLLAMA_URL, DEFAULT_COST_CEILING
-
 
 # ─── Request/Response Models ─────────────────────────────────────────────────
 

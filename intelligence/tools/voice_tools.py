@@ -11,10 +11,11 @@ Phase B additions:
   - Costs are tracked via context.cost_tracker if available.
 """
 
-from typing import Any, Dict, Optional
-import httpx
 import logging
 import os
+from typing import Any, Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -390,7 +391,7 @@ async def tool_record_call_note(context: Any, params: Dict[str, Any]) -> Dict[st
                     "tags": tags,
                 },
             )
-        except Exception as e:
+        except Exception:
             # Continue even if memory store fails
             pass
 

@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Depends
-import asyncpg
 import logging
+
+import asyncpg
+from fastapi import Depends, FastAPI
 
 app = FastAPI(title="Runtime Guardian")
 

@@ -4,15 +4,13 @@ Connects the external Hermes Agent with SpiderNetOS agent coordination
 """
 
 import asyncio
-import json
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime
-import aiohttp
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
 
+import aiohttp
 from core.meta_planner import MetaPlanner
+
 from services.shared.memory_graph import MemoryGraph
 
 logger = logging.getLogger(__name__)

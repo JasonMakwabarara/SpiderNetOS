@@ -3,13 +3,14 @@ Hermes Integration API Routes
 FastAPI endpoints for Hermes Agent coordination with SpiderNetOS
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from services.shared.hermes_bridge import get_hermes_bridge, HermesIntegrationBridge
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from services.shared.hermes_bridge import HermesIntegrationBridge, get_hermes_bridge
 
 logger = logging.getLogger(__name__)
 

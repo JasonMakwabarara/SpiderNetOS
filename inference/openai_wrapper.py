@@ -11,8 +11,8 @@ Dedicated wrapper for OpenAI API calls with:
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Optional, Callable, Any
 from enum import Enum
+from typing import Optional
 
 import httpx
 

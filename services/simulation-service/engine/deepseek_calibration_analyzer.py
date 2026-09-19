@@ -5,9 +5,10 @@ Uses DeepSeek v4 to analyze sim-to-real gaps and suggest calibration improvement
 
 import json
 import urllib.request
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List
+
 import numpy as np
 
 
@@ -27,14 +28,14 @@ class CalibrationInsight:
 class DeepSeekCalibrationAnalyzer:
     """
     Analyzes sim-to-real discrepancies using DeepSeek reasoning.
-    
+
     Capabilities:
     - Identify why simulation diverges from reality
     - Suggest calibration parameter adjustments
     - Detect systematic biases in specific market conditions
     - Explain calibration quality to operators
     """
-    
+
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
@@ -45,7 +46,7 @@ class DeepSeekCalibrationAnalyzer:
         self.model = model
         self.timeout = timeout
         self.insight_history: List[CalibrationInsight] = []
-        
+
     def _call_deepseek(
         self,
         prompt: str,
@@ -53,7 +54,7 @@ class DeepSeekCalibrationAnalyzer:
         max_tokens: int = 2000
     ) -> str:
         """Call DeepSeek via Ollama"""
-        
+
         data = json.dumps({
             "model": self.model,
             "prompt": prompt,
@@ -63,14 +64,14 @@ class DeepSeekCalibrationAnalyzer:
                 "num_predict": max_tokens
             }
         }).encode()
-        
+
         req = urllib.request.Request(
             f"{self.ollama_url}/api/generate",
             data=data,
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        
+
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 result = json.loads(resp.read().decode())
@@ -78,7 +79,7 @@ class DeepSeekCalibrationAnalyzer:
         except Exception as e:
             print(f"[DeepSeekCalibration] Error: {e}")
             return ""
-    
+
     def analyze_gap(
         self,
         metric_name: str,
@@ -88,14 +89,14 @@ class DeepSeekCalibrationAnalyzer:
     ) -> CalibrationInsight:
         """
         Analyze discrepancy between simulation and reality.
-        
+
         Args:
             metric_name: e.g., 'cpm_meta', 'conversion_rate', 'roas'
             sim_values: Recent simulated values
             real_values: Corresponding real-world values
             market_context: Current market conditions
         """
-        
+
         if len(sim_values) == 0 or len(real_values) == 0:
             return CalibrationInsight(
                 timestamp=datetime.utcnow().isoformat(),
@@ -107,12 +108,12 @@ class DeepSeekCalibrationAnalyzer:
                 suggested_fix="Collect more calibration data",
                 confidence=0.0
             )
-        
+
         # Calculate statistics
         sim_avg = np.mean(sim_values)
         real_avg = np.mean(real_values)
         gap_pct = ((real_avg - sim_avg) / sim_avg * 100) if sim_avg != 0 else 0
-        
+
         prompt = f"""Analyze this sim-to-real calibration gap:
 
 METRIC: {metric_name}
@@ -147,9 +148,9 @@ Respond with JSON:
     "confidence": 0.0-1.0,
     "urgency": "low|medium|high"
 }}"""
-        
+
         response = self._call_deepseek(prompt, temperature=0.2)
-        
+
         try:
             # Extract JSON
             if "```json" in response:
@@ -158,9 +159,9 @@ Respond with JSON:
                 json_str = response.split("```")[1].split("```")[0]
             else:
                 json_str = response
-            
+
             data = json.loads(json_str.strip())
-            
+
             insight = CalibrationInsight(
                 timestamp=datetime.utcnow().isoformat(),
                 metric_name=metric_name,
@@ -171,10 +172,10 @@ Respond with JSON:
                 suggested_fix=data.get("suggested_fix", "No suggestion"),
                 confidence=data.get("confidence", 0.5)
             )
-            
+
             self.insight_history.append(insight)
             return insight
-            
+
         except (json.JSONDecodeError, KeyError) as e:
             print(f"[DeepSeekCalibration] Parse error: {e}")
             return CalibrationInsight(
@@ -187,7 +188,7 @@ Respond with JSON:
                 suggested_fix="Manual review required",
                 confidence=0.0
             )
-    
+
     def generate_calibration_report(
         self,
         all_gaps: List[CalibrationInsight],
@@ -195,14 +196,14 @@ Respond with JSON:
     ) -> str:
         """
         Generate human-readable calibration report using DeepSeek.
-        
+
         Provides actionable recommendations for operators.
         """
-        
+
         # Summarize gaps
         critical_gaps = [g for g in all_gaps if abs(g.gap_percentage) > 20]
         warning_gaps = [g for g in all_gaps if 10 < abs(g.gap_percentage) <= 20]
-        
+
         prompt = f"""Generate a sim-to-real calibration report for operators.
 
 CALIBRATION STATUS:
@@ -226,9 +227,9 @@ WRITE A REPORT WITH:
 4. Expected impact of fixing these gaps
 
 Use professional but accessible language. Format with clear sections."""
-        
+
         return self._call_deepseek(prompt, temperature=0.4, max_tokens=3000)
-    
+
     def predict_calibration_drift(
         self,
         historical_gaps: List[List[float]],  # Gap % over time for multiple metrics
@@ -236,26 +237,26 @@ Use professional but accessible language. Format with clear sections."""
     ) -> Dict[str, Any]:
         """
         Predict future calibration drift using pattern analysis.
-        
+
         Helps proactively adjust simulation before gaps become critical.
         """
-        
+
         if not historical_gaps or len(historical_gaps[0]) < 24:
             return {
                 "predicted_drift": "insufficient_data",
                 "confidence": 0.0,
                 "recommendation": "Collect at least 24 hours of data before prediction"
             }
-        
+
         # Calculate trends
         trends = []
         for gaps in historical_gaps:
             if len(gaps) >= 2:
                 trend = (gaps[-1] - gaps[0]) / len(gaps)
                 trends.append(trend)
-        
+
         avg_trend = np.mean(trends) if trends else 0
-        
+
         prompt = f"""Predict future calibration drift based on historical patterns.
 
 HISTORICAL GAP TRENDS (per hour):
@@ -278,9 +279,9 @@ Respond with JSON:
     "recommended_calibration_time": "48 hours from now",
     "urgency": "medium"
 }}"""
-        
+
         response = self._call_deepseek(prompt, temperature=0.3)
-        
+
         try:
             if "```json" in response:
                 json_str = response.split("```json")[1].split("```")[0]
@@ -288,7 +289,7 @@ Respond with JSON:
                 json_str = response.split("```")[1].split("```")[0]
             else:
                 json_str = response
-            
+
             return json.loads(json_str.strip())
         except:
             return {
@@ -298,23 +299,23 @@ Respond with JSON:
                 "recommended_calibration_time": f"{min(72, int(time_horizon_hours/2))} hours",
                 "urgency": "medium" if abs(avg_trend) > 0.1 else "low"
             }
-    
+
     def explain_sim_to_real_bridge(
         self,
         target_audience: str = "operator"  # 'operator', 'engineer', 'executive'
     ) -> str:
         """
         Generate explanation of how sim-to-real bridge works.
-        
+
         Tailored to different audiences.
         """
-        
+
         audience_prompts = {
             "operator": "Explain to someone managing campaigns day-to-day. Focus on what they should watch for and when to alert engineers.",
             "engineer": "Explain to a software engineer. Include technical details about calibration algorithms, residual learning, and domain randomization.",
             "executive": "Explain to a business executive. Focus on risk management, ROI impact, and business value of accurate simulation."
         }
-        
+
         prompt = f"""Explain the SpiderNetOS sim-to-real bridge concept.
 
 {audience_prompts.get(target_audience, audience_prompts['operator'])}
@@ -326,5 +327,5 @@ KEY CONCEPTS TO COVER:
 - The role of domain randomization
 
 Keep it concise (200-300 words) but informative."""
-        
+
         return self._call_deepseek(prompt, temperature=0.5, max_tokens=1500)

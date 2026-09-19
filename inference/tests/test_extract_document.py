@@ -6,7 +6,6 @@ Unit tests for /v1/extract-document pure helpers:
 No network, no server.
 """
 import pytest
-
 from main import (
     ExtractedField,
     _clamp_intent,
@@ -18,7 +17,6 @@ from main import (
     _normalize_date,
     _strip_data_url,
 )
-
 
 # ─── _extract_json_deep ──────────────────────────────────────────────────────
 

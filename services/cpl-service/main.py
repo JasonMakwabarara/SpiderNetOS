@@ -3,24 +3,20 @@ SpiderNet OS - CPL Service (Control Plane Learning)
 FastAPI service with Streaming PPO for real-time RL
 """
 
-import asyncio
 import logging
-from typing import Dict, List, Optional
 from datetime import datetime
+from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-import torch
 import asyncpg
-from kafka import KafkaProducer
-
+import torch
+from engine.cost_governor import CostGovernor
 from engine.policy_network import PolicyNetwork, StateEncoder
 from engine.ppo_trainer import StreamingPPOTrainer, Trajectory
-from engine.cost_governor import CostGovernor, BudgetStatus
-from shared.kafka.topics import KafkaTopics
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from shared.kafka.producer import EventProducer
-
+from shared.kafka.topics import KafkaTopics
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,11 +46,11 @@ class StateUpdateRequest(BaseModel):
     performance_vector: List[float] = Field(..., min_items=6, max_items=6)
     agent_health: List[float] = Field(..., min_items=8, max_items=8)
     queue_depths: List[float] = Field(..., min_items=4, max_items=4)
-    
+
 class ActionRequest(BaseModel):
     tenant_id: str
     deterministic: bool = False
-    
+
 class ActionResponse(BaseModel):
     action: int
     action_name: str
@@ -63,7 +59,7 @@ class ActionResponse(BaseModel):
     entropy: float
     predicted_cost: float
     confidence: float
-    
+
 class TrajectorySegment(BaseModel):
     states: List[List[float]]
     actions: List[int]
@@ -72,14 +68,14 @@ class TrajectorySegment(BaseModel):
     values: List[float]
     costs: List[float]
     dones: List[bool]
-    
+
 class TrainingMetrics(BaseModel):
     policy_loss: float
     value_loss: float
     entropy: float
     clip_fraction: float
     lagrangian_multiplier: float
-    
+
 class BudgetCheckRequest(BaseModel):
     tenant_id: str
     estimated_cost: float
@@ -98,25 +94,25 @@ db_pool: Optional[asyncpg.Pool] = None
 async def startup():
     """Initialize CPL service components"""
     global policy_network, state_encoder, ppo_trainer, cost_governor, event_producer, db_pool
-    
+
     logger.info("Starting CPL Service...")
-    
+
     # Initialize policy network (GPU optimized for RTX 5090)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info(f"Using device: {device}")
-    
+
     policy_network = PolicyNetwork(
         state_dim=280,
         action_dim=6,
         use_fp16=(device == 'cuda')
     ).to(device)
-    
+
     # Compile for speed (PyTorch 2.0)
     if hasattr(torch, 'compile'):
         policy_network = torch.compile(policy_network, mode='reduce-overhead')
-    
+
     state_encoder = StateEncoder(gnn_embedding_dim=256)
-    
+
     # Initialize PPO trainer
     ppo_trainer = StreamingPPOTrainer(
         policy=policy_network,
@@ -124,10 +120,10 @@ async def startup():
         lr_value=1e-3,
         device=device
     )
-    
+
     # Initialize Cost Governor
     cost_governor = CostGovernor(default_budget=50.0)
-    
+
     # Initialize Kafka producer (optional)
     try:
         event_producer = EventProducer(bootstrap_servers="kafka:29092")
@@ -136,7 +132,7 @@ async def startup():
     except Exception as e:
         logger.warning(f"Kafka not available: {e}")
         event_producer = None
-    
+
     # Initialize database pool
     try:
         db_pool = await asyncpg.create_pool(
@@ -148,7 +144,7 @@ async def startup():
     except Exception as e:
         logger.warning(f"Database connection failed: {e}")
         db_pool = None
-    
+
     logger.info("CPL Service started successfully")
 
 
@@ -156,13 +152,13 @@ async def startup():
 async def shutdown():
     """Cleanup resources"""
     logger.info("Shutting down CPL Service...")
-    
+
     if event_producer is not None:
         event_producer.stop()
-    
+
     if db_pool is not None:
         await db_pool.close()
-    
+
     logger.info("CPL Service shut down")
 
 
@@ -182,7 +178,7 @@ async def health():
 async def update_state(state: StateUpdateRequest, background_tasks: BackgroundTasks):
     """
     Update system state and trigger CPL processing.
-    
+
     This encodes the state and publishes to Kafka for downstream processing.
     """
     # Encode state
@@ -193,7 +189,7 @@ async def update_state(state: StateUpdateRequest, background_tasks: BackgroundTa
         agent_health=torch.tensor(state.agent_health),
         queue_depths=torch.tensor(state.queue_depths)
     )
-    
+
     # Publish to Kafka
     await event_producer.send(
         topic=KafkaTopics.CPL_STATE_UPDATED,
@@ -204,7 +200,7 @@ async def update_state(state: StateUpdateRequest, background_tasks: BackgroundTa
         },
         key=state.tenant_id
     )
-    
+
     return {"status": "queued", "timestamp": datetime.utcnow().isoformat()}
 
 
@@ -212,16 +208,16 @@ async def update_state(state: StateUpdateRequest, background_tasks: BackgroundTa
 async def select_action(request: ActionRequest):
     """
     Select action using current policy.
-    
+
     This is called by MetaPlanner for resource allocation decisions.
     """
     if not policy_network:
         raise HTTPException(status_code=503, detail="Policy not initialized")
-    
+
     # Get latest state from database (simplified)
     # In production, this would use cached state
     dummy_state = torch.randn(280, device=policy_network.shared[0].weight.device)
-    
+
     # Select action
     with torch.no_grad():
         action, log_prob, value, entropy = policy_network.get_action(
@@ -229,9 +225,9 @@ async def select_action(request: ActionRequest):
             deterministic=request.deterministic
         )
         predicted_cost = policy_network.predict_cost(dummy_state.unsqueeze(0))
-    
+
     action_map = ['spawn_agent', 'kill_agent', 'route_task', 'allocate_budget', 'adjust_temperature', 'prioritize_workflow']
-    
+
     # Publish action executed event
     await event_producer.send(
         topic=KafkaTopics.CPL_ACTION_EXECUTED,
@@ -245,7 +241,7 @@ async def select_action(request: ActionRequest):
         },
         key=request.tenant_id
     )
-    
+
     return ActionResponse(
         action=int(action.item()),
         action_name=action_map[int(action.item())],
@@ -261,14 +257,14 @@ async def select_action(request: ActionRequest):
 async def update_trajectory(segment: TrajectorySegment, budget: float = 50.0):
     """
     Update policy from trajectory segment.
-    
+
     Called after execution outcomes are received.
     """
     if not ppo_trainer:
         raise HTTPException(status_code=503, detail="Trainer not initialized")
-    
+
     device = next(policy_network.parameters()).device
-    
+
     # Convert to trajectory
     trajectory = Trajectory(
         states=torch.tensor(segment.states, dtype=torch.float32, device=device),
@@ -279,10 +275,10 @@ async def update_trajectory(segment: TrajectorySegment, budget: float = 50.0):
         costs=torch.tensor(segment.costs, device=device),
         dones=torch.tensor(segment.dones, dtype=torch.float32, device=device)
     )
-    
+
     # Update policy
     metrics = ppo_trainer.update(trajectory, budget)
-    
+
     # Publish policy updated event
     await event_producer.send(
         topic=KafkaTopics.CPL_POLICY_UPDATED,
@@ -291,7 +287,7 @@ async def update_trajectory(segment: TrajectorySegment, budget: float = 50.0):
             "metrics": metrics
         }
     )
-    
+
     return TrainingMetrics(**metrics)
 
 
@@ -300,12 +296,12 @@ async def check_budget(request: BudgetCheckRequest):
     """Check if action is within budget (Cost Governor)"""
     if not cost_governor:
         raise HTTPException(status_code=503, detail="Cost Governor not initialized")
-    
+
     allowed, details = await cost_governor.check_budget(
         request.tenant_id,
         request.estimated_cost
     )
-    
+
     return {
         "allowed": allowed,
         "details": details
@@ -317,9 +313,9 @@ async def budget_status(tenant_id: str):
     """Get current budget status for tenant"""
     if not cost_governor:
         raise HTTPException(status_code=503, detail="Cost Governor not initialized")
-    
+
     status = await cost_governor.get_budget_status(tenant_id)
-    
+
     return {
         "tenant_id": status.tenant_id,
         "budget_limit": status.budget_limit,
@@ -336,9 +332,9 @@ async def save_checkpoint(path: str, episode: int = 0):
     """Save policy checkpoint"""
     if not ppo_trainer:
         raise HTTPException(status_code=503, detail="Trainer not initialized")
-    
+
     ppo_trainer.save_checkpoint(path, episode)
-    
+
     return {"status": "saved", "path": path, "episode": episode}
 
 
@@ -350,7 +346,7 @@ async def get_metrics():
         "training": ppo_trainer.metrics if ppo_trainer else {},
         "timestamp": datetime.utcnow().isoformat()
     }
-    
+
     return metrics
 
 

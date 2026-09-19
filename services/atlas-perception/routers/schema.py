@@ -1,6 +1,7 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
-from uuid import UUID
+﻿from uuid import UUID
+
 import asyncpg
+from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/atlas", tags=["schema"])
 

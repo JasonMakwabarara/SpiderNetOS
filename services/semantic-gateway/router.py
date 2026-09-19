@@ -1,7 +1,5 @@
-﻿import redis.asyncio as redis
-import asyncpg
-import json
-import numpy as np
+﻿import json
+
 
 async def generate_embedding(text: str) -> list:
     return [0.0] * 384
@@ -14,7 +12,7 @@ async def evaluate_incoming_event(
 ):
     event_embedding = await generate_embedding(event_payload)
     embedding_str = '[' + ','.join(str(x) for x in event_embedding) + ']'
-    
+
     async with db_pool.acquire() as conn:
         matched_pattern = await conn.fetchrow(
             """

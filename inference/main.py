@@ -8,20 +8,19 @@ from datetime import datetime
 from typing import Any, List, Literal, Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-from models import InferenceRequest, InferenceResponse, HealthResponse
-from policy_router import route_request
 from config import (
     DEFAULT_COST_CEILING,
     DEFAULT_OLLAMA_MODEL,
-    OLLAMA_URL,
-    EMBEDDING_MODEL,
     EMBEDDING_DIM,
+    EMBEDDING_MODEL,
+    OLLAMA_URL,
     VISION_DEFAULT_MODEL,
 )
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from models import HealthResponse, InferenceRequest, InferenceResponse
+from policy_router import route_request
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 app = FastAPI(
     title="SpiderNet OS — Inference Plane",
@@ -618,7 +617,7 @@ async def extract_document(request: ExtractDocumentRequest):
 async def embed(request: EmbedRequest):
     """Generate embeddings via Ollama's embedding endpoint."""
     model = request.model or EMBEDDING_MODEL
-    
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
@@ -627,16 +626,16 @@ async def embed(request: EmbedRequest):
             )
             resp.raise_for_status()
             data = resp.json()
-            
+
             embeddings = data.get("embeddings", [[]])
             embedding = embeddings[0] if embeddings else []
-            
+
             # Truncate or pad to configured dimension
             if len(embedding) > EMBEDDING_DIM:
                 embedding = embedding[:EMBEDDING_DIM]
             elif len(embedding) < EMBEDDING_DIM:
                 embedding = embedding + [0.0] * (EMBEDDING_DIM - len(embedding))
-            
+
             return EmbedResponse(
                 embedding=embedding,
                 model=model,
@@ -675,10 +674,7 @@ async def metrics():
 
 # ─── Speech-to-Text & Text-to-Speech ───────────────────────────────────────
 
-from speech import (
-    SpeechService, STTRequest, STTResponse, TTSRequest, TTSResponse,
-    get_speech_service
-)
+from speech import STTRequest, STTResponse, TTSRequest, TTSResponse, get_speech_service
 
 
 @app.post("/stt", response_model=STTResponse)
@@ -697,7 +693,7 @@ async def tts(request: TTSRequest):
 
 # ─── Streaming Endpoints ─────────────────────────────────────────────────────
 
-from streaming import StreamingRequest, generate_streaming_response, stream_voice_response
+from streaming import StreamingRequest, generate_streaming_response
 
 
 @app.post("/generate/stream")
@@ -711,14 +707,20 @@ async def generate_stream(request: StreamingRequest):
 
 # ─── Voice Agent endpoint (Phase B) ─────────────────────────────────────────
 
-import sys, os
+import os
+import sys
+
 # Ensure intelligence package is importable when running from inference/
 _INTELLIGENCE_PATH = os.path.join(os.path.dirname(__file__), "..", "intelligence")
 if _INTELLIGENCE_PATH not in sys.path:
     sys.path.insert(0, _INTELLIGENCE_PATH)
 
+from typing import Any as _Any
+from typing import Dict as _Dict
+from typing import List as _List
+from typing import Optional as _Optional
+
 from pydantic import BaseModel as _BaseModel
-from typing import Dict as _Dict, Any as _Any, List as _List, Optional as _Optional
 
 
 class VoiceAgentRequest(_BaseModel):
@@ -750,6 +752,7 @@ async def voice_agent_turn(request: VoiceAgentRequest):
     """
     try:
         from agents.voice_agent import VoiceAgent, VoiceContext
+
         from tools.registry import ToolRegistry
 
         registry = ToolRegistry.instance()
@@ -818,8 +821,8 @@ async def ste_simulate(req: SteSimulateRequest):
     try:
         # Local import so the rest of the app is unaffected if the module
         # can't be loaded for any reason.
-        import sys
         import os
+        import sys
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from intelligence.atlas.mc_simulator import simulate
 

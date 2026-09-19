@@ -9,11 +9,10 @@ import re
 from typing import AsyncGenerator, Optional
 
 import httpx
+from config import OLLAMA_URL
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-
-from config import OLLAMA_URL, DEFAULT_COST_CEILING
 
 
 class StreamingRequest(BaseModel):
@@ -97,8 +96,8 @@ async def stream_generate(
                             if SENTENCE_ENDINGS.search(buffer):
                                 sentences = SENTENCE_ENDINGS.split(buffer)
                                 # Keep last fragment if not a complete sentence
-                                complete = sentences[:-1] if not buffer[-1] in '.!?' else sentences
-                                buffer = sentences[-1] if not buffer[-1] in '.!?' else ""
+                                complete = sentences[:-1] if buffer[-1] not in '.!?' else sentences
+                                buffer = sentences[-1] if buffer[-1] not in '.!?' else ""
 
                                 for sent in complete:
                                     if sent.strip():
