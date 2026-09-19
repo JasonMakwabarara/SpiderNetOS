@@ -102,7 +102,7 @@ jobs:
     name: semgrep
     runs-on: ubuntu-latest
     container:
-      image: returntocorp/semgrep:latest
+      image: semgrep/semgrep:latest
     steps:
       - uses: actions/checkout@v4
 
@@ -121,8 +121,38 @@ jobs:
             --sarif --output=semgrep.sarif \
             --metrics=off
 
+      - name: List the findings
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import collections, json, os, sys
+          if not os.path.exists('semgrep.sarif'):
+              sys.exit('no semgrep.sarif produced')
+          rows = []
+          for run in json.load(open('semgrep.sarif')).get('runs', []):
+              for res in run.get('results', []):
+                  loc = res['locations'][0]['physicalLocation']
+                  msg = (res.get('message', {}).get('text') or '').splitlines()
+                  rows.append((
+                      res.get('ruleId', '?'),
+                      loc['artifactLocation']['uri'],
+                      loc['region'].get('startLine', 0),
+                      (msg[0] if msg else '')[:120],
+                  ))
+          print(str(len(rows)) + ' findings')
+          print('')
+          print('BY RULE')
+          for rule, n in collections.Counter(r[0] for r in rows).most_common():
+              print(str(n).rjust(5) + '  ' + rule)
+          print('')
+          print('EVERY FINDING')
+          for rule, path, line, msg in sorted(rows):
+              print(path + ':' + str(line) + '  ' + rule + '  ' + msg)
+          PY
+
       - name: Upload SARIF
         if: always()
+        continue-on-error: true   # code scanning may be disabled on this repo
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
@@ -132,6 +162,9 @@ jobs:
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # the action lists the PR's commits; without this it 403s
     steps:
       - uses: actions/checkout@v4
         with:

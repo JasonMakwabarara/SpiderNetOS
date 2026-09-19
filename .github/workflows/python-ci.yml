@@ -14,12 +14,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install ruff
+      # Pinned to match ci.yml's blocking ruff jobs, and no longer swallowed:
+      # `ruff check ... || echo` reported findings into the void and exited 0,
+      # so this job was green for years without linting anything.
+      - run: pip install ruff==0.6.9
       - run: |
           if [ -d "intelligence" ]; then
-            ruff check intelligence/ || echo "?? Ruff found issues in intelligence/"
+            ruff check intelligence/
           fi
       - run: |
           if [ -d "inference" ]; then
-            ruff check inference/ || echo "?? Ruff found issues in inference/"
+            ruff check inference/
           fi
