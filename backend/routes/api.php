@@ -591,6 +591,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::get('/partners', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'index']);
         Route::get('/partners/dm-queue', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmQueue']);
         Route::get('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'settings']);
+
+        // LinkedIn outreach (plan D7 §3). Default draft_only: Richard drafts,
+        // a person sends, and nothing touches LinkedIn. Moving to assisted
+        // needs a named, versioned acknowledgement of LinkedIn's terms.
+        Route::get('/partners/linkedin/settings', [\App\Http\Controllers\Outreach\LinkedInSettingsController::class, 'show']);
+        Route::put('/partners/linkedin/settings', [\App\Http\Controllers\Outreach\LinkedInSettingsController::class, 'update'])->middleware('role:admin');
         Route::put('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
         Route::post('/partners/import', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'import'])->middleware('role:admin');
         Route::post('/partners/run', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'run'])->middleware('role:admin');

@@ -97,10 +97,10 @@ identities:
   richard:
     agents_slug: sales_crm_richard
     pack: sales-crm
-    status: planned                   # PR 7 (packages/feature-packs/sales-crm/agents/richard.yaml)
+    status: existing                  # agents/richard.yaml + prompts/richard.md ship in the pack
     reports_to: nexus
     display_name: "Richard"
-    character_note: "The LinkedIn sending half; draft-only until HeyReach is connected and the ToS acknowledgement is signed."
+    character_note: "The LinkedIn half, peer to peer. Draft-only by default and by design: it is the only mode that does not touch LinkedIn's User Agreement. Assisted sending needs a named, versioned acknowledgement."
     workspace: true
     skills:
       - linkedin-campaign-runner
