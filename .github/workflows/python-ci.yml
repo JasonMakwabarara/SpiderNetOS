@@ -26,3 +26,31 @@ jobs:
           if [ -d "inference" ]; then
             ruff check inference/
           fi
+
+  # 137 tests across the two planes that no workflow had ever run: 98 in
+  # intelligence, 39 in inference. They pass; they just were not wired to
+  # anything.
+  pytest:
+    name: python planes — pytest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [intelligence, inference]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ${{ matrix.project }}/requirements.txt
+      - name: Install
+        working-directory: ${{ matrix.project }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Tests
+        working-directory: ${{ matrix.project }}
+        run: python -m pytest tests/ -q
+
