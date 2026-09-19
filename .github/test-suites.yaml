@@ -1,0 +1,62 @@
+# Which test suites exist, and which CI job runs each one.
+#
+# This file exists because four separate suites in this repository had never
+# executed in CI: the backend's full Postgres lane (its job died at a migrate
+# step), the cockpit's 64 vitest tests, 137 Python tests across the two planes,
+# and the integration/behavioural suite at tests/. Three of the four still
+# passed when finally run. The fourth had rotted, which is the point: a suite
+# nothing runs is documentation, and it decays like documentation.
+#
+# .github/check_suites_wired.py fails CI when a tests/ directory exists and is
+# neither listed here against a real workflow job, nor declared unwired with a
+# reason, an owner and a date to look again.
+
+version: 1
+
+suites:
+  - path: backend/tests
+    runs_in:
+      # Deliberately two, not one: CiFast is sqlite and fast (fail-fast signal
+      # plus driver parity — the varchar(16) bug was invisible on sqlite, and
+      # sqlite-only breakage is equally possible), backend-test-full is the
+      # authoritative Unit + Feature run on Postgres + Redis.
+      - workflow: ci.yml
+        job: backend-test-ci-fast
+      - workflow: ci.yml
+        job: backend-test-full
+
+  - path: cockpit/tests
+    runs_in:
+      - workflow: ci.yml
+        job: cockpit-build
+
+  - path: inference/tests
+    runs_in:
+      - workflow: python-ci.yml
+        job: pytest
+
+  - path: intelligence/tests
+    runs_in:
+      - workflow: python-ci.yml
+        job: pytest
+
+  - path: tests
+    unwired:
+      reason: >
+        Integration, behavioural, chaos and load suites. tests/integration needs
+        testcontainers (Postgres, Redis, Kafka) and tests/load is a locust file,
+        so neither belongs on every pull request. Not wired yet because it would
+        be red on arrival, and a permanently red job is the disease this file is
+        treating: 13 pass, 9 skip, 5 fail and 1 errors. The three causes are
+        distinct and none is a CI problem —
+          * tests/behavioral asks for a kafka_container fixture that only exists
+            in tests/integration/conftest.py;
+          * test_cpl_service expects log_probs.shape == (32,) and gets (1,),
+            which is either policy_network drift or a stale expectation;
+          * test_cpl_convergence imports services.cpl_service, and the directory
+            is services/cpl-service — that import has never resolved, so the
+            test has never passed rather than having rotted.
+        Fix those, then wire this to a scheduled workflow with workflow_dispatch
+        rather than to pull requests.
+      owner: jason
+      review_date: 2026-10-19

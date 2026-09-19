@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  laravel-tests:
+  migrate-and-validate:
     runs-on: ubuntu-latest
 
     services:
@@ -83,7 +83,8 @@ jobs:
           php artisan key:generate
           php artisan migrate --force
 
-      - name: Run PHPUnit tests
-        run: |
-          cd backend
-          php artisan test --testsuite=Unit
+      # No PHPUnit here. `--testsuite=Unit` is a strict subset of the Unit+Feature
+      # run in ci.yml's "backend — full test suite (Postgres + Redis)", so this
+      # was a third copy of tests that already run twice elsewhere. What this job
+      # uniquely proves is that the migrations apply cleanly to an empty Postgres
+      # with pgvector, which the `migrate --force` step above does.
