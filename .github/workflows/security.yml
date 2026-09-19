@@ -49,11 +49,10 @@ jobs:
 
   # ─── JS dependency audit (cockpit) ──────────────────────────────────
   npm-audit:
-    name: npm audit (cockpit)
+    name: npm audit (workspace)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cockpit
+    # The root owns the lockfile and therefore the resolved tree; auditing from
+    # cockpit/ audited the root anyway. Say which one is being audited.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 

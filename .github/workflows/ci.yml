@@ -74,9 +74,6 @@ jobs:
   cockpit-build:
     name: cockpit — tests + build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cockpit
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
@@ -84,15 +81,16 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: package-lock.json
+      # npm workspace: install and run from the root, name the workspace.
       - run: npm ci --prefer-offline --no-audit
       # There is no lint script in cockpit/package.json, and the step that
       # looked for one could only ever print "No lint script". There IS a
       # vitest suite — 9 files, 64 tests, about four seconds — that no workflow
       # had ever run. It runs here.
       - name: Tests
-        run: npm run test
+        run: npm run test --workspace=cockpit
       - name: Build
-        run: npm run build
+        run: npm run build --workspace=cockpit
 
   python-lint:
     name: python planes — ruff

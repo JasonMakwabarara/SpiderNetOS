@@ -14,5 +14,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: '20'
-      - run: cd cockpit && npm ci
-      - run: cd cockpit && npm run build
+      # This is an npm workspace: the root owns the lockfile and the install
+      # tree. Running npm from cockpit/ installs the whole workspace at the
+      # root regardless, so say so rather than relying on npm walking up.
+      - run: npm ci
+      - run: npm run build --workspace=cockpit
