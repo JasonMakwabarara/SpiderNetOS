@@ -16,6 +16,11 @@ Schedule::job(new \App\Jobs\GenerateDailyBriefJob)->dailyAt('06:00');
 // flushes due notification bundles (D8 #4) — same pattern as OutreachDailyDigestJob.
 Schedule::job(new \App\Jobs\FounderBriefJob)->hourly()->withoutOverlapping();
 
+// The Monday letter (plan D8 #11) and, as its second half, the C-Suite
+// newsletter (D8 #15): hourly sweep, each tenant taking the tick that is
+// Monday 07:00 where they are. Gated per tenant by newsletter.csuite.
+Schedule::job(new \App\Jobs\MondayLetterJob)->hourly()->withoutOverlapping();
+
 // Every edit is a lesson (plan D8 #1): weekly distillation of artifact_revisions
 // into people/user.md proposals ("you always shorten the opener → rule"), Sunday 03:00 UTC
 Schedule::job(new \App\Jobs\DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();

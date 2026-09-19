@@ -53,6 +53,11 @@ return [
     // Identity → agents row mapping (`reports_to` core character).
     'identities_manifest' => env('SKILL_IDENTITIES', dirname(base_path()).'/packages/skills/identities.yaml'),
 
+    // Curated quote bank for the C-Suite newsletter (zen | buddhist | stoic |
+    // hopeful | lighthearted | proverb). One quote per issue, never repeated
+    // within 26 issues for the same tenant.
+    'quote_bank' => env('QUOTE_BANK', dirname(base_path()).'/packages/content/quotes.yaml'),
+
     // The six core characters every identity and skill reports to.
     'core_characters' => ['atlas', 'hannah', 'forge', 'sentinel', 'prism', 'nexus'],
 

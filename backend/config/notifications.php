@@ -27,6 +27,7 @@ return [
         'decision_due' => ['urgency' => 'bundle', 'label' => 'Decision due', 'minutes' => 2.0, 'noun' => ['decision', 'decisions']],
         'delegation_expired' => ['urgency' => 'interrupt', 'label' => 'Delegation expired', 'minutes' => 1.0, 'noun' => ['expired delegation', 'expired delegations']],
         'breaker_tripped' => ['urgency' => 'interrupt', 'label' => 'Circuit breaker tripped', 'minutes' => 1.0, 'noun' => ['breaker trip', 'breaker trips']],
+        'monday_letter' => ['urgency' => 'bundle', 'label' => 'The Monday letter', 'minutes' => 6.0, 'noun' => ['letter', 'letters']],
     ],
 
     // Unknown/legacy event types (outreach_digest, spend_digest, bill_due_soon...)
