@@ -338,10 +338,7 @@ class BoundedExploration:
             ucb_term = np.sqrt(np.log(total_actions + 1) / action_count)
 
         # Budget scaling (exploration decreases as budget depletes)
-        if self.total_budget > 0:
-            budget_scale = remaining_budget / self.total_budget
-        else:
-            budget_scale = 1.0
+        budget_scale = remaining_budget / self.total_budget if self.total_budget > 0 else 1.0
 
         # Regret check (if cumulative regret too high, stop exploring)
         if self.cumulative_regret > self.max_regret * action_value:

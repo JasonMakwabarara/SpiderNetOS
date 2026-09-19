@@ -254,10 +254,7 @@ class PromptEvolutionEngine:
 
         # Must have outcome framing
         outcome_words = ["your", "you", "get", "see", "save", "track", "automat", "live"]
-        if not any(ow in template for ow in outcome_words):
-            return False
-
-        return True
+        return any(ow in template for ow in outcome_words)
 
     # -----------------------------------------------------------------------
     # DB helpers

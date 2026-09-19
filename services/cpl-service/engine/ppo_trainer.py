@@ -166,7 +166,7 @@ class StreamingPPOTrainer:
         total_clip_fraction = 0
         total_kl = 0
 
-        for epoch in range(self.num_epochs):
+        for _epoch in range(self.num_epochs):
             # Shuffle for mini-batch training
             np.random.shuffle(indices)
 

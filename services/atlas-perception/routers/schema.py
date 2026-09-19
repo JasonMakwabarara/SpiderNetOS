@@ -41,7 +41,7 @@ async def get_schema_metadata(
             "attributes": {}
         }
     for attr in attributes:
-        for slug, data in schema_map.items():
+        for _slug, data in schema_map.items():
             if data["object_id"] == str(attr['object_id']):
                 data["attributes"][attr['api_slug']] = attr['type']
 

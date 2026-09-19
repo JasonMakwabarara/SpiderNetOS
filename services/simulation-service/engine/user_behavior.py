@@ -99,7 +99,7 @@ class UserBehaviorModel:
 
             # Logistic response curve with saturation
             # y = L / (1 + e^(-k(x - x0)))
-            L = segment.base_conversion_rate * effective_impressions
+            L = segment.base_conversion_rate * effective_impressions  # noqa: N806 - matches the formula above
             k = 0.001  # Steepness
             x0 = 1000  # Midpoint
 

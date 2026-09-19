@@ -227,23 +227,11 @@ RESPOND WITH JSON:
             'economic_downturn'
         ][:num_stages]
 
-        prompt = f"""Design a {num_stages}-stage RL training curriculum.
-
-Progression type: {progression_type}
-
-Each stage should build on previous skills while introducing new challenges.
-
-Stages: {', '.join(difficulties)}
-Scenario types: {', '.join(scenario_types)}
-
-For each stage, specify:
-1. What skills should be mastered before progressing
-2. What new challenge is introduced
-3. Success criteria (min ROAS, max CAC, etc.)
-
-Respond with JSON array of scenario descriptions."""
-
-        response = self._call_deepseek(prompt, temperature=0.6)
+        # This stage used to build a curriculum prompt and call DeepSeek, then
+        # discard the answer: the stages below are assembled deterministically
+        # by generate_scenario(). The call cost money and changed nothing, so
+        # it is gone. The prompt it sent is in this file's history if the
+        # model is ever meant to drive the progression.
 
         curriculum = []
         for i, (diff, stype) in enumerate(zip(difficulties, scenario_types, strict=False)):
@@ -353,7 +341,7 @@ Respond with JSON:
                 json_str = response
 
             return json.loads(json_str.strip())
-        except:
+        except Exception:
             return {
                 "analysis": "Could not parse DeepSeek response",
                 "issues_detected": [],

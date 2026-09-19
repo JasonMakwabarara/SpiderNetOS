@@ -41,3 +41,9 @@ extend-immutable-calls = [
     "fastapi.File",
     "fastapi.Security",
 ]
+
+[lint.pep8-naming]
+# `import torch.nn.functional as F` is what PyTorch's own documentation and the
+# whole ecosystem write; renaming it would make this code harder to read, not
+# easier. N8 rules stay on for every other name.
+extend-ignore-names = ["F"]

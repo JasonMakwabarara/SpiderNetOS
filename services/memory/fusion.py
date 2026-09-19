@@ -351,9 +351,8 @@ class MemoryFusion:
         """
         results = []
 
-        if query.mode in ("semantic", "both"):
-            # Vector similarity search
-            if query.query_embedding:
+        # Vector similarity search
+        if query.mode in ("semantic", "both") and query.query_embedding:
                 vector_results = await self.vector.search_similar(
                     collection="system_memory",
                     query_vector=query.query_embedding,
@@ -401,7 +400,7 @@ class MemoryFusion:
                     hours_ago = (datetime.utcnow() - timestamp).total_seconds() / 3600
                     recency_boost = recency_weight * np.exp(-hours_ago / 24)  # Decay over 24h
                     score += recency_boost
-                except:
+                except Exception:
                     pass
 
             scored.append((score, r))

@@ -3,9 +3,15 @@ SpiderNet OS — Inference Plane (FastAPI)
 Policy-based model routing with cost-aware fallback cascade.
 """
 import json
+import os
 import re
+import sys
 from datetime import datetime
 from typing import Any, List, Literal, Optional
+from typing import Any as _Any
+from typing import Dict as _Dict
+from typing import List as _List
+from typing import Optional as _Optional
 
 import httpx
 from config import (
@@ -21,6 +27,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from models import HealthResponse, InferenceRequest, InferenceResponse
 from policy_router import route_request
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel as _BaseModel
+from speech import STTRequest, STTResponse, TTSRequest, TTSResponse, get_speech_service
+from streaming import StreamingRequest, generate_streaming_response
 
 app = FastAPI(
     title="SpiderNet OS — Inference Plane",
@@ -70,7 +79,7 @@ async def generate(request: InferenceRequest):
     try:
         return await route_request(request)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class ClassifyRequest(BaseModel):
@@ -136,7 +145,7 @@ async def classify(request: ClassifyRequest):
             entities = {}
         return ClassifyResponse(intent=intent, entities=entities, confidence=confidence)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"classify_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"classify_failed: {e}") from e
 
 
 def _extract_json_object(text: str) -> dict:
@@ -594,7 +603,7 @@ async def extract_document(request: ExtractDocumentRequest):
         if has_text:
             # All models failed but we have text: degrade to heuristics, 200.
             return _heuristic_response(request.text)
-        raise HTTPException(status_code=502, detail=f"extract_failed: {exc}")
+        raise HTTPException(status_code=502, detail=f"extract_failed: {exc}") from exc
 
     parsed = _extract_json_deep(result.text)
     if parsed is None and has_text:
@@ -642,9 +651,9 @@ async def embed(request: EmbedRequest):
                 dimensions=len(embedding),
             )
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Ollama embedding failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Ollama embedding failed: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Embedding error: {e}")
+        raise HTTPException(status_code=500, detail=f"Embedding error: {e}") from e
 
 
 @app.get("/usage")
@@ -674,7 +683,6 @@ async def metrics():
 
 # ─── Speech-to-Text & Text-to-Speech ───────────────────────────────────────
 
-from speech import STTRequest, STTResponse, TTSRequest, TTSResponse, get_speech_service
 
 
 @app.post("/stt", response_model=STTResponse)
@@ -693,7 +701,6 @@ async def tts(request: TTSRequest):
 
 # ─── Streaming Endpoints ─────────────────────────────────────────────────────
 
-from streaming import StreamingRequest, generate_streaming_response
 
 
 @app.post("/generate/stream")
@@ -707,20 +714,13 @@ async def generate_stream(request: StreamingRequest):
 
 # ─── Voice Agent endpoint (Phase B) ─────────────────────────────────────────
 
-import os
-import sys
 
 # Ensure intelligence package is importable when running from inference/
 _INTELLIGENCE_PATH = os.path.join(os.path.dirname(__file__), "..", "intelligence")
 if _INTELLIGENCE_PATH not in sys.path:
     sys.path.insert(0, _INTELLIGENCE_PATH)
 
-from typing import Any as _Any
-from typing import Dict as _Dict
-from typing import List as _List
-from typing import Optional as _Optional
 
-from pydantic import BaseModel as _BaseModel
 
 
 class VoiceAgentRequest(_BaseModel):
@@ -779,7 +779,7 @@ async def voice_agent_turn(request: VoiceAgentRequest):
         return VoiceAgentResponse(**result)
 
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # ─── Voice Streaming WebSocket (Phase C) ────────────────────────────────────
@@ -838,4 +838,4 @@ async def ste_simulate(req: SteSimulateRequest):
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"ste_simulate_failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"ste_simulate_failed: {exc}") from exc

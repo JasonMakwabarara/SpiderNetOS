@@ -84,7 +84,7 @@ Return as JSON:
 
         try:
             flow_structure = __import__('json').loads(response.get('text', '{}'))
-        except:
+        except Exception:
             flow_structure = self._generate_default_flow(flow_name, description)
 
         # Validate structure

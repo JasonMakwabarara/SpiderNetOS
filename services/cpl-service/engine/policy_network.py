@@ -133,10 +133,7 @@ class PolicyNetwork(nn.Module):
         probs = F.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
 
-        if deterministic:
-            action = torch.argmax(probs, dim=-1)
-        else:
-            action = dist.sample()
+        action = torch.argmax(probs, dim=-1) if deterministic else dist.sample()
 
         log_prob = dist.log_prob(action)
         entropy = dist.entropy()

@@ -91,7 +91,7 @@ class EventConsumer:
                 # Poll for messages
                 messages = self._consumer.poll(timeout_ms=1000)
 
-                for topic_partition, msgs in messages.items():
+                for _topic_partition, msgs in messages.items():
                     for msg in msgs:
                         self.metrics['received'] += 1
 
@@ -159,7 +159,7 @@ class EventConsumer:
                 if committed:
                     total_lag += end_offset - committed.offset
             self.metrics['lag'] = total_lag
-        except:
+        except Exception:
             pass
 
         return self.metrics.copy()

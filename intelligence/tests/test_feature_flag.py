@@ -16,12 +16,12 @@ from unittest.mock import MagicMock
 _mock_redis = MagicMock()
 _mock_redis.get.return_value = None
 
-import atlas.feature_flag as ff_module
+import atlas.feature_flag as ff_module  # noqa: E402 - must follow the Redis mock above
 
 ff_module._redis = _mock_redis
 
 
-from atlas.feature_flag import FeatureFlag, _cache
+from atlas.feature_flag import FeatureFlag, _cache  # noqa: E402 - must follow the Redis mock above
 
 
 class TestFeatureFlagDefaults(unittest.TestCase):

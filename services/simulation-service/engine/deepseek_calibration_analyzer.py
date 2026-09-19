@@ -291,7 +291,7 @@ Respond with JSON:
                 json_str = response
 
             return json.loads(json_str.strip())
-        except:
+        except Exception:
             return {
                 "predicted_gap_percentage": abs(avg_trend * time_horizon_hours),
                 "confidence": 0.3,

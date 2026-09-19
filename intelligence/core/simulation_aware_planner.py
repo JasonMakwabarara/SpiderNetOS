@@ -152,7 +152,7 @@ Each plan must have the same structure as the base plan."""
             alternatives = json.loads(response)
             if isinstance(alternatives, list):
                 return alternatives[:2]  # Max 2 alternatives
-        except:
+        except Exception:
             pass
 
         return []
@@ -215,7 +215,7 @@ Each plan must have the same structure as the base plan."""
         try:
             cal_status = self.simulation_client.get_calibration_status()
             cal_quality = cal_status.get('quality', 'unknown')
-        except:
+        except Exception:
             cal_quality = 'unavailable'
 
         # Determine training mode based on calibration
@@ -258,30 +258,17 @@ class SimulationClient:
             with urllib.request.urlopen(req, timeout=2) as resp:
                 self._available = resp.getcode() == 200
                 return self._available
-        except:
+        except Exception:
             self._available = False
             return False
 
     def test_strategy(self, params: Dict) -> Dict:
         """Test a strategy in simulation"""
 
-        data = json.dumps({
-            "episodes": 50,  # Quick test
-            "budget": params.get('budget', 1000),
-            "randomize": True,
-            "use_deepseek_scenarios": True,
-            "difficulty": params.get('scenario_difficulty', 'medium')
-        }).encode()
-
-        req = urllib.request.Request(
-            f"{self.base_url}/simulation/start",
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-
-        # Note: In production, this would poll for results
-        # For now, return placeholder
+        # This builds no request and starts no simulation. It previously
+        # constructed one and never sent it, which reads from the outside
+        # exactly like a simulation that ran. The numbers below are fixed
+        # placeholders; treat any caller of test_strategy() as unimplemented.
         return {
             "success_probability": 0.75,
             "predicted_profit": params.get('budget', 1000) * 0.3,
@@ -300,5 +287,5 @@ class SimulationClient:
             )
             with urllib.request.urlopen(req, timeout=2) as resp:
                 return json.loads(resp.read().decode())
-        except:
+        except Exception:
             return {"quality": "unavailable"}

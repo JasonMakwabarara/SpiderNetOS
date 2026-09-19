@@ -139,7 +139,7 @@ class SpeechService:
                         language=request.language,
                         duration_seconds=None,
                     )
-                except:
+                except Exception:
                     # Fallback: assume dedicated whisper service
                     files = {"file": ("audio.wav", io.BytesIO(audio_data), "audio/wav")}
                     resp = await client.post(
@@ -159,7 +159,7 @@ class SpeechService:
                         duration_seconds=data.get("duration"),
                     )
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Whisper STT failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Whisper STT failed: {e}") from e
 
     async def _stt_deepgram(self, request: STTRequest) -> STTResponse:
         """Deepgram cloud STT (higher accuracy)."""
@@ -208,7 +208,7 @@ class SpeechService:
                     duration_seconds=data.get("metadata", {}).get("duration"),
                 )
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Deepgram STT failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Deepgram STT failed: {e}") from e
 
     # ─── TTS Implementations ──────────────────────────────────────────────────
 
@@ -243,7 +243,7 @@ class SpeechService:
             # Piper not available, return mock for development
             return self._tts_mock(request, "piper")
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Piper TTS failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Piper TTS failed: {e}") from e
 
     async def _tts_elevenlabs(self, request: TTSRequest) -> TTSResponse:
         """ElevenLabs cloud TTS (high quality, low latency model)."""
@@ -279,7 +279,7 @@ class SpeechService:
                     characters=len(request.text),
                 )
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"ElevenLabs TTS failed: {e}")
+            raise HTTPException(status_code=502, detail=f"ElevenLabs TTS failed: {e}") from e
 
     def _tts_mock(self, request: TTSRequest, provider: str) -> TTSResponse:
         """Mock TTS for development when services unavailable."""

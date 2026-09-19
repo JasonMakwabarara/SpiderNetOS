@@ -34,8 +34,6 @@ class AtlasAgent(AgentBase):
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute Atlas agent logic"""
 
-        start_time = __import__('time').time()
-
         # Retrieve relevant memory
         memories = await self.memory_graph.retrieve(
             tenant_id=context.tenant_id,

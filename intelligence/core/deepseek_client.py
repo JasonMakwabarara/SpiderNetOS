@@ -92,10 +92,7 @@ class DeepSeekClient:
         """
 
         # Build full prompt with system context
-        if system_prompt:
-            full_prompt = f"{system_prompt}\n\n{prompt}"
-        else:
-            full_prompt = prompt
+        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
 
         # Add format instructions
         if expect_json:
@@ -378,7 +375,7 @@ Respond with JSON:
 
         try:
             return json.loads(response.content)
-        except:
+        except Exception:
             return {
                 "valid": False,
                 "issues": ["Could not parse analysis"],

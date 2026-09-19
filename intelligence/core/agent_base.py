@@ -9,10 +9,14 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 # DeepSeek integration for strategic reasoning
 from .deepseek_client import DeepSeekClient, get_deepseek_client
+
+if TYPE_CHECKING:  # annotation-only: importing these at runtime closes a cycle
+    from .cost_governor import CostGovernor
+    from .memory_graph import MemoryGraph
 
 
 @dataclass

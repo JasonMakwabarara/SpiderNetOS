@@ -52,9 +52,8 @@ async def stream_generate(
     sentence_count = 0
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Call Ollama generate endpoint with streaming
-            async with client.stream(
+        # Call Ollama generate endpoint with streaming
+        async with httpx.AsyncClient(timeout=30.0) as client, client.stream(
                 "POST",
                 f"{OLLAMA_URL}/api/generate",
                 json={
@@ -178,7 +177,6 @@ async def stream_voice_response(
     from speech import get_speech_service
 
     speech_service = get_speech_service()
-    sentence_buffer = ""
 
     messages = []
     if system_prompt:

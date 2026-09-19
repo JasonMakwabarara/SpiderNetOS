@@ -68,7 +68,7 @@ async def get_schema_metadata(workspace_id: UUID, db_pool=Depends(get_db_pool)):
     for obj in objects:
         schema_map[obj['api_slug']] = {"object_id": str(obj['id']), "name": obj['name'], "attributes": {}}
     for attr in attributes:
-        for slug, data in schema_map.items():
+        for _slug, data in schema_map.items():
             if data["object_id"] == str(attr['object_id']):
                 data["attributes"][attr['api_slug']] = attr['type']
     return {"workspace_id": str(workspace_id), "schema": schema_map}

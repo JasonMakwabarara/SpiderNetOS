@@ -52,7 +52,4 @@ class DAGCompiler:
             visited.add(node)
             return False
 
-        for node in graph:
-            if dfs(node):
-                return True
-        return False
+        return any(dfs(node) for node in graph)

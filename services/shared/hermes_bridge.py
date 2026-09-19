@@ -4,6 +4,7 @@ Connects the external Hermes Agent with SpiderNetOS agent coordination
 """
 
 import asyncio
+import contextlib
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -47,10 +48,8 @@ class HermesIntegrationBridge:
         """Shutdown the integration bridge."""
         if self.learning_sync_task:
             self.learning_sync_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.learning_sync_task
-            except asyncio.CancelledError:
-                pass
 
         if self.session:
             await self.session.close()
@@ -73,7 +72,6 @@ class HermesIntegrationBridge:
             message = hermes_request.get('message', '')
             channel = hermes_request.get('channel', 'unknown')
             conversation_id = hermes_request.get('conversation_id', '')
-            user_context = hermes_request.get('user_context', {})
 
             # Analyze intent and requirements
             intent_analysis = await self._analyze_intent(message, hermes_request)
@@ -157,17 +155,14 @@ class HermesIntegrationBridge:
         base_agents = agent_mappings.get(intent_type, ['atlas'])
 
         # Add specialized agents based on message content
-        if 'analyze' in message or 'data' in message:
-            if 'prism' not in base_agents:
-                base_agents.append('prism')
+        if ('analyze' in message or 'data' in message) and 'prism' not in base_agents:
+            base_agents.append('prism')
 
-        if 'generate' in message or 'create' in message:
-            if 'forge' not in base_agents:
-                base_agents.append('forge')
+        if ('generate' in message or 'create' in message) and 'forge' not in base_agents:
+            base_agents.append('forge')
 
-        if 'monitor' in message or 'health' in message:
-            if 'sentinel' not in base_agents:
-                base_agents.append('sentinel')
+        if ('monitor' in message or 'health' in message) and 'sentinel' not in base_agents:
+            base_agents.append('sentinel')
 
         return base_agents
 
