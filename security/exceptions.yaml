@@ -102,3 +102,26 @@ exceptions:
     owner: jason
     review_date: 2027-03-19
 
+  - rule_id: generic.nginx.security.request-host-used.request-host-used
+    locations:
+      - frontend/nginx.conf:44
+      - frontend/nginx.conf:56
+      - frontend/nginx.conf:67
+      - frontend/nginx.conf:81
+      - ops/fix-nginx-vast.sh:18
+      - ops/fix-nginx-vast.sh:23
+      - ops/fix-nginx-vast.sh:29
+    classification: ACCEPTED_RISK
+    reason: >
+      `proxy_set_header Host $host` forwards a header the client controls, and
+      server_name is `_`, so any Host reached Laravel. That was a real path to
+      host-header injection in generated absolute URLs — password resets,
+      signed links, one-click unsubscribe — and it is fixed at the layer that
+      matters: bootstrap/app.php now calls trustHosts(), pinning the accepted
+      host to APP_URL. Preserving the client's Host through the proxy is what a
+      reverse proxy is for, and it stays, because the application no longer
+      trusts it. Revisit if anything starts resolving a tenant from the host,
+      which nothing does today.
+    owner: jason
+    review_date: 2027-03-19
+

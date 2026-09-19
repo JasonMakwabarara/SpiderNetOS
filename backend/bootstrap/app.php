@@ -39,6 +39,25 @@ return Application::configure(basePath: dirname(__DIR__))
         // last so they overlay on top of any framework-set headers.
         $middleware->append(SecurityHeadersMiddleware::class);
 
+        // Host header injection. The gateway forwards the client's Host
+        // verbatim (`proxy_set_header Host $host`) and its server_name is `_`,
+        // so any Host reaches Laravel and lands in generated absolute URLs —
+        // password resets, signed links, one-click unsubscribe. Tenant
+        // resolution does not use the host, so pinning it costs nothing.
+        //
+        // Derived from APP_URL, and deliberately self-disabling: an empty list
+        // means "no restriction", so a workspace that has not set APP_URL to a
+        // real domain behaves exactly as before rather than 403ing everything.
+        $middleware->trustHosts(at: static function (): array {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+            if (! is_string($host) || $host === '' || $host === 'localhost' || $host === '127.0.0.1') {
+                return [];
+            }
+
+            return [$host, '.'.$host];
+        });
+
         $middleware->api(prepend: [
             EnsureFrontendRequestsAreStateful::class,
         ]);
