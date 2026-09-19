@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Services\AtlasClarityGate;
 use App\Services\AtlasDiscoveryService;
-use App\Services\DagExecutionService;
-use App\Services\FlowTemplateBuilder;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
+use App\Services\DagExecutionService;
 use App\Services\EventStore;
 use App\Services\FeatureFlag;
+use App\Services\FlowTemplateBuilder;
 use App\Services\MetaPlanner;
 use App\Services\Onboarding\OnboardingPolicy;
 use App\Services\PackGrowthService;
@@ -17,17 +17,21 @@ use App\Services\PromptEnhancer;
 use App\Services\TransformationEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AtlasController extends Controller
 {
     private EventStore $eventStore;
+
     private MetaPlanner $metaPlanner;
+
     private TransformationEngine $transformationEngine;
+
     private AtlasInteractionLogger $interactionLogger;
+
     private OnboardingPolicy $onboardingPolicy;
 
     public function __construct(
@@ -60,31 +64,32 @@ class AtlasController extends Controller
      */
     public function enhancePrompt(Request $request, PromptEnhancer $enhancer): JsonResponse
     {
-        if (!FeatureFlag::on('atlas.enhance_prompt')) {
+        if (! FeatureFlag::on('atlas.enhance_prompt')) {
             return response()->json([
-                'error'   => 'enhance_prompt_disabled',
+                'error' => 'enhance_prompt_disabled',
                 'message' => 'The Enhance Prompt feature is currently disabled for this tenant.',
             ], 503);
         }
 
         $data = $request->validate([
-            'prompt'   => 'required|string|min:1|max:4000',
-            'mode'     => 'sometimes|string|in:concise,balanced,deep',
-            'surface'  => 'sometimes|string|in:atlas_chat,agent_builder,flow_builder,generic',
+            'prompt' => 'required|string|min:1|max:4000',
+            'mode' => 'sometimes|string|in:concise,balanced,deep',
+            'surface' => 'sometimes|string|in:atlas_chat,agent_builder,flow_builder,generic',
             'audience' => 'sometimes|string|in:user,admin,super_admin',
-            'tone'     => 'sometimes|string|in:neutral,concise,deep',
+            'tone' => 'sometimes|string|in:neutral,concise,deep',
         ]);
 
         $started = microtime(true);
 
         $result = $enhancer->enhance($data['prompt'], [
-            'mode'     => $data['mode']     ?? 'balanced',
-            'surface'  => $data['surface']  ?? 'generic',
+            'mode' => $data['mode'] ?? 'balanced',
+            'surface' => $data['surface'] ?? 'generic',
             'audience' => $data['audience'] ?? 'user',
-            'tone'     => $data['tone']     ?? 'neutral',
+            'tone' => $data['tone'] ?? 'neutral',
         ]);
 
         $result['latency_ms'] = (int) round((microtime(true) - $started) * 1000);
+
         return response()->json($result);
     }
 
@@ -391,7 +396,7 @@ class AtlasController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $pending
+     * @param  array<string, mixed>  $pending
      */
     private function denyIfNotPendingOwner(array $pending, string|int $userId): ?JsonResponse
     {
@@ -461,11 +466,11 @@ class AtlasController extends Controller
 
         if (($result['status'] ?? '') === 'blocked') {
             $contract = [
-                'future_state'    => 'Your request is paused while limits clear.',
-                'value'           => 'You avoid exceeding your current budget.',
+                'future_state' => 'Your request is paused while limits clear.',
+                'value' => 'You avoid exceeding your current budget.',
                 'emotional_shift' => 'No surprise overages, full control preserved.',
-                'action_summary'  => 'I held the request to protect your constraints.',
-                'details'         => $result['reason'] ?? null,
+                'action_summary' => 'I held the request to protect your constraints.',
+                'details' => $result['reason'] ?? null,
             ];
         }
 
@@ -565,7 +570,7 @@ class AtlasController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $pending
+     * @param  array<string, mixed>  $pending
      */
     private function buildConfirmResponse(
         string $sessionId,
@@ -633,7 +638,7 @@ class AtlasController extends Controller
         }
 
         $functionalGoal = $message;
-        if (!empty($jarvisPayload['jarvis']['text'])) {
+        if (! empty($jarvisPayload['jarvis']['text'])) {
             $functionalGoal = $jarvisPayload['jarvis']['text'];
         }
 
@@ -729,7 +734,7 @@ class AtlasController extends Controller
                 'tasks' => $this->buildPlanTasks($ast),
                 'created_at' => now()->toIso8601String(),
             ],
-            'preview' => "Plan: {$ast['type']} with " . count($this->buildPlanTasks($ast)) . " tasks",
+            'preview' => "Plan: {$ast['type']} with ".count($this->buildPlanTasks($ast)).' tasks',
         ]);
     }
 

@@ -4,11 +4,9 @@ Intelligence layer wrapper for calling inference plane STT/TTS.
 Used by VoiceAgent and voice tools.
 """
 
-import os
 from typing import Optional
 
 import httpx
-
 from config import INFERENCE_URL
 
 

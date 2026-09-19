@@ -10,7 +10,6 @@ The hard-coded defaults implement the plan §4.3.1–4.3.3 specification.
 
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass, field
 from typing import Literal

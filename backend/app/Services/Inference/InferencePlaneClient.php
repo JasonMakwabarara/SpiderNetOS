@@ -67,7 +67,7 @@ class InferencePlaneClient
 
         if ($response->failed()) {
             throw new \RuntimeException(
-                'Inference plane error (' . $response->status() . '): ' . mb_substr($response->body(), 0, 300)
+                'Inference plane error ('.$response->status().'): '.mb_substr($response->body(), 0, 300)
             );
         }
 

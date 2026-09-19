@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\CostGovernor;
 use App\Services\EventStore;
-use App\Services\FeatureFlag;
 use App\Services\ReplayDivergenceService;
 use App\Services\UsageAggregateShadow;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,10 +22,10 @@ use Illuminate\Support\Facades\Redis;
 class ObservabilityController extends Controller
 {
     public function __construct(
-        private readonly EventStore             $eventStore,
-        private readonly CostGovernor           $costGovernor,
+        private readonly EventStore $eventStore,
+        private readonly CostGovernor $costGovernor,
         private readonly ReplayDivergenceService $replayDivergence,
-        private readonly UsageAggregateShadow   $shadow,
+        private readonly UsageAggregateShadow $shadow,
     ) {}
 
     // -----------------------------------------------------------------------
@@ -39,8 +39,8 @@ class ObservabilityController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_id');
-        $limit    = (int) $request->query('limit', 50);
-        $limit    = min($limit, 200);
+        $limit = (int) $request->query('limit', 50);
+        $limit = min($limit, 200);
 
         $executions = DB::table('flow_executions')
             ->where('tenant_id', $tenantId)
@@ -60,16 +60,17 @@ class ObservabilityController extends Controller
             $exec->errors = json_decode($exec->errors, true);
             $exec->duration_ms = null;
             if ($exec->started_at && $exec->completed_at) {
-                $start = \Carbon\Carbon::parse($exec->started_at);
-                $end   = \Carbon\Carbon::parse($exec->completed_at);
+                $start = Carbon::parse($exec->started_at);
+                $end = Carbon::parse($exec->completed_at);
                 $exec->duration_ms = $start->diffInMilliseconds($end);
             }
+
             return $exec;
         });
 
         return response()->json([
             'traces' => $traces,
-            'count'  => $traces->count(),
+            'count' => $traces->count(),
         ]);
     }
 
@@ -86,7 +87,7 @@ class ObservabilityController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$execution) {
+        if (! $execution) {
             return response()->json(['message' => 'Trace not found.'], 404);
         }
 
@@ -113,9 +114,9 @@ class ObservabilityController extends Controller
             $payload = json_decode($event->payload, true);
             if (isset($payload['node_id'])) {
                 $nodeStates[$payload['node_id']] = [
-                    'status'      => $payload['status'] ?? 'unknown',
-                    'output'      => $payload['output'] ?? null,
-                    'error'       => $payload['error'] ?? null,
+                    'status' => $payload['status'] ?? 'unknown',
+                    'output' => $payload['output'] ?? null,
+                    'error' => $payload['error'] ?? null,
                     'occurred_at' => $event->occurred_at,
                 ];
             }
@@ -124,8 +125,8 @@ class ObservabilityController extends Controller
         return response()->json([
             'trace' => [
                 'execution' => $execution,
-                'nodes'     => $nodes,
-                'edges'     => $edges,
+                'nodes' => $nodes,
+                'edges' => $edges,
                 'node_states' => $nodeStates,
                 'event_count' => $events->count(),
             ],
@@ -146,7 +147,7 @@ class ObservabilityController extends Controller
             ->where('tenant_id', $tenantId)
             ->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             return response()->json(['message' => 'Trace not found.'], 404);
         }
 
@@ -157,8 +158,9 @@ class ObservabilityController extends Controller
             ->orderBy('sequence_num')
             ->get()
             ->map(function ($event) {
-                $event->payload  = json_decode($event->payload, true);
+                $event->payload = json_decode($event->payload, true);
                 $event->metadata = json_decode($event->metadata, true);
+
                 return $event;
             });
 
@@ -166,10 +168,10 @@ class ObservabilityController extends Controller
 
         return response()->json([
             'replay' => [
-                'dag_id'      => $dagId,
-                'steps'       => $events->values(),
+                'dag_id' => $dagId,
+                'steps' => $events->values(),
                 'total_steps' => $events->count(),
-                'divergence'  => $divergenceReport,
+                'divergence' => $divergenceReport,
             ],
         ]);
     }
@@ -187,11 +189,12 @@ class ObservabilityController extends Controller
             ->where('tenant_id', $tenantId)
             ->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             return response()->json(['message' => 'Trace not found.'], 404);
         }
 
         $report = $this->replayDivergence->detectDivergence($tenantId, $dagId);
+
         return response()->json(['divergence' => $report]);
     }
 
@@ -211,27 +214,27 @@ class ObservabilityController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$budget) {
+        if (! $budget) {
             // Return system defaults
             return response()->json([
                 'budget' => [
-                    'daily_limit'     => (float) env('COST_CEILING_DEFAULT', 10.00),
-                    'monthly_limit'   => (float) env('COST_CEILING_DEFAULT', 10.00) * 10,
+                    'daily_limit' => (float) env('COST_CEILING_DEFAULT', 10.00),
+                    'monthly_limit' => (float) env('COST_CEILING_DEFAULT', 10.00) * 10,
                     'alert_threshold' => 0.80,
                     'action_at_limit' => 'block',
-                    'is_default'      => true,
+                    'is_default' => true,
                 ],
             ]);
         }
 
         return response()->json([
             'budget' => [
-                'daily_limit'     => (float) $budget->daily_limit,
-                'monthly_limit'   => (float) $budget->monthly_limit,
+                'daily_limit' => (float) $budget->daily_limit,
+                'monthly_limit' => (float) $budget->monthly_limit,
                 'alert_threshold' => (float) $budget->alert_threshold,
                 'action_at_limit' => $budget->action_at_limit,
-                'is_default'      => false,
-                'updated_at'      => $budget->updated_at,
+                'is_default' => false,
+                'updated_at' => $budget->updated_at,
             ],
         ]);
     }
@@ -245,8 +248,8 @@ class ObservabilityController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         $validated = $request->validate([
-            'daily_limit'     => 'required|numeric|min:0.01',
-            'monthly_limit'   => 'required|numeric|min:0.01',
+            'daily_limit' => 'required|numeric|min:0.01',
+            'monthly_limit' => 'required|numeric|min:0.01',
             'alert_threshold' => 'sometimes|numeric|min:0|max:1',
             'action_at_limit' => 'sometimes|in:block,degrade',
         ]);
@@ -254,11 +257,11 @@ class ObservabilityController extends Controller
         DB::table('cost_budgets')->updateOrInsert(
             ['tenant_id' => $tenantId],
             [
-                'daily_limit'     => $validated['daily_limit'],
-                'monthly_limit'   => $validated['monthly_limit'],
+                'daily_limit' => $validated['daily_limit'],
+                'monthly_limit' => $validated['monthly_limit'],
                 'alert_threshold' => $validated['alert_threshold'] ?? 0.80,
                 'action_at_limit' => $validated['action_at_limit'] ?? 'block',
-                'updated_at'      => now(),
+                'updated_at' => now(),
             ],
         );
 
@@ -274,7 +277,7 @@ class ObservabilityController extends Controller
 
         return response()->json([
             'message' => 'Budget updated.',
-            'budget'  => $validated,
+            'budget' => $validated,
         ]);
     }
 
@@ -289,10 +292,10 @@ class ObservabilityController extends Controller
     public function currentUsage(Request $request): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_id');
-        $today    = now()->toDateString();
-        $month    = now()->format('Y-m');
+        $today = now()->toDateString();
+        $month = now()->format('Y-m');
 
-        $dailySpend   = (float) Redis::get(sprintf('cost:daily:%s:%s', $tenantId, $today)) ?: 0;
+        $dailySpend = (float) Redis::get(sprintf('cost:daily:%s:%s', $tenantId, $today)) ?: 0;
         $monthlySpend = (float) Redis::get(sprintf('cost:monthly:%s:%s', $tenantId, $month)) ?: 0;
 
         // Combine with budget info for contextual response
@@ -300,22 +303,22 @@ class ObservabilityController extends Controller
 
         return response()->json([
             'usage' => [
-                'daily_spend'       => round($dailySpend, 4),
-                'monthly_spend'     => round($monthlySpend, 4),
-                'daily_limit'       => $status['daily_limit'],
-                'monthly_limit'     => $status['monthly_limit'],
-                'daily_remaining'   => $status['daily_remaining'],
+                'daily_spend' => round($dailySpend, 4),
+                'monthly_spend' => round($monthlySpend, 4),
+                'daily_limit' => $status['daily_limit'],
+                'monthly_limit' => $status['monthly_limit'],
+                'daily_remaining' => $status['daily_remaining'],
                 'monthly_remaining' => $status['monthly_remaining'],
-                'daily_pct'         => $status['daily_limit'] > 0
+                'daily_pct' => $status['daily_limit'] > 0
                     ? round($dailySpend / $status['daily_limit'] * 100, 1)
                     : 0,
-                'monthly_pct'       => $status['monthly_limit'] > 0
+                'monthly_pct' => $status['monthly_limit'] > 0
                     ? round($monthlySpend / $status['monthly_limit'] * 100, 1)
                     : 0,
-                'alert_triggered'   => $status['alert_triggered'],
-                'degraded'          => $status['degraded'],
-                'date'              => $today,
-                'month'             => $month,
+                'alert_triggered' => $status['alert_triggered'],
+                'degraded' => $status['degraded'],
+                'date' => $today,
+                'month' => $month,
             ],
         ]);
     }
@@ -331,16 +334,16 @@ class ObservabilityController extends Controller
         // Hard-cutover: legacy contract is no longer served
         if ($request->header('X-Usage-Contract') === '1') {
             return response()->json([
-                'error'   => 'The v1 usage contract has been retired.',
+                'error' => 'The v1 usage contract has been retired.',
                 'message' => 'Migrate to contract v2. See docs/internal/usage-aggregates-v2.md',
-                'docs'    => '/docs/internal/usage-aggregates-v2.md',
+                'docs' => '/docs/internal/usage-aggregates-v2.md',
             ], 410)->header('X-Usage-Contract', '2');
         }
 
         $tenantId = $request->attributes->get('tenant_id');
-        $days     = (int) $request->query('days', 30);
-        $days     = min($days, 90);
-        $since    = now()->subDays($days)->toDateString();
+        $days = (int) $request->query('days', 30);
+        $days = min($days, 90);
+        $since = now()->subDays($days)->toDateString();
 
         $rows = DB::table('usage_daily_aggregates')
             ->where('tenant_id', $tenantId)
@@ -358,19 +361,19 @@ class ObservabilityController extends Controller
         // Per-day totals for charting (keyed by date)
         $dailyTotals = $rows->groupBy('date')->map(function ($group, $date) {
             return [
-                'date'        => $date,
+                'date' => $date,
                 'total_calls' => (int) $group->sum('total_calls'),
-                'total_tokens'=> (int) $group->sum('total_tokens'),
-                'total_cost'  => round($group->sum('total_cost'), 4),
+                'total_tokens' => (int) $group->sum('total_tokens'),
+                'total_cost' => round($group->sum('total_cost'), 4),
             ];
         })->values();
 
         return response()->json([
             'contract_version' => '2',
-            'daily_usage'      => [
-                'breakdown'    => $rows,
+            'daily_usage' => [
+                'breakdown' => $rows,
                 'daily_totals' => $dailyTotals,
-                'period_days'  => $days,
+                'period_days' => $days,
             ],
         ])->header('X-Usage-Contract', '2');
     }
@@ -385,16 +388,16 @@ class ObservabilityController extends Controller
     {
         if ($request->header('X-Usage-Contract') === '1') {
             return response()->json([
-                'error'   => 'The v1 usage contract has been retired.',
+                'error' => 'The v1 usage contract has been retired.',
                 'message' => 'Migrate to contract v2. See docs/internal/usage-aggregates-v2.md',
-                'docs'    => '/docs/internal/usage-aggregates-v2.md',
+                'docs' => '/docs/internal/usage-aggregates-v2.md',
             ], 410)->header('X-Usage-Contract', '2');
         }
 
         $tenantId = $request->attributes->get('tenant_id');
-        $months   = (int) $request->query('months', 12);
-        $months   = min($months, 24);
-        $since    = now()->subMonths($months)->startOfMonth()->toDateString();
+        $months = (int) $request->query('months', 12);
+        $months = min($months, 24);
+        $since = now()->subMonths($months)->startOfMonth()->toDateString();
 
         // Postgres-compatible: to_char replaces MySQL's DATE_FORMAT
         $rows = DB::table('usage_daily_aggregates')
@@ -411,19 +414,19 @@ class ObservabilityController extends Controller
 
         $monthlyTotals = $rows->groupBy('month')->map(function ($group, $month) {
             return [
-                'month'        => $month,
-                'total_calls'  => (int)   $group->sum('total_calls'),
-                'total_tokens' => (int)   $group->sum('total_tokens'),
-                'total_cost'   => round((float) $group->sum('total_cost'), 4),
+                'month' => $month,
+                'total_calls' => (int) $group->sum('total_calls'),
+                'total_tokens' => (int) $group->sum('total_tokens'),
+                'total_cost' => round((float) $group->sum('total_cost'), 4),
             ];
         })->values();
 
         return response()->json([
             'contract_version' => '2',
-            'monthly_usage'    => [
-                'breakdown'      => $rows,
+            'monthly_usage' => [
+                'breakdown' => $rows,
                 'monthly_totals' => $monthlyTotals,
-                'period_months'  => $months,
+                'period_months' => $months,
             ],
         ])->header('X-Usage-Contract', '2');
     }

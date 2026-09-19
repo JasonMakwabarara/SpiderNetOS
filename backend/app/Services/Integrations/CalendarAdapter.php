@@ -17,7 +17,7 @@ abstract class CalendarAdapter
 {
     public function __construct(
         protected readonly string $tenantId,
-        protected readonly array  $credentials,
+        protected readonly array $credentials,
     ) {}
 
     /**
@@ -40,7 +40,7 @@ abstract class CalendarAdapter
     /**
      * Check availability for a given date.
      *
-     * @return array{slots: list<string>}  ISO datetime strings
+     * @return array{slots: list<string>} ISO datetime strings
      */
     abstract public function getAvailableSlots(string $date, ?string $calendarId = null): array;
 
@@ -58,8 +58,8 @@ abstract class CalendarAdapter
     {
         return match ($provider) {
             'google_calendar' => new GoogleCalendarAdapter($tenantId, $credentials),
-            'cal_com'         => new CalComAdapter($tenantId, $credentials),
-            default           => throw new \InvalidArgumentException("Unknown calendar provider: {$provider}"),
+            'cal_com' => new CalComAdapter($tenantId, $credentials),
+            default => throw new \InvalidArgumentException("Unknown calendar provider: {$provider}"),
         };
     }
 }

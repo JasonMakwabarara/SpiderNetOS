@@ -1,0 +1,7 @@
+# Repository-level suites. The unit and behavioural lanes need only these;
+# tests/integration additionally needs `testcontainers`, installed by the
+# scheduled workflow.
+pytest>=8.0
+pytest-asyncio>=0.23
+torch>=2.0
+numpy>=1.24

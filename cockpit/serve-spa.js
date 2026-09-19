@@ -39,9 +39,13 @@ const indexHtml = fs.readFileSync(INDEX_HTML, 'utf-8');
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  let filePath = path.join(DIST_DIR, url.pathname);
+  const filePath = path.resolve(DIST_DIR, '.' + decodeURIComponent(url.pathname));
 
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+  // Serve nothing outside the build directory, whatever the request asked for.
+  const insideDist =
+    filePath === DIST_DIR || filePath.startsWith(DIST_DIR + path.sep);
+
+  if (insideDist && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
     try {

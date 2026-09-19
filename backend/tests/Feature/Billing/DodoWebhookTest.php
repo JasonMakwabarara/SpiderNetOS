@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Billing;
 
-use App\Models\TenantSubscription;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -28,10 +28,10 @@ class DodoWebhookTest extends TestCase
         parent::setUp();
 
         config()->set('dodo.enabled', true);
-        config()->set('dodo.webhook_secret', 'whsec_' . base64_encode(self::RAW_KEY));
+        config()->set('dodo.webhook_secret', 'whsec_'.base64_encode(self::RAW_KEY));
         config()->set('dodo.plans.growth.product_id', 'prod_growth_test');
         // Primary config path used by the routed webhook middleware.
-        config()->set('services.dodo.webhook_secret', 'whsec_' . base64_encode(self::RAW_KEY));
+        config()->set('services.dodo.webhook_secret', 'whsec_'.base64_encode(self::RAW_KEY));
     }
 
     private function createTenant(string $plan = 'starter'): Tenant
@@ -39,7 +39,7 @@ class DodoWebhookTest extends TestCase
         return Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Billing Test Tenant',
-            'slug' => 'billing-test-' . Str::lower(Str::random(6)),
+            'slug' => 'billing-test-'.Str::lower(Str::random(6)),
             'status' => 'active',
             'plan' => $plan,
         ]);
@@ -48,12 +48,12 @@ class DodoWebhookTest extends TestCase
     private function postWebhook(array $payload, ?string $webhookId = null, bool $validSignature = true)
     {
         $body = json_encode($payload);
-        $webhookId ??= 'msg_' . Str::random(10);
+        $webhookId ??= 'msg_'.Str::random(10);
         $timestamp = (string) time();
 
         $signature = $validSignature
-            ? 'v1,' . base64_encode(hash_hmac('sha256', "{$webhookId}.{$timestamp}.{$body}", self::RAW_KEY, true))
-            : 'v1,' . base64_encode('forged-signature');
+            ? 'v1,'.base64_encode(hash_hmac('sha256', "{$webhookId}.{$timestamp}.{$body}", self::RAW_KEY, true))
+            : 'v1,'.base64_encode('forged-signature');
 
         return $this->call(
             'POST',

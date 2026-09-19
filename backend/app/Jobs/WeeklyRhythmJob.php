@@ -34,9 +34,7 @@ class WeeklyRhythmJob implements ShouldQueue
 
     public int $backoff = 30;
 
-    public function __construct(private readonly string $mode)
-    {
-    }
+    public function __construct(private readonly string $mode) {}
 
     public function handle(): void
     {

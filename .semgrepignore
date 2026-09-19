@@ -26,3 +26,6 @@
 # Docs
 docs/
 *.md
+
+# Committed build output — minified bundles, not source anybody edits.
+frontend/public/cockpit/assets/

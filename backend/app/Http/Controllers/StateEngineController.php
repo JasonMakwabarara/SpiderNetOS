@@ -26,14 +26,14 @@ class StateEngineController extends Controller
     {
         $this->assertReadEnabled();
 
-        $chain    = $request->query('chain', 'session_lifecycle');
+        $chain = $request->query('chain', 'session_lifecycle');
         $tenantId = $request->query('tenant_id');
 
         return response()->json([
-            'chain'       => $chain,
-            'tenant_id'   => $tenantId,
-            'matrix'      => $this->engine->matrix($chain, $tenantId),
-            'damping'     => StateTransitionEngine::DAMPING,
+            'chain' => $chain,
+            'tenant_id' => $tenantId,
+            'matrix' => $this->engine->matrix($chain, $tenantId),
+            'damping' => StateTransitionEngine::DAMPING,
             'computed_at' => now()->toIso8601String(),
         ]);
     }
@@ -42,7 +42,7 @@ class StateEngineController extends Controller
     {
         $this->assertReadEnabled();
 
-        $chain    = $request->query('chain', 'session_lifecycle');
+        $chain = $request->query('chain', 'session_lifecycle');
         $tenantId = $request->query('tenant_id');
 
         // Accept tag filters as ?tag.surface=voice&tag.tool_name=search
@@ -54,11 +54,11 @@ class StateEngineController extends Controller
         }
 
         return response()->json([
-            'chain'       => $chain,
-            'tenant_id'   => $tenantId,
-            'tag_filter'  => $tagFilter,
-            'matrix'      => $this->engine->conditionalMatrix($chain, $tagFilter, $tenantId),
-            'damping'     => StateTransitionEngine::DAMPING,
+            'chain' => $chain,
+            'tenant_id' => $tenantId,
+            'tag_filter' => $tagFilter,
+            'matrix' => $this->engine->conditionalMatrix($chain, $tagFilter, $tenantId),
+            'damping' => StateTransitionEngine::DAMPING,
             'computed_at' => now()->toIso8601String(),
         ]);
     }
@@ -67,13 +67,13 @@ class StateEngineController extends Controller
     {
         $this->assertReadEnabled();
 
-        $chain    = $request->query('chain', 'session_lifecycle');
+        $chain = $request->query('chain', 'session_lifecycle');
         $tenantId = $request->query('tenant_id');
 
         return response()->json([
-            'chain'       => $chain,
-            'tenant_id'   => $tenantId,
-            'dropoffs'    => $this->engine->dropoffs($chain, $tenantId),
+            'chain' => $chain,
+            'tenant_id' => $tenantId,
+            'dropoffs' => $this->engine->dropoffs($chain, $tenantId),
             'computed_at' => now()->toIso8601String(),
         ]);
     }
@@ -82,16 +82,16 @@ class StateEngineController extends Controller
     {
         $this->assertReadEnabled();
 
-        $chain    = $request->query('chain', 'session_lifecycle');
-        $metric   = $request->query('metric', 'activation');
+        $chain = $request->query('chain', 'session_lifecycle');
+        $metric = $request->query('metric', 'activation');
         $tenantId = $request->query('tenant_id');
-        $limit    = min(100, max(1, (int) $request->query('limit', 20)));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
 
         return response()->json([
-            'chain'       => $chain,
-            'metric'      => $metric,
-            'tenant_id'   => $tenantId,
-            'winning_tags'=> $this->engine->winningTags($chain, $metric, $tenantId, $limit),
+            'chain' => $chain,
+            'metric' => $metric,
+            'tenant_id' => $tenantId,
+            'winning_tags' => $this->engine->winningTags($chain, $metric, $tenantId, $limit),
             'computed_at' => now()->toIso8601String(),
         ]);
     }
@@ -104,19 +104,19 @@ class StateEngineController extends Controller
     {
         $this->assertReadEnabled();
 
-        if (!FeatureFlag::on('platform.ste_simulate')) {
+        if (! FeatureFlag::on('platform.ste_simulate')) {
             return response()->json([
                 'error' => 'platform.ste_simulate is disabled',
             ], 503);
         }
 
         $payload = $request->validate([
-            'chain'       => 'required|string|in:session_lifecycle,tenant_lifecycle',
+            'chain' => 'required|string|in:session_lifecycle,tenant_lifecycle',
             'start_state' => 'required|string|max:64',
-            'steps'       => 'sometimes|integer|min:1|max:50',
-            'runs'        => 'sometimes|integer|min:10|max:5000',
-            'tenant_id'   => 'sometimes|uuid',
-            'seed'        => 'sometimes|integer',
+            'steps' => 'sometimes|integer|min:1|max:50',
+            'runs' => 'sometimes|integer|min:10|max:5000',
+            'tenant_id' => 'sometimes|uuid',
+            'seed' => 'sometimes|integer',
         ]);
 
         // Provide the matrix directly to avoid a second DB round-trip inside inference
@@ -129,28 +129,28 @@ class StateEngineController extends Controller
             : StateTransitionEngine::TERMINAL_STATES_TENANT;
 
         $body = array_merge($payload, [
-            'matrix'           => $matrix,
-            'damping'          => StateTransitionEngine::DAMPING,
-            'terminal_states'  => $terminal,
+            'matrix' => $matrix,
+            'damping' => StateTransitionEngine::DAMPING,
+            'terminal_states' => $terminal,
         ]);
 
         try {
             $resp = Http::timeout(2)
                 ->acceptJson()
-                ->post(rtrim(config('services.inference.url'), '/') . '/ste/simulate', $body);
+                ->post(rtrim(config('services.inference.url'), '/').'/ste/simulate', $body);
 
-            if (!$resp->successful()) {
+            if (! $resp->successful()) {
                 return response()->json([
-                    'error'          => 'inference_plane_error',
-                    'upstream_code'  => $resp->status(),
-                    'upstream_body'  => $resp->json() ?? $resp->body(),
+                    'error' => 'inference_plane_error',
+                    'upstream_code' => $resp->status(),
+                    'upstream_body' => $resp->json() ?? $resp->body(),
                 ], 502);
             }
 
             return response()->json($resp->json());
         } catch (\Throwable $e) {
             return response()->json([
-                'error'   => 'inference_plane_unreachable',
+                'error' => 'inference_plane_unreachable',
                 'message' => $e->getMessage(),
             ], 502);
         }
@@ -170,7 +170,7 @@ class StateEngineController extends Controller
 
         return response()->json([
             'unmapped_events' => $rows,
-            'computed_at'     => now()->toIso8601String(),
+            'computed_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -193,7 +193,7 @@ class StateEngineController extends Controller
 
     private function assertReadEnabled(): void
     {
-        if (!FeatureFlag::on('platform.ste_read')) {
+        if (! FeatureFlag::on('platform.ste_read')) {
             abort(503, 'platform.ste_read is disabled');
         }
     }

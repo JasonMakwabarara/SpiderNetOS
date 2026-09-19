@@ -40,11 +40,11 @@ class AtlasJarvisAugmentor
 
     public function shouldAugment(string $tenantId, string $message, ?string $plan = null): bool
     {
-        if (!FeatureFlag::on('atlas.openjarvis', $tenantId)) {
+        if (! FeatureFlag::on('atlas.openjarvis', $tenantId)) {
             return false;
         }
 
-        if (!$this->gateway->isEnabled()) {
+        if (! $this->gateway->isEnabled()) {
             return false;
         }
 
@@ -96,7 +96,7 @@ class AtlasJarvisAugmentor
             }
         }
 
-        if (!$this->tierGate->agentAllowed($tenantId, $candidate, $plan)) {
+        if (! $this->tierGate->agentAllowed($tenantId, $candidate, $plan)) {
             if ($candidate === 'deep_research' && $this->tierGate->agentAllowed($tenantId, 'orchestrator', $plan)) {
                 return 'orchestrator';
             }
@@ -117,7 +117,7 @@ class AtlasJarvisAugmentor
         string $message,
         ?string $plan = null,
     ): ?array {
-        if (!$this->shouldAugment($tenantId, $message, $plan)) {
+        if (! $this->shouldAugment($tenantId, $message, $plan)) {
             return null;
         }
 
@@ -141,7 +141,7 @@ class AtlasJarvisAugmentor
             'skills' => array_values(array_unique($skills)),
         ]);
 
-        if (!($result['ok'] ?? false)) {
+        if (! ($result['ok'] ?? false)) {
             return null;
         }
 
@@ -180,7 +180,7 @@ class AtlasJarvisAugmentor
         array $autonomy,
         ?string $plan = null,
     ): ?array {
-        if (!$this->tierGate->canMorningDigest($tenantId, $plan)) {
+        if (! $this->tierGate->canMorningDigest($tenantId, $plan)) {
             return null;
         }
 
@@ -190,7 +190,7 @@ class AtlasJarvisAugmentor
             ."Accepted this period: %d\n"
             ."Autonomy level: %s\n"
             ."Top pending: %s\n"
-            ."Format as actionable bullets for a 5-minute weekly review.",
+            .'Format as actionable bullets for a 5-minute weekly review.',
             $tenantId,
             count($pending),
             count($accepted),
@@ -215,7 +215,7 @@ class AtlasJarvisAugmentor
             'skills' => array_values(array_unique($skills)),
         ]);
 
-        if (!($result['ok'] ?? false)) {
+        if (! ($result['ok'] ?? false)) {
             return null;
         }
 

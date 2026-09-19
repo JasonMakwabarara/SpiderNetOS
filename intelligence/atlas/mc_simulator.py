@@ -139,7 +139,7 @@ def _sample_next(row: Mapping[str, float], rng: random.Random, damping: float) -
     # Inverse-CDF sample
     r = rng.random()
     cumulative = 0.0
-    for s, p in zip(states, probs):
+    for s, p in zip(states, probs, strict=False):
         cumulative += p
         if r <= cumulative:
             return s

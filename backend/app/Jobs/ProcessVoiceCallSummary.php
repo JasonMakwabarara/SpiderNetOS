@@ -39,9 +39,11 @@ class ProcessVoiceCallSummary implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries    = 3;
-    public int $timeout  = 60;
-    public int $backoff  = 30;   // seconds
+    public int $tries = 3;
+
+    public int $timeout = 60;
+
+    public int $backoff = 30;   // seconds
 
     public function __construct(
         public readonly string $callSid,
@@ -51,13 +53,14 @@ class ProcessVoiceCallSummary implements ShouldQueue
     public function handle(): void
     {
         Log::info('voice.post_call.started', [
-            'call_sid'  => $this->callSid,
+            'call_sid' => $this->callSid,
             'tenant_id' => $this->tenantId,
         ]);
 
         // Feature flag check
-        if (!FeatureFlag::on('voice.post_call_summary', $this->tenantId)) {
+        if (! FeatureFlag::on('voice.post_call_summary', $this->tenantId)) {
             Log::info('voice.post_call.flag_off', ['call_sid' => $this->callSid]);
+
             return;
         }
 
@@ -65,8 +68,9 @@ class ProcessVoiceCallSummary implements ShouldQueue
             ->where('tenant_id', $this->tenantId)
             ->first();
 
-        if (!$call) {
+        if (! $call) {
             Log::warning('voice.post_call.call_not_found', ['call_sid' => $this->callSid]);
+
             return;
         }
 
@@ -74,20 +78,21 @@ class ProcessVoiceCallSummary implements ShouldQueue
 
         if (empty($transcript)) {
             Log::info('voice.post_call.no_transcript', ['call_sid' => $this->callSid]);
+
             return;
         }
 
         // ── Call inference for structured summary ─────────────────────────
         $inferenceResult = $this->callInference($transcript, $call->phone_number ?? '');
 
-        if (!$inferenceResult) {
+        if (! $inferenceResult) {
             Log::warning('voice.post_call.inference_failed', ['call_sid' => $this->callSid]);
             // Still create a partial summary row
             $inferenceResult = [
-                'summary'       => 'Summary generation failed — see transcript.',
-                'key_points'    => [],
+                'summary' => 'Summary generation failed — see transcript.',
+                'key_points' => [],
                 'follow_up_tasks' => [],
-                'sentiment'     => 'neutral',
+                'sentiment' => 'neutral',
             ];
         }
 
@@ -95,30 +100,30 @@ class ProcessVoiceCallSummary implements ShouldQueue
         $summary = VoiceCallSummary::updateOrCreate(
             ['voice_call_id' => $call->id],
             [
-                'tenant_id'       => $this->tenantId,
-                'summary'         => $inferenceResult['summary'],
-                'key_points'      => $inferenceResult['key_points'] ?? [],
+                'tenant_id' => $this->tenantId,
+                'summary' => $inferenceResult['summary'],
+                'key_points' => $inferenceResult['key_points'] ?? [],
                 'follow_up_tasks' => $inferenceResult['follow_up_tasks'] ?? [],
-                'sentiment'       => $inferenceResult['sentiment'] ?? 'neutral',
-                'processed_at'    => now(),
+                'sentiment' => $inferenceResult['sentiment'] ?? 'neutral',
+                'processed_at' => now(),
             ]
         );
 
         Log::info('voice.post_call.summary_saved', [
-            'call_sid'   => $this->callSid,
+            'call_sid' => $this->callSid,
             'summary_id' => $summary->id,
-            'sentiment'  => $summary->sentiment,
+            'sentiment' => $summary->sentiment,
         ]);
 
         $this->emitEvent('voice.summary.generated', [
-            'call_sid'   => $this->callSid,
-            'tenant_id'  => $this->tenantId,
+            'call_sid' => $this->callSid,
+            'tenant_id' => $this->tenantId,
             'summary_id' => $summary->id,
-            'sentiment'  => $summary->sentiment,
+            'sentiment' => $summary->sentiment,
         ]);
 
         // ── Optional: email summary ───────────────────────────────────────
-        if (config('telephony.post_call.email_summary') && !empty($call->metadata['contact_email'])) {
+        if (config('telephony.post_call.email_summary') && ! empty($call->metadata['contact_email'])) {
             $this->sendEmailSummary($call, $summary);
         }
 
@@ -131,9 +136,9 @@ class ProcessVoiceCallSummary implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('voice.post_call.job_failed', [
-            'call_sid'  => $this->callSid,
+            'call_sid' => $this->callSid,
             'tenant_id' => $this->tenantId,
-            'error'     => $exception->getMessage(),
+            'error' => $exception->getMessage(),
         ]);
 
         // Mark in voice_call_summaries as failed for visibility
@@ -141,9 +146,9 @@ class ProcessVoiceCallSummary implements ShouldQueue
             VoiceCallSummary::updateOrCreate(
                 ['voice_call_id' => VoiceCall::where('call_sid', $this->callSid)->value('id')],
                 [
-                    'tenant_id'  => $this->tenantId,
-                    'summary'    => 'Processing failed: ' . $exception->getMessage(),
-                    'sentiment'  => 'neutral',
+                    'tenant_id' => $this->tenantId,
+                    'summary' => 'Processing failed: '.$exception->getMessage(),
+                    'sentiment' => 'neutral',
                     'processed_at' => now(),
                 ]
             );
@@ -161,6 +166,7 @@ class ProcessVoiceCallSummary implements ShouldQueue
             $speaker = strtoupper($entry['speaker'] ?? 'UNKNOWN');
             $lines[] = "{$speaker}: {$entry['text']}";
         }
+
         return implode("\n", $lines);
     }
 
@@ -183,16 +189,16 @@ PROMPT;
 
         try {
             $response = Http::timeout(30)->post("{$inferenceUrl}/generate", [
-                'model'    => 'qwen3',
+                'model' => 'qwen3',
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a call center analyst. Return only valid JSON.'],
                     ['role' => 'user',   'content' => $prompt],
                 ],
                 'temperature' => 0.2,
-                'max_tokens'  => 512,
+                'max_tokens' => 512,
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
@@ -203,13 +209,14 @@ PROMPT;
             $text = trim($text, " \n`");
 
             $decoded = json_decode($text, true);
-            if (!is_array($decoded)) {
+            if (! is_array($decoded)) {
                 return null;
             }
 
             return $decoded;
         } catch (\Throwable $e) {
             Log::warning('voice.post_call.inference_exception', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -218,7 +225,7 @@ PROMPT;
     {
         try {
             $email = $call->metadata['contact_email'] ?? null;
-            if (!$email) {
+            if (! $email) {
                 return;
             }
 
@@ -249,8 +256,8 @@ PROMPT;
         try {
             Redis::publish('events:voice', json_encode([
                 'event_type' => $type,
-                'payload'    => $payload,
-                'timestamp'  => now()->toIso8601String(),
+                'payload' => $payload,
+                'timestamp' => now()->toIso8601String(),
             ]));
         } catch (\Throwable) {
             // non-critical

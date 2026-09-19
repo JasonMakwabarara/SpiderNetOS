@@ -31,4 +31,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:9200/health')" || exit 1
 
 # Run service
+# Drop root. Everything above this line needs it (apt, pip); nothing below does.
+# The service binds a port above 1024, so no capability is given up, and /app is
+# handed over so uvicorn can read what was copied in.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9200"]

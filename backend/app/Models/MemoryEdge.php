@@ -14,16 +14,16 @@ class MemoryEdge extends Model
         'weight',
         'metadata',
     ];
-    
+
     protected $casts = [
         'metadata' => 'array',
     ];
-    
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(MemoryNode::class, 'source_id');
     }
-    
+
     public function target(): BelongsTo
     {
         return $this->belongsTo(MemoryNode::class, 'target_id');

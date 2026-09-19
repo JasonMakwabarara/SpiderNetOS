@@ -7,15 +7,22 @@ on:
     branches: [ main ]
 
 jobs:
-  laravel-tests:
+  migrate-and-validate:
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:15
+        # pgvector, not plain postgres: the memory_nodes migration creates a
+        # vector column on pgsql lanes (feature-postgres.yml uses the same image).
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # A throwaway container on the runner's loopback, destroyed when
+          # the job ends. `trust` means there is no credential here to
+          # hardcode, leak, rotate or explain to a scanner - and it removes
+          # libpq's "fe_sendauth: no password supplied" failure mode, which
+          # is what killed this lane's migrate step before any test ran.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: spidernet_test
         ports:
           - 5432:5432
@@ -25,10 +32,22 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    steps:
-      - uses: actions/checkout@v4
+      # FeatureFlag reads Redis directly (not through the cache store), so the
+      # unit suite needs a real server even with CACHE_STORE=array.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
-      - uses: shivammathur/setup-php@v2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
         with:
           php-version: '8.2'
           extensions: pdo_pgsql, mbstring, xml, curl, zip, bcmath
@@ -41,11 +60,27 @@ jobs:
       - name: Setup .env
         run: |
           cd backend
-          cp .env.example .env
+          # .env.example lives at the repo root; there has never been a
+          # backend/.env.example, so this step failed on every run.
+          cp ../.env.example .env
           sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env
           sed -i 's/DB_DATABASE=.*/DB_DATABASE=spidernet_test/' .env
           sed -i 's/DB_USERNAME=.*/DB_USERNAME=postgres/' .env
-          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=/' .env
+          # The example points at the docker-compose service names; on the runner
+          # Postgres is published on localhost and there is no Redis service, so
+          # keep cache/session/queue off Redis for this job.
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+          sed -i 's/CACHE_DRIVER=.*/CACHE_DRIVER=array/' .env
+          sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
+          sed -i 's/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
+          grep -q '^CACHE_STORE=' .env && sed -i 's/CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
+
+      - name: Enable pgvector
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql -h 127.0.0.1 -U postgres -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Generate key and migrate
         run: |
@@ -53,7 +88,8 @@ jobs:
           php artisan key:generate
           php artisan migrate --force
 
-      - name: Run PHPUnit tests
-        run: |
-          cd backend
-          php artisan test --testsuite=Unit
+      # No PHPUnit here. `--testsuite=Unit` is a strict subset of the Unit+Feature
+      # run in ci.yml's "backend — full test suite (Postgres + Redis)", so this
+      # was a third copy of tests that already run twice elsewhere. What this job
+      # uniquely proves is that the migrations apply cleanly to an empty Postgres
+      # with pgvector, which the `migrate --force` step above does.

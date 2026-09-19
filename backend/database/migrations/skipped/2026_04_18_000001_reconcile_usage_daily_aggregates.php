@@ -66,14 +66,14 @@ return new class extends Migration
         }
 
         // Add total_tokens if missing
-        if (!Schema::hasColumn('usage_daily_aggregates', 'total_tokens')) {
+        if (! Schema::hasColumn('usage_daily_aggregates', 'total_tokens')) {
             Schema::table('usage_daily_aggregates', function (Blueprint $table) {
                 $table->integer('total_tokens')->default(0)->after('total_calls');
             });
         }
 
         // Add cost_ceiling if missing
-        if (!Schema::hasColumn('usage_daily_aggregates', 'cost_ceiling')) {
+        if (! Schema::hasColumn('usage_daily_aggregates', 'cost_ceiling')) {
             Schema::table('usage_daily_aggregates', function (Blueprint $table) {
                 $table->decimal('cost_ceiling', 12, 6)->default(0)->after('total_cost');
             });
@@ -86,7 +86,7 @@ return new class extends Migration
         //    for resolved_at IS NULL rows in the last 24 hours.
         // ---------------------------------------------------------------
 
-        if (!Schema::hasTable('usage_shadow_diffs')) {
+        if (! Schema::hasTable('usage_shadow_diffs')) {
             Schema::create('usage_shadow_diffs', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->uuid('tenant_id')->index();
@@ -107,7 +107,7 @@ return new class extends Migration
     public function down(): void
     {
         // Re-add request_count as rollback compatibility column
-        if (!Schema::hasColumn('usage_daily_aggregates', 'request_count')) {
+        if (! Schema::hasColumn('usage_daily_aggregates', 'request_count')) {
             Schema::table('usage_daily_aggregates', function (Blueprint $table) {
                 $table->integer('request_count')->default(0);
             });

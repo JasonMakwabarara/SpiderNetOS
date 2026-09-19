@@ -11,21 +11,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Monthly usage caps and accumulators per tenant.
  * Uses tenant_id as primary key (one row per tenant).
  *
- * @property string     $tenant_id
- * @property int        $monthly_minutes_cap
- * @property int        $monthly_minutes_used
- * @property int        $outbound_cap
- * @property int        $outbound_used
- * @property int        $sms_cap
- * @property int        $sms_used
+ * @property string $tenant_id
+ * @property int $monthly_minutes_cap
+ * @property int $monthly_minutes_used
+ * @property int $outbound_cap
+ * @property int $outbound_used
+ * @property int $sms_cap
+ * @property int $sms_used
  * @property string|null $reset_at
  */
 class VoiceQuota extends Model
 {
-    protected $table      = 'voice_quotas';
+    protected $table = 'voice_quotas';
+
     protected $primaryKey = 'tenant_id';
-    public    $incrementing = false;
-    protected $keyType    = 'string';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     protected $fillable = [
         'tenant_id',
@@ -39,12 +42,12 @@ class VoiceQuota extends Model
     ];
 
     protected $casts = [
-        'monthly_minutes_cap'  => 'integer',
+        'monthly_minutes_cap' => 'integer',
         'monthly_minutes_used' => 'integer',
-        'outbound_cap'         => 'integer',
-        'outbound_used'        => 'integer',
-        'sms_cap'              => 'integer',
-        'sms_used'             => 'integer',
+        'outbound_cap' => 'integer',
+        'outbound_used' => 'integer',
+        'sms_cap' => 'integer',
+        'sms_used' => 'integer',
     ];
 
     // ─── Relationships ────────────────────────────────────────────────────────
@@ -61,6 +64,7 @@ class VoiceQuota extends Model
         if ($this->outbound_cap === 0) {
             return true; // 0 = unlimited
         }
+
         return $this->outbound_used < $this->outbound_cap;
     }
 
@@ -69,6 +73,7 @@ class VoiceQuota extends Model
         if ($this->monthly_minutes_cap === 0) {
             return true; // 0 = unlimited
         }
+
         return ($this->monthly_minutes_used + $estimatedMinutes) <= $this->monthly_minutes_cap;
     }
 
@@ -77,6 +82,7 @@ class VoiceQuota extends Model
         if ($this->sms_cap === 0) {
             return true;
         }
+
         return $this->sms_used < $this->sms_cap;
     }
 

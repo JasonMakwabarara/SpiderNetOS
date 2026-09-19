@@ -4,15 +4,13 @@ VoiceReward tests — Phase E
 Tests for the composite reward function used by the Atlas bandit.
 """
 
-import pytest
 from atlas.voice_reward import (
-    compute_reward,
     _completion_score,
-    _sentiment_score,
     _efficiency_score,
     _latency_score,
+    _sentiment_score,
+    compute_reward,
 )
-
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

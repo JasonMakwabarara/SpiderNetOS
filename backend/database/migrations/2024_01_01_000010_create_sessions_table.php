@@ -17,7 +17,7 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
-        
+
         Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
             $table->uuidMorphs('tokenable');
@@ -29,7 +29,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('personal_access_tokens');

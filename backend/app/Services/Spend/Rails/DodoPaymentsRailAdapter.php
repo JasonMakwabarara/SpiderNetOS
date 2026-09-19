@@ -34,10 +34,10 @@ class DodoPaymentsRailAdapter implements PaymentRailInterface
     private const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP'];
 
     /**
-     * @param array<string, mixed> $credentials Per-tenant credentials
-     *        resolved from tenant_secrets (api_key, webhook_secret,
-     *        environment). May be empty while the integration is connected
-     *        but payouts are not yet provisioned.
+     * @param  array<string, mixed>  $credentials  Per-tenant credentials
+     *                                             resolved from tenant_secrets (api_key, webhook_secret,
+     *                                             environment). May be empty while the integration is connected
+     *                                             but payouts are not yet provisioned.
      */
     public function __construct(
         private readonly array $credentials = [],

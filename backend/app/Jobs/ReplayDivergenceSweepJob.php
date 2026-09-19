@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\OpsDivergenceAlertJob;
 use App\Services\ReplayDivergenceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,11 +16,10 @@ class ReplayDivergenceSweepJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public array $backoff = [30, 120];
 
-    public function __construct(private readonly int $maxExecutionsPerTenant = 25)
-    {
-    }
+    public function __construct(private readonly int $maxExecutionsPerTenant = 25) {}
 
     public function handle(ReplayDivergenceService $replayDivergence): void
     {

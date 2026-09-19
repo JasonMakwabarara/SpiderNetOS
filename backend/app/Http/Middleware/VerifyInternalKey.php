@@ -16,7 +16,7 @@ class VerifyInternalKey
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $expected = (string) config('services.internal.key', env('BACKEND_INTERNAL_KEY', ''));
+        $expected = (string) config('services.internal.key', '');
 
         if ($expected === '' || ! hash_equals($expected, (string) $request->header('X-Internal-Key', ''))) {
             return response()->json(['message' => 'Unauthorized.'], 401);

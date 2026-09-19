@@ -3,22 +3,22 @@ SpiderNet OS v3.2 - Hannah Agent
 Tutor & Teacher: Educational content and guidance
 """
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Dict, List, Optional
+
 from core.agent_base import AgentBase, AgentContext, AgentResult
 
 
 class HannahAgent(AgentBase):
     """
     Hannah: The Tutor & Teacher Agent
-    
+
     Responsibilities:
     - Provide educational explanations
     - Guide users through SpiderNet features
     - Answer how-to questions
     - Create learning paths
     """
-    
+
     def __init__(self, meta_planner, cost_governor, memory_graph, llm_client):
         super().__init__(
             agent_id='hannah',
@@ -30,14 +30,14 @@ class HannahAgent(AgentBase):
         )
         self.llm = llm_client
         self.knowledge_base = self._load_knowledge_base()
-    
+
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute Hannah agent logic"""
-        
+
         ast = context.ast
         ast_type = ast.get('type', '')
         message = context.message.lower()
-        
+
         # Intent detection from message
         if ast_type == 'chat' or self._is_how_to_question(message):
             return await self._answer_how_to(context)
@@ -53,16 +53,16 @@ class HannahAgent(AgentBase):
             return await self._create_learning_path(context)
         else:
             return await self._general_help(context)
-    
+
     async def _answer_how_to(self, context: AgentContext) -> AgentResult:
         """Answer how-to questions"""
-        
+
         # Extract topic
         topic = self._extract_topic(context.message)
-        
+
         # Check knowledge base
         kb_entry = self.knowledge_base.get(topic) or self._search_knowledge_base(topic)
-        
+
         if kb_entry:
             # Use knowledge base with LLM enhancement
             prompt = f"""Based on the following information, provide a clear how-to guide:
@@ -73,10 +73,10 @@ Knowledge Base: {kb_entry['content']}
 User's question: {context.message}
 
 Provide step-by-step instructions in a friendly, helpful tone."""
-            
+
             model = context.model_override or 'gpt-4o-mini'
             response = await self.llm.complete(prompt, model=model)
-            
+
             return AgentResult(
                 status='success',
                 output={
@@ -88,15 +88,15 @@ Provide step-by-step instructions in a friendly, helpful tone."""
                 tokens_used=response.get('tokens', 0),
                 cost_usd=self._estimate_cost(model, response.get('tokens', 0)),
             )
-        
+
         # Fallback to LLM
         prompt = f"""The user is asking: "{context.message}"
 
 As Hannah, the SpiderNet OS tutor, provide a helpful response explaining how to accomplish this. If you're not certain about specific details, provide general guidance and suggest they consult the documentation."""
-        
+
         model = context.model_override or 'gpt-4o-mini'
         response = await self.llm.complete(prompt, model=model)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -107,12 +107,12 @@ As Hannah, the SpiderNet OS tutor, provide a helpful response explaining how to 
             tokens_used=response.get('tokens', 0),
             cost_usd=self._estimate_cost(model, response.get('tokens', 0)),
         )
-    
+
     async def _provide_explanation(self, context: AgentContext) -> AgentResult:
         """Provide conceptual explanations"""
-        
+
         topic = self._extract_topic(context.message)
-        
+
         prompt = f"""Explain the concept of "{topic}" in the context of SpiderNet OS.
 
 User's question: {context.message}
@@ -124,10 +124,10 @@ Provide:
 4. An analogy to help understanding
 
 Keep it friendly and educational."""
-        
+
         model = context.model_override or 'gpt-4o-mini'
         response = await self.llm.complete(prompt, model=model)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -138,13 +138,13 @@ Keep it friendly and educational."""
             tokens_used=response.get('tokens', 0),
             cost_usd=self._estimate_cost(model, response.get('tokens', 0)),
         )
-    
+
     async def _guide_onboarding(self, context: AgentContext) -> AgentResult:
         """Guide new users through onboarding"""
-        
+
         # Determine onboarding stage
         stage = self._detect_onboarding_stage(context)
-        
+
         onboarding_steps = {
             'welcome': {
                 'message': "Welcome to SpiderNet OS! I'm Hannah, your guide. Let me show you around.",
@@ -171,9 +171,9 @@ Keep it friendly and educational."""
                 ],
             },
         }
-        
+
         step = onboarding_steps.get(stage, onboarding_steps['welcome'])
-        
+
         return AgentResult(
             status='success',
             output={
@@ -184,12 +184,12 @@ Keep it friendly and educational."""
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _explain_feature(self, context: AgentContext) -> AgentResult:
         """Explain a specific feature"""
-        
+
         feature = self._extract_feature(context.message)
-        
+
         feature_docs = {
             'flows': {
                 'name': 'Flows',
@@ -231,27 +231,27 @@ Keep it friendly and educational."""
                 ],
             },
         }
-        
+
         doc = feature_docs.get(feature, {
             'name': feature,
             'description': 'Feature documentation not found',
             'key_points': [],
         })
-        
+
         return AgentResult(
             status='success',
             output=doc,
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _teach_topic(self, context: AgentContext) -> AgentResult:
         """Teach a specific topic"""
-        
+
         params = context.ast.get('params', {})
         topic = params.get('topic', self._extract_topic(context.message))
         level = params.get('level', 'beginner')
-        
+
         # Create teaching content
         prompt = f"""Create a lesson about "{topic}" for {level} level users.
 
@@ -263,10 +263,10 @@ Structure:
 5. Further reading suggestions
 
 Make it engaging and educational."""
-        
+
         model = context.model_override or 'gpt-4o-mini'
         response = await self.llm.complete(prompt, model=model)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -278,14 +278,14 @@ Make it engaging and educational."""
             tokens_used=response.get('tokens', 0),
             cost_usd=self._estimate_cost(model, response.get('tokens', 0)),
         )
-    
+
     async def _create_learning_path(self, context: AgentContext) -> AgentResult:
         """Create a personalized learning path"""
-        
+
         params = context.ast.get('params', {})
         goal = params.get('goal', 'master_spidernet')
         experience = params.get('experience', 'beginner')
-        
+
         paths = {
             'master_spidernet': {
                 'beginner': [
@@ -302,9 +302,9 @@ Make it engaging and educational."""
                 ],
             },
         }
-        
+
         path = paths.get(goal, {}).get(experience, [])
-        
+
         return AgentResult(
             status='success',
             output={
@@ -317,17 +317,17 @@ Make it engaging and educational."""
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _general_help(self, context: AgentContext) -> AgentResult:
         """Provide general help"""
-        
+
         prompt = f"""The user said: "{context.message}"
 
 As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they're asking about something specific, guide them toward the right feature or agent. If it's a general greeting, be welcoming and offer suggestions of what they can do."""
-        
+
         model = context.model_override or 'gpt-4o-mini'
         response = await self.llm.complete(prompt, model=model)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -341,7 +341,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             tokens_used=response.get('tokens', 0),
             cost_usd=self._estimate_cost(model, response.get('tokens', 0)),
         )
-    
+
     def _is_how_to_question(self, message: str) -> bool:
         """Detect how-to questions"""
         patterns = [
@@ -349,7 +349,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             'steps to', 'guide for', 'tutorial for',
         ]
         return any(p in message for p in patterns)
-    
+
     def _is_explanation_request(self, message: str) -> bool:
         """Detect explanation requests"""
         patterns = [
@@ -357,7 +357,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             'how does', 'how is', 'meaning of', 'concept of',
         ]
         return any(p in message for p in patterns)
-    
+
     def _is_onboarding_request(self, message: str) -> bool:
         """Detect onboarding requests"""
         patterns = [
@@ -365,7 +365,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             'first time', 'introduction', 'tutorial', 'help me begin',
         ]
         return any(p in message for p in patterns)
-    
+
     def _is_feature_question(self, message: str) -> bool:
         """Detect feature questions"""
         patterns = [
@@ -373,7 +373,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             'can it', 'does it', 'flows?', 'agents?', 'memory?',
         ]
         return any(p in message for p in patterns)
-    
+
     def _extract_topic(self, message: str) -> str:
         """Extract topic from message"""
         # Simple extraction - remove question words
@@ -381,7 +381,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
         stop_words = {'how', 'to', 'do', 'i', 'what', 'is', 'the', 'a', 'an', 'in', 'of', 'for', 'can', 'explain'}
         topic_words = [w for w in words if w not in stop_words and len(w) > 2]
         return ' '.join(topic_words[:3]) if topic_words else 'general'
-    
+
     def _extract_feature(self, message: str) -> str:
         """Extract feature name from message"""
         features = ['flows', 'agents', 'memory', 'cost_governor', 'atlas', 'cockpit']
@@ -389,25 +389,25 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             if feature in message.lower().replace(' ', '_'):
                 return feature
         return 'general'
-    
+
     def _detect_onboarding_stage(self, context: AgentContext) -> str:
         """Detect user's onboarding stage"""
         # Check session context for previous interactions
         session_context = context.metadata.get('session_context', [])
-        
+
         if not session_context:
             return 'welcome'
-        
+
         # Analyze previous messages
         previous = ' '.join(session_context).lower()
-        
+
         if 'flow' in previous or 'create' in previous:
             return 'explore_cockpit'
         if 'agent' in previous:
             return 'try_atlas'
-        
+
         return 'welcome'
-    
+
     def _calculate_progress(self, context: AgentContext) -> Dict:
         """Calculate onboarding progress"""
         # Simple progress tracking
@@ -416,7 +416,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             'total_steps': 4,
             'percentage': 0,
         }
-    
+
     def _search_knowledge_base(self, topic: str) -> Optional[Dict]:
         """Search knowledge base for topic"""
         # Simple keyword matching
@@ -424,7 +424,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
             if key in topic or topic in key:
                 return value
         return None
-    
+
     def _load_knowledge_base(self) -> Dict[str, Dict]:
         """Load internal knowledge base"""
         return {
@@ -454,7 +454,7 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
                 'related': ['architecture', 'hard_rules'],
             },
         }
-    
+
     def _calculate_total_duration(self, path: List[Dict]) -> str:
         """Calculate total duration of learning path"""
         total_minutes = 0
@@ -464,14 +464,14 @@ As Hannah, the SpiderNet OS tutor, provide a helpful, friendly response. If they
                 total_minutes += int(duration.replace('m', ''))
             elif 'h' in duration:
                 total_minutes += int(duration.replace('h', '')) * 60
-        
+
         hours = total_minutes // 60
         minutes = total_minutes % 60
-        
+
         if hours > 0:
             return f"{hours}h {minutes}m"
         return f"{minutes}m"
-    
+
     def _estimate_cost(self, model: str, tokens: int) -> float:
         """Estimate cost for model and token count"""
         costs_per_1k = {

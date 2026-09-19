@@ -10,6 +10,7 @@ use App\Models\Sop;
 use App\Models\Tenant;
 use App\Services\EventStore;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Yaml\Yaml;
 
@@ -123,12 +124,12 @@ class SeedSystemTemplates extends Command
 
     private static function templatesPath(): string
     {
-        $root = rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        $root = rtrim((string) config('feature_packs.root'), '/');
 
         return $root.'/business-systemization/templates';
     }
 
-    private function resolveTenants(): ?\Illuminate\Support\Collection
+    private function resolveTenants(): ?Collection
     {
         $tenantId = $this->option('tenant');
 
@@ -148,7 +149,7 @@ class SeedSystemTemplates extends Command
     }
 
     /**
-     * @param array<int, array{function: string, systems: array, file: string}> $templates
+     * @param  array<int, array{function: string, systems: array, file: string}>  $templates
      * @return array{functions: array<int, string>, systems_created: int, processes_created: int, sops_created: int}
      */
     private function seedTenant(string $tenantId, array $templates, EventStore $eventStore): array

@@ -15,7 +15,6 @@ class OnboardingPolicy
     /**
      * Determine the override policy for a given user
      *
-     * @param User $user
      * @return string|null 'onboarding_priority' or null
      */
     public function overrideFor(User $user): ?string

@@ -1,14 +1,16 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Create tickets table if not exists
-if (!Schema::hasTable('tickets')) {
+if (! Schema::hasTable('tickets')) {
     DB::statement('
         CREATE TABLE tickets (
             id TEXT PRIMARY KEY,
@@ -29,7 +31,7 @@ if (!Schema::hasTable('tickets')) {
 }
 
 // Create crm_records table if not exists
-if (!Schema::hasTable('crm_records')) {
+if (! Schema::hasTable('crm_records')) {
     DB::statement('
         CREATE TABLE crm_records (
             id TEXT PRIMARY KEY,

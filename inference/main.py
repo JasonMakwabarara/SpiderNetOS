@@ -3,25 +3,33 @@ SpiderNet OS — Inference Plane (FastAPI)
 Policy-based model routing with cost-aware fallback cascade.
 """
 import json
+import os
 import re
+import sys
 from datetime import datetime
 from typing import Any, List, Literal, Optional
+from typing import Any as _Any
+from typing import Dict as _Dict
+from typing import List as _List
+from typing import Optional as _Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-from models import InferenceRequest, InferenceResponse, HealthResponse
-from policy_router import route_request
 from config import (
     DEFAULT_COST_CEILING,
     DEFAULT_OLLAMA_MODEL,
-    OLLAMA_URL,
-    EMBEDDING_MODEL,
     EMBEDDING_DIM,
+    EMBEDDING_MODEL,
+    OLLAMA_URL,
     VISION_DEFAULT_MODEL,
 )
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from models import HealthResponse, InferenceRequest, InferenceResponse
+from policy_router import route_request
+from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel as _BaseModel
+from speech import STTRequest, STTResponse, TTSRequest, TTSResponse, get_speech_service
+from streaming import StreamingRequest, generate_streaming_response
 
 app = FastAPI(
     title="SpiderNet OS — Inference Plane",
@@ -29,9 +37,23 @@ app = FastAPI(
     description="Policy-based multi-provider model routing with cost governance",
 )
 
+# Allowed origins come from CORS_ALLOW_ORIGINS (comma separated). The
+# previous allow_origins=["*"] with allow_credentials=True is worse than it
+# looks: Starlette echoes the caller's origin back, so any site could make
+# credentialed calls. These planes are called server to server, where CORS
+# does not apply at all, so the default only has to keep local browsers
+# working.
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        'CORS_ALLOW_ORIGINS', 'http://localhost:3000,http://localhost:5173'
+    ).split(',')
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,7 +93,7 @@ async def generate(request: InferenceRequest):
     try:
         return await route_request(request)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class ClassifyRequest(BaseModel):
@@ -137,7 +159,7 @@ async def classify(request: ClassifyRequest):
             entities = {}
         return ClassifyResponse(intent=intent, entities=entities, confidence=confidence)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"classify_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"classify_failed: {e}") from e
 
 
 def _extract_json_object(text: str) -> dict:
@@ -595,7 +617,7 @@ async def extract_document(request: ExtractDocumentRequest):
         if has_text:
             # All models failed but we have text: degrade to heuristics, 200.
             return _heuristic_response(request.text)
-        raise HTTPException(status_code=502, detail=f"extract_failed: {exc}")
+        raise HTTPException(status_code=502, detail=f"extract_failed: {exc}") from exc
 
     parsed = _extract_json_deep(result.text)
     if parsed is None and has_text:
@@ -618,7 +640,7 @@ async def extract_document(request: ExtractDocumentRequest):
 async def embed(request: EmbedRequest):
     """Generate embeddings via Ollama's embedding endpoint."""
     model = request.model or EMBEDDING_MODEL
-    
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
@@ -627,25 +649,25 @@ async def embed(request: EmbedRequest):
             )
             resp.raise_for_status()
             data = resp.json()
-            
+
             embeddings = data.get("embeddings", [[]])
             embedding = embeddings[0] if embeddings else []
-            
+
             # Truncate or pad to configured dimension
             if len(embedding) > EMBEDDING_DIM:
                 embedding = embedding[:EMBEDDING_DIM]
             elif len(embedding) < EMBEDDING_DIM:
                 embedding = embedding + [0.0] * (EMBEDDING_DIM - len(embedding))
-            
+
             return EmbedResponse(
                 embedding=embedding,
                 model=model,
                 dimensions=len(embedding),
             )
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Ollama embedding failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Ollama embedding failed: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Embedding error: {e}")
+        raise HTTPException(status_code=500, detail=f"Embedding error: {e}") from e
 
 
 @app.get("/usage")
@@ -675,10 +697,6 @@ async def metrics():
 
 # ─── Speech-to-Text & Text-to-Speech ───────────────────────────────────────
 
-from speech import (
-    SpeechService, STTRequest, STTResponse, TTSRequest, TTSResponse,
-    get_speech_service
-)
 
 
 @app.post("/stt", response_model=STTResponse)
@@ -697,7 +715,6 @@ async def tts(request: TTSRequest):
 
 # ─── Streaming Endpoints ─────────────────────────────────────────────────────
 
-from streaming import StreamingRequest, generate_streaming_response, stream_voice_response
 
 
 @app.post("/generate/stream")
@@ -711,14 +728,13 @@ async def generate_stream(request: StreamingRequest):
 
 # ─── Voice Agent endpoint (Phase B) ─────────────────────────────────────────
 
-import sys, os
+
 # Ensure intelligence package is importable when running from inference/
 _INTELLIGENCE_PATH = os.path.join(os.path.dirname(__file__), "..", "intelligence")
 if _INTELLIGENCE_PATH not in sys.path:
     sys.path.insert(0, _INTELLIGENCE_PATH)
 
-from pydantic import BaseModel as _BaseModel
-from typing import Dict as _Dict, Any as _Any, List as _List, Optional as _Optional
+
 
 
 class VoiceAgentRequest(_BaseModel):
@@ -750,6 +766,7 @@ async def voice_agent_turn(request: VoiceAgentRequest):
     """
     try:
         from agents.voice_agent import VoiceAgent, VoiceContext
+
         from tools.registry import ToolRegistry
 
         registry = ToolRegistry.instance()
@@ -776,7 +793,7 @@ async def voice_agent_turn(request: VoiceAgentRequest):
         return VoiceAgentResponse(**result)
 
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # ─── Voice Streaming WebSocket (Phase C) ────────────────────────────────────
@@ -818,8 +835,8 @@ async def ste_simulate(req: SteSimulateRequest):
     try:
         # Local import so the rest of the app is unaffected if the module
         # can't be loaded for any reason.
-        import sys
         import os
+        import sys
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from intelligence.atlas.mc_simulator import simulate
 
@@ -835,4 +852,4 @@ async def ste_simulate(req: SteSimulateRequest):
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"ste_simulate_failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"ste_simulate_failed: {exc}") from exc

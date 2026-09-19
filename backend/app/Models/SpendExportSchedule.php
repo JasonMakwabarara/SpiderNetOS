@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class SpendExportSchedule extends Model
 {
-    use \Illuminate\Database\Eloquent\Concerns\HasUuids;
+    use HasUuids;
 
     protected $fillable = [
         'tenant_id', 'export_type', 'scope', 'frequency', 'delivery',
@@ -41,9 +43,9 @@ class SpendExportSchedule extends Model
      * therefore fires weekly schedules Monday 04:00 and monthly ones on the
      * 1st at 04:00.
      */
-    public function isDue(\Illuminate\Support\Carbon $now): bool
+    public function isDue(Carbon $now): bool
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return false;
         }
 

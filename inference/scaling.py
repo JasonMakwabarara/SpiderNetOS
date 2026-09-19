@@ -5,9 +5,9 @@ Monitors inference usage and emits scaling recommendations.
 import json
 from typing import Optional
 
-import redis.asyncio as aioredis
-
 from config import REDIS_URL
+
+import redis.asyncio as aioredis
 
 SCALE_UP_THRESHOLD = 1000
 SCALE_DOWN_THRESHOLD = 100

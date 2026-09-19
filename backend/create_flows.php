@@ -1,10 +1,12 @@
 <?php
-require "vendor/autoload.php";
-$app = require "bootstrap/app.php";
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\Flow;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Str;
 
 if (Flow::count() === 0) {
@@ -14,7 +16,7 @@ if (Flow::count() === 0) {
         ['name' => 'Email Flow', 'description' => 'Send automated emails', 'dag' => ['steps' => ['prepare', 'send']]],
         ['name' => 'Sales Flow', 'description' => 'Sales follow-up automation', 'dag' => ['steps' => ['qualify', 'send_quote', 'follow_up']]],
     ];
-    
+
     foreach ($flows as $flowData) {
         Flow::create([
             'id' => Str::uuid(),
@@ -29,5 +31,5 @@ if (Flow::count() === 0) {
     }
     echo " Sample flows created!\n";
 } else {
-    echo " Flows already exist: " . Flow::count() . "\n";
+    echo ' Flows already exist: '.Flow::count()."\n";
 }

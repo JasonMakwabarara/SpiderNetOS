@@ -13,13 +13,13 @@ abstract class CrmAdapter
 {
     public function __construct(
         protected readonly string $tenantId,
-        protected readonly array  $credentials,
+        protected readonly array $credentials,
     ) {}
 
     /**
      * Create or update a contact.
      *
-     * @param  array{name: string, phone: string, email: string|null, metadata: array} $contact
+     * @param  array{name: string, phone: string, email: string|null, metadata: array}  $contact
      * @return array{success: bool, contact_id: string|null, error: string|null}
      */
     abstract public function upsertContact(array $contact): array;
@@ -40,7 +40,7 @@ abstract class CrmAdapter
     /**
      * Create a follow-up task.
      *
-     * @param  array{contact_id: string, task: string, due_date: string|null, owner_id: string|null} $task
+     * @param  array{contact_id: string, task: string, due_date: string|null, owner_id: string|null}  $task
      */
     abstract public function createTask(array $task): bool;
 
@@ -49,9 +49,9 @@ abstract class CrmAdapter
     public static function make(string $tenantId, string $provider, array $credentials): static
     {
         return match ($provider) {
-            'hubspot'     => new HubspotAdapter($tenantId, $credentials),
-            'salesforce'  => new SalesforceAdapter($tenantId, $credentials),
-            default       => throw new \InvalidArgumentException("Unknown CRM provider: {$provider}"),
+            'hubspot' => new HubspotAdapter($tenantId, $credentials),
+            'salesforce' => new SalesforceAdapter($tenantId, $credentials),
+            default => throw new \InvalidArgumentException("Unknown CRM provider: {$provider}"),
         };
     }
 }

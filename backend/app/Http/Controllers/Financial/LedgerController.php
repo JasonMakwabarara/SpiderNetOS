@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Financial;
 
 use App\Http\Controllers\Controller;
-use App\Models\FinancialAccount;
 use App\Models\ChartOfAccount;
+use App\Models\FinancialAccount;
 use App\Models\LedgerEntry;
-use App\Models\Transaction;
 use App\Services\Financial\LedgerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +19,7 @@ class LedgerController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $entries = LedgerEntry::forTenant($tenant->id)
             ->with('account')
             ->orderByDesc('posted_at')
@@ -32,7 +31,7 @@ class LedgerController extends Controller
     public function trialBalance(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $result = $this->ledgerService->getTrialBalance(
             $tenant->id,
             $request->get('start_date'),
@@ -45,7 +44,7 @@ class LedgerController extends Controller
     public function generalLedger(Request $request, string $accountId): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $entries = $this->ledgerService->getGeneralLedger(
             $tenant->id,
             $accountId,
@@ -59,7 +58,7 @@ class LedgerController extends Controller
     public function cashFlow(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $result = $this->ledgerService->getCashFlow(
             $tenant->id,
             $request->get('start_date', now()->copy()->startOfMonth()->toDateString()),
@@ -99,7 +98,7 @@ class LedgerController extends Controller
     public function accounts(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $accounts = FinancialAccount::where('tenant_id', $tenant->id)
             ->where('status', 'active')
             ->orderBy('name')
@@ -133,7 +132,7 @@ class LedgerController extends Controller
     public function chartOfAccounts(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $accounts = ChartOfAccount::where('tenant_id', $tenant->id)
             ->active()
             ->orderBy('code')

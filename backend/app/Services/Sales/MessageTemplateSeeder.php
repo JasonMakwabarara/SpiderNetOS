@@ -31,7 +31,7 @@ class MessageTemplateSeeder
                 ['tenant_id' => $tenantId, 'channel' => $channel, 'key' => 'welcome'],
                 [
                     'pack_id' => 'sales-crm',
-                    'subject' => $channel === 'email' ? "Thanks for reaching out, {{lead.first_name}}" : null,
+                    'subject' => $channel === 'email' ? 'Thanks for reaching out, {{lead.first_name}}' : null,
                     'body' => $content['opener'] ?? 'Thanks for reaching out — we\'ll be in touch shortly.',
                     'status' => 'active',
                 ],

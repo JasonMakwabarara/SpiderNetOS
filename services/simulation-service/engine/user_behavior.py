@@ -4,10 +4,10 @@ Logistic response curves for conversion prediction
 Based on marketing mix modeling (MMM) principles
 """
 
-import numpy as np
-import torch
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 @dataclass
@@ -28,7 +28,7 @@ class UserBehaviorModel:
     - Channel-specific affinities
     - Seasonal effects
     """
-    
+
     def __init__(
         self,
         segments: Optional[List[UserSegment]] = None
@@ -57,10 +57,10 @@ class UserBehaviorModel:
                 fatigue_rate=0.2
             )
         ]
-        
+
         # Ad exposure tracking per segment
         self.exposures: Dict[str, int] = {s.segment_id: 0 for s in self.segments}
-    
+
     def predict_conversions(
         self,
         impressions: Dict[str, int],  # per channel
@@ -68,65 +68,65 @@ class UserBehaviorModel:
     ) -> Tuple[int, Dict]:
         """
         Predict conversions given impression allocation.
-        
+
         Args:
             impressions: {'meta': 1000, 'google': 2000, ...}
             segment_distribution: {'early_adopters': 0.2, ...}
-            
+
         Returns:
             (total_conversions, breakdown_by_segment)
         """
         if segment_distribution is None:
             # Equal distribution if not specified
             segment_distribution = {
-                s.segment_id: 1.0 / len(self.segments) 
+                s.segment_id: 1.0 / len(self.segments)
                 for s in self.segments
             }
-        
+
         total_conversions = 0
         breakdown = {}
-        
+
         for segment in self.segments:
             seg_weight = segment_distribution.get(segment.segment_id, 0)
             if seg_weight == 0:
                 continue
-            
+
             # Calculate effective impressions (channel affinity weighted)
             effective_impressions = sum(
                 impressions.get(ch, 0) * segment.channel_affinity.get(ch, 0)
                 for ch in ['meta', 'google', 'tiktok']
             )
-            
+
             # Logistic response curve with saturation
             # y = L / (1 + e^(-k(x - x0)))
-            L = segment.base_conversion_rate * effective_impressions
+            L = segment.base_conversion_rate * effective_impressions  # noqa: N806 - matches the formula above
             k = 0.001  # Steepness
             x0 = 1000  # Midpoint
-            
+
             saturated_response = L / (1 + np.exp(-k * (effective_impressions - x0)))
-            
+
             # Apply ad fatigue
             fatigue_factor = np.exp(
                 -segment.fatigue_rate * self.exposures[segment.segment_id]
             )
-            
+
             # Apply price sensitivity (affected by CPM indirectly through budget)
             # Lower CPM = more impressions = higher conversion
-            
+
             segment_conversions = saturated_response * fatigue_factor * seg_weight
             total_conversions += segment_conversions
-            
+
             breakdown[segment.segment_id] = {
                 'conversions': segment_conversions,
                 'effective_impressions': effective_impressions,
                 'fatigue_factor': fatigue_factor
             }
-            
+
             # Update exposure count
             self.exposures[segment.segment_id] += effective_impressions
-        
+
         return int(total_conversions), breakdown
-    
+
     def calculate_revenue(
         self,
         conversions: int,
@@ -135,11 +135,11 @@ class UserBehaviorModel:
     ) -> float:
         """Calculate revenue from conversions"""
         return conversions * avg_order_value
-    
+
     def reset_fatigue(self):
         """Reset ad fatigue counters (new campaign)"""
         self.exposures = {s.segment_id: 0 for s in self.segments}
-    
+
     def get_segment_insights(self) -> Dict:
         """Get insights on segment performance"""
         return {

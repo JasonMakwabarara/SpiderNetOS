@@ -56,7 +56,7 @@ class ProcessSequenceStepsJob implements ShouldQueue
     }
 
     /**
-     * @param array<int, array<string, mixed>> $steps
+     * @param  array<int, array<string, mixed>>  $steps
      */
     private function processOne(SequenceEnrollment $enrollment, array $steps, MessageDispatchService $dispatch, LeadService $leadService): void
     {

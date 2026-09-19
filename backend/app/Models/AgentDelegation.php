@@ -13,16 +13,16 @@ class AgentDelegation extends Model
         'permission',
         'conditions',
     ];
-    
+
     protected $casts = [
         'conditions' => 'array',
     ];
-    
+
     public function agent(): BelongsTo
     {
         return $this->belongsTo(Agent::class, 'agent_id');
     }
-    
+
     public function delegate(): BelongsTo
     {
         return $this->belongsTo(Agent::class, 'delegate_id');

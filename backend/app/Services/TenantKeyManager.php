@@ -28,7 +28,8 @@ class TenantKeyManager
 
             // Fallback to deterministic app-level key namespace + tenant
             $base = (string) config('app.key', env('APP_KEY', 'spidernet-fallback-key'));
-            return hash('sha256', $base . '|' . $tenantId . '|event_signing');
+
+            return hash('sha256', $base.'|'.$tenantId.'|event_signing');
         });
     }
 
@@ -146,7 +147,7 @@ class TenantKeyManager
                 ->where('active', 1)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 DB::table('tenant_secrets')->insert([
                     'id' => (string) Str::uuid(),
                     'tenant_id' => (string) $tenantId,
@@ -237,7 +238,7 @@ class TenantKeyManager
         }
 
         foreach ($this->resolveVerificationKeys($tenantId) as $candidate) {
-            if (!in_array($candidate, $keys, true)) {
+            if (! in_array($candidate, $keys, true)) {
                 $keys[] = $candidate;
             }
         }

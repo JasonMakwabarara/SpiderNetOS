@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notifications;
 
 use App\Models\NotificationPreference;
+use App\Models\PushSubscription;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +41,7 @@ class PushSubscriptionTest extends TestCase
         $this->actingAs($user, 'sanctum')->postJson('/api/notifications/push/subscribe', $payload)->assertCreated();
         $this->actingAs($user, 'sanctum')->postJson('/api/notifications/push/subscribe', $payload)->assertCreated();
 
-        $this->assertSame(1, \App\Models\PushSubscription::forUser($user->id)->count());
+        $this->assertSame(1, PushSubscription::forUser($user->id)->count());
     }
 
     public function test_unsubscribe_removes_the_endpoint(): void
@@ -52,7 +53,7 @@ class PushSubscriptionTest extends TestCase
         ])->assertCreated();
 
         $this->actingAs($user, 'sanctum')->postJson('/api/notifications/push/unsubscribe', ['endpoint' => $endpoint])->assertOk();
-        $this->assertSame(0, \App\Models\PushSubscription::forUser($user->id)->count());
+        $this->assertSame(0, PushSubscription::forUser($user->id)->count());
     }
 
     public function test_preferences_default_enabled_and_can_be_disabled(): void

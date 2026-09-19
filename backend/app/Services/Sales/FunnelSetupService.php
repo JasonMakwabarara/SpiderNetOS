@@ -111,7 +111,7 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<string, mixed> $context Extra fields absorbed by AtlasDiscoveryService (e.g. free-text for pain point mining).
+     * @param  array<string, mixed>  $context  Extra fields absorbed by AtlasDiscoveryService (e.g. free-text for pain point mining).
      */
     public function recordAnswer(FunnelSetup $setup, string $questionId, string $answer): FunnelSetup
     {
@@ -474,8 +474,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $entries
-     * @param array<string, mixed> $context
+     * @param  array<int, array<string, mixed>>  $entries
+     * @param  array<string, mixed>  $context
      * @return array<int, array<string, mixed>>
      */
     private function selectScriptEntries(array $entries, array $context): array
@@ -505,7 +505,7 @@ class FunnelSetupService
      * anything unparseable simply doesn't match (graceful fallback to the
      * deterministic template).
      *
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     private function evaluateContextExpression(string $expression, array $context): bool
     {
@@ -540,12 +540,14 @@ class FunnelSetupService
 
             if (ctype_space($char)) {
                 $i++;
+
                 continue;
             }
 
             if ($char === '(' || $char === ')') {
                 $tokens[] = ['type' => $char, 'value' => $char];
                 $i++;
+
                 continue;
             }
 
@@ -553,18 +555,21 @@ class FunnelSetupService
             if (in_array($two, ['&&', '||', '==', '!=', '>=', '<='], true)) {
                 $tokens[] = ['type' => 'op', 'value' => $two];
                 $i += 2;
+
                 continue;
             }
 
             if ($char === '>' || $char === '<') {
                 $tokens[] = ['type' => 'op', 'value' => $char];
                 $i++;
+
                 continue;
             }
 
             if ($char === '!') {
                 $tokens[] = ['type' => 'op', 'value' => '!'];
                 $i++;
+
                 continue;
             }
 
@@ -575,12 +580,14 @@ class FunnelSetupService
                 }
                 $tokens[] = ['type' => 'string', 'value' => substr($expression, $i + 1, $end - $i - 1)];
                 $i = $end + 1;
+
                 continue;
             }
 
             if (preg_match('/\G-?\d+(\.\d+)?/', $expression, $m, 0, $i)) {
                 $tokens[] = ['type' => 'number', 'value' => (float) $m[0]];
                 $i += strlen($m[0]);
+
                 continue;
             }
 
@@ -597,6 +604,7 @@ class FunnelSetupService
                     $tokens[] = ['type' => 'ident', 'value' => $word];
                 }
                 $i += strlen($word);
+
                 continue;
             }
 
@@ -607,8 +615,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseOrExpression(array $tokens, int &$position, array $context): bool
     {
@@ -624,8 +632,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseAndExpression(array $tokens, int &$position, array $context): bool
     {
@@ -641,8 +649,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseUnaryExpression(array $tokens, int &$position, array $context): bool
     {
@@ -670,8 +678,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseComparison(array $tokens, int &$position, array $context): bool
     {
@@ -699,8 +707,8 @@ class FunnelSetupService
     }
 
     /**
-     * @param array<int, array{type: string, value: mixed}> $tokens
-     * @param array<string, mixed> $context
+     * @param  array<int, array{type: string, value: mixed}>  $tokens
+     * @param  array<string, mixed>  $context
      */
     private function parseOperand(array $tokens, int &$position, array $context): mixed
     {

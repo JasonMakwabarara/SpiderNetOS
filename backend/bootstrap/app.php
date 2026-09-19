@@ -1,8 +1,27 @@
 <?php
 
+use App\Http\Middleware\CheckAgentPermission;
+use App\Http\Middleware\EnforcePlanLimits;
+use App\Http\Middleware\EnforcePlanQuota;
+use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\RequireCapability;
+use App\Http\Middleware\RequirePackEntitlement;
+use App\Http\Middleware\RequireRole;
+use App\Http\Middleware\RequireStepUp;
+use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\SecurityHeadersMiddleware;
+use App\Http\Middleware\ThrottleBroadcast;
+use App\Http\Middleware\VerifyAffonsoSignature;
+use App\Http\Middleware\VerifyDodoSignature;
+use App\Http\Middleware\VerifyInternalKey;
+use App\Http\Middleware\VerifyTwilioSignature;
+use App\Http\Middleware\VoiceFeatureFlag;
+use App\Providers\OutreachServiceProvider;
+use App\Providers\SecurityServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,16 +31,35 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withProviders([
-        \App\Providers\SecurityServiceProvider::class,
-        \App\Providers\OutreachServiceProvider::class,
+        SecurityServiceProvider::class,
+        OutreachServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         // Global — applied to every HTTP response. Security headers must run
         // last so they overlay on top of any framework-set headers.
-        $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
+        $middleware->append(SecurityHeadersMiddleware::class);
+
+        // Host header injection. The gateway forwards the client's Host
+        // verbatim (`proxy_set_header Host $host`) and its server_name is `_`,
+        // so any Host reaches Laravel and lands in generated absolute URLs —
+        // password resets, signed links, one-click unsubscribe. Tenant
+        // resolution does not use the host, so pinning it costs nothing.
+        //
+        // Derived from APP_URL, and deliberately self-disabling: an empty list
+        // means "no restriction", so a workspace that has not set APP_URL to a
+        // real domain behaves exactly as before rather than 403ing everything.
+        $middleware->trustHosts(at: static function (): array {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+            if (! is_string($host) || $host === '' || $host === 'localhost' || $host === '127.0.0.1') {
+                return [];
+            }
+
+            return [$host, '.'.$host];
+        });
 
         $middleware->api(prepend: [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            EnsureFrontendRequestsAreStateful::class,
         ]);
 
         // Public, unauthenticated browser endpoints. Sanctum's stateful
@@ -44,29 +82,29 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'tenant'            => \App\Http\Middleware\ResolveTenant::class,
-            'agent.permission'  => \App\Http\Middleware\CheckAgentPermission::class,
-            'cost.limit'        => \App\Http\Middleware\EnforcePlanLimits::class,
-            'throttle.broadcast'=> \App\Http\Middleware\ThrottleBroadcast::class,
+            'tenant' => ResolveTenant::class,
+            'agent.permission' => CheckAgentPermission::class,
+            'cost.limit' => EnforcePlanLimits::class,
+            'throttle.broadcast' => ThrottleBroadcast::class,
             // Voice AI — Phase A
-            'voice.verify_twilio' => \App\Http\Middleware\VerifyTwilioSignature::class,
-            'voice.feature_flag'  => \App\Http\Middleware\VoiceFeatureFlag::class,
+            'voice.verify_twilio' => VerifyTwilioSignature::class,
+            'voice.feature_flag' => VoiceFeatureFlag::class,
             // Role-split frontend
-            'role'              => \App\Http\Middleware\RequireRole::class,
-            'can.do'            => \App\Http\Middleware\RequireCapability::class,
-            'step.up'           => \App\Http\Middleware\RequireStepUp::class,
+            'role' => RequireRole::class,
+            'can.do' => RequireCapability::class,
+            'step.up' => RequireStepUp::class,
             // Onboarding (Phase 1)
-            'onboarding.required' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+            'onboarding.required' => EnsureOnboardingComplete::class,
             // Backend-internal routes called by Python intelligence workers
-            'internal.key'      => \App\Http\Middleware\VerifyInternalKey::class,
+            'internal.key' => VerifyInternalKey::class,
             // Dodo Payments webhooks
-            'dodo.verify_signature' => \App\Http\Middleware\VerifyDodoSignature::class,
+            'dodo.verify_signature' => VerifyDodoSignature::class,
             // Affonso affiliate webhooks (per-tenant signing secret)
-            'affonso.verify_signature' => \App\Http\Middleware\VerifyAffonsoSignature::class,
+            'affonso.verify_signature' => VerifyAffonsoSignature::class,
             // Feature-pack runtime entitlement gate (pack.entitled:{pack_id})
-            'pack.entitled'     => \App\Http\Middleware\RequirePackEntitlement::class,
+            'pack.entitled' => RequirePackEntitlement::class,
             // Plan countable-quota gate on create routes (plan.quota:agents|flows|seats)
-            'plan.quota'        => \App\Http\Middleware\EnforcePlanQuota::class,
+            'plan.quota' => EnforcePlanQuota::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

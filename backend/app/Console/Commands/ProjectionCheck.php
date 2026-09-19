@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class ProjectionCheck extends Command
 {
     protected $signature = 'events:projection-check {tenant : Tenant UUID}';
+
     protected $description = 'Run basic projection integrity checks against event stream';
 
     public function handle(): int
@@ -36,10 +37,12 @@ class ProjectionCheck extends Command
 
         if ($ok) {
             $this->info('Projection check passed.');
+
             return self::SUCCESS;
         }
 
         $this->error('Projection check failed. Replay may be required.');
+
         return self::FAILURE;
     }
 }

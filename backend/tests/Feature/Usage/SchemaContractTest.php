@@ -27,7 +27,7 @@ class SchemaContractTest extends TestCase
     public function test_usage_daily_aggregates_schema_matches_contract(): void
     {
         $contract = $this->loadContract('usage_daily_aggregates.json');
-        $table    = $contract['table'];
+        $table = $contract['table'];
 
         $this->assertTrue(Schema::hasTable($table), "Table {$table} must exist");
 
@@ -138,6 +138,7 @@ class SchemaContractTest extends TestCase
     {
         $path = base_path("tests/Contracts/{$filename}");
         $this->assertFileExists($path, "Contract file {$filename} must exist");
+
         return json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     }
 }

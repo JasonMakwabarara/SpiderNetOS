@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Models\PackEntitlement;
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
 use App\Services\EventStore;
@@ -134,8 +135,8 @@ class DodoWebhookController extends Controller
      * Idempotent via meta.webhook_ids under a row lock; each row is the single
      * live subscription for its tenant (subscribe() reuses one row).
      *
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $metadata
      * @return array<string, mixed>
      */
     private function handleSubscription(string $type, array $data, array $metadata, string $webhookId, EventStore $eventStore): array
@@ -240,19 +241,19 @@ class DodoWebhookController extends Controller
      * metadata.plan_id (validated against the catalog or config/dodo.php), or
      * a reverse product-id lookup across both sources.
      *
-     * @param array<string, mixed> $metadata
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $data
      */
     private function resolvePlanId(array $metadata, array $data): ?string
     {
         $candidate = $metadata['plan_id'] ?? null;
-        if ($candidate && (\App\Models\Plan::whereKey($candidate)->exists() || config("dodo.plans.{$candidate}"))) {
+        if ($candidate && (Plan::whereKey($candidate)->exists() || config("dodo.plans.{$candidate}"))) {
             return (string) $candidate;
         }
 
         $productId = $data['product_id'] ?? null;
         if ($productId) {
-            $byCatalog = \App\Models\Plan::where('dodo_product_id', $productId)->value('id');
+            $byCatalog = Plan::where('dodo_product_id', $productId)->value('id');
             if ($byCatalog) {
                 return (string) $byCatalog;
             }
@@ -274,7 +275,7 @@ class DodoWebhookController extends Controller
      */
     private function limitsForPlan(string $planId): ?array
     {
-        $plan = \App\Models\Plan::find($planId);
+        $plan = Plan::find($planId);
         if ($plan && is_array($plan->entitlements) && $plan->entitlements) {
             return $plan->entitlements;
         }

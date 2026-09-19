@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessVoiceCallSummary;
 use App\Models\VoiceCall;
 use App\Models\VoiceNumber;
-use App\Services\TelephonyService;
-use App\Services\MetaPlanner;
+use App\Models\VoiceQuota;
 use App\Services\CostGovernor;
-use App\Services\VoiceSafetyGuard;
 use App\Services\FeatureFlag;
+use App\Services\MetaPlanner;
+use App\Services\TelephonyService;
+use App\Services\VoiceSafetyGuard;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Http;
 
 /**
  * VoiceController — Telephony webhook handler for SpiderNet OS Voice AI
@@ -29,8 +32,11 @@ use Illuminate\Support\Facades\Http;
 class VoiceController extends Controller
 {
     private TelephonyService $telephony;
+
     private MetaPlanner $metaPlanner;
+
     private CostGovernor $costGovernor;
+
     private VoiceSafetyGuard $safetyGuard;
 
     public function __construct(
@@ -39,7 +45,7 @@ class VoiceController extends Controller
         CostGovernor $costGovernor,
         VoiceSafetyGuard $safetyGuard
     ) {
-        $this->telephony   = $telephony;
+        $this->telephony = $telephony;
         $this->metaPlanner = $metaPlanner;
         $this->costGovernor = $costGovernor;
         $this->safetyGuard = $safetyGuard;
@@ -56,64 +62,66 @@ class VoiceController extends Controller
     public function inbound(Request $request): Response
     {
         $validated = $request->validate([
-            'CallSid'    => 'required|string',
-            'From'       => 'required|string',
-            'To'         => 'required|string',
+            'CallSid' => 'required|string',
+            'From' => 'required|string',
+            'To' => 'required|string',
             'CallStatus' => 'nullable|string',
         ]);
 
-        $callSid    = $validated['CallSid'];
+        $callSid = $validated['CallSid'];
         $fromNumber = $validated['From'];
-        $toNumber   = $validated['To'];
+        $toNumber = $validated['To'];
 
         Log::info('voice.inbound.received', [
             'call_sid' => $callSid,
-            'from'     => $fromNumber,
-            'to'       => $toNumber,
+            'from' => $fromNumber,
+            'to' => $toNumber,
         ]);
 
         // Emit observability event
         $this->emitEvent('voice.inbound.received', [
-            'call_sid'   => $callSid,
-            'from'       => $fromNumber,
-            'to'         => $toNumber,
+            'call_sid' => $callSid,
+            'from' => $fromNumber,
+            'to' => $toNumber,
         ]);
 
         // Resolve tenant and agent configuration
         $resolved = $this->telephony->resolveTenant($toNumber, $fromNumber);
 
-        if (!$resolved) {
+        if (! $resolved) {
             $twiml = $this->telephony->generateGreetingTwiML(
                 'Thank you for calling. The number you have dialed is not currently configured. Please contact support.',
                 null
             );
+
             return $this->twimlResponse($twiml);
         }
 
-        $tenantId   = $resolved['tenant_id'];
-        $agentId    = $resolved['agent_id'];
+        $tenantId = $resolved['tenant_id'];
+        $agentId = $resolved['agent_id'];
         $voiceConfig = $resolved['config'];
 
         // Safety guard: feature flag + cost check
         $safety = $this->safetyGuard->checkInbound($tenantId);
-        if (!$safety['allowed']) {
+        if (! $safety['allowed']) {
             Log::warning('voice.inbound_blocked', [
-                'call_sid'  => $callSid,
+                'call_sid' => $callSid,
                 'tenant_id' => $tenantId,
-                'reason'    => $safety['reason'],
+                'reason' => $safety['reason'],
             ]);
             $twiml = $this->telephony->generateGreetingTwiML(
                 'Thank you for calling. Our system is currently unavailable. Please try again later.',
                 null
             );
+
             return $this->twimlResponse($twiml);
         }
 
         // Snapshot feature flags for audit
         $flagSnapshot = [
-            'voice.inbound'    => FeatureFlag::on('voice.inbound', $tenantId),
+            'voice.inbound' => FeatureFlag::on('voice.inbound', $tenantId),
             'voice.agent_mode' => FeatureFlag::on('voice.agent_mode', $tenantId),
-            'voice.streaming'  => FeatureFlag::on('voice.streaming', $tenantId),
+            'voice.streaming' => FeatureFlag::on('voice.streaming', $tenantId),
         ];
 
         // Log the call with flag snapshot
@@ -125,8 +133,8 @@ class VoiceController extends Controller
             'inbound',
             'ringing',
             [
-                'agent_id'      => $agentId,
-                'config'        => $voiceConfig,
+                'agent_id' => $agentId,
+                'config' => $voiceConfig,
                 'flag_snapshot' => $flagSnapshot,
             ]
         );
@@ -135,7 +143,7 @@ class VoiceController extends Controller
         VoiceCall::where('call_sid', $callSid)
             ->update(['tenant_flag_snapshot' => $flagSnapshot]);
 
-        $greeting     = $voiceConfig['greeting'] ?? 'Hello! Thank you for calling. How can I help you today?';
+        $greeting = $voiceConfig['greeting'] ?? 'Hello! Thank you for calling. How can I help you today?';
         $gatherPrompt = "I'm listening. Please tell me how I can assist you.";
 
         $twiml = $this->telephony->generateGreetingTwiML($greeting, $gatherPrompt);
@@ -152,18 +160,18 @@ class VoiceController extends Controller
     public function gather(Request $request): Response
     {
         $validated = $request->validate([
-            'CallSid'      => 'required|string',
+            'CallSid' => 'required|string',
             'SpeechResult' => 'nullable|string',
-            'Confidence'   => 'nullable|numeric',
-            'From'         => 'required|string',
-            'To'           => 'required|string',
+            'Confidence' => 'nullable|numeric',
+            'From' => 'required|string',
+            'To' => 'required|string',
         ]);
 
-        $callSid      = $validated['CallSid'];
+        $callSid = $validated['CallSid'];
         $speechResult = $validated['SpeechResult'] ?? '';
-        $confidence   = $validated['Confidence'] ?? 0.0;
-        $fromNumber   = $validated['From'];
-        $toNumber     = $validated['To'];
+        $confidence = $validated['Confidence'] ?? 0.0;
+        $fromNumber = $validated['From'];
+        $toNumber = $validated['To'];
 
         // If no speech detected, prompt again
         if (empty($speechResult)) {
@@ -171,6 +179,7 @@ class VoiceController extends Controller
                 "I didn't catch that. Could you please repeat?",
                 true
             );
+
             return $this->twimlResponse($twiml);
         }
 
@@ -178,14 +187,14 @@ class VoiceController extends Controller
         $this->telephony->appendTranscript($callSid, 'caller', $speechResult);
 
         Log::info('voice.turn.started', [
-            'call_sid'   => $callSid,
+            'call_sid' => $callSid,
             'confidence' => $confidence,
             'speech_len' => strlen($speechResult),
         ]);
 
         // Resolve tenant
         $resolved = $this->telephony->resolveTenant($toNumber, $fromNumber);
-        if (!$resolved) {
+        if (! $resolved) {
             return $this->twimlResponse(
                 $this->telephony->generateResponseTwiML(
                     "I'm having trouble connecting. Please try again later.",
@@ -194,8 +203,8 @@ class VoiceController extends Controller
             );
         }
 
-        $tenantId   = $resolved['tenant_id'];
-        $agentId    = $resolved['agent_id'];
+        $tenantId = $resolved['tenant_id'];
+        $agentId = $resolved['agent_id'];
         $voiceConfig = $resolved['config'] ?? [];
 
         $startMs = (int) (microtime(true) * 1000);
@@ -225,16 +234,16 @@ class VoiceController extends Controller
             $latencyMs = (int) (microtime(true) * 1000) - $startMs;
 
             // Append agent response to transcript
-            if (!empty($response['text'])) {
+            if (! empty($response['text'])) {
                 $this->telephony->appendTranscript($callSid, 'agent', $response['text']);
             }
 
             $this->emitEvent('voice.turn.completed', [
-                'call_sid'   => $callSid,
-                'tenant_id'  => $tenantId,
+                'call_sid' => $callSid,
+                'tenant_id' => $tenantId,
                 'latency_ms' => $latencyMs,
-                'model'      => $response['model'] ?? 'qwen3',
-                'tokens'     => $response['tokens_used'] ?? 0,
+                'model' => $response['model'] ?? 'qwen3',
+                'tokens' => $response['tokens_used'] ?? 0,
             ]);
 
             $this->emitLatencyMetric($tenantId, $latencyMs);
@@ -250,13 +259,13 @@ class VoiceController extends Controller
         } catch (\Exception $e) {
             Log::error('voice.turn.failed', [
                 'call_sid' => $callSid,
-                'error'    => $e->getMessage(),
-                'trace'    => $e->getTraceAsString(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Update call record with error code
             VoiceCall::where('call_sid', $callSid)
-                ->update(['error_code' => 'INFERENCE_FAILED:' . substr($e->getMessage(), 0, 50)]);
+                ->update(['error_code' => 'INFERENCE_FAILED:'.substr($e->getMessage(), 0, 50)]);
 
             $twiml = $this->telephony->generateResponseTwiML(
                 "I'm having a technical issue. Let me transfer you to a representative.",
@@ -275,19 +284,19 @@ class VoiceController extends Controller
     public function status(Request $request): Response
     {
         $validated = $request->validate([
-            'CallSid'      => 'required|string',
-            'CallStatus'   => 'required|string',
+            'CallSid' => 'required|string',
+            'CallStatus' => 'required|string',
             'CallDuration' => 'nullable|integer',
             'RecordingUrl' => 'nullable|string',
         ]);
 
-        $callSid  = $validated['CallSid'];
-        $status   = $validated['CallStatus'];
+        $callSid = $validated['CallSid'];
+        $status = $validated['CallStatus'];
         $duration = $validated['CallDuration'] ?? null;
 
         Log::info('voice.call.status', [
             'call_sid' => $callSid,
-            'status'   => $status,
+            'status' => $status,
             'duration' => $duration,
         ]);
 
@@ -295,8 +304,8 @@ class VoiceController extends Controller
 
         if ($status === 'completed') {
             $this->emitEvent('voice.call.ended', [
-                'call_sid'   => $callSid,
-                'status'     => $status,
+                'call_sid' => $callSid,
+                'status' => $status,
                 'duration_s' => $duration,
             ]);
             $this->triggerPostCallProcessing($callSid);
@@ -314,26 +323,26 @@ class VoiceController extends Controller
     public function recording(Request $request): Response
     {
         $validated = $request->validate([
-            'CallSid'            => 'required|string',
-            'RecordingUrl'       => 'required|string',
-            'RecordingSid'       => 'nullable|string',
-            'RecordingDuration'  => 'nullable|integer',
+            'CallSid' => 'required|string',
+            'RecordingUrl' => 'required|string',
+            'RecordingSid' => 'nullable|string',
+            'RecordingDuration' => 'nullable|integer',
         ]);
 
-        $callSid      = $validated['CallSid'];
+        $callSid = $validated['CallSid'];
         $recordingUrl = $validated['RecordingUrl'];
 
         Log::info('voice.recording.received', [
-            'call_sid'      => $callSid,
+            'call_sid' => $callSid,
             'recording_sid' => $validated['RecordingSid'] ?? null,
-            'duration'      => $validated['RecordingDuration'] ?? null,
+            'duration' => $validated['RecordingDuration'] ?? null,
         ]);
 
         $call = VoiceCall::where('call_sid', $callSid)->first();
         if ($call) {
             $meta = $call->metadata ?? [];
-            $meta['recording_url']      = $recordingUrl;
-            $meta['recording_sid']      = $validated['RecordingSid'] ?? null;
+            $meta['recording_url'] = $recordingUrl;
+            $meta['recording_sid'] = $validated['RecordingSid'] ?? null;
             $meta['recording_duration'] = $validated['RecordingDuration'] ?? null;
             $call->metadata = $meta;
             $call->save();
@@ -349,12 +358,12 @@ class VoiceController extends Controller
      *
      * Initiate outbound call.
      */
-    public function initiateCall(Request $request): \Illuminate\Http\JsonResponse
+    public function initiateCall(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'to_number'   => 'required|string',
+            'to_number' => 'required|string',
             'from_number' => 'required|string',
-            'agent_id'    => 'nullable|string',
+            'agent_id' => 'nullable|string',
         ]);
 
         $tenantId = $request->user()->tenant_id;
@@ -364,11 +373,11 @@ class VoiceController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$voiceNumber) {
+        if (! $voiceNumber) {
             return response()->json(['success' => false, 'error' => 'Invalid from_number for this tenant'], 422);
         }
 
-        if (!$voiceNumber->allow_outbound) {
+        if (! $voiceNumber->allow_outbound) {
             return response()->json(['success' => false, 'error' => 'Outbound calls are not enabled for this number'], 403);
         }
 
@@ -381,9 +390,9 @@ class VoiceController extends Controller
 
         if ($result) {
             return response()->json([
-                'success'  => true,
+                'success' => true,
                 'call_sid' => $result['call_sid'],
-                'call_id'  => $result['call']->id,
+                'call_id' => $result['call']->id,
             ]);
         }
 
@@ -395,10 +404,10 @@ class VoiceController extends Controller
      *
      * List call history for tenant.
      */
-    public function listCalls(Request $request): \Illuminate\Http\JsonResponse
+    public function listCalls(Request $request): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
-        $perPage  = min((int) $request->input('per_page', 20), 100);
+        $perPage = min((int) $request->input('per_page', 20), 100);
 
         $calls = VoiceCall::where('tenant_id', $tenantId)
             ->orderBy('started_at', 'desc')
@@ -412,7 +421,7 @@ class VoiceController extends Controller
      *
      * Retrieve a single call with transcript and summary.
      */
-    public function showCall(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function showCall(Request $request, int $id): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
 
@@ -439,7 +448,7 @@ class VoiceController extends Controller
         }
 
         return response(implode("\n", $lines), 200, [
-            'Content-Type'        => 'text/plain; charset=utf-8',
+            'Content-Type' => 'text/plain; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"call-{$id}-transcript.txt\"",
         ]);
     }
@@ -449,28 +458,29 @@ class VoiceController extends Controller
     /**
      * GET /voice/numbers
      */
-    public function listNumbers(Request $request): \Illuminate\Http\JsonResponse
+    public function listNumbers(Request $request): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
-        $numbers  = VoiceNumber::where('tenant_id', $tenantId)->get();
+        $numbers = VoiceNumber::where('tenant_id', $tenantId)->get();
+
         return response()->json(['data' => $numbers]);
     }
 
     /**
      * POST /voice/numbers
      */
-    public function createNumber(Request $request): \Illuminate\Http\JsonResponse
+    public function createNumber(Request $request): JsonResponse
     {
-        $tenantId  = $request->user()->tenant_id;
+        $tenantId = $request->user()->tenant_id;
         $validated = $request->validate([
-            'phone_number'    => 'required|string|max:20',
-            'provider'        => 'nullable|string|in:twilio,signalwire,vonage',
-            'provider_sid'    => 'nullable|string|max:100',
-            'agent_id'        => 'nullable|string|max:100',
-            'config'          => 'nullable|array',
-            'tool_allowlist'  => 'nullable|array',
+            'phone_number' => 'required|string|max:20',
+            'provider' => 'nullable|string|in:twilio,signalwire,vonage',
+            'provider_sid' => 'nullable|string|max:100',
+            'agent_id' => 'nullable|string|max:100',
+            'config' => 'nullable|array',
+            'tool_allowlist' => 'nullable|array',
             'approval_policy' => 'nullable|string|in:off,notify,strict',
-            'allow_outbound'  => 'nullable|boolean',
+            'allow_outbound' => 'nullable|boolean',
         ]);
 
         $number = VoiceNumber::create(array_merge($validated, ['tenant_id' => $tenantId]));
@@ -481,19 +491,19 @@ class VoiceController extends Controller
     /**
      * PATCH /voice/numbers/{id}
      */
-    public function updateNumber(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function updateNumber(Request $request, int $id): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
-        $number   = VoiceNumber::where('tenant_id', $tenantId)->findOrFail($id);
+        $number = VoiceNumber::where('tenant_id', $tenantId)->findOrFail($id);
 
         $validated = $request->validate([
-            'agent_id'        => 'nullable|string|max:100',
-            'config'          => 'nullable|array',
-            'tool_allowlist'  => 'nullable|array',
+            'agent_id' => 'nullable|string|max:100',
+            'config' => 'nullable|array',
+            'tool_allowlist' => 'nullable|array',
             'approval_policy' => 'nullable|string|in:off,notify,strict',
-            'allow_outbound'  => 'nullable|boolean',
-            'is_active'       => 'nullable|boolean',
-            'daily_call_cap'  => 'nullable|integer|min:0',
+            'allow_outbound' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'daily_call_cap' => 'nullable|integer|min:0',
         ]);
 
         $number->update($validated);
@@ -504,10 +514,11 @@ class VoiceController extends Controller
     /**
      * DELETE /voice/numbers/{id}
      */
-    public function deleteNumber(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function deleteNumber(Request $request, int $id): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
         VoiceNumber::where('tenant_id', $tenantId)->findOrFail($id)->delete();
+
         return response()->json(null, 204);
     }
 
@@ -516,29 +527,30 @@ class VoiceController extends Controller
     /**
      * GET /voice/quotas
      */
-    public function getQuotas(Request $request): \Illuminate\Http\JsonResponse
+    public function getQuotas(Request $request): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
-        $quota    = \App\Models\VoiceQuota::firstOrCreate(
+        $quota = VoiceQuota::firstOrCreate(
             ['tenant_id' => $tenantId],
             ['monthly_minutes_cap' => 0, 'monthly_minutes_used' => 0, 'outbound_cap' => 0, 'sms_cap' => 0]
         );
+
         return response()->json(['data' => $quota]);
     }
 
     /**
      * PUT /voice/quotas
      */
-    public function updateQuotas(Request $request): \Illuminate\Http\JsonResponse
+    public function updateQuotas(Request $request): JsonResponse
     {
-        $tenantId  = $request->user()->tenant_id;
+        $tenantId = $request->user()->tenant_id;
         $validated = $request->validate([
             'monthly_minutes_cap' => 'required|integer|min:0',
-            'outbound_cap'        => 'required|integer|min:0',
-            'sms_cap'             => 'required|integer|min:0',
+            'outbound_cap' => 'required|integer|min:0',
+            'sms_cap' => 'required|integer|min:0',
         ]);
 
-        $quota = \App\Models\VoiceQuota::firstOrCreate(['tenant_id' => $tenantId]);
+        $quota = VoiceQuota::firstOrCreate(['tenant_id' => $tenantId]);
         $quota->update($validated);
 
         return response()->json(['data' => $quota]);
@@ -555,26 +567,27 @@ class VoiceController extends Controller
         string $callSid,
         string $callerInput,
         string $fromNumber,
-        array  $config
+        array $config
     ): array {
         $inferenceUrl = config('services.inference.url', 'http://inference:9000');
 
         $response = Http::timeout(8)
             ->post("{$inferenceUrl}/voice/agent", [
-                'tenant_id'    => $tenantId,
-                'agent_id'     => $agentId,
-                'call_sid'     => $callSid,
+                'tenant_id' => $tenantId,
+                'agent_id' => $agentId,
+                'call_sid' => $callSid,
                 'caller_input' => $callerInput,
-                'caller_number'=> $fromNumber,
-                'config'       => $config,
+                'caller_number' => $fromNumber,
+                'config' => $config,
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             // Fall back to direct inference on agent service failure
             Log::warning('voice.agent_service_failed, falling back', [
                 'call_sid' => $callSid,
-                'status'   => $response->status(),
+                'status' => $response->status(),
             ]);
+
             return $this->processVoiceIntent($tenantId, $agentId, $callSid, $callerInput, $config);
         }
 
@@ -589,43 +602,52 @@ class VoiceController extends Controller
         string $agentId,
         string $callSid,
         string $callerInput,
-        array  $config
+        array $config
     ): array {
         $inferenceUrl = config('services.inference.url', 'http://inference:9000');
 
-        $systemPrompt  = $config['system_prompt'] ?? 'You are a helpful voice assistant. Be concise and natural.';
-        $businessName  = $config['business_name'] ?? 'our business';
-        $prompt        = str_replace('{business_name}', $businessName, $systemPrompt);
+        $systemPrompt = $config['system_prompt'] ?? 'You are a helpful voice assistant. Be concise and natural.';
+        $businessName = $config['business_name'] ?? 'our business';
+        $prompt = str_replace('{business_name}', $businessName, $systemPrompt);
 
         $response = Http::timeout(5)
             ->post("{$inferenceUrl}/generate", [
-                'model'       => 'qwen3',
-                'messages'    => [
+                'model' => 'qwen3',
+                'messages' => [
                     ['role' => 'system', 'content' => $prompt],
                     ['role' => 'user',   'content' => $callerInput],
                 ],
                 'temperature' => $config['temperature'] ?? 0.4,
-                'max_tokens'  => $config['max_tokens']  ?? 150,
+                'max_tokens' => $config['max_tokens'] ?? 150,
             ]);
 
-        if (!$response->successful()) {
-            throw new \Exception('Inference service failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \Exception('Inference service failed: '.$response->body());
         }
 
         $result = $response->json();
-        $text   = $result['choices'][0]['message']['content'] ?? '';
+        $text = $result['choices'][0]['message']['content'] ?? '';
 
         $actions = [];
-        if (str_contains($text, '[TRANSFER]')) { $actions[] = 'transfer';    $text = str_replace('[TRANSFER]', '', $text); }
-        if (str_contains($text, '[SMS]'))      { $actions[] = 'send_sms';   $text = str_replace('[SMS]', '', $text); }
-        if (str_contains($text, '[END]'))      { $actions[] = 'end_call';   $text = str_replace('[END]', '', $text); }
+        if (str_contains($text, '[TRANSFER]')) {
+            $actions[] = 'transfer';
+            $text = str_replace('[TRANSFER]', '', $text);
+        }
+        if (str_contains($text, '[SMS]')) {
+            $actions[] = 'send_sms';
+            $text = str_replace('[SMS]', '', $text);
+        }
+        if (str_contains($text, '[END]')) {
+            $actions[] = 'end_call';
+            $text = str_replace('[END]', '', $text);
+        }
 
         return [
-            'text'                  => trim($text),
-            'actions'               => $actions,
-            'continue_conversation' => !in_array('end_call', $actions),
-            'model'                 => 'qwen3',
-            'tokens_used'           => $result['usage']['total_tokens'] ?? 0,
+            'text' => trim($text),
+            'actions' => $actions,
+            'continue_conversation' => ! in_array('end_call', $actions),
+            'model' => 'qwen3',
+            'tokens_used' => $result['usage']['total_tokens'] ?? 0,
         ];
     }
 
@@ -639,28 +661,28 @@ class VoiceController extends Controller
     {
         try {
             // Resolve tenant for this call (needed for the job)
-            $call     = \App\Models\VoiceCall::where('call_sid', $callSid)->select('tenant_id')->first();
+            $call = VoiceCall::where('call_sid', $callSid)->select('tenant_id')->first();
             $tenantId = $call?->tenant_id ?? '';
 
             // Phase A path: Redis event for any subscriber (nexus_agent.py picks this up)
             Redis::publish('agent:dispatch', json_encode([
-                'intent'  => 'voice.post_call_process',
+                'intent' => 'voice.post_call_process',
                 'context' => [
-                    'call_sid'     => $callSid,
-                    'tenant_id'    => $tenantId,
+                    'call_sid' => $callSid,
+                    'tenant_id' => $tenantId,
                     'target_agent' => 'nexus',
                 ],
             ]));
 
             // Phase C path: Laravel Horizon job for structured summary
-            \App\Jobs\ProcessVoiceCallSummary::dispatch($callSid, $tenantId)
+            ProcessVoiceCallSummary::dispatch($callSid, $tenantId)
                 ->onQueue('voice-post-call')
                 ->delay(now()->addSeconds(3)); // brief delay to ensure DB writes settle
 
         } catch (\Throwable $e) {
             Log::error('voice.post_call_dispatch_failed', [
                 'call_sid' => $callSid,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -673,8 +695,8 @@ class VoiceController extends Controller
         try {
             Redis::publish('events:voice', json_encode([
                 'event_type' => $type,
-                'payload'    => $payload,
-                'timestamp'  => now()->toIso8601String(),
+                'payload' => $payload,
+                'timestamp' => now()->toIso8601String(),
             ]));
         } catch (\Throwable) {
             // non-critical

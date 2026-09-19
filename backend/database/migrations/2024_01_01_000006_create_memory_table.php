@@ -29,11 +29,11 @@ return new class extends Migration
             $table->integer('access_count')->default(0);
             $table->timestamp('last_accessed_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['tenant_id', 'node_type']);
             $table->index(['tenant_id', 'agent_id', 'node_type']);
         });
-        
+
         Schema::create('memory_edges', function (Blueprint $table) {
             $table->id();
             $table->uuid('source_id')->index();
@@ -42,13 +42,13 @@ return new class extends Migration
             $table->float('weight')->default(1.0);
             $table->jsonb('metadata')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['source_id', 'target_id', 'relation_type']);
         });
-        
+
         DB::statement('CREATE INDEX ON memory_nodes USING ivfflat (embedding vector_cosine_ops)');
     }
-    
+
     public function down(): void
     {
         if (Schema::getConnection()->getDriverName() !== 'pgsql') {

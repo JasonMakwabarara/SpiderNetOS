@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Spend;
 
+use App\Models\ExpenseCategory;
 use App\Models\ExpensePolicy;
 use App\Models\ExpenseReport;
 use App\Models\User;
@@ -89,7 +90,7 @@ class ExpensePolicyService
     public function evaluateItemFlags(
         string|float|null $amount,
         bool $hasReceipt,
-        ?\App\Models\ExpenseCategory $category,
+        ?ExpenseCategory $category,
         Collection $policies,
     ): array {
         $flags = [];
@@ -100,13 +101,13 @@ class ExpensePolicyService
             $flags[] = 'over_category_limit';
         }
 
-        if (!$hasReceipt && $this->receiptRequired($amount, $category, $policies)) {
+        if (! $hasReceipt && $this->receiptRequired($amount, $category, $policies)) {
             $flags[] = 'missing_receipt';
         }
 
         foreach ($policies as $policy) {
             $allowed = $policy->allowed_categories;
-            if (!empty($allowed) && !in_array($category?->slug, $allowed, true)) {
+            if (! empty($allowed) && ! in_array($category?->slug, $allowed, true)) {
                 $flags[] = 'category_not_allowed';
                 break;
             }
@@ -116,7 +117,7 @@ class ExpensePolicyService
     }
 
     /** @param Collection<int, ExpensePolicy> $policies */
-    private function receiptRequired(string $amount, ?\App\Models\ExpenseCategory $category, Collection $policies): bool
+    private function receiptRequired(string $amount, ?ExpenseCategory $category, Collection $policies): bool
     {
         if ($category?->requires_receipt_over !== null
             && bccomp($amount, (string) $category->requires_receipt_over, 4) > 0) {

@@ -37,9 +37,9 @@ try:
 except ImportError:
     HAS_PSYCOPG2 = False
 
-from config import DATABASE_URL
 from atlas.feature_flag import FeatureFlag
-from atlas.rt_scorer import RTScorer, CopyUnit
+from atlas.rt_scorer import RTScorer
+from config import DATABASE_URL
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -254,10 +254,7 @@ class PromptEvolutionEngine:
 
         # Must have outcome framing
         outcome_words = ["your", "you", "get", "see", "save", "track", "automat", "live"]
-        if not any(ow in template for ow in outcome_words):
-            return False
-
-        return True
+        return any(ow in template for ow in outcome_words)
 
     # -----------------------------------------------------------------------
     # DB helpers

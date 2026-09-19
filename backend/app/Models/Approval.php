@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 */
 class Approval extends Model
 {
-    use \Illuminate\Database\Eloquent\Concerns\HasUuids;
+    use HasUuids;
 
     protected $fillable = [
         'tenant_id', 'requester_id', 'approver_id', 'approval_type',

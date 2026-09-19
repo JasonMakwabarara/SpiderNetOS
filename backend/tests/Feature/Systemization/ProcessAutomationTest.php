@@ -26,7 +26,9 @@ class ProcessAutomationTest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private User $founder;
+
     private BusinessProcess $process;
 
     protected function setUp(): void
@@ -36,7 +38,7 @@ class ProcessAutomationTest extends TestCase
         $this->tenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Automation Co',
-            'slug' => 'automation-' . Str::lower(Str::random(6)),
+            'slug' => 'automation-'.Str::lower(Str::random(6)),
             'status' => 'active',
             'plan' => 'growth',
         ]);
@@ -44,7 +46,7 @@ class ProcessAutomationTest extends TestCase
         $this->founder = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Founder',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),
@@ -105,7 +107,7 @@ class ProcessAutomationTest extends TestCase
 
         $flow = Flow::findOrFail($this->process->flow_id);
         $this->assertSame('published', $flow->status);
-        $this->assertSame('SOP: ' . $sop->title, $flow->name);
+        $this->assertSame('SOP: '.$sop->title, $flow->name);
         $this->assertSame('daily_morning', $flow->getAttribute('schedule_cron'));
 
         // trigger + 3 steps + report = 5 nodes, chained linearly

@@ -66,6 +66,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $ts = (string) time();
         $sig = base64_encode(hash_hmac('sha256', "{$id}.{$ts}.{$body}", $this->rawSecret, true));
+
         return [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',

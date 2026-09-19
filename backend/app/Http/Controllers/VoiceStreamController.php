@@ -45,25 +45,26 @@ class VoiceStreamController extends Controller
     {
         $validated = $request->validate([
             'CallSid' => 'required|string',
-            'From'    => 'required|string',
-            'To'      => 'required|string',
+            'From' => 'required|string',
+            'To' => 'required|string',
         ]);
 
-        $callSid    = $validated['CallSid'];
+        $callSid = $validated['CallSid'];
         $fromNumber = $validated['From'];
-        $toNumber   = $validated['To'];
+        $toNumber = $validated['To'];
 
         $resolved = $this->telephony->resolveTenant($toNumber, $fromNumber);
         $tenantId = $resolved['tenant_id'] ?? null;
 
         // Kill-switch: if flag off, fall back to Gather mode
-        if (!FeatureFlag::on('voice.streaming', $tenantId)) {
+        if (! FeatureFlag::on('voice.streaming', $tenantId)) {
             Log::info('voice.stream.fallback_to_gather', ['call_sid' => $callSid]);
+
             return $this->twimlResponse($this->gatherFallbackTwiML());
         }
 
         Log::info('voice.stream.connect', [
-            'call_sid'  => $callSid,
+            'call_sid' => $callSid,
             'tenant_id' => $tenantId,
         ]);
 
@@ -72,13 +73,14 @@ class VoiceStreamController extends Controller
 
         // Emit observability event
         $this->emitEvent('voice.stream.connect', [
-            'call_sid'  => $callSid,
+            'call_sid' => $callSid,
             'tenant_id' => $tenantId,
         ]);
 
         $wsUrl = $this->buildStreamUrl($callSid, $tenantId);
 
         $twiml = $this->buildStreamTwiML($wsUrl);
+
         return $this->twimlResponse($twiml);
     }
 
@@ -100,16 +102,16 @@ class VoiceStreamController extends Controller
         $say[0] = 'Connected.';
 
         $connect = $response->addChild('Connect');
-        $stream  = $connect->addChild('Stream');
+        $stream = $connect->addChild('Stream');
         $stream->addAttribute('url', $wsUrl);
         $stream->addAttribute('track', 'inbound_track');   // or both_tracks for full duplex
 
         // Custom parameters forwarded to voice_pipeline.py via the start message
         $params = [
-            'tenant_id'      => '',  // resolved by pipeline from call_sid
-            'stt_provider'   => config('telephony.streaming.stt_provider', 'deepgram'),
-            'tts_provider'   => config('telephony.streaming.tts_provider', 'elevenlabs'),
-            'vad_threshold'  => (string) config('telephony.streaming.vad_threshold', 0.6),
+            'tenant_id' => '',  // resolved by pipeline from call_sid
+            'stt_provider' => config('telephony.streaming.stt_provider', 'deepgram'),
+            'tts_provider' => config('telephony.streaming.tts_provider', 'elevenlabs'),
+            'vad_threshold' => (string) config('telephony.streaming.vad_threshold', 0.6),
         ];
 
         foreach ($params as $name => $value) {
@@ -127,9 +129,9 @@ class VoiceStreamController extends Controller
     private function gatherFallbackTwiML(): string
     {
         $response = new \SimpleXMLElement('<Response/>');
-        $say      = $response->addChild('Say');
+        $say = $response->addChild('Say');
         $say->addAttribute('voice', config('telephony.tts.voice', 'Polly.Joanna'));
-        $say[0]   = 'Hello! How can I help you today?';
+        $say[0] = 'Hello! How can I help you today?';
 
         $gather = $response->addChild('Gather');
         $gather->addAttribute('input', 'speech');
@@ -146,7 +148,8 @@ class VoiceStreamController extends Controller
     private function buildStreamUrl(string $callSid, ?string $tenantId): string
     {
         $baseWs = config('telephony.streaming.websocket_url', 'wss://your-domain.com/voice/stream');
-        return $baseWs . '?call_sid=' . urlencode($callSid);
+
+        return $baseWs.'?call_sid='.urlencode($callSid);
     }
 
     private function recordStreamStart(string $callSid): void
@@ -166,8 +169,8 @@ class VoiceStreamController extends Controller
         try {
             Redis::publish('events:voice', json_encode([
                 'event_type' => $type,
-                'payload'    => $payload,
-                'timestamp'  => now()->toIso8601String(),
+                'payload' => $payload,
+                'timestamp' => now()->toIso8601String(),
             ]));
         } catch (\Throwable) {
             // non-critical

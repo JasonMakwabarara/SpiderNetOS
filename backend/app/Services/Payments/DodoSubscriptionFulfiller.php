@@ -23,8 +23,7 @@ class DodoSubscriptionFulfiller
     public function __construct(
         private readonly DodoPaymentsService $dodo,
         private readonly EventStore $eventStore,
-    ) {
-    }
+    ) {}
 
     public function handle(array $payload): void
     {
@@ -226,7 +225,7 @@ class DodoSubscriptionFulfiller
             is_array($data['subscription'] ?? null)
                 ? ($data['subscription']['subscription_id'] ?? $data['subscription']['id'] ?? null)
                 : null,
-            isset($data['payment_id']) ? 'dodo_payment_' . $data['payment_id'] : null,
+            isset($data['payment_id']) ? 'dodo_payment_'.$data['payment_id'] : null,
         ];
 
         foreach ($candidates as $candidate) {

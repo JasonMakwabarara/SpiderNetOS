@@ -19,11 +19,11 @@ class RequireCapability
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if (!$user->can_do($capability)) {
+        if (! $user->can_do($capability)) {
             return response()->json([
                 'error' => 'Forbidden',
                 'reason' => 'missing_capability',

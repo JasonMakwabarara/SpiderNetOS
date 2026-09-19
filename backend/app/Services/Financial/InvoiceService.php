@@ -6,10 +6,8 @@ namespace App\Services\Financial;
 
 use App\Models\Invoice;
 use App\Models\InvoiceLineItem;
-use App\Models\Customer;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class InvoiceService
 {
@@ -136,7 +134,7 @@ class InvoiceService
         $invoice = Invoice::where('tenant_id', $tenantId)->findOrFail($invoiceId);
 
         if ($invoice->status === 'paid') {
-            throw new \RuntimeException("Cannot cancel a paid invoice");
+            throw new \RuntimeException('Cannot cancel a paid invoice');
         }
 
         $invoice->update([

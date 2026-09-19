@@ -1,0 +1,128 @@
+# Deferred work, owned.
+#
+# A comment saying a thing does not work yet is not a plan. It is a note to a
+# reader who may never arrive, attached to code that ships and behaves as though
+# it were finished. This repository had several, and they were not harmless:
+#
+#   * CheckAgentPermission is named for a check and its whole body is
+#     `return $next($request)`;
+#   * the CPL service chose control-plane actions from `torch.randn(280)`;
+#   * the simulation service ran its calibration analysis on fabricated data;
+#   * a test mocked the very class it was testing "since imports may not work
+#     yet", and the mock contradicted its own assertion.
+#
+# .github/check_deferred.py fails CI on a marker that is not listed here, and on
+# an entry whose markers are gone, so this file cannot drift from the code.
+#
+# classification:
+#   DEFERRED       - real unfinished work; needs impact, what_it_takes, owner, date
+#   FALSE_POSITIVE - the marker is not deferred work (a name, a test fixture)
+
+version: 1
+
+deferrals:
+  - path: backend/app/Http/Middleware/CheckAgentPermission.php
+    classification: DEFERRED
+    impact: >
+      The entire body is `return $next($request)`. A middleware named
+      agent.permission that permits everything. It is registered as an alias in
+      bootstrap/app.php and currently applied to no route, so nothing is
+      unguarded today — the hazard is precisely that adding `agent.permission`
+      to a route looks like adding a check, and would add none.
+    what_it_takes: >
+      Either implement the graph-based check against the agent/capability model,
+      or delete the class and the alias. Leaving a no-op behind a name that
+      promises a control is the worst of the three options.
+    owner: jason
+    review_date: 2026-12-19
+
+  - path: backend/app/Http/Middleware/ThrottleBroadcast.php
+    classification: DEFERRED
+    impact: >
+      Same shape: a pass-through registered as `throttle.broadcast`, applied to
+      no route. Nothing is currently unthrottled, but the alias promises
+      tenant-level WebSocket batching that does not exist.
+    what_it_takes: Implement the batching, or delete the class and the alias.
+    owner: jason
+    review_date: 2026-12-19
+
+  - path: services/cpl-service/main.py
+    classification: DEFERRED
+    impact: >
+      /action/select builds `dummy_state = torch.randn(280)` and selects a
+      control-plane action from it. The endpoint returns an action, a log
+      probability and a predicted cost that read as considered judgements and
+      are derived from noise. (The related dropout-in-serving bug is fixed:
+      the network is now put in eval() on startup.)
+    what_it_takes: >
+      Feed StateEncoder the real cached state the comment refers to. Until then
+      the endpoint should arguably 503 rather than answer, which is a behaviour
+      change on a service that may be running and so is Jason's call.
+    owner: jason
+    review_date: 2026-10-19
+
+  - path: services/simulation-service/main.py
+    classification: DEFERRED
+    impact: >
+      The DeepSeek calibration endpoint synthesises its inputs —
+      `[10.0 + np.random.randn() ...]` for simulated values and `12.0 + ...` for
+      real ones — then asks the model to analyse sim-to-real drift. The answer
+      describes fabricated data and is returned as calibration.
+    what_it_takes: Fetch the real series from the sim_to_real bridge.
+    owner: jason
+    review_date: 2026-10-19
+
+  - path: backend/enterprise_api.py
+    classification: DEFERRED
+    impact: >
+      Two. /register/verify-domain marks any domain verified on request — "in
+      demo mode, we auto-verify" — so enterprise domain ownership is asserted,
+      not proven. And the signing key is loaded from the environment where the
+      comment says an HSM/KMS belongs. This module is imported by
+      backend/server.py and volume-mounted in docker-compose.unified.yml, so
+      whether it is reachable in production is worth confirming.
+    what_it_takes: >
+      A real DNS TXT challenge before setting domain_verified, and a decision on
+      key custody. Until then this endpoint should not be exposed.
+    owner: jason
+    review_date: 2026-10-19
+
+  - path: intelligence/tools/voice_tools.py
+    classification: DEFERRED
+    impact: >
+      The calendar booking tool returns success with a mock event ID. The voice
+      agent tells the caller their meeting is booked; no calendar was touched.
+    what_it_takes: Wire it to the calendar adapter, or make the tool report that it cannot book.
+    owner: jason
+    review_date: 2026-10-19
+
+  - path: backend/app/Services/Integrations/SalesforceAdapter.php
+    classification: DEFERRED
+    impact: >
+      Two activity-logging methods are unimplemented, so Salesforce receives no
+      task records for anything SpiderNetOS does. Silent, and only visible as an
+      absence in someone else's CRM.
+    what_it_takes: Implement both via the SFDC Task object, or have them throw rather than no-op.
+    owner: jason
+    review_date: 2027-01-19
+
+  - path: cockpit/src/stores/auth.js
+    classification: DEFERRED
+    impact: >
+      DEFAULT_ROLE is 'super_admin' and `switchRole` lets the client pick its own
+      role, to demonstrate the three surfaces. The server does enforce — the
+      role middleware is real — so this is cosmetic rather than a hole, but the
+      cockpit shows a super_admin surface by default.
+    what_it_takes: Take the role from the authenticated principal and delete switchRole.
+    owner: jason
+    review_date: 2026-12-19
+
+  - path: cockpit/src/services/api.js
+    classification: DEFERRED
+    impact: >
+      The cockpit's base URL still points wherever VITE_API_URL says, with the
+      mock FastAPI backend at backend/server.py as the intended target. The
+      Laravel API is the real one.
+    what_it_takes: Point it at the Laravel gateway and delete the mock backend.
+    owner: jason
+    review_date: 2026-12-19

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -36,13 +37,13 @@ class BackfillUsageAggregates extends Command
 
     public function handle(): int
     {
-        $from    = $this->option('from') ?? now()->subDays(30)->toDateString();
-        $to      = $this->option('to')   ?? now()->subDay()->toDateString();
-        $tenant  = $this->option('tenant');
-        $dryRun  = (bool) $this->option('dry-run');
-        $chunk   = (int) ($this->option('chunk') ?: 500);
+        $from = $this->option('from') ?? now()->subDays(30)->toDateString();
+        $to = $this->option('to') ?? now()->subDay()->toDateString();
+        $tenant = $this->option('tenant');
+        $dryRun = (bool) $this->option('dry-run');
+        $chunk = (int) ($this->option('chunk') ?: 500);
 
-        $this->info("Backfilling {$from} → {$to}" . ($tenant ? " (tenant: {$tenant})" : '') . ($dryRun ? ' [DRY RUN]' : ''));
+        $this->info("Backfilling {$from} → {$to}".($tenant ? " (tenant: {$tenant})" : '').($dryRun ? ' [DRY RUN]' : ''));
 
         $tenants = $tenant
             ? collect([$tenant])
@@ -50,6 +51,7 @@ class BackfillUsageAggregates extends Command
 
         if ($tenants->isEmpty()) {
             $this->warn('No active tenants found.');
+
             return self::SUCCESS;
         }
 
@@ -63,6 +65,7 @@ class BackfillUsageAggregates extends Command
         }
 
         $this->info("Done. Written: {$written}, Skipped (no data): {$skipped}");
+
         return self::SUCCESS;
     }
 
@@ -70,8 +73,8 @@ class BackfillUsageAggregates extends Command
         string $tenantId,
         string $from,
         string $to,
-        bool   $dryRun,
-        int    $chunk,
+        bool $dryRun,
+        int $chunk,
     ): array {
         $written = 0;
         $skipped = 0;
@@ -81,8 +84,8 @@ class BackfillUsageAggregates extends Command
             ->value('daily_limit') ?: (float) env('COST_CEILING_DEFAULT', 10.00);
 
         // Iterate each day in the range
-        $current = \Carbon\Carbon::parse($from);
-        $end     = \Carbon\Carbon::parse($to);
+        $current = Carbon::parse($from);
+        $end = Carbon::parse($to);
 
         $buffer = [];
 
@@ -98,39 +101,40 @@ class BackfillUsageAggregates extends Command
                 ->selectRaw(
                     "SUM(COALESCE((payload->>'tokens_input')::integer,0) + COALESCE((payload->>'tokens_output')::integer,0)) as total_tokens"
                 )
-                ->selectRaw("COUNT(*) as total_calls")
+                ->selectRaw('COUNT(*) as total_calls')
                 ->groupByRaw("payload->>'resource_type'")
                 ->get();
 
             if ($rows->isEmpty()) {
                 $skipped++;
                 $current->addDay();
+
                 continue;
             }
 
             foreach ($rows as $row) {
                 $buffer[] = [
-                    'tenantId'     => $tenantId,
-                    'date'         => $date,
+                    'tenantId' => $tenantId,
+                    'date' => $date,
                     'resourceType' => $row->resource_type ?? 'unclassified',
-                    'totalCost'    => (float) $row->total_cost,
-                    'totalCalls'   => (int)   $row->total_calls,
-                    'totalTokens'  => (int)   $row->total_tokens,
-                    'costCeiling'  => $costCeiling,
+                    'totalCost' => (float) $row->total_cost,
+                    'totalCalls' => (int) $row->total_calls,
+                    'totalTokens' => (int) $row->total_tokens,
+                    'costCeiling' => $costCeiling,
                 ];
             }
 
             // Flush when chunk size reached
             if (count($buffer) >= $chunk) {
                 $written += $this->flush($buffer, $dryRun);
-                $buffer   = [];
+                $buffer = [];
             }
 
             $current->addDay();
         }
 
         // Flush remainder
-        if (!empty($buffer)) {
+        if (! empty($buffer)) {
             $written += $this->flush($buffer, $dryRun);
         }
 
@@ -147,6 +151,7 @@ class BackfillUsageAggregates extends Command
                     $r['totalCalls'], $r['totalTokens'], $r['totalCost']
                 ));
             }
+
             return count($buffer);
         }
 
@@ -154,15 +159,15 @@ class BackfillUsageAggregates extends Command
             foreach ($buffer as $r) {
                 DB::table('usage_daily_aggregates')->updateOrInsert(
                     [
-                        'tenant_id'     => $r['tenantId'],
-                        'date'          => $r['date'],
+                        'tenant_id' => $r['tenantId'],
+                        'date' => $r['date'],
                         'resource_type' => $r['resourceType'],
                     ],
                     [
-                        'total_cost'    => $r['totalCost'],
-                        'total_calls'   => $r['totalCalls'],
-                        'total_tokens'  => $r['totalTokens'],
-                        'cost_ceiling'  => $r['costCeiling'],
+                        'total_cost' => $r['totalCost'],
+                        'total_calls' => $r['totalCalls'],
+                        'total_tokens' => $r['totalTokens'],
+                        'cost_ceiling' => $r['costCeiling'],
                         'calculated_at' => now(),
                     ],
                 );

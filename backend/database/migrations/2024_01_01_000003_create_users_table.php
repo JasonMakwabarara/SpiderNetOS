@@ -20,12 +20,12 @@ return new class extends Migration
             $table->timestamp('last_login_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
-            
+
             $table->unique(['tenant_id', 'email']);
             $table->index(['tenant_id', 'role']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('users');

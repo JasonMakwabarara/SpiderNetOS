@@ -18,8 +18,7 @@ class NodeActionRunner
     public function __construct(
         private readonly InferencePlaneClient $inference,
         private readonly CostGovernor $costGovernor,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $nodeConfig
@@ -76,8 +75,8 @@ class NodeActionRunner
                 'action' => 'agent_step',
                 'simulated' => true,
                 'instruction' => $instruction,
-                'output' => 'Simulated: "' . Str::limit($instruction, 80) . '" acknowledged by '
-                    . ($nodeConfig['agent_id'] ?? 'owning agent') . '. Configure INFERENCE_URL for real execution.',
+                'output' => 'Simulated: "'.Str::limit($instruction, 80).'" acknowledged by '
+                    .($nodeConfig['agent_id'] ?? 'owning agent').'. Configure INFERENCE_URL for real execution.',
                 'executed_at' => now()->toIso8601String(),
             ];
         }
@@ -86,10 +85,10 @@ class NodeActionRunner
         $quality = array_filter((array) ($context['quality_criteria'] ?? []));
 
         $systemPrompt = 'You are an operations agent executing one step of a Standard Operating Procedure for a business. '
-            . 'Perform the step using the tools available to you and report exactly what you did. '
-            . 'If the step cannot be completed, start your reply with "BLOCKED:" and state precisely what is missing.'
-            . ($tools !== [] ? ' Tools available: ' . implode(', ', $tools) . '.' : '')
-            . ($quality !== [] ? ' Success criteria for this SOP: ' . implode(' | ', $quality) . '.' : '');
+            .'Perform the step using the tools available to you and report exactly what you did. '
+            .'If the step cannot be completed, start your reply with "BLOCKED:" and state precisely what is missing.'
+            .($tools !== [] ? ' Tools available: '.implode(', ', $tools).'.' : '')
+            .($quality !== [] ? ' Success criteria for this SOP: '.implode(' | ', $quality).'.' : '');
 
         $result = $this->inference->generate(
             prompt: $instruction,
@@ -109,7 +108,7 @@ class NodeActionRunner
         // The agent saying it is blocked is a failed step, not a passed one —
         // silently marking blocked work "done" would corrupt the feedback loop.
         if (str_starts_with(ltrim($result['text']), 'BLOCKED:')) {
-            throw new \RuntimeException('Agent reported blocked: ' . Str::limit(ltrim($result['text']), 300));
+            throw new \RuntimeException('Agent reported blocked: '.Str::limit(ltrim($result['text']), 300));
         }
 
         return [

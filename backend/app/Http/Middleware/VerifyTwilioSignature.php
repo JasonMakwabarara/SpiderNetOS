@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -32,6 +33,7 @@ class VerifyTwilioSignature
 
         if (empty($authToken)) {
             Log::critical('Twilio auth token not configured — cannot verify webhook signature');
+
             return $this->reject('Twilio auth token not configured');
         }
 
@@ -39,25 +41,27 @@ class VerifyTwilioSignature
 
         if (empty($signature)) {
             Log::warning('voice.signature_missing', [
-                'ip'   => $request->ip(),
+                'ip' => $request->ip(),
                 'path' => $request->path(),
             ]);
             $this->incrementRejectionCounter();
+
             return $this->reject('Missing Twilio signature');
         }
 
-        $url  = $this->buildCanonicalUrl($request);
+        $url = $this->buildCanonicalUrl($request);
         $body = $this->buildSignatureBody($request);
 
         $expected = base64_encode(hash_hmac('sha1', $body, $authToken, true));
 
-        if (!hash_equals($expected, $signature)) {
+        if (! hash_equals($expected, $signature)) {
             Log::warning('voice.signature_rejected', [
-                'ip'       => $request->ip(),
-                'path'     => $request->path(),
-                'expected' => substr($expected, 0, 8) . '…',
+                'ip' => $request->ip(),
+                'path' => $request->path(),
+                'expected' => substr($expected, 0, 8).'…',
             ]);
             $this->incrementRejectionCounter();
+
             return $this->reject('Invalid Twilio signature');
         }
 
@@ -71,6 +75,7 @@ class VerifyTwilioSignature
         if (app()->environment('local', 'testing')) {
             return true;
         }
+
         return filter_var(env('TWILIO_SKIP_SIGNATURE_VERIFY', false), FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -95,7 +100,7 @@ class VerifyTwilioSignature
             $params = $request->post();
             ksort($params);
             foreach ($params as $key => $value) {
-                $url .= $key . $value;
+                $url .= $key.$value;
             }
         }
 
@@ -113,7 +118,7 @@ class VerifyTwilioSignature
     private function incrementRejectionCounter(): void
     {
         try {
-            \Illuminate\Support\Facades\Redis::incr('metrics:voice:signature_rejected_total');
+            Redis::incr('metrics:voice:signature_rejected_total');
         } catch (\Throwable) {
             // non-critical
         }

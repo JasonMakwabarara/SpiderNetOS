@@ -26,7 +26,9 @@ class DodoPaymentsAdapter
     private const WEBHOOK_TOLERANCE_SECONDS = 300;
 
     private string $baseUrl;
+
     private string $apiKey;
+
     private string $webhookSecret;
 
     public function __construct(array $config)
@@ -50,7 +52,7 @@ class DodoPaymentsAdapter
     }
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      * @return array{session_id: string, checkout_url: ?string}
      */
     public function createCheckoutSession(string $productId, array $metadata, string $returnUrl, string $cancelUrl): array
@@ -101,7 +103,7 @@ class DodoPaymentsAdapter
     /**
      * Start a recurring subscription checkout for a platform plan.
      *
-     * @param array<string, mixed> $metadata carries tenant_id + tenant_subscription_id so the webhook can reconcile.
+     * @param  array<string, mixed>  $metadata  carries tenant_id + tenant_subscription_id so the webhook can reconcile.
      * @return array{subscription_id?: string, checkout_url?: string, payment_link?: string}
      */
     public function createSubscriptionCheckout(string $productId, array $metadata, string $returnUrl, string $cancelUrl): array
@@ -169,7 +171,7 @@ class DodoPaymentsAdapter
      * One-off charge against a saved payment method (used to collect metered
      * usage overage at the end of a billing period).
      *
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function chargeOverage(string $customerId, int $amountCents, string $currency, array $metadata): array
     {
@@ -196,7 +198,7 @@ class DodoPaymentsAdapter
      *   expected       = base64(hmac_sha256(secret_bytes, signed_content))
      *   header format  = "v1,<base64sig>" (space-separated if multiple signing keys)
      *
-     * @param array<string, string> $headers Expects webhook-id, webhook-timestamp, webhook-signature (any case).
+     * @param  array<string, string>  $headers  Expects webhook-id, webhook-timestamp, webhook-signature (any case).
      */
     public function verifyWebhook(string $rawBody, array $headers): bool
     {

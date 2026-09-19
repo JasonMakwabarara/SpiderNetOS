@@ -12,27 +12,27 @@ from typing import Optional
 def load_secret(name: str, default: Optional[str] = None, required: bool = False) -> Optional[str]:
     """
     Load a secret from Docker secrets (production) or environment (development).
-    
+
     Priority:
     1. /run/secrets/{name} (Docker secrets)
     2. Environment variable {name.upper()}
     3. default parameter (if provided and not required)
     4. Raise error if required=True
-    
+
     Args:
         name: Secret name (lowercase, underscores)
         default: Default value if not found (only for non-required secrets)
         required: If True, raise error when secret not found
-        
+
     Returns:
         Secret value or default
-        
+
     Raises:
         RuntimeError: If required=True and secret not found
     """
     secret_path = f"/run/secrets/{name}"
     env_name = name.upper()
-    
+
     # Try Docker secret first (production)
     if os.path.exists(secret_path):
         try:
@@ -40,16 +40,16 @@ def load_secret(name: str, default: Optional[str] = None, required: bool = False
                 return f.read().strip()
         except (IOError, PermissionError):
             pass  # Fall through to env var
-    
+
     # Try environment variable (development fallback)
     env_value = os.getenv(env_name)
     if env_value is not None:
         return env_value
-    
+
     # Use default if provided
     if default is not None:
         return default
-    
+
     # Fail if required
     if required:
         raise RuntimeError(
@@ -57,7 +57,7 @@ def load_secret(name: str, default: Optional[str] = None, required: bool = False
             f"Provide it via Docker secret at {secret_path} "
             f"or environment variable {env_name}"
         )
-    
+
     return None
 
 

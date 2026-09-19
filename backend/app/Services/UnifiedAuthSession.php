@@ -42,7 +42,7 @@ class UnifiedAuthSession
 
     public static function tenantPayload(?Tenant $tenant): ?array
     {
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 

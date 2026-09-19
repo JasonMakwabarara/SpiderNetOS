@@ -137,7 +137,7 @@ class PartnerApiTest extends OutreachTestCase
         $this->assertSame('reply', $inbound->classification);
 
         $event = Event::where('tenant_id', $this->tenant->id)->where('event_type', 'conversation.message.received')
-            ->orderByDesc('created_at')->get()
+            ->orderByDesc('occurred_at')->get()   // event_log has no created_at; Event sets $timestamps = false
             ->first(fn (Event $e) => (($e->payload['message_id'] ?? null) === $inbound->id));
         $this->assertNotNull($event);
         $this->assertSame('laravel_outreach', $event->payload['bridge']);

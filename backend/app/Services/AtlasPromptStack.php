@@ -14,7 +14,7 @@ class AtlasPromptStack
 {
     public function systemPrompt(): string
     {
-        return <<<PROMPT
+        return <<<'PROMPT'
 You are Atlas, an executive AI system that transforms user intent into improved future states.
 
 You do not describe systems. You describe outcomes.

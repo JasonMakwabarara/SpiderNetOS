@@ -1,0 +1,50 @@
+# Which test suites exist, and which CI job runs each one.
+#
+# This file exists because four separate suites in this repository had never
+# executed in CI: the backend's full Postgres lane (its job died at a migrate
+# step), the cockpit's 64 vitest tests, 137 Python tests across the two planes,
+# and the integration/behavioural suite at tests/. Three of the four still
+# passed when finally run. The fourth had rotted, which is the point: a suite
+# nothing runs is documentation, and it decays like documentation.
+#
+# .github/check_suites_wired.py fails CI when a tests/ directory exists and is
+# neither listed here against a real workflow job, nor declared unwired with a
+# reason, an owner and a date to look again.
+
+version: 1
+
+suites:
+  - path: backend/tests
+    runs_in:
+      # Deliberately two, not one: CiFast is sqlite and fast (fail-fast signal
+      # plus driver parity — the varchar(16) bug was invisible on sqlite, and
+      # sqlite-only breakage is equally possible), backend-test-full is the
+      # authoritative Unit + Feature run on Postgres + Redis.
+      - workflow: ci.yml
+        job: backend-test-ci-fast
+      - workflow: ci.yml
+        job: backend-test-full
+
+  - path: cockpit/tests
+    runs_in:
+      - workflow: ci.yml
+        job: cockpit-build
+
+  - path: inference/tests
+    runs_in:
+      - workflow: python-ci.yml
+        job: pytest
+
+  - path: intelligence/tests
+    runs_in:
+      - workflow: python-ci.yml
+        job: pytest
+
+  - path: tests
+    runs_in:
+      # unit + behavioural need no infrastructure and run on every PR.
+      - workflow: python-ci.yml
+        job: repo-suites
+      # integration/chaos/client bring up containers or need a live server.
+      - workflow: integration-nightly.yml
+        job: integration

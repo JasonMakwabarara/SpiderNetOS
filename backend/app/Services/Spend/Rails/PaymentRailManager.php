@@ -32,7 +32,7 @@ class PaymentRailManager
             ->first();
 
         if ($integration === null) {
-            return new RecordOnlyRail();
+            return new RecordOnlyRail;
         }
 
         return new DodoPaymentsRailAdapter(
@@ -43,7 +43,7 @@ class PaymentRailManager
     /** @return array<string, mixed> */
     private function resolveCredentials(string $tenantId, ?string $credentialsRef): array
     {
-        if (!$credentialsRef) {
+        if (! $credentialsRef) {
             return [];
         }
 

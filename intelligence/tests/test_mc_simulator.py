@@ -2,12 +2,10 @@
 Tests for intelligence/atlas/mc_simulator.py — plan §12.5 / §12.9
 """
 
-import math
 import time
 import unittest
 
 from atlas.mc_simulator import simulate
-
 
 # Simple toy chain: chat_started → flow_running → completed | abandoned
 _MATRIX = {

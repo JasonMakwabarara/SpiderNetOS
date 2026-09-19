@@ -137,7 +137,7 @@ class PackGrowthService
      * the throttle window. Prevents passive signals (e.g. atlas_suggested,
      * pack_view) from inflating affinity on repeated views/retries.
      *
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     public function recordSignalThrottled(string $tenantId, string $signalType, ?string $packId = null, array $context = [], int $weight = 1, int $throttleSeconds = 86400): void
     {
@@ -164,7 +164,7 @@ class PackGrowthService
     }
 
     /**
-     * @param list<array<string, mixed>> $entries
+     * @param  list<array<string, mixed>>  $entries
      * @return list<array<string, mixed>>
      */
     public function personalizeCatalogue(string $tenantId, array $entries, array $installedPackIds = []): array
@@ -271,7 +271,7 @@ class PackGrowthService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      * @return array<string, int>
      */
     private function packAffinities(string $tenantId, array $profile): array
@@ -293,7 +293,7 @@ class PackGrowthService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      * @return array<string, int>
      */
     private function computeAffinitiesFromProfile(array $profile): array
@@ -367,8 +367,8 @@ class PackGrowthService
     }
 
     /**
-     * @param array<string, int> $affinities
-     * @param list<string> $installedPackIds
+     * @param  array<string, int>  $affinities
+     * @param  list<string>  $installedPackIds
      */
     private function scorePack(string $packId, array $profile, array $affinities, array $installedPackIds): int
     {
@@ -382,7 +382,7 @@ class PackGrowthService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      */
     private function growthReason(string $packId, array $profile, int $score): string
     {
@@ -404,7 +404,7 @@ class PackGrowthService
     }
 
     /**
-     * @param list<string> $baseOutcomes
+     * @param  list<string>  $baseOutcomes
      * @return list<string>
      */
     private function personalizedOutcomes(string $packId, string $industry, array $baseOutcomes): array

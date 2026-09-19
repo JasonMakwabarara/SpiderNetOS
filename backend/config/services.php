@@ -45,13 +45,13 @@ return [
 
         // Transformation Score weights (B6) — sum of positive weights should be 1.0
         'ts_weights' => [
-            'value'         => (float) env('ATLAS_TS_W_VALUE', 0.25),
-            'clarity'       => (float) env('ATLAS_TS_W_CLARITY', 0.15),
-            'emotional'     => (float) env('ATLAS_TS_W_EMOTIONAL', 0.20),
+            'value' => (float) env('ATLAS_TS_W_VALUE', 0.25),
+            'clarity' => (float) env('ATLAS_TS_W_CLARITY', 0.15),
+            'emotional' => (float) env('ATLAS_TS_W_EMOTIONAL', 0.20),
             'actionability' => (float) env('ATLAS_TS_W_ACTIONABILITY', 0.15),
-            'trust'         => (float) env('ATLAS_TS_W_TRUST', 0.15),
-            'cognitive'     => (float) env('ATLAS_TS_W_COGNITIVE', 0.05),
-            'leakage'       => (float) env('ATLAS_TS_W_LEAKAGE', 0.05),
+            'trust' => (float) env('ATLAS_TS_W_TRUST', 0.15),
+            'cognitive' => (float) env('ATLAS_TS_W_COGNITIVE', 0.05),
+            'leakage' => (float) env('ATLAS_TS_W_LEAKAGE', 0.05),
         ],
     ],
 

@@ -32,7 +32,7 @@ class GenerateDailyBriefJob implements ShouldQueue
     private string $targetDate;
 
     /**
-     * @param string|null $date  ISO date override (Y-m-d). Defaults to today.
+     * @param  string|null  $date  ISO date override (Y-m-d). Defaults to today.
      */
     public function __construct(?string $date = null)
     {
@@ -47,6 +47,7 @@ class GenerateDailyBriefJob implements ShouldQueue
 
         if ($tenants->isEmpty()) {
             Log::info('[DailyBrief] No active tenants — skipping.');
+
             return;
         }
 
@@ -54,16 +55,16 @@ class GenerateDailyBriefJob implements ShouldQueue
 
         foreach ($tenants as $tenantId) {
             $message = json_encode([
-                'id'        => (string) Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
-                'agent_id'  => 'atlas',
-                'intent'    => 'daily_brief',
-                'context'   => [
-                    'date'         => $this->targetDate,
+                'agent_id' => 'atlas',
+                'intent' => 'daily_brief',
+                'context' => [
+                    'date' => $this->targetDate,
                     'requested_at' => now()->toIso8601String(),
                 ],
-                'priority'  => 'low',
-                'version'   => '3.2',
+                'priority' => 'low',
+                'version' => '3.2',
             ]);
 
             Redis::rpush('agent:dispatch', $message);

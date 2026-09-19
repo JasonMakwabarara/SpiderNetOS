@@ -421,7 +421,9 @@ async def _tool_score_lead(context: Any, params: Dict[str, Any]) -> Dict[str, An
     if not lead_id or score is None or not tenant_id:
         return {"success": False, "error": "lead_id, score, and tenant_id are required."}
 
-    import httpx, os
+    import os
+
+    import httpx
 
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
     api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
@@ -454,7 +456,9 @@ async def _tool_update_lead_stage(context: Any, params: Dict[str, Any]) -> Dict[
     if not lead_id or not stage or not tenant_id:
         return {"success": False, "error": "lead_id, stage, and tenant_id are required."}
 
-    import httpx, os
+    import os
+
+    import httpx
 
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
     api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
@@ -483,7 +487,9 @@ async def _send_lead_message(context: Any, params: Dict[str, Any], channel: str)
     if not params.get("template_key") and not params.get("body"):
         return {"success": False, "error": "Provide either template_key or body."}
 
-    import httpx, os
+    import os
+
+    import httpx
 
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
     api_key = os.getenv("BACKEND_INTERNAL_KEY", "")
@@ -524,7 +530,9 @@ async def _tool_enroll_in_sequence(context: Any, params: Dict[str, Any]) -> Dict
     if not lead_id or not tenant_id:
         return {"success": False, "error": "lead_id and tenant_id are required."}
 
-    import httpx, os
+    import os
+
+    import httpx
 
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
     api_key = os.getenv("BACKEND_INTERNAL_KEY", "")

@@ -82,7 +82,7 @@ class FeaturePackInstaller
     }
 
     /**
-     * @param array<string, mixed> $manifest
+     * @param  array<string, mixed>  $manifest
      *
      * @throws EntitlementRequiredException
      */
@@ -122,7 +122,7 @@ class FeaturePackInstaller
      * minus its signatures block, against a configured publisher key. Skipped
      * for unsigned/placeholder packs unless feature_packs.require_signed is on.
      *
-     * @param array<string, mixed> $manifest
+     * @param  array<string, mixed>  $manifest
      */
     private function verifySignature(array $manifest, string $packId): void
     {
@@ -280,6 +280,6 @@ class FeaturePackInstaller
 
     private function packsRoot(): string
     {
-        return rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        return rtrim((string) config('feature_packs.root'), '/');
     }
 }

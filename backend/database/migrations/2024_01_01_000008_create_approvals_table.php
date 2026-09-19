@@ -24,12 +24,12 @@ return new class extends Migration
             $table->timestamp('responded_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['tenant_id', 'status']);
             $table->index(['tenant_id', 'approval_type', 'status']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('approvals');

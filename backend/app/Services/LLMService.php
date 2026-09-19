@@ -2,15 +2,18 @@
 
 namespace App\Services;
 
-use OpenAI;
-use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Log;
+use OpenAI;
 
 class LLMService
 {
     protected $client;
+
     protected $maxRetries = 3;
+
     protected $timeout = 30;
+
     protected $costLimit = 0.50;
 
     public function __construct()
@@ -37,10 +40,12 @@ class LLMService
                 }
 
                 return $response->choices[0]->message->content;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $retries++;
-                Log::warning("LLM retry {$retries}: " . $e->getMessage());
-                if ($retries >= $this->maxRetries) throw $e;
+                Log::warning("LLM retry {$retries}: ".$e->getMessage());
+                if ($retries >= $this->maxRetries) {
+                    throw $e;
+                }
                 sleep(1 * $retries);
             }
         }
@@ -50,6 +55,7 @@ class LLMService
     {
         $inputCost = $usage->promptTokens * 0.0000015;
         $outputCost = $usage->completionTokens * 0.000002;
+
         return $inputCost + $outputCost;
     }
 }

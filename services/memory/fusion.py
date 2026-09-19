@@ -4,12 +4,12 @@ Graph (Neo4j) + Vector (Qdrant/pgvector) + Episodic integration
 Theory: Tulving (episodic memory) + Knowledge Graphs
 """
 
-import asyncio
-from typing import Dict, List, Optional, Tuple, Any
+import os
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import numpy as np
-import torch
 
 
 @dataclass
@@ -38,23 +38,31 @@ class GraphMemory:
     Neo4j graph memory for structural patterns.
     Stores: agents, workflows, dependencies, execution paths
     """
-    
-    def __init__(self, uri: str = "bolt://localhost:7687", user: str = "neo4j", password: str = "spidernet"):
-        self.uri = uri
-        self.user = user
-        self.password = password
+
+    def __init__(
+        self,
+        uri: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
+    ):
+        # No credential default in the signature: a password written here is
+        # a password in the source tree, and the one nobody remembers to
+        # override. Absent config fails at connect time, loudly.
+        self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        self.user = user or os.getenv("NEO4J_USER", "neo4j")
+        self.password = password or os.getenv("NEO4J_PASSWORD")
         self._driver = None
-    
+
     async def connect(self):
         """Connect to Neo4j"""
         from neo4j import AsyncGraphDatabase
         self._driver = AsyncGraphDatabase.driver(self.uri, auth=(self.user, self.password))
-    
+
     async def close(self):
         """Close connection"""
         if self._driver:
             await self._driver.close()
-    
+
     async def create_agent_node(self, agent_id: str, agent_type: str, capabilities: List[str], tenant_id: str):
         """Create agent node in graph"""
         query = """
@@ -66,9 +74,9 @@ class GraphMemory:
         RETURN a
         """
         async with self._driver.session() as session:
-            await session.run(query, agent_id=agent_id, agent_type=agent_type, 
+            await session.run(query, agent_id=agent_id, agent_type=agent_type,
                             capabilities=capabilities, tenant_id=tenant_id)
-    
+
     async def create_workflow_node(self, workflow_id: str, workflow_type: str, complexity: float, tenant_id: str):
         """Create workflow node"""
         query = """
@@ -82,7 +90,7 @@ class GraphMemory:
         async with self._driver.session() as session:
             await session.run(query, workflow_id=workflow_id, workflow_type=workflow_type,
                             complexity=complexity, tenant_id=tenant_id)
-    
+
     async def create_dependency(self, from_id: str, to_id: str, dep_type: str = "DEPENDS_ON"):
         """Create dependency relationship"""
         query = f"""
@@ -93,7 +101,7 @@ class GraphMemory:
         """
         async with self._driver.session() as session:
             await session.run(query, from_id=from_id, to_id=to_id)
-    
+
     async def record_execution(self, plan_id: str, agent_id: str, outcome: str, reward: float, cost: float):
         """Record plan execution outcome"""
         query = """
@@ -105,7 +113,7 @@ class GraphMemory:
         async with self._driver.session() as session:
             await session.run(query, plan_id=plan_id, agent_id=agent_id,
                             outcome=outcome, reward=reward, cost=cost)
-    
+
     async def get_agent_dependencies(self, agent_id: str, depth: int = 2) -> List[Dict]:
         """Get agent dependency graph"""
         query = """
@@ -115,7 +123,7 @@ class GraphMemory:
         async with self._driver.session() as session:
             result = await session.run(query, agent_id=agent_id, depth=depth)
             return [record.data() async for record in result]
-    
+
     async def get_similar_workflows(self, workflow_type: str, outcome: str, limit: int = 5) -> List[Dict]:
         """Get workflows with similar type and outcome"""
         query = """
@@ -127,7 +135,7 @@ class GraphMemory:
         async with self._driver.session() as session:
             result = await session.run(query, workflow_type=workflow_type, outcome=outcome, limit=limit)
             return [record.data() async for record in result]
-    
+
     async def get_execution_path(self, plan_id: str) -> List[Dict]:
         """Get full execution path for a plan"""
         query = """
@@ -145,7 +153,7 @@ class VectorMemory:
     Qdrant: High-performance search
     pgvector: PostgreSQL integration
     """
-    
+
     def __init__(
         self,
         qdrant_host: str = "localhost",
@@ -156,21 +164,21 @@ class VectorMemory:
         self.qdrant_port = qdrant_port
         self.pg_connection = pg_connection
         self._qdrant_client = None
-    
+
     async def connect(self):
         """Connect to Qdrant"""
         from qdrant_client import QdrantClient
         self._qdrant_client = QdrantClient(host=self.qdrant_host, port=self.qdrant_port)
-    
+
     async def create_collection(self, name: str, dimension: int = 384, distance: str = "Cosine"):
         """Create vector collection"""
         from qdrant_client.models import Distance, VectorParams
-        
+
         self._qdrant_client.recreate_collection(
             collection_name=name,
             vectors_config=VectorParams(size=dimension, distance=Distance.COSINE)
         )
-    
+
     async def store_embedding(
         self,
         collection: str,
@@ -181,14 +189,14 @@ class VectorMemory:
     ):
         """Store vector with metadata"""
         from qdrant_client.models import PointStruct
-        
+
         payload = {**payload, 'tenant_id': tenant_id, 'timestamp': datetime.utcnow().isoformat()}
-        
+
         self._qdrant_client.upsert(
             collection_name=collection,
             points=[PointStruct(id=id, vector=embedding, payload=payload)]
         )
-    
+
     async def search_similar(
         self,
         collection: str,
@@ -200,11 +208,11 @@ class VectorMemory:
         """Semantic similarity search"""
         filter_condition = None
         if tenant_id:
-            from qdrant_client.models import FieldCondition, MatchValue, Filter
+            from qdrant_client.models import FieldCondition, Filter, MatchValue
             filter_condition = Filter(
                 must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))]
             )
-        
+
         results = self._qdrant_client.search(
             collection_name=collection,
             query_vector=query_vector,
@@ -212,7 +220,7 @@ class VectorMemory:
             query_filter=filter_condition,
             score_threshold=score_threshold
         )
-        
+
         return [
             {
                 'id': r.id,
@@ -221,7 +229,7 @@ class VectorMemory:
             }
             for r in results
         ]
-    
+
     async def hybrid_search(
         self,
         collection: str,
@@ -236,13 +244,13 @@ class VectorMemory:
             query_vector=query_vector,
             limit=top_k * 2  # Get more for re-ranking
         )
-        
+
         # Keyword re-ranking
         filtered = [
             r for r in results
             if keyword_filter.lower() in str(r.payload).lower()
         ]
-        
+
         return filtered[:top_k]
 
 
@@ -251,10 +259,10 @@ class EpisodicMemory:
     PostgreSQL-based episodic memory for RL replay buffer.
     Stores (state, action, reward, next_state, done) transitions.
     """
-    
+
     def __init__(self, db_pool):
         self.db_pool = db_pool
-    
+
     async def store_episode(
         self,
         tenant_id: str,
@@ -269,7 +277,7 @@ class EpisodicMemory:
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO cpl_replay_buffer 
+                INSERT INTO cpl_replay_buffer
                 (tenant_id, state, action, reward, next_state, done, metadata, priority, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 """,
@@ -283,7 +291,7 @@ class EpisodicMemory:
                 abs(reward) + 1e-6,  # Initial priority by reward magnitude
                 datetime.utcnow()
             )
-    
+
     async def sample_episodes(
         self,
         tenant_id: str,
@@ -303,13 +311,13 @@ class EpisodicMemory:
                 """,
                 tenant_id, priority_exponent, batch_size
             )
-        
+
         return [dict(row) for row in rows]
-    
+
     async def update_priorities(self, episode_ids: List[str], td_errors: List[float]):
         """Update priorities based on TD errors"""
         async with self.db_pool.acquire() as conn:
-            for episode_id, td_error in zip(episode_ids, td_errors):
+            for episode_id, td_error in zip(episode_ids, td_errors, strict=False):
                 await conn.execute(
                     """
                     UPDATE cpl_replay_buffer
@@ -324,13 +332,13 @@ class EpisodicMemory:
 class MemoryFusion:
     """
     Unified memory interface combining Graph, Vector, and Episodic memory.
-    
+
     Provides:
     - Semantic retrieval (vector similarity)
     - Structural context (graph neighbors)
     - Temporal patterns (episodic replay)
     """
-    
+
     def __init__(
         self,
         graph_memory: GraphMemory,
@@ -340,28 +348,27 @@ class MemoryFusion:
         self.graph = graph_memory
         self.vector = vector_memory
         self.episodic = episodic_memory
-    
+
     async def retrieve_context(self, query: MemoryQuery) -> List[MemoryResult]:
         """
         Retrieve fused context from all memory types.
-        
+
         Modes:
         - semantic: Vector similarity only
         - structural: Graph neighborhood only
         - both: Combined retrieval with re-ranking
         """
         results = []
-        
-        if query.mode in ("semantic", "both"):
-            # Vector similarity search
-            if query.query_embedding:
+
+        # Vector similarity search
+        if query.mode in ("semantic", "both") and query.query_embedding:
                 vector_results = await self.vector.search_similar(
                     collection="system_memory",
                     query_vector=query.query_embedding,
                     top_k=query.top_k,
                     tenant_id=query.tenant_id
                 )
-                
+
                 for r in vector_results:
                     results.append(MemoryResult(
                         content=r['payload'].get('content', ''),
@@ -370,18 +377,18 @@ class MemoryFusion:
                         metadata=r['payload'],
                         embedding=None
                     ))
-        
+
         if query.mode in ("structural", "both"):
             # Graph context (if query contains entity IDs)
             # This would need entity extraction from query
             pass
-        
+
         # Re-ranking for "both" mode
         if query.mode == "both":
             results = self._rerank_results(results, query.recency_weight)
-        
+
         return results[:query.top_k]
-    
+
     def _rerank_results(
         self,
         results: List[MemoryResult],
@@ -389,11 +396,11 @@ class MemoryFusion:
     ) -> List[MemoryResult]:
         """Re-rank results combining score + recency + source diversity"""
         scored = []
-        
+
         for r in results:
             # Base score
             score = r.score
-            
+
             # Recency boost
             timestamp_str = r.metadata.get('timestamp')
             if timestamp_str:
@@ -402,16 +409,16 @@ class MemoryFusion:
                     hours_ago = (datetime.utcnow() - timestamp).total_seconds() / 3600
                     recency_boost = recency_weight * np.exp(-hours_ago / 24)  # Decay over 24h
                     score += recency_boost
-                except:
+                except Exception:
                     pass
-            
+
             scored.append((score, r))
-        
+
         # Sort by combined score
         scored.sort(key=lambda x: x[0], reverse=True)
-        
+
         return [r for _, r in scored]
-    
+
     async def record_execution_episode(
         self,
         tenant_id: str,
@@ -427,7 +434,7 @@ class MemoryFusion:
     ):
         """
         Record complete execution episode across all memory types.
-        
+
         Stores:
         - Graph: Execution path and relationships
         - Episodic: RL training data
@@ -435,7 +442,7 @@ class MemoryFusion:
         """
         # Store in graph
         await self.graph.record_execution(plan_id, agent_id, outcome, reward, cost)
-        
+
         # Store in episodic memory
         await self.episodic.store_episode(
             tenant_id=tenant_id,
@@ -446,7 +453,7 @@ class MemoryFusion:
             done=done,
             metadata={'plan_id': plan_id, 'agent_id': agent_id, 'cost': cost}
         )
-        
+
         # Store in vector memory (for semantic retrieval)
         content = f"Plan {plan_id} executed by {agent_id} with outcome {outcome}, reward {reward}"
         await self.vector.store_embedding(

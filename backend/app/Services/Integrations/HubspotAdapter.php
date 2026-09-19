@@ -20,25 +20,25 @@ class HubspotAdapter extends CrmAdapter
     public function upsertContact(array $contact): array
     {
         $token = $this->credentials['private_app_token'] ?? null;
-        if (!$token) {
+        if (! $token) {
             return ['success' => false, 'contact_id' => null, 'error' => 'Missing HubSpot token'];
         }
 
         try {
             $properties = array_filter([
-                'firstname'   => explode(' ', $contact['name'])[0] ?? $contact['name'],
-                'lastname'    => explode(' ', $contact['name'])[1] ?? '',
-                'phone'       => $contact['phone'] ?? null,
-                'email'       => $contact['email'] ?? null,
+                'firstname' => explode(' ', $contact['name'])[0] ?? $contact['name'],
+                'lastname' => explode(' ', $contact['name'])[1] ?? '',
+                'phone' => $contact['phone'] ?? null,
+                'email' => $contact['email'] ?? null,
             ]);
 
             // Try to find by phone or email first (upsert)
-            $searchResp = Http::withToken($token)->post(self::BASE_URL . '/crm/v3/objects/contacts/search', [
+            $searchResp = Http::withToken($token)->post(self::BASE_URL.'/crm/v3/objects/contacts/search', [
                 'filterGroups' => [[
                     'filters' => [[
                         'propertyName' => 'phone',
-                        'operator'     => 'EQ',
-                        'value'        => $contact['phone'],
+                        'operator' => 'EQ',
+                        'value' => $contact['phone'],
                     ]],
                 ]],
                 'properties' => ['hs_object_id', 'phone', 'email'],
@@ -51,18 +51,19 @@ class HubspotAdapter extends CrmAdapter
 
             if ($existingId) {
                 // Update existing
-                Http::withToken($token)->patch(self::BASE_URL . "/crm/v3/objects/contacts/{$existingId}", [
+                Http::withToken($token)->patch(self::BASE_URL."/crm/v3/objects/contacts/{$existingId}", [
                     'properties' => $properties,
                 ]);
+
                 return ['success' => true, 'contact_id' => $existingId, 'error' => null];
             }
 
             // Create new
-            $createResp = Http::withToken($token)->post(self::BASE_URL . '/crm/v3/objects/contacts', [
+            $createResp = Http::withToken($token)->post(self::BASE_URL.'/crm/v3/objects/contacts', [
                 'properties' => $properties,
             ]);
 
-            if (!$createResp->successful()) {
+            if (! $createResp->successful()) {
                 return ['success' => false, 'contact_id' => null, 'error' => 'HubSpot create failed'];
             }
 
@@ -70,6 +71,7 @@ class HubspotAdapter extends CrmAdapter
 
         } catch (\Throwable $e) {
             Log::error('hubspot.upsert_contact_failed', ['error' => $e->getMessage()]);
+
             return ['success' => false, 'contact_id' => null, 'error' => $e->getMessage()];
         }
     }
@@ -77,23 +79,23 @@ class HubspotAdapter extends CrmAdapter
     public function logCallActivity(array $activity): bool
     {
         $token = $this->credentials['private_app_token'] ?? null;
-        if (!$token) {
+        if (! $token) {
             return false;
         }
 
         try {
             $notes = "Duration: {$activity['duration_seconds']}s | Sentiment: {$activity['sentiment']}\n\n{$activity['summary']}";
-            if (!empty($activity['transcript_url'])) {
+            if (! empty($activity['transcript_url'])) {
                 $notes .= "\n\nTranscript: {$activity['transcript_url']}";
             }
 
-            $resp = Http::withToken($token)->post(self::BASE_URL . '/crm/v3/objects/notes', [
+            $resp = Http::withToken($token)->post(self::BASE_URL.'/crm/v3/objects/notes', [
                 'properties' => [
-                    'hs_note_body'      => $notes,
-                    'hs_timestamp'      => now()->toIso8601String(),
+                    'hs_note_body' => $notes,
+                    'hs_timestamp' => now()->toIso8601String(),
                 ],
                 'associations' => [[
-                    'to'    => ['id' => $activity['contact_id']],
+                    'to' => ['id' => $activity['contact_id']],
                     'types' => [['associationCategory' => 'HUBSPOT_DEFINED', 'associationTypeId' => 202]],
                 ]],
             ]);
@@ -107,20 +109,20 @@ class HubspotAdapter extends CrmAdapter
     public function createTask(array $task): bool
     {
         $token = $this->credentials['private_app_token'] ?? null;
-        if (!$token) {
+        if (! $token) {
             return false;
         }
 
         try {
-            $resp = Http::withToken($token)->post(self::BASE_URL . '/crm/v3/objects/tasks', [
+            $resp = Http::withToken($token)->post(self::BASE_URL.'/crm/v3/objects/tasks', [
                 'properties' => [
-                    'hs_task_subject'  => $task['task'],
-                    'hs_task_status'   => 'NOT_STARTED',
+                    'hs_task_subject' => $task['task'],
+                    'hs_task_status' => 'NOT_STARTED',
                     'hs_task_priority' => 'MEDIUM',
-                    'hs_timestamp'     => $task['due_date'] ? date('c', strtotime($task['due_date'])) : now()->addDay()->toIso8601String(),
+                    'hs_timestamp' => $task['due_date'] ? date('c', strtotime($task['due_date'])) : now()->addDay()->toIso8601String(),
                 ],
                 'associations' => [[
-                    'to'    => ['id' => $task['contact_id']],
+                    'to' => ['id' => $task['contact_id']],
                     'types' => [['associationCategory' => 'HUBSPOT_DEFINED', 'associationTypeId' => 204]],
                 ]],
             ]);

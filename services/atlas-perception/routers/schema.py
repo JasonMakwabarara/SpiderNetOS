@@ -1,6 +1,7 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
-from uuid import UUID
+﻿from uuid import UUID
+
 import asyncpg
+from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/atlas", tags=["schema"])
 
@@ -40,7 +41,7 @@ async def get_schema_metadata(
             "attributes": {}
         }
     for attr in attributes:
-        for slug, data in schema_map.items():
+        for _slug, data in schema_map.items():
             if data["object_id"] == str(attr['object_id']):
                 data["attributes"][attr['api_slug']] = attr['type']
 

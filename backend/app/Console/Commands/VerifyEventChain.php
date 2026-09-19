@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class VerifyEventChain extends Command
 {
     protected $signature = 'events:verify-chain {tenant : Tenant UUID}';
+
     protected $description = 'Verify event hash chain integrity for tenant stream';
 
     public function handle(TenantKeyManager $keyManager): int
@@ -18,6 +19,7 @@ class VerifyEventChain extends Command
 
         if ($events->isEmpty()) {
             $this->warn("No events found for tenant {$tenantId}");
+
             return self::SUCCESS;
         }
 
@@ -58,7 +60,7 @@ class VerifyEventChain extends Command
                 break;
             }
 
-            if (!$computedMatches) {
+            if (! $computedMatches) {
                 $this->error("Hash mismatch at seq {$event->sequence_num}");
                 $ok = false;
                 break;
@@ -70,6 +72,7 @@ class VerifyEventChain extends Command
 
         if ($ok) {
             $this->info("Event chain valid for {$count} events (tenant {$tenantId}).");
+
             return self::SUCCESS;
         }
 

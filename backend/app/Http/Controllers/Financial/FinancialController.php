@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\Financial;
 
 use App\Http\Controllers\Controller;
+use App\Models\Budget;
+use App\Models\FinancialAlert;
+use App\Models\FinancialReport;
+use App\Models\TaxRate;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use App\Models\Budget;
-use App\Models\TaxRate;
-use App\Models\FinancialAlert;
+use App\Services\Financial\FinancialGovernor;
+use App\Services\Financial\ReportingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\Financial\ReportingService;
-use App\Services\Financial\FinancialGovernor;
 
 class FinancialController extends Controller
 {
@@ -55,8 +56,8 @@ class FinancialController extends Controller
     public function reports(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
-        $reports = \App\Models\FinancialReport::forTenant($tenant->id)
+
+        $reports = FinancialReport::forTenant($tenant->id)
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 20));
 
@@ -91,7 +92,7 @@ class FinancialController extends Controller
     public function walletTransactions(Request $request, string $walletId): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $transactions = WalletTransaction::forTenant($tenant->id)
             ->where('wallet_id', $walletId)
             ->orderByDesc('created_at')

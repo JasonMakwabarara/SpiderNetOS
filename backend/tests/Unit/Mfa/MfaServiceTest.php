@@ -18,7 +18,7 @@ class MfaServiceTest extends TestCase
 
     public function test_rfc6238_sha1_vectors(): void
     {
-        $svc = new MfaService();
+        $svc = new MfaService;
         $this->assertSame('287082', $svc->codeAt(self::RFC_SECRET, 59));
         $this->assertSame('081804', $svc->codeAt(self::RFC_SECRET, 1111111109));
         $this->assertSame('005924', $svc->codeAt(self::RFC_SECRET, 1234567890));
@@ -27,7 +27,7 @@ class MfaServiceTest extends TestCase
 
     public function test_verify_accepts_current_code(): void
     {
-        $svc = new MfaService();
+        $svc = new MfaService;
         $secret = $svc->generateSecret();
         $t = 1_700_000_000;
         $this->assertTrue($svc->verify($secret, $svc->codeAt($secret, $t), $t));
@@ -35,7 +35,7 @@ class MfaServiceTest extends TestCase
 
     public function test_verify_tolerates_one_period_drift(): void
     {
-        $svc = new MfaService();
+        $svc = new MfaService;
         $secret = $svc->generateSecret();
         $t = 1_700_000_000;
         // Code from the previous 30s window still accepted (window=1).
@@ -46,7 +46,7 @@ class MfaServiceTest extends TestCase
 
     public function test_verify_rejects_wrong_and_malformed(): void
     {
-        $svc = new MfaService();
+        $svc = new MfaService;
         $secret = $svc->generateSecret();
         $t = 1_700_000_000;
         $this->assertFalse($svc->verify($secret, '000000', $t));
@@ -56,7 +56,7 @@ class MfaServiceTest extends TestCase
 
     public function test_recovery_codes_shape(): void
     {
-        $codes = (new MfaService())->generateRecoveryCodes(10);
+        $codes = (new MfaService)->generateRecoveryCodes(10);
         $this->assertCount(10, $codes);
         foreach ($codes as $c) {
             $this->assertMatchesRegularExpression('/^[0-9a-f]{10}$/', $c);

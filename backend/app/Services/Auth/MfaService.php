@@ -13,7 +13,9 @@ namespace App\Services\Auth;
 final class MfaService
 {
     private const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
     private const PERIOD = 30;
+
     private const DIGITS = 6;
 
     /** New base32 shared secret. */
@@ -78,11 +80,11 @@ final class MfaService
     {
         $key = $this->base32Decode($secret);
         $hash = hash_hmac('sha1', pack('J', $counter), $key, true); // J = 64-bit big-endian
-        $offset = ord($hash[strlen($hash) - 1]) & 0x0f;
-        $truncated = ((ord($hash[$offset]) & 0x7f) << 24)
-            | ((ord($hash[$offset + 1]) & 0xff) << 16)
-            | ((ord($hash[$offset + 2]) & 0xff) << 8)
-            | (ord($hash[$offset + 3]) & 0xff);
+        $offset = ord($hash[strlen($hash) - 1]) & 0x0F;
+        $truncated = ((ord($hash[$offset]) & 0x7F) << 24)
+            | ((ord($hash[$offset + 1]) & 0xFF) << 16)
+            | ((ord($hash[$offset + 2]) & 0xFF) << 8)
+            | (ord($hash[$offset + 3]) & 0xFF);
 
         return str_pad((string) ($truncated % (10 ** self::DIGITS)), self::DIGITS, '0', STR_PAD_LEFT);
     }

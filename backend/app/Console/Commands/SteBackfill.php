@@ -37,20 +37,26 @@ class SteBackfill extends Command
         StateTransitionProjection $projection,
         EventStore $eventStore,
     ): int {
-        $confirm  = (bool) $this->option('confirm');
-        $from     = $this->option('from');
-        $to       = $this->option('to');
+        $confirm = (bool) $this->option('confirm');
+        $from = $this->option('from');
+        $to = $this->option('to');
         $tenantId = $this->option('tenant');
-        $chain    = $this->option('chain');
-        $chunkSz  = max(10, (int) $this->option('chunk'));
+        $chain = $this->option('chain');
+        $chunkSz = max(10, (int) $this->option('chunk'));
 
-        $additive = $confirm && !empty($from);
+        $additive = $confirm && ! empty($from);
 
         // --- 1. Count in scope -------------------------------------------------
         $q = Event::query()->orderBy('sequence_num');
-        if ($from)     $q->where('occurred_at', '>=', $from);
-        if ($to)       $q->where('occurred_at', '<=', $to);
-        if ($tenantId) $q->where('tenant_id', $tenantId);
+        if ($from) {
+            $q->where('occurred_at', '>=', $from);
+        }
+        if ($to) {
+            $q->where('occurred_at', '<=', $to);
+        }
+        if ($tenantId) {
+            $q->where('tenant_id', $tenantId);
+        }
 
         $total = (clone $q)->count();
         $this->info(sprintf(
@@ -58,34 +64,36 @@ class SteBackfill extends Command
             $total, $from ?: '-', $to ?: '-', $tenantId ?: 'all', $chain ?: 'all'
         ));
 
-        if (!$confirm) {
+        if (! $confirm) {
             $this->line('DRY-RUN. Pass --confirm to execute.');
+
             return self::SUCCESS;
         }
 
         if ($total === 0) {
             $this->warn('Nothing to replay.');
+
             return self::SUCCESS;
         }
 
         // --- 2. Emit started event (outside transaction so it survives failures)
         $this->emitAudit($eventStore, 'ste.backfill.started', [
-            'mode'           => $additive ? 'additive' : 'destructive',
-            'tenant_id'      => $tenantId,
-            'chain'          => $chain,
-            'from'           => $from,
-            'to'             => $to,
-            'expected_rows'  => $total,
+            'mode' => $additive ? 'additive' : 'destructive',
+            'tenant_id' => $tenantId,
+            'chain' => $chain,
+            'from' => $from,
+            'to' => $to,
+            'expected_rows' => $total,
         ]);
 
-        $start   = microtime(true);
+        $start = microtime(true);
         $written = 0;
         $unmappedBefore = DB::table('ste_unmapped_events')->count();
 
         try {
             DB::transaction(function () use ($q, $projection, &$written, $chunkSz, $additive, $tenantId, $chain) {
                 // Destructive mode: wipe projections first
-                if (!$additive) {
+                if (! $additive) {
                     $this->truncateProjections($tenantId, $chain);
                 }
 
@@ -101,21 +109,23 @@ class SteBackfill extends Command
             $unmappedAfter = DB::table('ste_unmapped_events')->count();
 
             $this->emitAudit($eventStore, 'ste.backfill.completed', [
-                'rows_written'         => $written,
-                'duration_ms'          => $duration,
+                'rows_written' => $written,
+                'duration_ms' => $duration,
                 'unmapped_types_delta' => max(0, $unmappedAfter - $unmappedBefore),
             ]);
 
             $this->info("Backfill complete: {$written} events in {$duration}ms.");
+
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->emitAudit($eventStore, 'ste.backfill.failed', [
                 'rows_written_before_failure' => $written,
-                'exception_class'             => get_class($e),
-                'message'                     => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
             ]);
 
-            $this->error('Backfill failed: ' . $e->getMessage());
+            $this->error('Backfill failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -129,11 +139,13 @@ class SteBackfill extends Command
                 ->delete();
             DB::table('ste_session_states')->where('tenant_id', $tenantId)->delete();
             DB::table('ste_tenant_states')->where('tenant_id', $tenantId)->delete();
+
             return;
         }
 
         if ($chain) {
             DB::table('ste_transitions')->where('chain', $chain)->delete();
+
             // state tables aren't scoped per chain; leave them for full-scope truncate
             return;
         }
@@ -146,12 +158,12 @@ class SteBackfill extends Command
     {
         try {
             $eventStore->append(
-                tenantId:      '00000000-0000-0000-0000-000000000000',
+                tenantId: '00000000-0000-0000-0000-000000000000',
                 aggregateType: 'ste_backfill',
-                aggregateId:   (string) Str::uuid(),
-                eventType:     $eventType,
-                payload:       $payload,
-                metadata:      ['command' => 'ste:backfill'],
+                aggregateId: (string) Str::uuid(),
+                eventType: $eventType,
+                payload: $payload,
+                metadata: ['command' => 'ste:backfill'],
             );
         } catch (\Throwable $e) {
             // Audit failure should not break the command

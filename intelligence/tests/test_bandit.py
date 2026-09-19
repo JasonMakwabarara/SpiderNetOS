@@ -12,7 +12,7 @@ Verifies:
 """
 import unittest
 
-from atlas.bandit import BanditArm, ThompsonBandit, SelectionResult
+from atlas.bandit import BanditArm, SelectionResult, ThompsonBandit
 
 
 def make_arm(

@@ -6,8 +6,10 @@ namespace Tests\Feature\Financial;
 
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\ApprovalEngine;
 use App\Services\Financial\DocumentNumberService;
 use App\Services\Financial\LedgerService;
 use App\Services\Financial\PaymentService;
@@ -72,7 +74,7 @@ class DefectRegressionTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertDatabaseHas('payments', ['id' => $first->id, 'idempotency_key' => 'key-123']);
-        $this->assertSame(1, \App\Models\Payment::forTenant($tenant->id)->count());
+        $this->assertSame(1, Payment::forTenant($tenant->id)->count());
     }
 
     // D2: recording a payment against an invoice marks it paid (was fatal).
@@ -237,7 +239,7 @@ class DefectRegressionTest extends TestCase
     {
         $tenant = $this->createTenant();
         $user = $this->createUser($tenant);
-        $engine = app(\App\Services\ApprovalEngine::class);
+        $engine = app(ApprovalEngine::class);
 
         $approval = $engine->createApproval(
             $tenant->id,

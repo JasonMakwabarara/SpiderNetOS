@@ -12,28 +12,28 @@ Tests:
 """
 
 import asyncio
-import pytest
 
+import pytest
 from agents.voice_agent import VoiceAgent, VoiceContext
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
 
 def make_ctx(**overrides) -> VoiceContext:
-    defaults = dict(
-        tenant_id="t-001",
-        agent_id="voice_receptionist",
-        call_sid="CAtest001",
-        caller_number="+15555551234",
-        caller_input="I'd like to book an appointment",
-        voice_number="+15555557890",
-        transcript=[],
-        tool_allowlist=None,    # permit-all by default
-        approval_policy="off",
-        config={"business_name": "Acme Corp"},
-        memory_graph=None,
-        safety_guard=None,
-    )
+    defaults = {
+        "tenant_id": "t-001",
+        "agent_id": "voice_receptionist",
+        "call_sid": "CAtest001",
+        "caller_number": "+15555551234",
+        "caller_input": "I'd like to book an appointment",
+        "voice_number": "+15555557890",
+        "transcript": [],
+        "tool_allowlist": None,    # permit-all by default
+        "approval_policy": "off",
+        "config": {"business_name": "Acme Corp"},
+        "memory_graph": None,
+        "safety_guard": None,
+    }
     defaults.update(overrides)
     return VoiceContext(**defaults)
 
