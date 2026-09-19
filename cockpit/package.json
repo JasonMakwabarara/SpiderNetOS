@@ -16,7 +16,7 @@
     "pinia": "^2.1.7",
     "pusher-js": "^8.4.0",
     "vue": "^3.4.38",
-    "vue-router": "^4.4.3"
+    "vue-router": "^5.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.2",
