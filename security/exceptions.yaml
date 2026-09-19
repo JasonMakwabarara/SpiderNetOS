@@ -65,3 +65,40 @@ exceptions:
     owner: jason
     review_date: 2026-10-19
 
+  - rule_id: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+    locations:
+      - ops/*.py (16)
+      - intelligence/core/deepseek_client.py (2)
+      - intelligence/core/simulation_aware_planner.py (2)
+      - services/simulation-service/engine/*.py (2)
+      - ops/improve-landing-ui.py, ops/fix-sites-direct.py, ops/fix-all-sites-ui.py, ops/ai-fix-builds.py (4)
+    classification: FALSE_POSITIVE
+    reason: >
+      An `audit.` rule, which semgrep raises to ask for human review rather than
+      to assert a bug. Reviewed: every URL is assembled from a module constant
+      (OLLAMA), an instance attribute set from configuration (self.ollama_url,
+      self.base_url) or an f-string over a port number taken from a static dict
+      in the same file. None is derived from a request, an inbound message or
+      any other attacker-reachable value, so there is no SSRF here. If one of
+      these ever takes a URL from outside, this entry stops being true and the
+      review date is when to check.
+    owner: jason
+    review_date: 2027-03-19
+
+  - rule_id: generic.nginx.security.missing-internal.missing-internal
+    locations:
+      - frontend/nginx.conf:39
+      - frontend/nginx.conf:54
+      - frontend/nginx.conf:65
+      - frontend/nginx.conf:76
+    classification: FALSE_POSITIVE
+    reason: >
+      The `internal` directive marks a location reachable only by an internal
+      redirect (X-Accel-Redirect / X-Sendfile). These four are the public
+      gateway's own proxy routes — /api/, /api/v2/, the enterprise and SCIM
+      paths. Adding `internal` would make every one of them return 404 to real
+      clients, which is to say the rule is describing a different kind of
+      location than these are.
+    owner: jason
+    review_date: 2027-03-19
+

@@ -4,6 +4,7 @@ Graph (Neo4j) + Vector (Qdrant/pgvector) + Episodic integration
 Theory: Tulving (episodic memory) + Knowledge Graphs
 """
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -38,10 +39,18 @@ class GraphMemory:
     Stores: agents, workflows, dependencies, execution paths
     """
 
-    def __init__(self, uri: str = "bolt://localhost:7687", user: str = "neo4j", password: str = "spidernet"):
-        self.uri = uri
-        self.user = user
-        self.password = password
+    def __init__(
+        self,
+        uri: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
+    ):
+        # No credential default in the signature: a password written here is
+        # a password in the source tree, and the one nobody remembers to
+        # override. Absent config fails at connect time, loudly.
+        self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        self.user = user or os.getenv("NEO4J_USER", "neo4j")
+        self.password = password or os.getenv("NEO4J_PASSWORD")
         self._driver = None
 
     async def connect(self):
