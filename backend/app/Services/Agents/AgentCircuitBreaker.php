@@ -58,6 +58,18 @@ class AgentCircuitBreaker
      * tripped. A paused scope blocks everything; a demoted scope blocks only
      * send/irreversible tool risks.
      */
+    /**
+     * Can the breaker be consulted at all?
+     *
+     * `isPaused()` returns null both when nothing is tripped and when the
+     * store cannot be read, and those are opposite facts for a caller about
+     * to send something. This separates them.
+     */
+    public function available(): bool
+    {
+        return self::hasTable('tenant_agent_states');
+    }
+
     public function isPaused(string $tenantId, ?string $agentId = null, ?string $skillSlug = null, ?string $toolRisk = null): ?string
     {
         if (! self::hasTable('tenant_agent_states')) {

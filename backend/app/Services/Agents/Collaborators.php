@@ -53,6 +53,9 @@ final class Collaborators
     /** AgentCircuitBreaker::isPaused(tenantId, agentId = null, skillSlug = null, toolRisk = null): ?string */
     public const CIRCUIT_BREAKER = 'App\Services\Agents\AgentCircuitBreaker';
 
+    /** Tool risks that must refuse when the breaker cannot be consulted. */
+    private const FAIL_CLOSED_RISKS = ['send', 'irreversible'];
+
     public static function has(string $class): bool
     {
         return app()->bound($class) || class_exists($class);
@@ -186,18 +189,40 @@ final class Collaborators
     {
         $breaker = self::resolve(self::CIRCUIT_BREAKER);
         if ($breaker === null) {
-            return null;
+            return self::unanswerable($toolRisk, 'the circuit breaker is not installed');
+        }
+
+        if (method_exists($breaker, 'available') && ! $breaker->available()) {
+            return self::unanswerable($toolRisk, 'the circuit breaker store cannot be read');
         }
 
         try {
             $reason = $breaker->isPaused($tenantId, $agentId, $skillSlug, $toolRisk);
         } catch (\Throwable $e) {
-            Log::warning('agent circuit breaker check failed; treating as open', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            Log::warning('agent circuit breaker check failed', ['tenant_id' => $tenantId, 'tool_risk' => $toolRisk, 'error' => $e->getMessage()]);
 
-            return null;
+            return self::unanswerable($toolRisk, 'the circuit breaker could not be read');
         }
 
         return is_string($reason) && $reason !== '' ? $reason : null;
+    }
+
+    /**
+     * What an unanswerable breaker check means, by risk.
+     *
+     * Reading and drafting degrade open: a database hiccup should not stop
+     * someone being helped, and nothing has left the building. Sending and
+     * irreversible actions degrade closed, because absence of evidence of
+     * prohibition is not evidence of authorization — and a wrongly-sent
+     * message cannot be unsent once the check comes back online.
+     */
+    private static function unanswerable(?string $toolRisk, string $why): ?string
+    {
+        if ($toolRisk === null || ! in_array($toolRisk, self::FAIL_CLOSED_RISKS, true)) {
+            return null;
+        }
+
+        return $why.', so an action that leaves the building cannot be authorised';
     }
 
     /** Best-effort BrainSyncService::syncIfStale (never fails a run). */

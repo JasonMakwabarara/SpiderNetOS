@@ -16,6 +16,7 @@ use App\Services\Brain\BrainManifest;
 use App\Services\Brain\BrainMarkdown;
 use App\Services\Brain\BrainStore;
 use App\Services\Brain\BrainSyncService;
+use App\Services\Brain\BrainVisibility;
 use App\Services\FeatureFlag;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -227,7 +228,16 @@ class BrainController extends Controller
         return response()->json(['data' => ['written' => $written, 'synced_at' => now()->toIso8601String()]]);
     }
 
-    /** GET /brain/search?q= — LIKE over title/path/content; pgvector retrieval lands with BrainRetriever. */
+    /**
+     * GET /brain/search?q= — LIKE over title/path/content; pgvector retrieval
+     * lands with BrainRetriever.
+     *
+     * Scoped by `BrainVisibility::forPerson()`. The tenant's own people may
+     * search their own `personal` files — that is what the manifest means by
+     * "visible only to the tenant's own users" — but `confidential` (finance,
+     * reports, the subscriber list) needs admin. The number of hits held back
+     * is returned; what was in them is not.
+     */
     public function search(Request $request): JsonResponse
     {
         $tenantId = $this->tenantId($request);
@@ -242,15 +252,25 @@ class BrainController extends Controller
         $limit = min(50, max(1, (int) $request->query('limit', 20)));
         $term = '%'.str_replace(['%', '_'], ['\%', '\_'], $q).'%';
 
-        $files = BrainFile::forTenant($tenantId)
-            ->where(fn ($w) => $w->where('content', 'like', $term)->orWhere('title', 'like', $term)->orWhere('path', 'like', $term))
+        $user = $request->user();
+        $visible = BrainVisibility::forPerson($user !== null && $user->isAdmin());
+
+        $matches = BrainFile::forTenant($tenantId)
+            ->where('path', 'not like', 'workspaces/%')
+            ->where(fn ($w) => $w->where('content', 'like', $term)->orWhere('title', 'like', $term)->orWhere('path', 'like', $term));
+
+        $files = $matches->clone()
+            ->whereIn('data_class', $visible)
             ->orderBy('path')
             ->limit($limit)
             ->get();
 
+        $withheld = $matches->clone()->whereNotIn('data_class', $visible)->count();
+
         $hits = [];
         foreach ($files as $file) {
             if ($this->manifest->isAgentPrivate($file->path)) {
+                $withheld++;
                 continue;
             }
             [$section, $snippet] = self::locate((string) $file->content, $q);
@@ -264,7 +284,10 @@ class BrainController extends Controller
             ];
         }
 
-        return response()->json(['data' => $hits, 'meta' => ['q' => $q, 'mode' => 'like']]);
+        return response()->json([
+            'data' => $hits,
+            'meta' => ['q' => $q, 'mode' => 'like', 'withheld' => $withheld],
+        ]);
     }
 
     public function proposals(Request $request): JsonResponse

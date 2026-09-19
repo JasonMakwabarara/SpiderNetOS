@@ -6,6 +6,8 @@ namespace App\Services\Tools\Brain;
 
 use App\Models\BrainFile;
 use App\Services\Agents\RunContext;
+use App\Services\Brain\BrainManifest;
+use App\Services\Brain\BrainVisibility;
 use App\Services\Tools\ToolContract;
 use App\Services\Tools\ToolResult;
 
@@ -13,9 +15,17 @@ use App\Services\Tools\ToolResult;
  * Case-insensitive LIKE search over the tenant's brain files (path, title,
  * content). The pgsql-only embedding retriever (BrainRetriever, PR 3) will
  * sit in front of this; the LIKE path keeps SQLite green (ADR-0002 D2).
+ *
+ * Results are bounded by `BrainVisibility::forAgent()`: a run may search the
+ * data classes its card declared, and never `personal`. Search is the
+ * undeclared read path, so it must not reach further than the card it belongs
+ * to was reviewed for. The count of hits held back is returned — a filter
+ * nobody can see is indistinguishable from one that has stopped working.
  */
 final class BrainSearchTool implements ToolContract
 {
+    public function __construct(private readonly BrainManifest $manifest) {}
+
     public function name(): string
     {
         return 'brain.search';
@@ -72,7 +82,15 @@ final class BrainSearchTool implements ToolContract
             $builder->where('path', 'like', rtrim($folder, '/').'/%');
         }
 
-        $hits = $builder->orderBy('path')->limit($limit)->get(['path', 'title', 'content', 'version']);
+        $visible = BrainVisibility::forAgent($ctx->card->readPaths(), $this->manifest);
+
+        $hits = $builder->clone()
+            ->whereIn('data_class', $visible)
+            ->orderBy('path')
+            ->limit($limit)
+            ->get(['path', 'title', 'content', 'version', 'data_class']);
+
+        $withheld = $builder->clone()->whereNotIn('data_class', $visible)->count();
 
         return ToolResult::ok([
             'query' => $query,
@@ -80,8 +98,11 @@ final class BrainSearchTool implements ToolContract
                 'path' => $file->path,
                 'title' => $file->title,
                 'version' => (int) $file->version,
+                'data_class' => $file->data_class,
                 'excerpt' => self::excerpt((string) $file->content, $query),
             ])->values()->all(),
+            'withheld' => $withheld,
+            'visible_classes' => $visible,
         ]);
     }
 

@@ -110,6 +110,20 @@ final class AgentRunner
 
         try {
             $ctx = $this->contexts->forRun($run, $trace, rebuildSnapshot: true);
+
+            // An approval authorises an action, not the security environment
+            // that existed when it was requested. The breaker can trip between
+            // the human reading the card and pressing approve, so the scope is
+            // re-checked here. ToolGateway re-checks the tool itself, but only
+            // after the model has been called and paid for, and a paused skill
+            // should not be drafting at all. Failing closed costs the human a
+            // second click after they resume; the alternative costs a send.
+            $paused = Collaborators::breakerReason($ctx->tenantId, $ctx->agentId(), $ctx->skillSlug(), null);
+            if ($paused !== null) {
+                throw new AgentRuntimeException('circuit_breaker_paused: '.$paused, 'circuit_breaker_paused', 423);
+            }
+
+            $this->budget->assert($ctx, (float) (($run->state ?? [])['estimated_cost'] ?? 0.02));
             $this->workspaces->markStatus($ctx->workspace, AgentWorkspace::STATUS_WORKING, (string) $run->id);
             $run->forceFill(['status' => AgentRun::STATUS_RUNNING])->save();
             $trace->runEvent('resumed', ['pending_tool_call' => ($run->state ?? [])['pending_tool_call'] ?? null]);
