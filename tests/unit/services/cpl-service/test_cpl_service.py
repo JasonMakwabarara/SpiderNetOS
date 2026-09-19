@@ -1,200 +1,134 @@
-"""
-Unit tests for CPL Service
-SpiderNet OS - Control Plane Learning
+"""Unit tests for the CPL service.
+
+These used to mock PolicyNetwork and then assert against the mock — the fixture
+returned tensors of shape (1,) while the test asserted (32,), so the suite could
+only fail. The header said why: "Mock the PolicyNetwork class since imports may
+not work yet". The import did not work because services/cpl-service contains a
+hyphen; tests/conftest.py loads it by path instead, and these now exercise the
+real network.
 """
 
 import pytest
 import torch
-import numpy as np
-from unittest.mock import Mock, patch
-
-# Import the service components (would need proper imports once __init__.py is fixed)
-# from services.cpl_service.engine.policy_network import PolicyNetwork, StateEncoder
-# from services.cpl_service.engine.ppo_trainer import StreamingPPOTrainer
-# from services.cpl_service.engine.cost_governor import CostGovernor
 
 
 class TestPolicyNetwork:
-    """Test PolicyNetwork functionality"""
+    """The real PolicyNetwork, not a stand-in for it."""
 
     @pytest.fixture
-    def policy_network(self):
-        """Create a test PolicyNetwork instance"""
-        # Mock the PolicyNetwork class since imports may not work yet
-        policy = Mock()
-        policy.get_action.return_value = (torch.tensor([1]), torch.tensor([0.1]), torch.tensor([0.5]), torch.tensor([0.2]))
-        policy.evaluate_actions.return_value = (
-            torch.tensor([0.1]), torch.tensor([0.5]), torch.tensor([0.2]), torch.tensor([0.0])
-        )
-        policy.predict_cost.return_value = torch.tensor([10.0])
-        return policy
+    def policy(self, cpl_policy_network):
+        # Deterministic weights so a shape or range regression is the only way
+        # this can fail.
+        torch.manual_seed(0)
+        return cpl_policy_network.PolicyNetwork(state_dim=280, action_dim=6, hidden_dim=64)
 
     @pytest.mark.unit
-    def test_policy_network_initialization(self, policy_network):
-        """Test that PolicyNetwork initializes correctly"""
-        assert policy_network is not None
-
-    @pytest.mark.unit
-    def test_get_action_returns_valid_output(self, policy_network):
-        """Test get_action returns expected tuple"""
+    def test_get_action_returns_action_log_prob_value_entropy(self, policy):
         state = torch.randn(280)
-        action, log_prob, value, entropy = policy_network.get_action(state)
+        action, log_prob, value, entropy = policy.get_action(state)
 
-        assert isinstance(action, torch.Tensor)
-        assert isinstance(log_prob, torch.Tensor)
-        assert isinstance(value, torch.Tensor)
-        assert isinstance(entropy, torch.Tensor)
+        for tensor in (action, log_prob, value, entropy):
+            assert isinstance(tensor, torch.Tensor)
+        assert 0 <= int(action.item()) < policy.action_dim, "action must index a real action"
+        assert log_prob.item() <= 0.0, "a log probability is never positive"
+        assert entropy.item() >= 0.0, "entropy is never negative"
 
     @pytest.mark.unit
-    def test_evaluate_actions_shape(self, policy_network):
-        """Test evaluate_actions returns correct shapes"""
+    def test_deterministic_mode_is_deterministic_in_eval(self, policy):
+        """The serving property: same state in, same action out.
+
+        This failed when written, because nn.Module starts in train() and the
+        trunk carries Dropout(0.1) — so `deterministic=True` returned a
+        different action each call, through a randomly thinned network.
+        torch.no_grad() at the call site does not help; it stops gradients, not
+        dropout. services/cpl-service/main.py now calls .eval() on startup.
+        """
+        policy.eval()
+        state = torch.randn(280)
+
+        first, _, _, _ = policy.get_action(state, deterministic=True)
+        second, _, _, _ = policy.get_action(state, deterministic=True)
+
+        assert torch.equal(first, second), "deterministic=True must not sample"
+
+    @pytest.mark.unit
+    def test_dropout_still_active_in_train_mode(self, policy):
+        """And the other half: eval() must not have disabled learning noise."""
+        policy.train()
+        state = torch.randn(1, 280)
+
+        outputs = {policy.forward(state)['logits'].sum().item() for _ in range(12)}
+
+        assert len(outputs) > 1, "train mode should still apply dropout"
+
+    @pytest.mark.unit
+    def test_evaluate_actions_returns_one_value_per_row(self, policy):
         batch_size = 32
         states = torch.randn(batch_size, 280)
-        actions = torch.randint(0, 6, (batch_size,))
+        actions = torch.randint(0, policy.action_dim, (batch_size,))
 
-        log_probs, values, entropy, costs = policy_network.evaluate_actions(states, actions)
+        log_probs, values, entropy, costs = policy.evaluate_actions(states, actions)
 
+        # The shape this file always asserted, now against the real network.
         assert log_probs.shape == (batch_size,)
         assert values.shape == (batch_size,)
         assert entropy.shape == (batch_size,)
         assert costs.shape == (batch_size,)
 
+    @pytest.mark.unit
+    def test_evaluate_actions_agrees_with_get_action(self, policy):
+        """The log prob of an action must be the same however you ask for it."""
+        policy.eval()
+        state = torch.randn(1, 280)
+        action, log_prob, _, _ = policy.get_action(state, deterministic=True)
 
-class TestStateEncoder:
-    """Test StateEncoder functionality"""
+        log_probs, _, _, _ = policy.evaluate_actions(state, action.reshape(1))
+
+        assert torch.allclose(log_probs, log_prob.reshape(1), atol=1e-5)
 
     @pytest.mark.unit
-    def test_state_encoder_initialization(self):
-        """Test StateEncoder initializes with correct dimensions"""
-        # Mock StateEncoder
-        encoder = Mock()
-        encoder.state_dim = 280
-        encoder.gnn_dim = 256
+    def test_predict_cost_returns_one_cost_per_row(self, policy):
+        costs = policy.predict_cost(torch.randn(8, 280))
 
-        assert encoder.state_dim == 280
-        assert encoder.gnn_dim == 256
+        assert costs.shape == (8,)
+        assert torch.isfinite(costs).all()
+
+
+class TestCostGovernorBudgetCeiling:
+    """Hard Rule #4: the cost governor gates every action."""
 
     @pytest.mark.unit
-    def test_encode_produces_correct_dimensions(self):
-        """Test that encode produces 280-dim state vector"""
-        # Mock the encoding process
-        encoder = Mock()
-        encoder.encode.return_value = torch.randn(280)
-
-        # Mock inputs
-        gnn_embedding = torch.randn(256)
-        cost_vector = torch.randn(6)
-        performance_vector = torch.randn(6)
-        agent_health = torch.randn(8)
-        queue_depths = torch.randn(4)
-
-        result = encoder.encode(
-            gnn_embedding, cost_vector, performance_vector,
-            agent_health, queue_depths
+    async def test_spend_under_the_ceiling_is_allowed(self, cpl_cost_governor, fake_redis):
+        governor = cpl_cost_governor.CostGovernor(
+            redis_client=fake_redis({"gpu": "10.0"}), default_budget=50.0, safety_margin=0.1
         )
 
-        assert result.shape == (280,)
+        allowed, detail = await governor.check_budget("tenant-1", 5.0)
 
-
-class TestCostGovernor:
-    """Test CostGovernor functionality"""
-
-    @pytest.fixture
-    def cost_governor(self):
-        """Create a test CostGovernor instance"""
-        governor = Mock()
-        governor.check_budget.return_value = {
-            'allowed': True,
-            'remaining': 40.0,
-            'utilization_percent': 20.0
-        }
-        return governor
+        assert allowed is True
+        assert detail["current_spend"] == 10.0
+        assert detail["status"] == "healthy"
 
     @pytest.mark.unit
-    def test_budget_check_allowed(self, cost_governor):
-        """Test budget check when within limits"""
-        tenant_id = "test-tenant"
-        requested_cost = 10.0
+    async def test_spend_over_the_ceiling_is_refused_with_the_violation(self, cpl_cost_governor, fake_redis):
+        # 10% safety margin on a 50.0 budget leaves 45.0 spendable.
+        governor = cpl_cost_governor.CostGovernor(
+            redis_client=fake_redis({"gpu": "44.0"}), default_budget=50.0, safety_margin=0.1
+        )
 
-        result = cost_governor.check_budget(tenant_id, requested_cost)
+        allowed, detail = await governor.check_budget("tenant-1", 10.0)
 
-        assert result['allowed'] is True
-        assert result['remaining'] == 40.0
-
-    @pytest.mark.unit
-    def test_budget_check_denied(self, cost_governor):
-        """Test budget check when exceeding limits"""
-        cost_governor.check_budget.return_value = {
-            'allowed': False,
-            'remaining': 0.0,
-            'utilization_percent': 100.0
-        }
-
-        tenant_id = "test-tenant"
-        requested_cost = 60.0
-
-        result = cost_governor.check_budget(tenant_id, requested_cost)
-
-        assert result['allowed'] is False
-
-
-class TestStreamingPPOTrainer:
-    """Test StreamingPPOTrainer functionality"""
-
-    @pytest.fixture
-    def ppo_trainer(self):
-        """Create a test PPO trainer instance"""
-        trainer = Mock()
-        trainer.update.return_value = {
-            'policy_loss': 0.1,
-            'value_loss': 0.05,
-            'entropy': 0.8,
-            'clip_fraction': 0.1
-        }
-        return trainer
+        assert allowed is False
+        assert detail["reason"] == "budget_exceeded"
+        assert detail["violation"] == pytest.approx(9.0), "44 + 10 is 9 over the 45 ceiling"
 
     @pytest.mark.unit
-    def test_ppo_update_returns_metrics(self, ppo_trainer):
-        """Test that PPO update returns training metrics"""
-        # Mock trajectory
-        trajectory = Mock()
-        trajectory.states = torch.randn(64, 280)
-        trajectory.actions = torch.randint(0, 6, (64,))
-        trajectory.log_probs = torch.randn(64)
-        trajectory.rewards = torch.randn(64)
-        trajectory.values = torch.randn(64)
-        trajectory.costs = torch.randn(64)
-        trajectory.dones = torch.randint(0, 2, (64,)).float()
+    async def test_approaching_the_ceiling_warns_before_it_refuses(self, cpl_cost_governor, fake_redis):
+        governor = cpl_cost_governor.CostGovernor(
+            redis_client=fake_redis({"gpu": "35.0"}), default_budget=50.0, safety_margin=0.1
+        )
 
-        budget = 50.0
-        metrics = ppo_trainer.update(trajectory, budget)
+        allowed, detail = await governor.check_budget("tenant-1", 1.0)
 
-        assert 'policy_loss' in metrics
-        assert 'value_loss' in metrics
-        assert 'entropy' in metrics
-        assert isinstance(metrics['policy_loss'], (int, float))
-
-
-# Integration test placeholders
-class TestCPLServiceIntegration:
-    """Integration tests for CPL Service"""
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_state_update_endpoint(self):
-        """Test /state/update endpoint integration"""
-        # This would test the actual FastAPI endpoint
-        # Requires running service or extensive mocking
-        pytest.skip("Integration test - requires running service")
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_action_selection_endpoint(self):
-        """Test /action/select endpoint integration"""
-        pytest.skip("Integration test - requires running service")
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_trajectory_update_endpoint(self):
-        """Test /trajectory/update endpoint integration"""
-        pytest.skip("Integration test - requires running service")
+        assert allowed is True
+        assert detail["status"] == "warning", "36 of 45 is past the 80% threshold"

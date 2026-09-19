@@ -120,28 +120,28 @@ class TestCPLPolicyConvergence:
             "expected <0.1 after convergence"
         )
 
-    def test_cost_governor_enforces_ceiling(self):
+    async def test_cost_governor_enforces_ceiling(self, cpl_cost_governor, fake_redis):
+        """The governor must refuse the action that would cross the ceiling.
+
+        This previously imported `services.cpl_service.engine.cost_governor`
+        against a directory named `services/cpl-service`, so it had never run —
+        and it called an API (CostGovernor(daily_ceiling=...), check_action,
+        current_spend) that has never existed. The real governor is async,
+        budget-backed and applies a safety margin; tests/conftest.py loads it by
+        path.
         """
-        Cost governor must prevent actions exceeding cost ceiling.
-        """
-        from services.cpl_service.engine.cost_governor import CostGovernor
-        
-        ceiling = 50.0
-        governor = CostGovernor(daily_ceiling=ceiling)
-        
-        # Simulate: accumulating costs
-        costs = [10.0, 15.0, 20.0]  # Total: 45.0
-        for cost in costs:
-            assert governor.check_action(cost), f"Should allow cost {cost}"
-            governor.record_cost(cost)
-        
-        # Should block when ceiling would be exceeded
-        assert not governor.check_action(10.0), (
-            "Should block action that exceeds ceiling"
+        # 50.0 budget, 10% safety margin -> 45.0 actually spendable.
+        governor = cpl_cost_governor.CostGovernor(
+            redis_client=fake_redis({"gpu": "45.0"}),
+            default_budget=50.0,
+            safety_margin=0.1,
         )
-        
-        # Current spend should be tracked accurately
-        assert governor.current_spend == 45.0
+
+        allowed, detail = await governor.check_budget("tenant-1", 10.0)
+
+        assert allowed is False, "should block an action that exceeds the ceiling"
+        assert detail["reason"] == "budget_exceeded"
+        assert detail["current_spend"] == 45.0, "spend is tracked accurately"
 
 
 class TestCPLIntegration:

@@ -80,7 +80,7 @@ class CategorySuggestionService
             ->where('merchant_normalized', $normalized)
             ->first();
 
-        if (!$row) {
+        if (! $row) {
             return null;
         }
 
@@ -123,7 +123,7 @@ class CategorySuggestionService
             return null;
         }
 
-        if (!$this->costGovernorAllows($tenantId)) {
+        if (! $this->costGovernorAllows($tenantId)) {
             return null;
         }
 
@@ -139,17 +139,17 @@ class CategorySuggestionService
                     'amount' => $amount !== null ? (float) $amount : null,
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
             $body = $response->json();
-            if (!is_array($body)) {
+            if (! is_array($body)) {
                 return null;
             }
 
             $category = $body['category'] ?? $body['label'] ?? null;
-            if (!is_string($category) || !in_array($category, $enum, true)) {
+            if (! is_string($category) || ! in_array($category, $enum, true)) {
                 return null;
             }
 

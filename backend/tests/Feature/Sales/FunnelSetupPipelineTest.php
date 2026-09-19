@@ -7,6 +7,7 @@ namespace Tests\Feature\Sales;
 use App\Models\PackEntitlement;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\FeaturePackInstaller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -49,7 +50,7 @@ class FunnelSetupPipelineTest extends TestCase
         // funnel go-live then flips them to active. Mirrors the real
         // buy -> install -> funnel flow; install() requires the entitlement
         // granted above.
-        app(\App\Services\FeaturePackInstaller::class)->install($tenant, 'sales-crm', true);
+        app(FeaturePackInstaller::class)->install($tenant, 'sales-crm', true);
 
         return $tenant;
     }

@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Services\EventStore;
-use App\Services\MetaPlanner;
-use App\Services\ReplayDivergenceService;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * DagExecutionService — SpiderNet OS v3.2
@@ -40,10 +37,10 @@ class DagExecutionService
      * Create a new flow execution, parse the flow DAG, and persist all
      * DagNode entries with their dependency edges.
      *
-     * @param  string  $tenantId   Tenant scope.
-     * @param  string  $flowId     Identifier of the flow template.
-     * @param  array   $context    Arbitrary key-value context passed to every node.
-     * @return array   The created execution record.
+     * @param  string  $tenantId  Tenant scope.
+     * @param  string  $flowId  Identifier of the flow template.
+     * @param  array  $context  Arbitrary key-value context passed to every node.
+     * @return array The created execution record.
      */
     public function createExecution(string $tenantId, string $flowId, array $context = []): array
     {
@@ -55,7 +52,7 @@ class DagExecutionService
             ->where('id', $flowId)
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             throw new \InvalidArgumentException("Flow [{$flowId}] not found for tenant [{$tenantId}].");
         }
 
@@ -89,12 +86,12 @@ class DagExecutionService
 
         // Persist execution row.
         DB::table('flow_executions')->insert([
-            'id'         => $executionId,
-            'tenant_id'  => $tenantId,
-            'flow_id'    => $flowId,
-            'status'     => 'running',
-            'context'    => json_encode($context, JSON_THROW_ON_ERROR),
-            'fingerprint'=> $fingerprint,
+            'id' => $executionId,
+            'tenant_id' => $tenantId,
+            'flow_id' => $flowId,
+            'status' => 'running',
+            'context' => json_encode($context, JSON_THROW_ON_ERROR),
+            'fingerprint' => $fingerprint,
             'started_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
@@ -106,8 +103,8 @@ class DagExecutionService
         // Record domain event.
         $this->eventStore->append($tenantId, 'flow.execution_started', [
             'execution_id' => $executionId,
-            'flow_id'      => $flowId,
-            'context'      => $context,
+            'flow_id' => $flowId,
+            'context' => $context,
         ]);
 
         Log::info('DagExecution created', compact('executionId', 'tenantId', 'flowId'));
@@ -121,36 +118,32 @@ class DagExecutionService
     /**
      * Execute a single DAG node by dispatching it to the appropriate agent
      * via MetaPlanner.
-     *
-     * @param  string  $executionId
-     * @param  string  $nodeId
-     * @return void
      */
     public function executeNode(string $executionId, string $nodeId): void
     {
         $node = $this->getNode($executionId, $nodeId);
 
-        if (!$node) {
+        if (! $node) {
             throw new \InvalidArgumentException("Node [{$nodeId}] not found in execution [{$executionId}].");
         }
 
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
-        $context   = json_decode($execution->context, true, 512, JSON_THROW_ON_ERROR);
+        $context = json_decode($execution->context, true, 512, JSON_THROW_ON_ERROR);
 
         // Mark node as running.
         DB::table('execution_dag_nodes')
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
-                'status'     => 'running',
+                'status' => 'running',
                 'started_at' => now(),
                 'updated_at' => now(),
             ]);
 
         $this->eventStore->append($execution->tenant_id, 'flow.node_started', [
             'execution_id' => $executionId,
-            'node_id'      => $nodeId,
-            'node_type'    => $node->node_type,
+            'node_id' => $nodeId,
+            'node_type' => $node->node_type,
         ]);
 
         // Dispatch to the agent resolved by MetaPlanner.
@@ -237,10 +230,7 @@ class DagExecutionService
      * Mark a node as completed, persist its result, then check whether
      * downstream dependents are now ready to run.
      *
-     * @param  string  $executionId
-     * @param  string  $nodeId
-     * @param  array   $result  Output produced by the agent.
-     * @return void
+     * @param  array  $result  Output produced by the agent.
      */
     public function completeNode(string $executionId, string $nodeId, array $result = []): void
     {
@@ -248,18 +238,18 @@ class DagExecutionService
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
-                'status'       => 'completed',
-                'result'       => json_encode($result, JSON_THROW_ON_ERROR),
+                'status' => 'completed',
+                'result' => json_encode($result, JSON_THROW_ON_ERROR),
                 'completed_at' => now(),
-                'updated_at'   => now(),
+                'updated_at' => now(),
             ]);
 
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
 
         $this->eventStore->append($execution->tenant_id, 'flow.node_completed', [
             'execution_id' => $executionId,
-            'node_id'      => $nodeId,
-            'result'       => $result,
+            'node_id' => $nodeId,
+            'result' => $result,
         ]);
 
         Log::info('DagNode completed', compact('executionId', 'nodeId'));
@@ -272,7 +262,7 @@ class DagExecutionService
 
         // Cache execution outcome by fingerprint for deterministic reuse.
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
-        if ($execution && !empty($execution->fingerprint)) {
+        if ($execution && ! empty($execution->fingerprint)) {
             $resultPayload = [
                 'execution_id' => $executionId,
                 'status' => $execution->status,
@@ -298,10 +288,7 @@ class DagExecutionService
      * Mark a node as failed. Apply failure policy: retry up to MAX_NODE_RETRIES
      * times, otherwise fail the entire execution.
      *
-     * @param  string  $executionId
-     * @param  string  $nodeId
      * @param  string  $error  Human-readable error description.
-     * @return void
      */
     public function failNode(string $executionId, string $nodeId, string $error): void
     {
@@ -315,19 +302,20 @@ class DagExecutionService
                 ->where('execution_id', $executionId)
                 ->where('node_id', $nodeId)
                 ->update([
-                    'status'      => 'pending',
+                    'status' => 'pending',
                     'retry_count' => $retryCount + 1,
-                    'last_error'  => $error,
-                    'updated_at'  => now(),
+                    'last_error' => $error,
+                    'updated_at' => now(),
                 ]);
 
             Log::warning('DagNode retrying', [
                 'executionId' => $executionId,
-                'nodeId'      => $nodeId,
-                'attempt'     => $retryCount + 1,
+                'nodeId' => $nodeId,
+                'attempt' => $retryCount + 1,
             ]);
 
             $this->executeNode($executionId, $nodeId);
+
             return;
         }
 
@@ -336,7 +324,7 @@ class DagExecutionService
             ->where('execution_id', $executionId)
             ->where('node_id', $nodeId)
             ->update([
-                'status'     => 'failed',
+                'status' => 'failed',
                 'last_error' => $error,
                 'updated_at' => now(),
             ]);
@@ -344,17 +332,17 @@ class DagExecutionService
         DB::table('flow_executions')
             ->where('id', $executionId)
             ->update([
-                'status'       => 'failed',
+                'status' => 'failed',
                 'completed_at' => now(),
-                'updated_at'   => now(),
+                'updated_at' => now(),
             ]);
 
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
 
         $this->eventStore->append($execution->tenant_id, 'flow.execution_failed', [
             'execution_id' => $executionId,
-            'failed_node'  => $nodeId,
-            'error'        => $error,
+            'failed_node' => $nodeId,
+            'error' => $error,
         ]);
 
         // Temporal-grade replay + divergence detection on failure path.
@@ -383,15 +371,12 @@ class DagExecutionService
 
     /**
      * Return the full execution state including every node's status.
-     *
-     * @param  string  $executionId
-     * @return array
      */
     public function getExecutionStatus(string $executionId): array
     {
         $execution = DB::table('flow_executions')->where('id', $executionId)->first();
 
-        if (!$execution) {
+        if (! $execution) {
             throw new \InvalidArgumentException("Execution [{$executionId}] not found.");
         }
 
@@ -399,14 +384,14 @@ class DagExecutionService
             ->where('execution_id', $executionId)
             ->get()
             ->map(fn ($n) => [
-                'node_id'      => $n->node_id,
-                'node_type'    => $n->node_type,
-                'label'        => $n->label,
-                'status'       => $n->status,
-                'retry_count'  => $n->retry_count,
-                'last_error'   => $n->last_error,
-                'result'       => $n->result ? json_decode($n->result, true) : null,
-                'started_at'   => $n->started_at,
+                'node_id' => $n->node_id,
+                'node_type' => $n->node_type,
+                'label' => $n->label,
+                'status' => $n->status,
+                'retry_count' => $n->retry_count,
+                'last_error' => $n->last_error,
+                'result' => $n->result ? json_decode($n->result, true) : null,
+                'started_at' => $n->started_at,
                 'completed_at' => $n->completed_at,
             ])
             ->toArray();
@@ -416,20 +401,20 @@ class DagExecutionService
             ->get()
             ->map(fn ($e) => [
                 'from_node_id' => $e->from_node_id,
-                'to_node_id'   => $e->to_node_id,
+                'to_node_id' => $e->to_node_id,
             ])
             ->toArray();
 
         return [
             'execution_id' => $execution->id,
-            'tenant_id'    => $execution->tenant_id,
-            'flow_id'      => $execution->flow_id,
-            'status'       => $execution->status,
-            'context'      => json_decode($execution->context, true),
-            'nodes'        => $nodes,
-            'edges'        => $edges,
-            'created_at'   => $execution->created_at,
-            'updated_at'   => $execution->updated_at,
+            'tenant_id' => $execution->tenant_id,
+            'flow_id' => $execution->flow_id,
+            'status' => $execution->status,
+            'context' => json_decode($execution->context, true),
+            'nodes' => $nodes,
+            'edges' => $edges,
+            'created_at' => $execution->created_at,
+            'updated_at' => $execution->updated_at,
         ];
     }
 
@@ -447,27 +432,27 @@ class DagExecutionService
 
         foreach ($nodes as $node) {
             DB::table('execution_dag_nodes')->insert([
-                'id'           => (string) Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'execution_id' => $executionId,
-                'tenant_id'    => $tenantId,
-                'node_id'      => $node['id'],
-                'node_type'    => $node['type'],
-                'label'        => $node['label'] ?? $node['id'],
-                'config'       => json_encode($node['config'] ?? [], JSON_THROW_ON_ERROR),
-                'status'       => 'pending',
-                'retry_count'  => 0,
-                'created_at'   => now(),
-                'updated_at'   => now(),
+                'tenant_id' => $tenantId,
+                'node_id' => $node['id'],
+                'node_type' => $node['type'],
+                'label' => $node['label'] ?? $node['id'],
+                'config' => json_encode($node['config'] ?? [], JSON_THROW_ON_ERROR),
+                'status' => 'pending',
+                'retry_count' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
         foreach ($edges as $edge) {
             DB::table('execution_dag_edges')->insert([
-                'id'           => (string) Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'execution_id' => $executionId,
                 'from_node_id' => $edge['from'],
-                'to_node_id'   => $edge['to'],
-                'created_at'   => now(),
+                'to_node_id' => $edge['to'],
+                'created_at' => now(),
             ]);
         }
     }
@@ -487,7 +472,7 @@ class DagExecutionService
             $unmetDeps = DB::table('execution_dag_edges')
                 ->join('execution_dag_nodes', function ($join) use ($executionId) {
                     $join->on('execution_dag_edges.from_node_id', '=', 'execution_dag_nodes.node_id')
-                         ->where('execution_dag_nodes.execution_id', '=', $executionId);
+                        ->where('execution_dag_nodes.execution_id', '=', $executionId);
                 })
                 ->where('execution_dag_edges.execution_id', $executionId)
                 ->where('execution_dag_edges.to_node_id', $node->node_id)
@@ -515,16 +500,16 @@ class DagExecutionService
             DB::table('flow_executions')
                 ->where('id', $executionId)
                 ->update([
-                    'status'       => 'completed',
+                    'status' => 'completed',
                     'completed_at' => now(),
-                    'updated_at'   => now(),
+                    'updated_at' => now(),
                 ]);
 
             $execution = DB::table('flow_executions')->where('id', $executionId)->first();
 
             $this->eventStore->append($execution->tenant_id, 'flow.execution_completed', [
                 'execution_id' => $executionId,
-                'flow_id'      => $execution->flow_id,
+                'flow_id' => $execution->flow_id,
             ]);
 
             Log::info('DagExecution completed', compact('executionId'));

@@ -3,17 +3,16 @@ SpiderNet OS - Kafka Event Producer
 Async batch producer with compression and retries
 """
 
-import asyncio
 import json
 import logging
-from typing import Dict, Any, Optional, List
+import queue
+import threading
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from kafka import KafkaProducer as SyncProducer
 from kafka.errors import KafkaError
-import threading
-import queue
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +20,14 @@ logger = logging.getLogger(__name__)
 class EventProducer:
     """
     Async Kafka producer for SpiderNet OS events.
-    
+
     Features:
     - Batch accumulation (50ms window)
     - LZ4 compression for high-throughput topics
     - Async retry with backoff
     - Schema validation
     """
-    
+
     def __init__(
         self,
         bootstrap_servers: str = "localhost:9092",
@@ -43,7 +42,7 @@ class EventProducer:
         self.batch_size = batch_size
         self.linger_ms = linger_ms
         self.compression = compression
-        
+
         # Sync producer (runs in background thread)
         self._producer = SyncProducer(
             bootstrap_servers=bootstrap_servers,
@@ -56,19 +55,19 @@ class EventProducer:
             value_serializer=lambda v: json.dumps(v, default=self._json_serializer).encode("utf-8"),
             key_serializer=lambda k: k.encode("utf-8") if k else None
         )
-        
+
         # Async queue for non-blocking send
         self._queue = queue.Queue()
         self._running = False
         self._worker_thread = None
-        
+
         # Metrics
         self.metrics = {
             'sent': 0,
             'failed': 0,
             'batches': 0
         }
-    
+
     def _json_serializer(self, obj):
         """Custom JSON serializer for complex types"""
         if isinstance(obj, datetime):
@@ -78,14 +77,14 @@ class EventProducer:
         if hasattr(obj, 'to_dict'):
             return obj.to_dict()
         raise TypeError(f"Cannot serialize {type(obj)}")
-    
+
     def start(self):
         """Start background worker thread"""
         self._running = True
         self._worker_thread = threading.Thread(target=self._worker, daemon=True)
         self._worker_thread.start()
         logger.info("EventProducer started")
-    
+
     def stop(self):
         """Stop producer and flush pending messages"""
         self._running = False
@@ -94,7 +93,7 @@ class EventProducer:
         if self._worker_thread:
             self._worker_thread.join(timeout=5)
         logger.info("EventProducer stopped")
-    
+
     def _worker(self):
         """Background worker for async sends"""
         while self._running:
@@ -102,7 +101,7 @@ class EventProducer:
                 # Batch accumulate
                 batch = []
                 deadline = datetime.now().timestamp() + (self.linger_ms / 1000)
-                
+
                 while len(batch) < self.batch_size:
                     timeout = max(0, deadline - datetime.now().timestamp())
                     try:
@@ -110,7 +109,7 @@ class EventProducer:
                         batch.append(item)
                     except queue.Empty:
                         break
-                
+
                 # Send batch
                 if batch:
                     for topic, key, value in batch:
@@ -120,12 +119,12 @@ class EventProducer:
                         except KafkaError as e:
                             logger.error(f"Failed to send to {topic}: {e}")
                             self.metrics['failed'] += 1
-                    
+
                     self.metrics['batches'] += 1
-                    
+
             except Exception as e:
                 logger.error(f"Producer worker error: {e}")
-    
+
     async def send(
         self,
         topic: str,
@@ -135,13 +134,13 @@ class EventProducer:
     ) -> bool:
         """
         Send event to Kafka topic (async).
-        
+
         Args:
             topic: Kafka topic name
             value: Event payload
             key: Optional partition key
             headers: Optional message headers
-            
+
         Returns:
             True if queued successfully
         """
@@ -154,11 +153,11 @@ class EventProducer:
                 'version': '1.0'
             }
         }
-        
+
         # Add headers if provided
         if headers:
             event['_headers'] = headers
-        
+
         # Queue for background send
         try:
             self._queue.put((topic, key, event), block=False)
@@ -166,7 +165,7 @@ class EventProducer:
         except queue.Full:
             logger.warning(f"Producer queue full, dropping event to {topic}")
             return False
-    
+
     async def send_batch(
         self,
         topic: str,
@@ -175,12 +174,12 @@ class EventProducer:
     ) -> int:
         """
         Send batch of events efficiently.
-        
+
         Args:
             topic: Target topic
             events: List of event payloads
             key_fn: Optional function to extract key from event
-            
+
         Returns:
             Number of events queued
         """
@@ -190,13 +189,13 @@ class EventProducer:
             success = await self.send(topic, event, key)
             if success:
                 count += 1
-        
+
         return count
-    
+
     def flush(self, timeout: int = 10):
         """Flush all pending messages"""
         self._producer.flush(timeout=timeout)
-    
+
     def get_metrics(self) -> Dict[str, int]:
         """Get producer metrics"""
         return self.metrics.copy()
@@ -207,7 +206,7 @@ class EventProducerAsync:
     True async Kafka producer using aiokafka.
     For high-performance async services.
     """
-    
+
     def __init__(
         self,
         bootstrap_servers: str = "localhost:9092",
@@ -216,11 +215,11 @@ class EventProducerAsync:
         self.bootstrap_servers = bootstrap_servers
         self.client_id = client_id
         self._producer = None
-        
+
     async def start(self):
         """Initialize async producer"""
         from aiokafka import AIOKafkaProducer
-        
+
         self._producer = AIOKafkaProducer(
             bootstrap_servers=self.bootstrap_servers,
             client_id=self.client_id,
@@ -229,12 +228,12 @@ class EventProducerAsync:
             compression_type="lz4"
         )
         await self._producer.start()
-        
+
     async def stop(self):
         """Stop async producer"""
         if self._producer:
             await self._producer.stop()
-    
+
     async def send(
         self,
         topic: str,
@@ -245,7 +244,7 @@ class EventProducerAsync:
         """Async send event"""
         if not self._producer:
             raise RuntimeError("Producer not started")
-        
+
         event = {
             **value,
             '_metadata': {
@@ -253,7 +252,7 @@ class EventProducerAsync:
                 'producer': self.client_id
             }
         }
-        
+
         await self._producer.send(
             topic,
             value=event,

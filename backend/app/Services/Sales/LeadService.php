@@ -35,7 +35,7 @@ class LeadService
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function create(string $tenantId, array $data): Lead
     {
@@ -82,7 +82,7 @@ class LeadService
     /**
      * Transition a lead to a new stage, emitting the matching STE event.
      *
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     public function transitionStage(Lead $lead, string $toStage, array $context = []): Lead
     {
@@ -119,7 +119,7 @@ class LeadService
      * Deterministic starting score so the pipeline is usable before the crm
      * agent's score_lead tool (intelligence/tools/registry.py) has run.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     private function heuristicScore(array $data): int
     {

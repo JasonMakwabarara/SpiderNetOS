@@ -1,5 +1,7 @@
 ﻿from uuid import UUID
+
 import asyncpg
+
 
 class AtlasRewardEngine:
     def __init__(self, db_pool: asyncpg.Pool):

@@ -7,12 +7,12 @@ use App\Models\Event;
 use App\Models\ImpersonationSession;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\DeploymentReadinessService;
 use App\Services\FeatureFlag;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
 
 /**
  * PlatformController — cross-tenant platform operator endpoints.
@@ -31,7 +31,7 @@ class PlatformController extends Controller
      * chat agent, since these are objective facts (is DODO_API_KEY set?),
      * not open-ended questions. See App\Services\DeploymentReadinessService.
      */
-    public function readiness(Request $request, \App\Services\DeploymentReadinessService $readiness): JsonResponse
+    public function readiness(Request $request, DeploymentReadinessService $readiness): JsonResponse
     {
         return response()->json(['data' => $readiness->platformChecks()]);
     }
@@ -214,7 +214,7 @@ class PlatformController extends Controller
 
         // Issue a scoped Sanctum token for the target user
         $token = $target->createToken(
-            name: 'impersonation:' . $session->id,
+            name: 'impersonation:'.$session->id,
             abilities: ['impersonated'],
             expiresAt: $session->expires_at,
         )->plainTextToken;
@@ -255,7 +255,7 @@ class PlatformController extends Controller
         $actor = $request->user();
         $session = ImpersonationSession::findOrFail($id);
 
-        if ($session->actor_user_id !== $actor->id && !$actor->isSuperAdmin()) {
+        if ($session->actor_user_id !== $actor->id && ! $actor->isSuperAdmin()) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
@@ -281,10 +281,10 @@ class PlatformController extends Controller
     private function flagSource(string $name, ?string $tenantId = null): string
     {
         try {
-            if ($tenantId && Redis::exists('feature:' . $name . ':tenant:' . $tenantId)) {
+            if ($tenantId && Redis::exists('feature:'.$name.':tenant:'.$tenantId)) {
                 return 'redis:tenant';
             }
-            if (Redis::exists('feature:' . $name)) {
+            if (Redis::exists('feature:'.$name)) {
                 return 'redis:global';
             }
         } catch (\Throwable) {

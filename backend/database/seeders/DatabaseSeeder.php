@@ -18,10 +18,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $eventStore = app(EventStore::class);
-        
+
         // ─── Default Tenant ─────────────────────────────────
         $tenantId = '00000000-0000-0000-0000-000000000001';
-        
+
         $eventStore->append(
             tenantId: $tenantId,
             aggregateType: 'tenant',
@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ],
         );
-        
+
         // Ensure tenant exists in projection
         DB::table('tenants')->updateOrInsert(
             ['id' => $tenantId],
@@ -50,7 +50,7 @@ class DatabaseSeeder extends Seeder
 
         // ─── Admin User ─────────────────────────────────────
         $userId = '00000000-0000-0000-0000-000000000002';
-        
+
         $eventStore->append(
             tenantId: $tenantId,
             aggregateType: 'user',
@@ -64,7 +64,7 @@ class DatabaseSeeder extends Seeder
                 'tenant_id' => $tenantId,
             ],
         );
-        
+
         // Ensure user exists in projection
         DB::table('users')->updateOrInsert(
             ['id' => $userId],
@@ -147,7 +147,7 @@ class DatabaseSeeder extends Seeder
                 eventType: 'agent.registered',
                 payload: $agent,
             );
-            
+
             // Ensure agent exists in projection
             DB::table('agents')->updateOrInsert(
                 ['id' => $agent['id']],

@@ -24,8 +24,7 @@ class DodoWebhookController extends Controller
     public function __construct(
         private readonly DodoPaymentsService $dodo,
         private readonly DodoSubscriptionFulfiller $fulfiller,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request): JsonResponse
     {

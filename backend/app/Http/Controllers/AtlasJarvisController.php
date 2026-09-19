@@ -7,6 +7,7 @@ use App\Services\FeatureFlag;
 use App\Services\OpenJarvisGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * OpenJarvis × Atlas AI endpoints for AIOS operators.
@@ -38,7 +39,7 @@ class AtlasJarvisController extends Controller
 
     public function ask(Request $request): JsonResponse
     {
-        if (!FeatureFlag::on('atlas.openjarvis', $request->attributes->get('tenant_id'))) {
+        if (! FeatureFlag::on('atlas.openjarvis', $request->attributes->get('tenant_id'))) {
             return response()->json(['error' => 'openjarvis_disabled'], 503);
         }
 
@@ -51,7 +52,7 @@ class AtlasJarvisController extends Controller
         ]);
 
         $tenantId = (string) $request->attributes->get('tenant_id');
-        $sessionId = $data['session_id'] ?? (string) \Illuminate\Support\Str::uuid();
+        $sessionId = $data['session_id'] ?? (string) Str::uuid();
 
         $augmented = $this->augmentor->augment(
             tenantId: $tenantId,
@@ -75,7 +76,7 @@ class AtlasJarvisController extends Controller
 
     public function research(Request $request): JsonResponse
     {
-        if (!FeatureFlag::on('atlas.openjarvis', $request->attributes->get('tenant_id'))) {
+        if (! FeatureFlag::on('atlas.openjarvis', $request->attributes->get('tenant_id'))) {
             return response()->json(['error' => 'openjarvis_disabled'], 503);
         }
 

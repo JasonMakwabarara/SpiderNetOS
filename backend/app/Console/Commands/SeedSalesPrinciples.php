@@ -83,7 +83,7 @@ class SeedSalesPrinciples extends Command
     }
 
     /**
-     * @param array<int, array<string, mixed>> $principles
+     * @param  array<int, array<string, mixed>>  $principles
      * @return array{nodes: int, edges: int}
      */
     private function seedTenant(string $tenantId, array $principles): array
@@ -169,7 +169,7 @@ class SeedSalesPrinciples extends Command
      * The chunk embedded per principle: statement + application + script
      * guidance, labelled so retrieval hits read coherently in agent context.
      *
-     * @param array<string, mixed> $principle
+     * @param  array<string, mixed>  $principle
      */
     private function principleText(array $principle): string
     {

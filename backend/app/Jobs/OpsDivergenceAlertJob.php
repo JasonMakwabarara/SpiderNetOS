@@ -8,7 +8,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OpsDivergenceAlertJob implements ShouldQueue
@@ -22,8 +21,7 @@ class OpsDivergenceAlertJob implements ShouldQueue
         private readonly string $executionId,
         private readonly string $reportId,
         private readonly int $divergenceCount
-    ) {
-    }
+    ) {}
 
     public function handle(EventStore $eventStore): void
     {

@@ -10,7 +10,7 @@ namespace App\Services;
 class ComplianceRadar
 {
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      * @return array<int, array<string, mixed>>
      */
     public function obligationsForProfile(array $profile): array

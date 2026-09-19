@@ -23,9 +23,10 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import os
-import time
 import threading
+import time
 from typing import Any
 
 import redis as _redis_pkg
@@ -141,10 +142,8 @@ class FeatureFlag:
             f"feature:{name}:tenant:{tenant_id}" if tenant_id else f"feature:{name}"
         )
         if _redis is not None:
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover
                 _redis.set(redis_key, value)
-            except Exception:  # pragma: no cover
-                pass
         cache_key = f"featureflag:{name}" + (f":t:{tenant_id}" if tenant_id else "")
         _cache_bust(cache_key)
 
@@ -155,10 +154,8 @@ class FeatureFlag:
             f"feature:{name}:tenant:{tenant_id}" if tenant_id else f"feature:{name}"
         )
         if _redis is not None:
-            try:
+            with contextlib.suppress(Exception):  # pragma: no cover
                 _redis.delete(redis_key)
-            except Exception:  # pragma: no cover
-                pass
         cache_key = f"featureflag:{name}" + (f":t:{tenant_id}" if tenant_id else "")
         _cache_bust(cache_key)
 

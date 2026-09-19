@@ -25,11 +25,10 @@ class ProcessRunRecorder
     public function __construct(
         private readonly EventStore $eventStore,
         private readonly ApprovalEngine $approvals,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array{execution_id?: ?string, status?: string, errors?: mixed} $executionStatus
+     * @param  array{execution_id?: ?string, status?: string, errors?: mixed}  $executionStatus
      */
     public function record(BusinessProcess $process, array $executionStatus): BusinessProcess
     {
@@ -94,7 +93,7 @@ class ProcessRunRecorder
                 resourceType: 'business_process',
                 resourceId: (string) $process->id,
                 reason: "Process \"{$process->name}\" failed {$process->consecutive_failures} runs in a row. "
-                    . 'The owner needs an answer; the answer becomes the next SOP revision.',
+                    .'The owner needs an answer; the answer becomes the next SOP revision.',
                 context: [
                     'process_id' => (string) $process->id,
                     'process_name' => $process->name,

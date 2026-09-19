@@ -8,8 +8,6 @@ import time
 from typing import List
 
 import httpx
-
-from models import InferenceRequest, InferenceResponse
 from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_BASE_URL,
@@ -22,7 +20,8 @@ from config import (
     OPENAI_API_KEY,
 )
 from cost import record_usage
-from metrics import record_success, record_failure, get_success_rates
+from metrics import record_failure, record_success
+from models import InferenceRequest, InferenceResponse
 
 
 class RoutingDecision:

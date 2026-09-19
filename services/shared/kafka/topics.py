@@ -3,50 +3,49 @@ SpiderNet OS - Kafka Topics Definition
 Event-driven architecture with replay capability
 """
 
-from enum import Enum
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class KafkaTopics:
     """
     Centralized Kafka topic definitions with configuration.
-    
+
     All topics follow Event Sourcing pattern (Fowler):
     - Immutable events
     - Replayable from log
     - Source of truth
     """
-    
+
     # CPL (Control Plane Learning) Topics
     CPL_STATE_UPDATED = "cpl.state.updated"
     CPL_ACTION_EXECUTED = "cpl.action.executed"
     CPL_POLICY_UPDATED = "cpl.policy.updated"
-    
+
     # MetaPlanner Topics
     METAPLANNER_PLAN_SCORED = "metaplanner.plan.scored"
     METAPLANNER_PLAN_SELECTED = "metaplanner.plan.selected"
     METAPLANNER_PLAN_REJECTED = "metaplanner.plan.rejected"
-    
+
     # Friction Miner Topics
     FRICTION_OPPORTUNITY_DETECTED = "friction.opportunity.detected"
     FRICTION_OPPORTUNITY_GATED = "friction.opportunity.gated"  # Passed gate
     FRICTION_OPPORTUNITY_FILTERED = "friction.opportunity.filtered"  # Rejected by gate
     FRICTION_OPPORTUNITY_EXECUTED = "friction.opportunity.executed"
-    
+
     # Execution Topics
     EXECUTION_OUTCOME = "execution.outcome"
     EXECUTION_STARTED = "execution.started"
     EXECUTION_FAILED = "execution.failed"
-    
+
     # Cost & Reward Topics
     COST_EVENT = "cost.event"
     REWARD_FEEDBACK = "reward.feedback"
     COST_VIOLATION = "cost.violation"
-    
+
     # Memory Topics
     MEMORY_STORED = "memory.stored"
     MEMORY_RETRIEVED = "memory.retrieved"
-    
+
     # Simulation Topics (RL Training Environment)
     SIMULATION_EPISODE_START = "simulation.episode.start"
     SIMULATION_EPISODE_END = "simulation.episode.end"
@@ -60,7 +59,7 @@ class KafkaTopics:
     POLICY_ROLLOUT_STARTED = "policy.rollout.started"
     POLICY_PROMOTED = "policy.promoted"
     POLICY_ROLLED_BACK = "policy.rolled.back"
-    
+
     @classmethod
     def get_all_topics(cls) -> list:
         """Get list of all topic names"""
@@ -97,7 +96,7 @@ class KafkaTopics:
             cls.POLICY_PROMOTED,
             cls.POLICY_ROLLED_BACK,
         ]
-    
+
     @classmethod
     def get_topic_config(cls, topic: str) -> Dict[str, Any]:
         """Get Kafka topic configuration"""
@@ -110,7 +109,7 @@ class KafkaTopics:
                 'cleanup_policy': 'delete',
                 'compression': 'lz4'
             },
-            
+
             # Critical events (opportunities)
             cls.FRICTION_OPPORTUNITY_DETECTED: {
                 'partitions': 3,
@@ -119,7 +118,7 @@ class KafkaTopics:
                 'cleanup_policy': 'compact,delete',
                 'compression': 'snappy'
             },
-            
+
             # Decision events (plans)
             cls.METAPLANNER_PLAN_SELECTED: {
                 'partitions': 3,
@@ -128,7 +127,7 @@ class KafkaTopics:
                 'cleanup_policy': 'compact',
                 'compression': 'snappy'
             },
-            
+
             # Execution outcomes (training data)
             cls.EXECUTION_OUTCOME: {
                 'partitions': 6,
@@ -137,7 +136,7 @@ class KafkaTopics:
                 'cleanup_policy': 'delete',
                 'compression': 'lz4'
             },
-            
+
             # Cost events (financial audit)
             cls.COST_EVENT: {
                 'partitions': 3,
@@ -146,7 +145,7 @@ class KafkaTopics:
                 'cleanup_policy': 'compact',
                 'compression': 'gzip'
             },
-            
+
             # Default config
             'default': {
                 'partitions': 3,
@@ -156,9 +155,9 @@ class KafkaTopics:
                 'compression': 'snappy'
             }
         }
-        
+
         return configs.get(topic, configs['default'])
-    
+
     @classmethod
     def get_consumer_groups(cls) -> Dict[str, list]:
         """Define consumer groups and their subscribed topics"""

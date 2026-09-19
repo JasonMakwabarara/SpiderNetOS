@@ -63,7 +63,7 @@ class AccountingController extends Controller
         $chartIds = ChartOfAccount::where('tenant_id', $tenant->id)->pluck('id')->all();
 
         foreach ($validated['mappings'] as $mapping) {
-            if ($mapping['gl_account_id'] !== null && !in_array($mapping['gl_account_id'], $chartIds, true)) {
+            if ($mapping['gl_account_id'] !== null && ! in_array($mapping['gl_account_id'], $chartIds, true)) {
                 return response()->json([
                     'error' => "Chart account {$mapping['gl_account_id']} does not belong to this tenant.",
                 ], 422);

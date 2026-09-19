@@ -1,14 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
-import asyncpg
-import redis.asyncio as redis
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime
+from typing import Dict, Optional
 from uuid import uuid4
+
+import asyncpg
 import httpx
-import random
-import math
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+
+import redis.asyncio as redis
 
 app = FastAPI(title="SpiderNetOS Semantic Gateway")
 
@@ -58,23 +58,23 @@ class RecommendationCreate(BaseModel):
 async def run_real_simulation(recommendation: RecommendationCreate, db_pool):
     async with db_pool.acquire() as conn:
         historical = await conn.fetch("""
-            SELECT 
+            SELECT
                 AVG(CASE WHEN status = 'accepted' THEN 1.0 ELSE 0.0 END) as base_success_rate,
                 COUNT(*) as total_recommendations
             FROM atlas_recommendations
             WHERE workspace_id = '00000000-0000-0000-0000-000000000001'
         """)
-    
+
     base_rate = float(historical[0]['base_success_rate']) if historical[0]['total_recommendations'] > 0 else 0.7
-    
+
     risk_adjustment = (recommendation.risk_score or 0.0) * 0.3
     impact_adjustment = (recommendation.impact_score / 100) * 0.2
-    
+
     success_rate = base_rate + impact_adjustment - risk_adjustment
     success_rate = max(0.3, min(0.95, success_rate))
-    
+
     failure_rate = 1 - success_rate
-    
+
     edge_cases = []
     if recommendation.risk_score > 0.7:
         edge_cases.append({"case": "High risk recommendation", "probability": 0.3})
@@ -84,9 +84,9 @@ async def run_real_simulation(recommendation: RecommendationCreate, db_pool):
         edge_cases.append({"case": "Large time savings may indicate scope creep", "probability": 0.2})
     if not recommendation.proposed_dag or len(recommendation.proposed_dag.get('steps', [])) == 0:
         edge_cases.append({"case": "No DAG provided, using default workflow", "probability": 0.1})
-    
+
     projected_gain = recommendation.expected_revenue_gain * success_rate
-    
+
     return {
         "success_rate": round(success_rate, 2),
         "failure_rate": round(failure_rate, 2),
@@ -104,34 +104,34 @@ async def create_recommendation(rec: RecommendationCreate, db_pool=Depends(get_d
             dag_resp = await client.post("http://dag-compiler:8000/validate", json=rec.proposed_dag)
             if dag_resp.status_code != 200:
                 raise HTTPException(status_code=400, detail="DAG validation failed")
-    
+
     # 2. Run simulation
     simulation = await run_real_simulation(rec, db_pool)
-    
+
     # 3. Insert into database (use a separate connection acquisition)
     rec_id = str(uuid4())
     async with db_pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO atlas_recommendations 
+            INSERT INTO atlas_recommendations
             (id, workspace_id, title, impact_score, expected_revenue_gain, status, justification, proposed_dag, risk_score, estimated_time_saved, simulation_result, created_at)
             VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11)
         """, rec_id, "00000000-0000-0000-0000-000000000001", rec.title, rec.impact_score,
            rec.expected_revenue_gain, rec.justification, json.dumps(rec.proposed_dag),
            rec.risk_score, rec.estimated_time_saved, json.dumps(simulation), datetime.now())
-    
+
     # 4. Log memory event (use a separate connection)
     async with db_pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO atlas_memory_events (workspace_id, event_type, outcome, confidence, metadata, created_at)
             VALUES ($1, $2, $3, $4, $5, NOW())
-        """, "00000000-0000-0000-0000-000000000001", 'recommendation_created', 'draft', simulation['success_rate'], 
+        """, "00000000-0000-0000-0000-000000000001", 'recommendation_created', 'draft', simulation['success_rate'],
            json.dumps({"recommendation_id": rec_id, "edge_cases": simulation['edge_case_logs']}))
-    
+
     return {
-        "id": rec_id, 
-        "title": rec.title, 
-        "impact_score": rec.impact_score, 
-        "expected_revenue_gain": rec.expected_revenue_gain, 
+        "id": rec_id,
+        "title": rec.title,
+        "impact_score": rec.impact_score,
+        "expected_revenue_gain": rec.expected_revenue_gain,
         "status": "pending",
         "simulation": simulation
     }
@@ -181,7 +181,7 @@ async def get_schema_metadata(workspace_id: str, db_pool=Depends(get_db_pool)):
     for obj in objects:
         schema_map[obj['api_slug']] = {"object_id": str(obj['id']), "name": obj['name'], "attributes": {}}
     for attr in attributes:
-        for slug, data in schema_map.items():
+        for _slug, data in schema_map.items():
             if data["object_id"] == str(attr['object_id']):
                 data["attributes"][attr['api_slug']] = attr['type']
     return {"workspace_id": workspace_id, "schema": schema_map}
@@ -241,14 +241,14 @@ async def get_revenue_signals(workspace_id: str, db_pool=Depends(get_db_pool)):
 async def coordinate_cycle(workspace_id: str, db_pool=Depends(get_db_pool)):
     async with httpx.AsyncClient() as client:
         await client.post(f"http://atlas-perception:8000/v2/perceive/stage-telemetry?workspace_id={workspace_id}&list_id=11111111-1111-1111-1111-111111111111")
-    
+
     rec_id = str(uuid4())
     async with db_pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO atlas_recommendations (id, workspace_id, title, impact_score, expected_revenue_gain, status, created_at)
             VALUES ($1, $2, $3, $4, $5, 'pending', $6)
         """, rec_id, workspace_id, "Auto-generated from cognitive cycle", 60, 15000, datetime.now())
-    
+
     return {
         "status": "cycle_completed",
         "recommendation_id": rec_id,
@@ -261,10 +261,10 @@ async def coordinate_cycle(workspace_id: str, db_pool=Depends(get_db_pool)):
 async def evaluate_event(event_payload: str, workspace_id: str, db_pool=Depends(get_db_pool), redis_client=Depends(get_redis)):
     async with db_pool.acquire() as conn:
         matched = await conn.fetchrow("SELECT playbook_id FROM crm_cached_patterns WHERE workspace_id = $1 LIMIT 1", workspace_id)
-    
+
     if matched:
         await redis_client.lpush("queue:runtime:deterministic", json.dumps({"playbook_id": str(matched['playbook_id']), "context": event_payload}))
         return {"route": "deterministic_cache_bypass", "source": str(matched['playbook_id']), "similarity_score": 0.98}
-    
+
     await redis_client.lpush("queue:atlas:cognitive:perception", json.dumps({"workspace_id": workspace_id, "payload": event_payload}))
     return {"route": "cognitive_analysis_pipeline", "similarity_score": 0.0}

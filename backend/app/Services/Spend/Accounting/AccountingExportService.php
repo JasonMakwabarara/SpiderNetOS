@@ -33,7 +33,7 @@ class AccountingExportService
         string $to,
         string $requestedBy,
     ): AccountingExport {
-        if (!in_array($exportType, AccountingExport::TYPES, true)) {
+        if (! in_array($exportType, AccountingExport::TYPES, true)) {
             throw new \InvalidArgumentException("Unknown export type: {$exportType}");
         }
 
@@ -72,7 +72,7 @@ class AccountingExportService
     /** Streamed CSV download (see ComplianceController::auditExport precedent). */
     public function streamDownload(AccountingExport $export): StreamedResponse
     {
-        if (!$export->isGenerated() || !$export->file_path) {
+        if (! $export->isGenerated() || ! $export->file_path) {
             throw new \LogicException("Export is not ready for download. Status: {$export->status}");
         }
 

@@ -212,7 +212,7 @@ class AtlasClarityGate
     }
 
     /**
-     * @param array<string, mixed> $consequence
+     * @param  array<string, mixed>  $consequence
      */
     public function clarifyingQuestion(string $message, array $consequence): string
     {
@@ -238,7 +238,7 @@ class AtlasClarityGate
     }
 
     /**
-     * @param array<string, mixed> $consequence
+     * @param  array<string, mixed>  $consequence
      * @return array<string, mixed>
      */
     private function buildConfirmAssessment(string $message, array $consequence, string $automationLevel): array
@@ -336,7 +336,7 @@ class AtlasClarityGate
     }
 
     /**
-     * @param list<string> $patterns
+     * @param  list<string>  $patterns
      */
     private function matchesAny(string $haystack, array $patterns): bool
     {
@@ -362,7 +362,7 @@ class AtlasClarityGate
     }
 
     /**
-     * @param array<string, mixed> $ast
+     * @param  array<string, mixed>  $ast
      * @return list<array<string, string>>
      */
     private function buildPlanTasksFromAst(array $ast): array

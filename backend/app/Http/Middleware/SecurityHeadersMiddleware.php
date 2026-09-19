@@ -41,11 +41,11 @@ class SecurityHeadersMiddleware
         // ─── HSTS (HTTPS only) ──────────────────────────────────────────
         $hsts = $headers['hsts'] ?? [];
         if (($hsts['enabled'] ?? false) && $request->isSecure()) {
-            $value = 'max-age=' . (int) ($hsts['max_age'] ?? 0);
-            if (!empty($hsts['include_subdomains'])) {
+            $value = 'max-age='.(int) ($hsts['max_age'] ?? 0);
+            if (! empty($hsts['include_subdomains'])) {
                 $value .= '; includeSubDomains';
             }
-            if (!empty($hsts['preload'])) {
+            if (! empty($hsts['preload'])) {
                 $value .= '; preload';
             }
             $response->headers->set('Strict-Transport-Security', $value);
@@ -56,13 +56,13 @@ class SecurityHeadersMiddleware
         $response->headers->set('X-Content-Type-Options', $headers['content_type'] ?? 'nosniff');
         $response->headers->set('Referrer-Policy', $headers['referrer_policy'] ?? 'strict-origin-when-cross-origin');
 
-        if (!empty($headers['permissions_policy'])) {
+        if (! empty($headers['permissions_policy'])) {
             $response->headers->set('Permissions-Policy', $headers['permissions_policy']);
         }
-        if (!empty($headers['cross_origin_opener_policy'])) {
+        if (! empty($headers['cross_origin_opener_policy'])) {
             $response->headers->set('Cross-Origin-Opener-Policy', $headers['cross_origin_opener_policy']);
         }
-        if (!empty($headers['cross_origin_resource_policy'])) {
+        if (! empty($headers['cross_origin_resource_policy'])) {
             $response->headers->set('Cross-Origin-Resource-Policy', $headers['cross_origin_resource_policy']);
         }
 
@@ -71,19 +71,19 @@ class SecurityHeadersMiddleware
         $cspHeader = $this->buildCspHeader($csp['directives'] ?? []);
 
         if ($cspHeader !== '') {
-            $headerName = !empty($csp['enforce'])
+            $headerName = ! empty($csp['enforce'])
                 ? 'Content-Security-Policy'
                 : 'Content-Security-Policy-Report-Only';
 
-            if (!empty($csp['report_uri'])) {
-                $cspHeader .= '; report-uri ' . $csp['report_uri'];
+            if (! empty($csp['report_uri'])) {
+                $cspHeader .= '; report-uri '.$csp['report_uri'];
             }
 
             $response->headers->set($headerName, $cspHeader);
         }
 
         // Request ID propagation (useful for Grafana/Loki log correlation)
-        if (!$response->headers->has('X-Request-ID')) {
+        if (! $response->headers->has('X-Request-ID')) {
             $response->headers->set(
                 'X-Request-ID',
                 (string) ($request->headers->get('X-Request-ID') ?: bin2hex(random_bytes(8)))
@@ -103,6 +103,7 @@ class SecurityHeadersMiddleware
         foreach ($directives as $name => $values) {
             if ($values === null) {
                 $parts[] = $name;
+
                 continue;
             }
 
@@ -111,8 +112,9 @@ class SecurityHeadersMiddleware
                 continue;
             }
 
-            $parts[] = $name . ' ' . implode(' ', $values);
+            $parts[] = $name.' '.implode(' ', $values);
         }
+
         return implode('; ', $parts);
     }
 }

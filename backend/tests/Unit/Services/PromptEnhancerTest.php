@@ -17,7 +17,7 @@ class PromptEnhancerTest extends TestCase
 {
     public function test_empty_input_returns_noop(): void
     {
-        $enhancer = new PromptEnhancer();
+        $enhancer = new PromptEnhancer;
         $out = $enhancer->enhance('   ');
 
         $this->assertSame('noop', $out['mode']);
@@ -29,9 +29,9 @@ class PromptEnhancerTest extends TestCase
         // Ensure no inference_url is configured so we hit the deterministic branch
         config(['services.inference.url' => null]);
 
-        $enhancer = new PromptEnhancer();
+        $enhancer = new PromptEnhancer;
         $out = $enhancer->enhance('summarise yesterday\'s usage', [
-            'mode'    => 'balanced',
+            'mode' => 'balanced',
             'surface' => 'atlas_chat',
         ]);
 
@@ -44,7 +44,7 @@ class PromptEnhancerTest extends TestCase
     public function test_deep_mode_adds_replay_plan(): void
     {
         config(['services.inference.url' => null]);
-        $enhancer = new PromptEnhancer();
+        $enhancer = new PromptEnhancer;
         $out = $enhancer->enhance('migrate tenants', ['mode' => 'deep']);
 
         $this->assertStringContainsString('replay verification plan', $out['enhanced']);
@@ -53,7 +53,7 @@ class PromptEnhancerTest extends TestCase
     public function test_agent_builder_surface_mentions_agent_runtime(): void
     {
         config(['services.inference.url' => null]);
-        $enhancer = new PromptEnhancer();
+        $enhancer = new PromptEnhancer;
         $out = $enhancer->enhance('helpful assistant', ['surface' => 'agent_builder']);
 
         $this->assertStringContainsString('Agent specification', $out['enhanced']);
@@ -62,7 +62,7 @@ class PromptEnhancerTest extends TestCase
     public function test_original_preserved_in_response(): void
     {
         config(['services.inference.url' => null]);
-        $enhancer = new PromptEnhancer();
+        $enhancer = new PromptEnhancer;
         $out = $enhancer->enhance('  run the daily brief  ');
 
         $this->assertSame('  run the daily brief  ', $out['original']);

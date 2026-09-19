@@ -61,7 +61,7 @@ class SopFlowCompiler
         $stepAction = $process->owner_type === 'agent' ? 'agent_step' : 'log';
 
         foreach ($steps as $i => $step) {
-            $nodeId = 'step_' . ($i + 1);
+            $nodeId = 'step_'.($i + 1);
             $nodes[] = [
                 'id' => $nodeId,
                 'type' => 'action',
@@ -93,8 +93,8 @@ class SopFlowCompiler
         $edges[] = ['from' => $previous, 'to' => 'report'];
 
         $definition = [
-            'name' => 'SOP: ' . $sop->title,
-            'description' => "Runbook compiled from SOP v{$sop->version} of process \"{$process->name}\". Goal: " . ($process->goal ?: $sop->purpose),
+            'name' => 'SOP: '.$sop->title,
+            'description' => "Runbook compiled from SOP v{$sop->version} of process \"{$process->name}\". Goal: ".($process->goal ?: $sop->purpose),
             'dag' => ['nodes' => $nodes, 'edges' => $edges],
             'triggers' => [
                 'type' => $schedule === 'manual' ? 'manual' : 'schedule',
@@ -117,7 +117,7 @@ class SopFlowCompiler
         } else {
             $flow = Flow::create([
                 'tenant_id' => $process->tenant_id,
-                'slug' => Str::slug('sop-' . Str::limit($sop->title, 40, '') . '-' . substr((string) Str::uuid(), 0, 8)),
+                'slug' => Str::slug('sop-'.Str::limit($sop->title, 40, '').'-'.substr((string) Str::uuid(), 0, 8)),
                 ...$definition,
             ]);
         }

@@ -9,6 +9,7 @@ use App\Services\CostGovernor;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 /**
  * LLM-backed structured extraction for spend documents (receipts/bills).
@@ -43,12 +44,12 @@ class DocumentExtractionService
                 ->retry(1, 1000)
                 ->post(rtrim($inferenceUrl, '/').'/v1/extract-document', $request);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
             $body = $response->json();
-            if (!is_array($body)) {
+            if (! is_array($body)) {
                 return null;
             }
 
@@ -125,12 +126,12 @@ class DocumentExtractionService
         }
 
         if ($doc->mime_type === 'application/pdf') {
-            if (!class_exists(\Smalot\PdfParser\Parser::class)) {
+            if (! class_exists(Parser::class)) {
                 return null;
             }
 
             try {
-                $text = (new \Smalot\PdfParser\Parser())->parseContent($contents)->getText();
+                $text = (new Parser)->parseContent($contents)->getText();
             } catch (\Throwable) {
                 return null;
             }
@@ -154,14 +155,14 @@ class DocumentExtractionService
      */
     private function normalizeFields(mixed $raw): ?array
     {
-        if (!is_array($raw) || $raw === []) {
+        if (! is_array($raw) || $raw === []) {
             return null;
         }
 
         $fields = [];
 
         foreach ($raw as $key => $spec) {
-            if (!is_string($key)) {
+            if (! is_string($key)) {
                 continue;
             }
 

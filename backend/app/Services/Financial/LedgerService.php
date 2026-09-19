@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
-use App\Models\LedgerEntry;
 use App\Models\FinancialAccount;
-use App\Models\ChartOfAccount;
+use App\Models\LedgerEntry;
 use App\Models\Transaction;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class LedgerService
 {
@@ -130,6 +128,7 @@ class LedgerService
     public function getAccountBalance(string $accountId): float
     {
         $account = FinancialAccount::findOrFail($accountId);
+
         return (float) $account->balance;
     }
 
@@ -148,7 +147,7 @@ class LedgerService
 
         $balances = [];
         foreach ($entries as $entry) {
-            if (!isset($balances[$entry->account_id])) {
+            if (! isset($balances[$entry->account_id])) {
                 $balances[$entry->account_id] = [
                     'account_id' => $entry->account_id,
                     'account_name' => $entry->account->name ?? 'Unknown',
@@ -179,8 +178,12 @@ class LedgerService
             ->with('account')
             ->orderBy('posted_at');
 
-        if ($startDate) $query->where('posted_at', '>=', $startDate);
-        if ($endDate) $query->where('posted_at', '<=', $endDate);
+        if ($startDate) {
+            $query->where('posted_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('posted_at', '<=', $endDate);
+        }
 
         return $query->get()->toArray();
     }
@@ -257,7 +260,7 @@ class LedgerService
      * balancing credit line. Lines carry chart_account_id for per-category
      * GL reporting. Debit line total must equal the credit amount.
      *
-     * @param array<int, array{account_id: string, amount: string, chart_account_id?: ?string, description?: ?string}> $debitLines
+     * @param  array<int, array{account_id: string, amount: string, chart_account_id?: ?string, description?: ?string}>  $debitLines
      */
     public function postCompoundEntry(
         string $tenantId,

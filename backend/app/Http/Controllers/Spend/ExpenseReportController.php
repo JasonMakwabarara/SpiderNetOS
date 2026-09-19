@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Spend;
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseItem;
 use App\Models\ExpenseReport;
-use App\Models\SpendDocument;
 use App\Services\Spend\ExpenseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +27,7 @@ class ExpenseReportController extends Controller
         $query = ExpenseReport::forTenant($tenant->id)->with('items');
 
         if ($scope === 'team') {
-            if (!$user->atLeastRole('member')) {
+            if (! $user->atLeastRole('member')) {
                 return response()->json([
                     'error' => 'Forbidden',
                     'reason' => 'insufficient_role',

@@ -88,7 +88,7 @@ class ReceiptHeuristics
         $candidates = [];
 
         foreach ($lines as $line) {
-            if (!preg_match_all('/(?:USD|GBP|EUR|[$\x{00A3}\x{20AC}])?\s*([0-9][0-9,]*\.[0-9]{2})\b/u', $line, $matches)) {
+            if (! preg_match_all('/(?:USD|GBP|EUR|[$\x{00A3}\x{20AC}])?\s*([0-9][0-9,]*\.[0-9]{2})\b/u', $line, $matches)) {
                 continue;
             }
 
@@ -116,7 +116,7 @@ class ReceiptHeuristics
     private function guessTax(array $lines): ?string
     {
         foreach ($lines as $line) {
-            if (!preg_match('/\b(tax|vat|gst)\b/i', $line)) {
+            if (! preg_match('/\b(tax|vat|gst)\b/i', $line)) {
                 continue;
             }
             if (preg_match('/([0-9][0-9,]*\.[0-9]{2})\b/', $line, $m)) {
@@ -167,7 +167,7 @@ class ReceiptHeuristics
 
     private function validDate(int $year, int $month, int $day): ?string
     {
-        if (!checkdate($month, $day, $year)) {
+        if (! checkdate($month, $day, $year)) {
             return null;
         }
 

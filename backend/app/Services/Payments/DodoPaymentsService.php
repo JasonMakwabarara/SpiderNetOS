@@ -42,7 +42,7 @@ class DodoPaymentsService
             throw new \RuntimeException("Dodo product ID is not configured for plan [{$planId}].");
         }
 
-        $reference = 'SNOS-' . strtoupper(Str::random(12));
+        $reference = 'SNOS-'.strtoupper(Str::random(12));
 
         $response = $this->client()->post('/checkouts', [
             'product_cart' => [
@@ -52,7 +52,7 @@ class DodoPaymentsService
                 'email' => $user->email,
                 'name' => $user->name,
             ],
-            'return_url' => config('dodo.return_url') . '?reference=' . urlencode($reference),
+            'return_url' => config('dodo.return_url').'?reference='.urlencode($reference),
             'metadata' => [
                 'reference' => $reference,
                 'tenant_id' => (string) $tenant->id,
@@ -90,7 +90,7 @@ class DodoPaymentsService
      */
     public function cancelSubscription(string $providerSubscriptionId): void
     {
-        $response = $this->client()->patch('/subscriptions/' . $providerSubscriptionId, [
+        $response = $this->client()->patch('/subscriptions/'.$providerSubscriptionId, [
             'cancel_at_next_billing_date' => true,
         ]);
 

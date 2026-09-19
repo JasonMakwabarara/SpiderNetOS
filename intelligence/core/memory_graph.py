@@ -4,12 +4,11 @@ Hybrid retrieval: Vector similarity + Graph traversal
 Persistence: PostgreSQL with pgvector for embeddings
 """
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timezone
-import json
 import hashlib
-import uuid
+import json
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -41,13 +40,13 @@ class MemoryGraph:
     Campaign Memory Graph with hybrid retrieval.
     Combines vector similarity with graph traversal for context assembly.
     """
-    
+
     def __init__(self, db_pool, redis_client, embedding_service):
         self.db = db_pool
         self.redis = redis_client
         self.embeddings = embedding_service
         self._cache = {}  # In-memory cache for hot nodes
-    
+
     async def add_node(
         self,
         tenant_id: str,
@@ -58,13 +57,13 @@ class MemoryGraph:
         embedding: Optional[List[float]] = None
     ) -> MemoryNode:
         """Add a memory node with optional pre-computed embedding"""
-        
+
         node_id = self._generate_id(content, tenant_id)
-        
+
         # Generate embedding if not provided
         if embedding is None:
             embedding = await self.embeddings.embed(content)
-        
+
         node = MemoryNode(
             id=node_id,
             tenant_id=tenant_id,
@@ -78,12 +77,12 @@ class MemoryGraph:
             access_count=0,
             last_accessed_at=None,
         )
-        
+
         await self._persist_node(node)
         self._cache[node_id] = node
-        
+
         return node
-    
+
     async def add_edge(
         self,
         source_id: str,
@@ -93,7 +92,7 @@ class MemoryGraph:
         metadata: Optional[Dict] = None
     ) -> MemoryEdge:
         """Add an edge between memory nodes"""
-        
+
         edge = MemoryEdge(
             source_id=source_id,
             target_id=target_id,
@@ -101,10 +100,10 @@ class MemoryGraph:
             weight=weight,
             metadata=metadata or {},
         )
-        
+
         await self._persist_edge(edge)
         return edge
-    
+
     async def retrieve(
         self,
         tenant_id: str,
@@ -115,14 +114,14 @@ class MemoryGraph:
     ) -> List[Dict[str, Any]]:
         """
         Hybrid retrieval combining vector similarity with graph traversal.
-        
+
         Algorithm:
         1. Vector search for top-K similar nodes
         2. Graph traversal to find related nodes (expanding context)
         3. Score fusion: vector_score * 0.5 + graph_score * 0.3 + recency * 0.2
         4. Return assembled context
         """
-        
+
         # Step 1: Vector similarity search
         query_embedding = await self.embeddings.embed(query)
         vector_results = await self._vector_search(
@@ -131,7 +130,7 @@ class MemoryGraph:
             agent_id=agent_id,
             top_k=top_k
         )
-        
+
         # Step 2: Graph expansion
         graph_results = []
         for node in vector_results:
@@ -141,16 +140,16 @@ class MemoryGraph:
                 tenant_id=tenant_id
             )
             graph_results.extend(related)
-        
+
         # Step 3: Score fusion and deduplication
         combined = self._fuse_scores(vector_results, graph_results)
-        
+
         # Step 4: Record access for recency update
         for item in combined[:top_k]:
             await self._record_access(item['id'])
-        
+
         return combined[:top_k]
-    
+
     async def _vector_search(
         self,
         tenant_id: str,
@@ -161,11 +160,11 @@ class MemoryGraph:
         """Vector similarity search using pgvector cosine distance operator."""
         if not embedding or not self.db:
             return []
-        
+
         try:
             # Build the embedding string for pgvector
             embedding_str = '[' + ','.join(str(v) for v in embedding) + ']'
-            
+
             if agent_id:
                 rows = await self.db.fetch(
                     """SELECT id, content, node_type, metadata, recency_score, importance_score,
@@ -188,7 +187,7 @@ class MemoryGraph:
                        LIMIT $3""",
                     embedding_str, tenant_id, top_k
                 )
-            
+
             return [
                 {
                     'id': str(row['id']),
@@ -204,7 +203,7 @@ class MemoryGraph:
         except Exception as e:
             print(f"[warn] Vector search failed: {e}")
             return []
-    
+
     async def _graph_traverse(
         self,
         node_id: str,
@@ -214,9 +213,9 @@ class MemoryGraph:
         """Traverse graph from starting node"""
         if depth <= 0:
             return []
-        
+
         edges = await self._get_edges(node_id, tenant_id)
-        
+
         results = []
         for edge in edges:
             target_id = edge.target_id if edge.source_id == node_id else edge.source_id
@@ -228,9 +227,9 @@ class MemoryGraph:
                     'score': edge.weight * (0.7 ** (3 - depth)),
                     'relation': edge.relation_type,
                 })
-        
+
         return results
-    
+
     def _fuse_scores(
         self,
         vector_results: List[Dict],
@@ -321,14 +320,14 @@ class MemoryGraph:
         if metadata.get('outcome'):
             relevance += 0.1
         return min(1.0, relevance)
-    
+
     async def _record_access(self, node_id: str) -> None:
         """Record node access and update recency score"""
         if not self.db:
             return
         try:
             await self.db.execute(
-                """UPDATE memory_nodes 
+                """UPDATE memory_nodes
                    SET access_count = access_count + 1,
                        last_accessed_at = $1,
                        recency_score = 1.0
@@ -337,7 +336,7 @@ class MemoryGraph:
             )
         except Exception as e:
             print(f"[warn] Failed to record access for {node_id}: {e}")
-    
+
     async def _persist_node(self, node: MemoryNode) -> None:
         """Persist node to PostgreSQL memory_nodes table."""
         if not self.db:
@@ -346,10 +345,10 @@ class MemoryGraph:
             embedding_str = None
             if node.embedding:
                 embedding_str = '[' + ','.join(str(v) for v in node.embedding) + ']'
-            
+
             await self.db.execute(
-                """INSERT INTO memory_nodes 
-                   (id, tenant_id, agent_id, node_type, content, embedding, 
+                """INSERT INTO memory_nodes
+                   (id, tenant_id, agent_id, node_type, content, embedding,
                     metadata, recency_score, importance_score, access_count,
                     last_accessed_at, created_at, updated_at)
                    VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8, $9, $10, $11, $12, $12)
@@ -369,14 +368,14 @@ class MemoryGraph:
             )
         except Exception as e:
             print(f"[warn] Failed to persist node {node.id}: {e}")
-    
+
     async def _persist_edge(self, edge: MemoryEdge) -> None:
         """Persist edge to PostgreSQL memory_edges table."""
         if not self.db:
             return
         try:
             await self.db.execute(
-                """INSERT INTO memory_edges 
+                """INSERT INTO memory_edges
                    (source_id, target_id, relation_type, weight, metadata, created_at, updated_at)
                    VALUES ($1, $2, $3, $4, $5, $6, $6)
                    ON CONFLICT (source_id, target_id, relation_type) DO UPDATE SET
@@ -389,15 +388,15 @@ class MemoryGraph:
             )
         except Exception as e:
             print(f"[warn] Failed to persist edge {edge.source_id}->{edge.target_id}: {e}")
-    
+
     async def _get_node(self, node_id: str) -> Optional[MemoryNode]:
         """Get node by ID (cache-aware, DB fallback)."""
         if node_id in self._cache:
             return self._cache[node_id]
-        
+
         if not self.db:
             return None
-        
+
         try:
             row = await self.db.fetchrow(
                 "SELECT * FROM memory_nodes WHERE id = $1", node_id
@@ -420,14 +419,14 @@ class MemoryGraph:
                 return node
         except Exception as e:
             print(f"[warn] Failed to get node {node_id}: {e}")
-        
+
         return None
-    
+
     async def _get_edges(self, node_id: str, tenant_id: str) -> List[MemoryEdge]:
         """Get edges connected to node from PostgreSQL."""
         if not self.db:
             return []
-        
+
         try:
             rows = await self.db.fetch(
                 """SELECT source_id, target_id, relation_type, weight, metadata
@@ -448,7 +447,7 @@ class MemoryGraph:
         except Exception as e:
             print(f"[warn] Failed to get edges for {node_id}: {e}")
             return []
-    
+
     def _generate_id(self, content: str, tenant_id: str) -> str:
         """Generate deterministic ID from content"""
         hash_input = f"{tenant_id}:{content}"
@@ -460,20 +459,20 @@ class EmbeddingService:
     Embedding generation via inference plane /embed endpoint.
     Uses Gemma 4 through Ollama for 384-dim embeddings.
     """
-    
+
     def __init__(self, inference_url: str = "http://inference:9000", model: str = None):
         self.inference_url = inference_url
         self.model = model  # None = use server default
-    
+
     async def embed(self, text: str) -> List[float]:
         """Generate embedding for text via inference plane."""
         try:
             import httpx
-            
+
             payload = {"text": text}
             if self.model:
                 payload["model"] = self.model
-            
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
                     f"{self.inference_url}/embed",

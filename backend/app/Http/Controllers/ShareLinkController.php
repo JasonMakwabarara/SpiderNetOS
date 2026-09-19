@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -137,8 +138,8 @@ class ShareLinkController extends Controller
 
         $durationMs = null;
         if ($execution->started_at && $execution->completed_at) {
-            $durationMs = \Carbon\Carbon::parse($execution->started_at)
-                ->diffInMilliseconds(\Carbon\Carbon::parse($execution->completed_at));
+            $durationMs = Carbon::parse($execution->started_at)
+                ->diffInMilliseconds(Carbon::parse($execution->completed_at));
         }
 
         return response()->json([

@@ -24,30 +24,29 @@ class FeatureFlagCommand extends Command
                             {value? : Value to set (on|off|fallback|<scalar>)}
                             {--tenant= : Optional tenant UUID for per-tenant override}';
 
-
-
     protected $description = 'Manage Atlas / SpiderNet feature flags at runtime';
 
     public function handle(): int
     {
-        $action   = $this->argument('action');
-        $name     = $this->argument('name');
-        $value    = $this->argument('value');
+        $action = $this->argument('action');
+        $name = $this->argument('name');
+        $value = $this->argument('value');
         $tenantId = $this->option('tenant');
 
         return match ($action) {
-            'set'    => $this->doSet($name, $value, $tenantId),
-            'get'    => $this->doGet($name, $tenantId),
+            'set' => $this->doSet($name, $value, $tenantId),
+            'get' => $this->doGet($name, $tenantId),
             'forget' => $this->doForget($name, $tenantId),
-            'list'   => $this->doList(),
-            default  => $this->invalidAction($action),
+            'list' => $this->doList(),
+            default => $this->invalidAction($action),
         };
     }
 
     private function doSet(?string $name, ?string $value, ?string $tenantId): int
     {
-        if (!$name || !$value) {
+        if (! $name || ! $value) {
             $this->error('Both <name> and <value> are required for feature:set');
+
             return self::FAILURE;
         }
 
@@ -55,27 +54,31 @@ class FeatureFlagCommand extends Command
 
         $scope = $tenantId ? " (tenant: {$tenantId})" : ' (global)';
         $this->info("Feature flag set{$scope}: {$name} = {$value}");
+
         return self::SUCCESS;
     }
 
     private function doGet(?string $name, ?string $tenantId): int
     {
-        if (!$name) {
+        if (! $name) {
             $this->error('<name> is required for feature:get');
+
             return self::FAILURE;
         }
 
         $val = FeatureFlag::value($name, $tenantId ?: null);
         $scope = $tenantId ? " (tenant: {$tenantId})" : '';
 
-        $this->line("{$name}{$scope}: " . (is_bool($val) ? ($val ? 'true' : 'false') : $val));
+        $this->line("{$name}{$scope}: ".(is_bool($val) ? ($val ? 'true' : 'false') : $val));
+
         return self::SUCCESS;
     }
 
     private function doForget(?string $name, ?string $tenantId): int
     {
-        if (!$name) {
+        if (! $name) {
             $this->error('<name> is required for feature:forget');
+
             return self::FAILURE;
         }
 
@@ -83,6 +86,7 @@ class FeatureFlagCommand extends Command
 
         $scope = $tenantId ? " (tenant: {$tenantId})" : ' (global)';
         $this->info("Feature flag override removed{$scope}: {$name}");
+
         return self::SUCCESS;
     }
 
@@ -93,16 +97,18 @@ class FeatureFlagCommand extends Command
         $rows = [];
         foreach ($flags as $flag => $val) {
             $display = is_bool($val) ? ($val ? 'true' : 'false') : (string) $val;
-            $rows[]  = [$flag, $display];
+            $rows[] = [$flag, $display];
         }
 
         $this->table(['Flag', 'Current Value'], $rows);
+
         return self::SUCCESS;
     }
 
     private function invalidAction(string $action): int
     {
         $this->error("Unknown action '{$action}'. Use: set, get, forget, list");
+
         return self::FAILURE;
     }
 }

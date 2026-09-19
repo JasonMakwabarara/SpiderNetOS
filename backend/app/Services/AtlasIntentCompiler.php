@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * AtlasIntentCompiler - Hybrid Intent Parser for SpiderNet OS v3.2
@@ -21,14 +21,14 @@ class AtlasIntentCompiler
      * Mapping of intents to their designated agent targets.
      */
     private const INTENT_AGENT_MAP = [
-        'create_flow'   => 'forge',
-        'execute_flow'  => 'nexus',
-        'query_status'  => 'sentinel',
-        'analyze_data'  => 'prism',
-        'teach'         => 'hannah',
-        'monitor'       => 'sentinel',
-        'manage_agent'  => 'nexus',
-        'chat'          => 'atlas',
+        'create_flow' => 'forge',
+        'execute_flow' => 'nexus',
+        'query_status' => 'sentinel',
+        'analyze_data' => 'prism',
+        'teach' => 'hannah',
+        'monitor' => 'sentinel',
+        'manage_agent' => 'nexus',
+        'chat' => 'atlas',
     ];
 
     /**
@@ -37,46 +37,46 @@ class AtlasIntentCompiler
      */
     private const COMMAND_PATTERNS = [
         '/^\/research\s+(.+)/i' => [
-            'intent'     => 'analyze_data',
+            'intent' => 'analyze_data',
             'entity_key' => 'research_query',
         ],
         // /create flow ... → create_flow
         '/^\/create\s+flow\s+(.+)/i' => [
-            'intent'     => 'create_flow',
+            'intent' => 'create_flow',
             'entity_key' => 'flow_definition',
         ],
         // /run ... or /execute ... → execute_flow
         '/^\/(?:run|execute)\s+(.+)/i' => [
-            'intent'     => 'execute_flow',
+            'intent' => 'execute_flow',
             'entity_key' => 'flow_target',
         ],
         // /analyze ... → analyze_data
         '/^\/analyze\s+(.+)/i' => [
-            'intent'     => 'analyze_data',
+            'intent' => 'analyze_data',
             'entity_key' => 'analysis_target',
         ],
         // /help or /explain ... → teach
         '/^\/help(?:\s+(.*))?$/i' => [
-            'intent'     => 'teach',
+            'intent' => 'teach',
             'entity_key' => 'topic',
         ],
         '/^\/explain\s+(.+)/i' => [
-            'intent'     => 'teach',
+            'intent' => 'teach',
             'entity_key' => 'topic',
         ],
         // /status or /health → query_status
         '/^\/(?:status|health)(?:\s+(.*))?$/i' => [
-            'intent'     => 'query_status',
+            'intent' => 'query_status',
             'entity_key' => 'target',
         ],
         // /monitor → monitor
         '/^\/monitor(?:\s+(.*))?$/i' => [
-            'intent'     => 'monitor',
+            'intent' => 'monitor',
             'entity_key' => 'target',
         ],
         // /agents → manage_agent
         '/^\/agents(?:\s+(.*))?$/i' => [
-            'intent'     => 'manage_agent',
+            'intent' => 'manage_agent',
             'entity_key' => 'action',
         ],
     ];
@@ -93,7 +93,7 @@ class AtlasIntentCompiler
     /**
      * Compile a user message into a structured intent result.
      *
-     * @param string $message Raw user input
+     * @param  string  $message  Raw user input
      * @return array{
      *     intent: string,
      *     entities: array,
@@ -119,9 +119,10 @@ class AtlasIntentCompiler
         $patternResult = $this->matchPattern($message);
         if ($patternResult !== null) {
             Log::debug('AtlasIntentCompiler: Pattern match hit', [
-                'intent'  => $patternResult['intent'],
+                'intent' => $patternResult['intent'],
                 'message' => $message,
             ]);
+
             return $this->rememberResult($patternResult);
         }
 
@@ -130,7 +131,7 @@ class AtlasIntentCompiler
     }
 
     /**
-     * @param array<string, mixed> $result
+     * @param  array<string, mixed>  $result
      * @return array<string, mixed>
      */
     private function rememberResult(array $result): array
@@ -143,7 +144,6 @@ class AtlasIntentCompiler
     /**
      * Attempt to match the message against known slash command patterns.
      *
-     * @param string $message
      * @return array|null Structured result or null if no pattern matched
      */
     private function matchPattern(string $message): ?array
@@ -154,7 +154,7 @@ class AtlasIntentCompiler
 
                 // Extract the captured entity value if present
                 $capturedValue = isset($matches[1]) ? trim($matches[1]) : '';
-                if (!empty($capturedValue) && !empty($config['entity_key'])) {
+                if (! empty($capturedValue) && ! empty($config['entity_key'])) {
                     $entities[$config['entity_key']] = $capturedValue;
                 }
 
@@ -173,7 +173,6 @@ class AtlasIntentCompiler
     /**
      * Classify intent using the inference plane LLM endpoint.
      *
-     * @param string $message
      * @return array Structured intent result
      */
     private function classifyWithLLM(string $message): array
@@ -182,6 +181,7 @@ class AtlasIntentCompiler
 
         if (empty($inferenceUrl)) {
             Log::warning('AtlasIntentCompiler: No inference URL configured, defaulting to chat intent');
+
             return $this->buildResult('chat', [], 0.5, $message);
         }
 
@@ -189,11 +189,11 @@ class AtlasIntentCompiler
             $model = (string) config('services.spidernet.prompt_enhancer_model', 'gemma2:2b');
             $response = Http::timeout(60)
                 ->retry(2, 500)
-                ->post(rtrim($inferenceUrl, '/') . '/v1/classify', [
+                ->post(rtrim($inferenceUrl, '/').'/v1/classify', [
                     'message' => $message,
                     'model' => $model,
-                    'schema'  => [
-                        'type'       => 'object',
+                    'schema' => [
+                        'type' => 'object',
                         'properties' => [
                             'intent' => [
                                 'type' => 'string',
@@ -203,7 +203,7 @@ class AtlasIntentCompiler
                                 'type' => 'object',
                             ],
                             'confidence' => [
-                                'type'    => 'number',
+                                'type' => 'number',
                                 'minimum' => 0.0,
                                 'maximum' => 1.0,
                             ],
@@ -216,24 +216,24 @@ class AtlasIntentCompiler
             if ($response->successful()) {
                 $data = $response->json();
 
-                $intent     = $data['intent'] ?? 'chat';
-                $entities   = $data['entities'] ?? [];
+                $intent = $data['intent'] ?? 'chat';
+                $entities = $data['entities'] ?? [];
                 $confidence = (float) ($data['confidence'] ?? 0.5);
 
                 // Validate the intent is known
-                if (!array_key_exists($intent, self::INTENT_AGENT_MAP)) {
+                if (! array_key_exists($intent, self::INTENT_AGENT_MAP)) {
                     Log::warning('AtlasIntentCompiler: LLM returned unknown intent', [
-                        'intent'  => $intent,
+                        'intent' => $intent,
                         'message' => $message,
                     ]);
-                    $intent     = 'chat';
+                    $intent = 'chat';
                     $confidence = 0.3;
                 }
 
                 Log::debug('AtlasIntentCompiler: LLM classification', [
-                    'intent'     => $intent,
+                    'intent' => $intent,
                     'confidence' => $confidence,
-                    'message'    => $message,
+                    'message' => $message,
                 ]);
 
                 return $this->buildResult($intent, $entities, $confidence, $message);
@@ -241,11 +241,11 @@ class AtlasIntentCompiler
 
             Log::error('AtlasIntentCompiler: Inference endpoint returned error', [
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
         } catch (\Throwable $e) {
             Log::error('AtlasIntentCompiler: LLM classification failed', [
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'message' => $message,
             ]);
         }
@@ -259,7 +259,7 @@ class AtlasIntentCompiler
      */
     private function buildClassificationPrompt(): string
     {
-        return <<<PROMPT
+        return <<<'PROMPT'
 You are an intent classifier for SpiderNet OS. Classify the user's message into exactly one intent.
 
 Available intents:
@@ -281,22 +281,16 @@ PROMPT;
 
     /**
      * Build the standardized result array.
-     *
-     * @param string $intent
-     * @param array  $entities
-     * @param float  $confidence
-     * @param string $rawInput
-     * @return array
      */
     private function buildResult(string $intent, array $entities, float $confidence, string $rawInput): array
     {
         return [
-            'intent'            => $intent,
-            'entities'          => $entities,
-            'confidence'        => round($confidence, 4),
-            'agent_target'      => self::INTENT_AGENT_MAP[$intent] ?? null,
+            'intent' => $intent,
+            'entities' => $entities,
+            'confidence' => round($confidence, 4),
+            'agent_target' => self::INTENT_AGENT_MAP[$intent] ?? null,
             'requires_planning' => in_array($intent, self::PLANNING_INTENTS, true),
-            'raw_input'         => $rawInput,
+            'raw_input' => $rawInput,
         ];
     }
 }

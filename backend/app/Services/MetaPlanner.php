@@ -12,14 +12,18 @@ use App\Services\Agents\Collaborators;
 use App\Services\Agents\IdentityResolver;
 use App\Services\Agents\SkillCardView;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 class MetaPlanner
 {
     private CostGovernor $costGovernor;
+
     private EventStore $eventStore;
+
     private IntelligenceGateway $intelligenceGateway;
-    
+
     public function __construct(
         CostGovernor $costGovernor,
         EventStore $eventStore,
@@ -29,7 +33,7 @@ class MetaPlanner
         $this->eventStore = $eventStore;
         $this->intelligenceGateway = $intelligenceGateway;
     }
-    
+
     /**
      * Hard Rule #2: Meta-Planner is the ONLY decision authority
      * All agent dispatch goes through here. Agents cannot call other agents directly.
@@ -51,8 +55,8 @@ class MetaPlanner
             'flow_id' => $flowId,
         ]));
         $costStatus = $this->costGovernor->canExecute($tenantId, $estimatedCost);
-        
-        if (!$costStatus['allowed']) {
+
+        if (! $costStatus['allowed']) {
             return [
                 'status' => 'blocked',
                 'reason' => 'budget_exceeded',
@@ -60,15 +64,15 @@ class MetaPlanner
                 'estimated_cost' => $estimatedCost,
             ];
         }
-        
+
         // Check agent permissions (Hard Rule: graph-based permission check)
-        if (!$this->canAgentExecute($tenantId, $agentId, $intent)) {
+        if (! $this->canAgentExecute($tenantId, $agentId, $intent)) {
             return [
                 'status' => 'blocked',
                 'reason' => 'Agent lacks permission for this intent',
             ];
         }
-        
+
         // If degraded mode, adjust execution parameters
         if ($costStatus['degraded']) {
             $context['model_override'] = $this->costGovernor->selectModel(
@@ -78,7 +82,7 @@ class MetaPlanner
             );
             $context['degraded_mode'] = true;
         }
-        
+
         // Create execution DAG if flow-based
         $dagId = null;
         if ($flowId) {
@@ -98,12 +102,12 @@ class MetaPlanner
             $tenantId
         );
         $context['intelligence'] = $intelligence;
-        
+
         // Emit dispatch event (sole write target: event_log)
         $event = $this->eventStore->append(
             tenantId: $tenantId,
             aggregateType: 'agent_dispatch',
-            aggregateId: (string) \Illuminate\Support\Str::uuid(),
+            aggregateId: (string) Str::uuid(),
             eventType: 'agent.dispatched',
             payload: [
                 'agent_id' => $agentId,
@@ -124,7 +128,7 @@ class MetaPlanner
                 'intelligence_route' => $intelligence['route'] ?? (($intelligence['ok'] ?? false) ? 'evaluated' : 'unavailable'),
             ]
         );
-        
+
         // Hand off to intelligence workers. They consume with BLPOP (a list),
         // so LPUSH is the delivery mechanism — publish alone never reached
         // them (pub/sub and lists are disjoint keyspaces). Publish is kept
@@ -144,13 +148,13 @@ class MetaPlanner
             Redis::lpush('agent:dispatch', $dispatchMessage);
             Redis::publish('agent:dispatch', $dispatchMessage);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('MetaPlanner: Redis unavailable, dispatch not queued to workers', [
+            Log::warning('MetaPlanner: Redis unavailable, dispatch not queued to workers', [
                 'tenant_id' => $tenantId,
                 'agent_id' => $agentId,
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         return [
             'status' => 'dispatched',
             'event_id' => $event->id,
@@ -160,7 +164,7 @@ class MetaPlanner
             'intelligence' => $intelligence,
         ];
     }
-    
+
     /**
      * Hard Rule #2 for the PHP skill runtime (ADR-0002 D1): the ONLY way a
      * RunSkillJob is enqueued. Same gates as dispatch() — CostGovernor
@@ -288,8 +292,8 @@ class MetaPlanner
         ?string $sessionId = null,
         array $context = [],
     ): array {
-        $sessionId = $sessionId ?? (string) \Illuminate\Support\Str::uuid();
-        
+        $sessionId = $sessionId ?? (string) Str::uuid();
+
         // Record UI command intent
         $this->eventStore->append(
             tenantId: $tenantId,
@@ -303,10 +307,10 @@ class MetaPlanner
             ],
             metadata: ['source' => 'ui']
         );
-        
+
         // Parse command into AST
         $ast = $this->parseCommandToAst($message);
-        
+
         // Dispatch to Atlas Agent with NO shared memory
         // Merge provided context (from AtlasController) with session context
         $mergedContext = array_merge([
@@ -325,7 +329,7 @@ class MetaPlanner
             context: $mergedContext,
         );
     }
-    
+
     /**
      * Graph-based agent permission check (Hard Rule implementation)
      */
@@ -340,8 +344,8 @@ class MetaPlanner
             ->where('tenant_id', $tenantId)
             ->where($isUuid ? 'id' : 'slug', $agentId)
             ->first();
-        
-        if (!$agent || $agent->status !== 'active') {
+
+        if (! $agent || $agent->status !== 'active') {
             return false;
         }
         
@@ -375,7 +379,7 @@ class MetaPlanner
 
         return in_array($requiredCapability, $capabilities);
     }
-    
+
     private function mapIntentToCapability(string $intent): string
     {
         // run_skill:<slug> — the skill itself is the capability; canAgentExecute()
@@ -427,7 +431,7 @@ class MetaPlanner
         $baseline = $base * (1 + (0.8 * $complexity));
         $estimated = $historical > 0 ? $historical : $baseline;
 
-        if (!empty($context['flow_id']) || !empty($context['dag'])) {
+        if (! empty($context['flow_id']) || ! empty($context['dag'])) {
             $estimated *= 1.2;
             $baseline *= 1.2;
         }
@@ -465,13 +469,14 @@ class MetaPlanner
         }
 
         $avg = (float) ($query->avg('cost_usd') ?? 0.0);
+
         return $avg;
     }
-    
+
     private function createDagExecution(string $tenantId, string $flowId, array $context): string
     {
-        $dagId = (string) \Illuminate\Support\Str::uuid();
-        
+        $dagId = (string) Str::uuid();
+
         $this->eventStore->append(
             tenantId: $tenantId,
             aggregateType: 'dag_execution',
@@ -484,15 +489,15 @@ class MetaPlanner
             ],
             metadata: []
         );
-        
+
         return $dagId;
     }
-    
+
     public function parseCommandToAst(string $message): array
     {
         // Simple NL parsing - production would use LLM-based NLU
         $message = strtolower(trim($message));
-        
+
         // Pattern matching for common commands
         if (str_contains($message, 'create flow') || str_contains($message, 'new flow')) {
             return [
@@ -500,35 +505,36 @@ class MetaPlanner
                 'params' => ['name' => $this->extractQuoted($message)],
             ];
         }
-        
+
         if (str_contains($message, 'run') || str_contains($message, 'execute')) {
             return [
                 'type' => 'execute',
                 'params' => ['target' => $this->extractQuoted($message)],
             ];
         }
-        
+
         if (str_contains($message, 'status') || str_contains($message, 'health')) {
             return [
                 'type' => 'query_status',
                 'params' => [],
             ];
         }
-        
+
         return [
             'type' => 'chat',
             'params' => ['message' => $message],
         ];
     }
-    
+
     private function extractQuoted(string $message): ?string
     {
         if (preg_match('/"([^"]+)"/', $message, $matches)) {
             return $matches[1];
         }
+
         return null;
     }
-    
+
     private function resolveAtlasAgent(string $tenantId): string
     {
         // Atlas is the default NL compiler agent
@@ -536,19 +542,19 @@ class MetaPlanner
             ->where('tenant_id', $tenantId)
             ->where('slug', 'atlas')
             ->first();
-        
+
         return $atlas?->id ?? throw new \RuntimeException('Atlas agent not found');
     }
-    
+
     private function getSessionContext(string $sessionId): array
     {
         // Get recent session history from event_log only
         $events = $this->eventStore->getEvents('atlas_session', $sessionId);
-        
+
         return $events
             ->where('event_type', 'atlas.command_received')
             ->take(5)
-            ->map(fn($e) => $e->payload['message'] ?? '')
+            ->map(fn ($e) => $e->payload['message'] ?? '')
             ->values()
             ->toArray();
     }
@@ -565,6 +571,7 @@ class MetaPlanner
             60, // 1 minute TTL - short to allow settings changes to propagate
             function () use ($tenantId) {
                 $tenant = Tenant::find($tenantId);
+
                 return $tenant?->automation_level ?? 'assisted';
             }
         );

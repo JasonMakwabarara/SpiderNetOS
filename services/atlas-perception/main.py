@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, BackgroundTasks
-from uuid import UUID
-import asyncpg
-import redis.asyncio as redis
 import json
-from typing import Dict, Any
 from datetime import datetime
+from uuid import UUID
+
+import asyncpg
+from fastapi import Depends, FastAPI
+
+import redis.asyncio as redis
 
 app = FastAPI(title="SpiderNetOS Atlas Perception Engine")
 
@@ -31,7 +32,7 @@ async def process_stage_telemetry(
 ):
     # Real telemetry query from crm_list_entries
     query = """
-        SELECT 
+        SELECT
             stage,
             COUNT(*) as item_count,
             COALESCE(EXTRACT(EPOCH FROM AVG(NOW() - created_at)) / 86400, 0) as avg_days_in_stage
@@ -41,14 +42,14 @@ async def process_stage_telemetry(
     """
     async with db_pool.acquire() as conn:
         rows = await conn.fetch(query, list_id)
-    
+
     telemetry_summary = {
         row['stage']: {
             "count": row['item_count'],
             "avg_days": float(row['avg_days_in_stage'])
         } for row in rows
     }
-    
+
     payload = {
         "workspace_id": str(workspace_id),
         "list_id": str(list_id),
@@ -67,7 +68,7 @@ async def get_schema_metadata(workspace_id: UUID, db_pool=Depends(get_db_pool)):
     for obj in objects:
         schema_map[obj['api_slug']] = {"object_id": str(obj['id']), "name": obj['name'], "attributes": {}}
     for attr in attributes:
-        for slug, data in schema_map.items():
+        for _slug, data in schema_map.items():
             if data["object_id"] == str(attr['object_id']):
                 data["attributes"][attr['api_slug']] = attr['type']
     return {"workspace_id": str(workspace_id), "schema": schema_map}

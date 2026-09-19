@@ -19,11 +19,11 @@ return new class extends Migration
             $table->string('status', 16)->default('draft');
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['tenant_id', 'slug']);
             $table->index(['tenant_id', 'status']);
         });
-        
+
         Schema::create('flow_executions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('flow_id')->index();
@@ -35,11 +35,11 @@ return new class extends Migration
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['flow_id', 'status']);
             $table->index(['tenant_id', 'started_at']);
         });
-        
+
         Schema::create('dag_nodes', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('flow_id')->index();
@@ -50,7 +50,7 @@ return new class extends Migration
             $table->integer('position_y')->default(0);
             $table->timestamps();
         });
-        
+
         Schema::create('dag_edges', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('flow_id')->index();
@@ -58,11 +58,11 @@ return new class extends Migration
             $table->uuid('target_node_id')->index();
             $table->string('condition')->nullable();
             $table->timestamps();
-            
+
             $table->index(['flow_id', 'source_node_id']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('dag_edges');

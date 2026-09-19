@@ -93,10 +93,10 @@ class SteEventMappingSeeder extends Seeder
             ['pack.sales-crm.funnel_setup.interview.started',        'pack.sales-crm.funnel_setup', 'purchased',        'interviewing',      []],
             ['pack.sales-crm.funnel_setup.script.drafted',           'pack.sales-crm.funnel_setup', 'interviewing',     'script_drafted',    []],
             ['pack.sales-crm.funnel_setup.approval.requested',       'pack.sales-crm.funnel_setup', 'script_drafted',   'awaiting_approval', []],
-            ['pack.sales-crm.funnel_setup.approval.granted',         'pack.sales-crm.funnel_setup', 'awaiting_approval','approved',          []],
-            ['pack.sales-crm.funnel_setup.approval.rejected',        'pack.sales-crm.funnel_setup', 'awaiting_approval','rejected',          []],
-            ['pack.sales-crm.funnel_setup.script.revision_requested','pack.sales-crm.funnel_setup', 'awaiting_approval','interviewing',      []],
-            ['pack.sales-crm.funnel_setup.script.revision_requested','pack.sales-crm.funnel_setup', 'rejected',         'interviewing',      []],
+            ['pack.sales-crm.funnel_setup.approval.granted',         'pack.sales-crm.funnel_setup', 'awaiting_approval', 'approved',          []],
+            ['pack.sales-crm.funnel_setup.approval.rejected',        'pack.sales-crm.funnel_setup', 'awaiting_approval', 'rejected',          []],
+            ['pack.sales-crm.funnel_setup.script.revision_requested', 'pack.sales-crm.funnel_setup', 'awaiting_approval', 'interviewing',      []],
+            ['pack.sales-crm.funnel_setup.script.revision_requested', 'pack.sales-crm.funnel_setup', 'rejected',         'interviewing',      []],
             ['pack.sales-crm.funnel_setup.went_live',                'pack.sales-crm.funnel_setup', 'approved',         'live',              []],
             ['pack.sales-crm.funnel_setup.paused',                   'pack.sales-crm.funnel_setup', 'live',             'paused',            []],
             ['pack.sales-crm.funnel_setup.resumed',                  'pack.sales-crm.funnel_setup', 'paused',           'live',              []],
@@ -106,15 +106,15 @@ class SteEventMappingSeeder extends Seeder
         foreach ($rows as [$eventType, $chain, $fromState, $toState, $tags]) {
             DB::table('ste_event_mapping')->updateOrInsert(
                 [
-                    'event_type'  => $eventType,
-                    'chain'       => $chain,
-                    'from_state'  => $fromState,
-                    'to_state'    => $toState,
+                    'event_type' => $eventType,
+                    'chain' => $chain,
+                    'from_state' => $fromState,
+                    'to_state' => $toState,
                 ],
                 [
                     'extract_tags' => json_encode((object) $tags),
-                    'enabled'      => true,
-                    'created_at'   => $now,
+                    'enabled' => true,
+                    'created_at' => $now,
                 ],
             );
         }

@@ -32,7 +32,7 @@ class StateTransitionProjection
     public function accepts(Event $event): bool
     {
         // Respect kill-switch first
-        if (!FeatureFlag::on('platform.ste_projector')) {
+        if (! FeatureFlag::on('platform.ste_projector')) {
             return false;
         }
 
@@ -41,16 +41,17 @@ class StateTransitionProjection
 
         // We still return true for unmapped types so handle() can record them
         // in ste_unmapped_events. It's cheap (single INSERT ... ON CONFLICT).
-        return !empty($event->event_type);
+        return ! empty($event->event_type);
     }
 
     public function handle(Event $event): void
     {
         $mappings = $this->loadMappings();
-        $matches  = $mappings[$event->event_type] ?? [];
+        $matches = $mappings[$event->event_type] ?? [];
 
         if (empty($matches)) {
             $this->recordUnmapped($event);
+
             return;
         }
 
@@ -60,10 +61,10 @@ class StateTransitionProjection
             } catch (\Throwable $e) {
                 // Never block the event write. STE is a best-effort projection.
                 Log::warning('[STE] Projection failed', [
-                    'event_id'   => $event->id,
+                    'event_id' => $event->id,
                     'event_type' => $event->event_type,
                     'mapping_id' => $mapping->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -75,13 +76,13 @@ class StateTransitionProjection
 
     private function applyMapping(Event $event, object $mapping): void
     {
-        $chain        = $mapping->chain;
-        $toState      = $mapping->to_state;
-        $mappingFrom  = $mapping->from_state;      // may be null = "any"
-        $tenantId     = $event->tenant_id;
-        $sequenceNum  = (int) ($event->sequence_num ?? 0);
-        $extractTags  = $this->decodeJson($mapping->extract_tags);
-        $tags         = $this->buildTags($event, $extractTags);
+        $chain = $mapping->chain;
+        $toState = $mapping->to_state;
+        $mappingFrom = $mapping->from_state;      // may be null = "any"
+        $tenantId = $event->tenant_id;
+        $sequenceNum = (int) ($event->sequence_num ?? 0);
+        $extractTags = $this->decodeJson($mapping->extract_tags);
+        $tags = $this->buildTags($event, $extractTags);
 
         // Determine the from_state for the transition row
         $fromState = $this->resolveFromState($chain, $event, $mappingFrom, $tenantId);
@@ -115,12 +116,13 @@ class StateTransitionProjection
         // Otherwise look up the current state from the relevant *_states row
         if ($chain === 'session_lifecycle') {
             $sessionId = $this->resolveSessionId($event);
-            if (!$sessionId) {
+            if (! $sessionId) {
                 return 'visitor';   // session_lifecycle seed
             }
             $row = DB::table('ste_session_states')
                 ->where('session_id', $sessionId)
                 ->first(['current_state']);
+
             return $row->current_state ?? 'visitor';
         }
 
@@ -128,6 +130,7 @@ class StateTransitionProjection
             $row = DB::table('ste_tenant_states')
                 ->where('tenant_id', $tenantId)
                 ->first(['current_state']);
+
             return $row->current_state ?? 'trial';
         }
 
@@ -137,7 +140,7 @@ class StateTransitionProjection
     private function upsertTransition(string $chain, ?string $fromState, string $toState, array $tags, ?string $tenantId): void
     {
         $fromState = $fromState ?? '__initial__';
-        $tagsJson  = json_encode((object) $tags);
+        $tagsJson = json_encode((object) $tags);
 
         // Postgres native upsert matching the partial unique index
         DB::statement(
@@ -153,33 +156,33 @@ class StateTransitionProjection
     {
         // Guarded by last_sequence_num so out-of-order replay never regresses state
         DB::statement(
-            "INSERT INTO ste_session_states (session_id, tenant_id, current_state, last_state, entered_at, updated_at, last_sequence_num)
+            'INSERT INTO ste_session_states (session_id, tenant_id, current_state, last_state, entered_at, updated_at, last_sequence_num)
              VALUES (?, ?, ?, ?, now(), now(), ?)
              ON CONFLICT (session_id) DO UPDATE
                SET last_state        = ste_session_states.current_state,
                    current_state     = excluded.current_state,
                    updated_at        = now(),
                    last_sequence_num = excluded.last_sequence_num
-               WHERE excluded.last_sequence_num > ste_session_states.last_sequence_num",
+               WHERE excluded.last_sequence_num > ste_session_states.last_sequence_num',
             [$sessionId, $tenantId, $toState, $fromState, $sequenceNum],
         );
     }
 
     private function upsertTenantState(?string $tenantId, string $toState, ?string $fromState, int $sequenceNum): void
     {
-        if (!$tenantId) {
+        if (! $tenantId) {
             return;
         }
 
         DB::statement(
-            "INSERT INTO ste_tenant_states (tenant_id, current_state, last_state, entered_at, updated_at, last_sequence_num)
+            'INSERT INTO ste_tenant_states (tenant_id, current_state, last_state, entered_at, updated_at, last_sequence_num)
              VALUES (?, ?, ?, now(), now(), ?)
              ON CONFLICT (tenant_id) DO UPDATE
                SET last_state        = ste_tenant_states.current_state,
                    current_state     = excluded.current_state,
                    updated_at        = now(),
                    last_sequence_num = excluded.last_sequence_num
-               WHERE excluded.last_sequence_num > ste_tenant_states.last_sequence_num",
+               WHERE excluded.last_sequence_num > ste_tenant_states.last_sequence_num',
             [$tenantId, $toState, $fromState, $sequenceNum],
         );
     }
@@ -188,9 +191,9 @@ class StateTransitionProjection
     {
         try {
             DB::statement(
-                "INSERT INTO ste_unmapped_events (event_type, sample_event_id, tenant_id, first_seen_at, count)
+                'INSERT INTO ste_unmapped_events (event_type, sample_event_id, tenant_id, first_seen_at, count)
                  VALUES (?, ?, ?, now(), 1)
-                 ON CONFLICT (event_type) DO UPDATE SET count = ste_unmapped_events.count + 1",
+                 ON CONFLICT (event_type) DO UPDATE SET count = ste_unmapped_events.count + 1',
                 [$event->event_type, $event->id, $event->tenant_id],
             );
         } catch (\Throwable) {
@@ -229,11 +232,12 @@ class StateTransitionProjection
         }
 
         $payload = is_array($event->payload) ? $event->payload : [];
-        $tags    = [];
+        $tags = [];
         foreach ($extractSpec as $tagKey => $payloadKey) {
             // Static values (non-string-ref) pass through
-            if (is_scalar($payloadKey) && !is_string($payloadKey)) {
+            if (is_scalar($payloadKey) && ! is_string($payloadKey)) {
                 $tags[$tagKey] = $payloadKey;
+
                 continue;
             }
 
@@ -245,20 +249,27 @@ class StateTransitionProjection
                 $tags[$tagKey] = $payloadKey;
             }
         }
+
         return array_filter($tags, fn ($v) => $v !== null);
     }
 
     private function resolveSessionId(Event $event): ?string
     {
         $payload = is_array($event->payload) ? $event->payload : [];
+
         return $payload['session_id'] ?? $event->aggregate_id ?? null;
     }
 
     private function decodeJson(mixed $value): array
     {
-        if (is_array($value)) return $value;
-        if (!is_string($value) || $value === '') return [];
+        if (is_array($value)) {
+            return $value;
+        }
+        if (! is_string($value) || $value === '') {
+            return [];
+        }
         $decoded = json_decode($value, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 }

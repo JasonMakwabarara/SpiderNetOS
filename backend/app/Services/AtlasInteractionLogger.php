@@ -35,27 +35,29 @@ class AtlasInteractionLogger
     {
         try {
             DB::table('atlas_interactions')->insert([
-                'id'                => $row['interaction_id'],
-                'tenant_id'         => $row['tenant_id'],
-                'user_id'           => $row['user_id'] ?? null,
-                'session_id'        => $row['session_id'] ?? null,
-                'user_input'        => (string) $row['user_input'],
-                'parsed_intent'     => json_encode($row['parsed_intent'] ?? []),
-                'atlas_response'    => json_encode($row['atlas_response'] ?? []),
-                'execution_result'  => json_encode($row['execution_result'] ?? []),
-                'generation'        => json_encode($row['generation'] ?? []),
-                'clicked_expand'    => false,
-                'accepted_action'   => false,
-                'follow_up'         => false,
+                'id' => $row['interaction_id'],
+                'tenant_id' => $row['tenant_id'],
+                'user_id' => $row['user_id'] ?? null,
+                'session_id' => $row['session_id'] ?? null,
+                'user_input' => (string) $row['user_input'],
+                'parsed_intent' => json_encode($row['parsed_intent'] ?? []),
+                'atlas_response' => json_encode($row['atlas_response'] ?? []),
+                'execution_result' => json_encode($row['execution_result'] ?? []),
+                'generation' => json_encode($row['generation'] ?? []),
+                'clicked_expand' => false,
+                'accepted_action' => false,
+                'follow_up' => false,
                 'time_on_response_ms' => null,
-                'created_at'        => now(),
-                'updated_at'        => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
+
             return true;
         } catch (\Throwable $e) {
-            Log::warning('[AtlasInteractionLogger] Insert failed: ' . $e->getMessage(), [
+            Log::warning('[AtlasInteractionLogger] Insert failed: '.$e->getMessage(), [
                 'interaction_id' => $row['interaction_id'] ?? null,
             ]);
+
             return false;
         }
     }
@@ -97,7 +99,7 @@ class AtlasInteractionLogger
                     if (in_array($rating, [-1, 0, 1], true)) {
                         $update['rating'] = $rating;
                     }
-                    if (!empty($data['comment'])) {
+                    if (! empty($data['comment'])) {
                         $update['comment'] = (string) $data['comment'];
                     }
                     break;
@@ -116,10 +118,11 @@ class AtlasInteractionLogger
 
             return $affected > 0;
         } catch (\Throwable $e) {
-            Log::warning('[AtlasInteractionLogger] Event update failed: ' . $e->getMessage(), [
+            Log::warning('[AtlasInteractionLogger] Event update failed: '.$e->getMessage(), [
                 'interaction_id' => $interactionId,
                 'event_type' => $eventType,
             ]);
+
             return false;
         }
     }

@@ -66,7 +66,7 @@ class SpendDocumentController extends Controller
                     'confirmed_at' => now(),
                 ];
 
-                if (!empty($validated['expense_item_id'])) {
+                if (! empty($validated['expense_item_id'])) {
                     $item = ExpenseItem::forTenant($tenant->id)->findOrFail($validated['expense_item_id']);
                     $update['attachable_type'] = ExpenseItem::class;
                     $update['attachable_id'] = $item->id;

@@ -65,7 +65,7 @@ class PortfolioController extends Controller
     {
         $tenant = $request->attributes->get('tenant');
         $portfolio = Portfolio::forTenant($tenant->id)->findOrFail($portfolioId);
-        
+
         $validated = $request->validate([
             'asset_type' => 'required|in:stock,bond,crypto,forex,commodity,etf',
             'symbol' => 'required|string',
@@ -93,7 +93,7 @@ class PortfolioController extends Controller
     {
         $tenant = $request->attributes->get('tenant');
         $portfolio = Portfolio::forTenant($tenant->id)->findOrFail($portfolioId);
-        
+
         $validated = $request->validate([
             'prices' => 'required|array',
         ]);

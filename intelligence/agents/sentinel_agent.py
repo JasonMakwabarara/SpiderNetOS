@@ -3,23 +3,23 @@ SpiderNet OS v3.2 - Sentinel Agent
 Monitoring & Anomaly Detection: Apex kernel integration
 """
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
-import json
+from datetime import datetime
+from typing import Any, Dict, List
+
 from core.agent_base import AgentBase, AgentContext, AgentResult
 
 
 class SentinelAgent(AgentBase):
     """
     Sentinel: The Monitoring & Anomaly Detection Agent
-    
+
     Responsibilities:
     - Monitor system health and metrics
     - Detect anomalies using statistical and ML methods
     - Trigger alerts and remediation flows
     - Apex kernel integration for observability
     """
-    
+
     def __init__(self, meta_planner, cost_governor, memory_graph, db_pool):
         super().__init__(
             agent_id='sentinel',
@@ -32,13 +32,13 @@ class SentinelAgent(AgentBase):
         self.db = db_pool
         self.anomaly_threshold = 2.5  # Standard deviations
         self.check_interval_seconds = 60
-    
+
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute Sentinel agent logic"""
-        
+
         ast = context.ast
         ast_type = ast.get('type', '')
-        
+
         if ast_type == 'query_status':
             return await self._check_system_health(context)
         elif ast_type == 'analyze':
@@ -49,24 +49,24 @@ class SentinelAgent(AgentBase):
             return await self._detect_anomalies_batch(context)
         else:
             return await self._general_health_summary(context)
-    
+
     async def _check_system_health(self, context: AgentContext) -> AgentResult:
         """Check overall system health"""
-        
+
         tenant_id = context.tenant_id
-        
+
         # Gather health metrics
         metrics = await self._gather_metrics(tenant_id)
-        
+
         # Check for anomalies
         anomalies = await self._detect_anomalies(tenant_id, metrics)
-        
+
         # Assess health status
         health_status = self._assess_health(metrics, anomalies)
-        
+
         # Store trace
         trace_id = await self._store_trace(tenant_id, metrics, anomalies, health_status)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -81,22 +81,22 @@ class SentinelAgent(AgentBase):
             cost_usd=0.0,
             metadata={'checks_performed': len(metrics)}
         )
-    
+
     async def _analyze_anomalies(self, context: AgentContext) -> AgentResult:
         """Analyze specific anomalies in detail"""
-        
+
         params = context.ast.get('params', {})
         scope = params.get('scope', 'recent')
-        
+
         # Query anomaly database
         anomalies = await self._fetch_anomalies(context.tenant_id, scope)
-        
+
         # Analyze patterns
         patterns = self._identify_patterns(anomalies)
-        
+
         # Generate recommendations
         recommendations = self._generate_recommendations(patterns)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -108,25 +108,25 @@ class SentinelAgent(AgentBase):
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _monitor_scope(self, context: AgentContext) -> AgentResult:
         """Monitor specific scope (agent, flow, resource)"""
-        
+
         params = context.ast.get('params', {})
         scope = params.get('scope', 'system')
-        
+
         if scope == 'system':
             return await self._check_system_health(context)
-        
+
         # Monitor specific resource
         resource_type, resource_id = self._parse_scope(scope)
-        
+
         metrics = await self._gather_resource_metrics(
             context.tenant_id,
             resource_type,
             resource_id
         )
-        
+
         return AgentResult(
             status='success',
             output={
@@ -139,25 +139,25 @@ class SentinelAgent(AgentBase):
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _detect_anomalies_batch(self, context: AgentContext) -> AgentResult:
         """Batch anomaly detection across all metrics"""
-        
+
         tenant_id = context.tenant_id
-        
+
         # Historical baseline
         baseline = await self._calculate_baseline(tenant_id, days=7)
-        
+
         # Current metrics
         current = await self._gather_metrics(tenant_id)
-        
+
         # Detect anomalies
         detected = []
         for metric_name, current_value in current.items():
             if metric_name in baseline:
                 mean = baseline[metric_name]['mean']
                 std = baseline[metric_name]['std']
-                
+
                 if std > 0:
                     z_score = abs(current_value - mean) / std
                     if z_score > self.anomaly_threshold:
@@ -168,16 +168,16 @@ class SentinelAgent(AgentBase):
                             'z_score': z_score,
                             'severity': 'high' if z_score > 3 else 'medium',
                         })
-        
+
         # Store anomalies
         for anomaly in detected:
             await self._store_anomaly(tenant_id, anomaly)
-        
+
         # Trigger alerts if critical
         critical = [a for a in detected if a['severity'] == 'high']
         if critical:
             await self._trigger_alert(tenant_id, critical)
-        
+
         return AgentResult(
             status='success',
             output={
@@ -189,17 +189,17 @@ class SentinelAgent(AgentBase):
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _general_health_summary(self, context: AgentContext) -> AgentResult:
         """Provide general health summary"""
-        
+
         # Quick health check
         health = await self._check_system_health(context)
-        
+
         # Add summary
         output = health.output
         output['summary'] = self._generate_summary(output)
-        
+
         return AgentResult(
             status=health.status,
             output=output,
@@ -207,7 +207,7 @@ class SentinelAgent(AgentBase):
             cost_usd=health.cost_usd,
             metadata=health.metadata,
         )
-    
+
     async def _gather_metrics(self, tenant_id: str) -> Dict[str, float]:
         """Gather system metrics"""
         # In production: query from metrics store
@@ -222,7 +222,7 @@ class SentinelAgent(AgentBase):
             'cost_per_hour': 2.50,
             'memory_retrieval_latency': 45.0,
         }
-    
+
     async def _gather_resource_metrics(
         self,
         tenant_id: str,
@@ -238,7 +238,7 @@ class SentinelAgent(AgentBase):
             'error_count': 0,
             'success_rate': 0.99,
         }
-    
+
     async def _detect_anomalies(
         self,
         tenant_id: str,
@@ -246,7 +246,7 @@ class SentinelAgent(AgentBase):
     ) -> List[Dict]:
         """Detect anomalies in metrics"""
         anomalies = []
-        
+
         # Threshold-based checks
         thresholds = {
             'api_error_rate': 0.05,
@@ -254,7 +254,7 @@ class SentinelAgent(AgentBase):
             'redis_memory_usage': 0.85,
             'queue_depth': 100,
         }
-        
+
         for metric, threshold in thresholds.items():
             if metric in metrics and metrics[metric] > threshold:
                 anomalies.append({
@@ -263,9 +263,9 @@ class SentinelAgent(AgentBase):
                     'threshold': threshold,
                     'type': 'threshold_exceeded',
                 })
-        
+
         return anomalies
-    
+
     def _assess_health(
         self,
         metrics: Dict[str, float],
@@ -274,15 +274,15 @@ class SentinelAgent(AgentBase):
         """Assess overall health status"""
         if not anomalies:
             return 'healthy'
-        
+
         critical = any(
-            a.get('type') == 'threshold_exceeded' and 
+            a.get('type') == 'threshold_exceeded' and
             a['metric'] in ['api_error_rate', 'db_connection_pool_usage']
             for a in anomalies
         )
-        
+
         return 'critical' if critical else 'degraded'
-    
+
     async def _calculate_baseline(
         self,
         tenant_id: str,
@@ -298,7 +298,7 @@ class SentinelAgent(AgentBase):
             'redis_memory_usage': {'mean': 0.25, 'std': 0.05},
             'queue_depth': {'mean': 10.0, 'std': 5.0},
         }
-    
+
     async def _store_trace(
         self,
         tenant_id: str,
@@ -309,7 +309,7 @@ class SentinelAgent(AgentBase):
         """Store observability trace"""
         import uuid
         trace_id = str(uuid.uuid4())[:16]
-        
+
         # In production: INSERT INTO traces
         # await self.db.execute(
         #     """INSERT INTO traces (id, tenant_id, dag_id, status, metadata)
@@ -317,14 +317,14 @@ class SentinelAgent(AgentBase):
         #     trace_id, tenant_id, None, health_status,
         #     json.dumps({'metrics': metrics, 'anomalies': anomalies})
         # )
-        
+
         return trace_id
-    
+
     async def _store_anomaly(self, tenant_id: str, anomaly: Dict) -> None:
         """Store detected anomaly"""
         # In production: INSERT INTO anomalies
         pass
-    
+
     async def _fetch_anomalies(
         self,
         tenant_id: str,
@@ -333,7 +333,7 @@ class SentinelAgent(AgentBase):
         """Fetch historical anomalies"""
         # In production: query anomalies table
         return []
-    
+
     async def _trigger_alert(
         self,
         tenant_id: str,
@@ -351,18 +351,18 @@ class SentinelAgent(AgentBase):
                 'anomalies': anomalies,
             }
         )
-    
+
     def _identify_patterns(self, anomalies: List[Dict]) -> List[Dict]:
         """Identify patterns in anomalies"""
         if not anomalies:
             return []
-        
+
         # Simple pattern: grouping by metric type
         by_metric = {}
         for a in anomalies:
             metric = a.get('metric', 'unknown')
             by_metric.setdefault(metric, []).append(a)
-        
+
         patterns = []
         for metric, items in by_metric.items():
             if len(items) > 2:
@@ -372,33 +372,33 @@ class SentinelAgent(AgentBase):
                     'occurrences': len(items),
                     'trend': 'increasing' if items[-1]['value'] > items[0]['value'] else 'stable',
                 })
-        
+
         return patterns
-    
+
     def _generate_recommendations(self, patterns: List[Dict]) -> List[str]:
         """Generate recommendations based on patterns"""
         recommendations = []
-        
+
         for pattern in patterns:
             if pattern['type'] == 'recurring_metric':
                 recommendations.append(
                     f"Investigate recurring {pattern['metric']} issues ({pattern['occurrences']} occurrences)"
                 )
-        
+
         return recommendations
-    
+
     def _generate_summary(self, output: Dict) -> str:
         """Generate human-readable summary"""
         status = output.get('health_status', 'unknown')
         anomalies = output.get('anomalies_detected', 0)
-        
+
         if status == 'healthy':
             return "System is operating normally. All metrics within expected ranges."
         elif status == 'degraded':
             return f"System experiencing minor issues. {anomalies} anomalies detected."
         else:
             return f"Critical issues detected. {anomalies} anomalies require immediate attention."
-    
+
     def _parse_scope(self, scope: str) -> tuple:
         """Parse scope string into type and id"""
         # Parse formats: "agent:123", "flow:456", "resource:789"

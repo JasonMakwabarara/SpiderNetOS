@@ -18,8 +18,10 @@ use Tests\TestCase;
  */
 class VoiceSafetyGuardTest extends TestCase
 {
-    private CostGovernor   $costGovernor;
+    private CostGovernor $costGovernor;
+
     private ApprovalEngine $approvalEngine;
+
     private VoiceSafetyGuard $guard;
 
     private const TENANT = 'tenant-uuid-1234';
@@ -28,12 +30,12 @@ class VoiceSafetyGuardTest extends TestCase
     {
         parent::setUp();
 
-        $this->costGovernor   = Mockery::mock(CostGovernor::class);
+        $this->costGovernor = Mockery::mock(CostGovernor::class);
         $this->approvalEngine = Mockery::mock(ApprovalEngine::class);
 
         $this->guard = new VoiceSafetyGuard(
             $this->costGovernor,
-            new FeatureFlag(),
+            new FeatureFlag,
             $this->approvalEngine
         );
 
@@ -196,8 +198,8 @@ class VoiceSafetyGuardTest extends TestCase
     public function test_sms_cost_estimate_scales_with_segments(): void
     {
         $shortCost = $this->guard->estimateSmsCost('Hi');
-        $longMsg   = str_repeat('A', 321); // 3 segments
-        $longCost  = $this->guard->estimateSmsCost($longMsg);
+        $longMsg = str_repeat('A', 321); // 3 segments
+        $longCost = $this->guard->estimateSmsCost($longMsg);
 
         $this->assertEqualsWithDelta($shortCost * 3, $longCost, 0.0001);
     }

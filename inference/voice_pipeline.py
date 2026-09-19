@@ -35,7 +35,7 @@ import logging
 import os
 import time
 from enum import Enum
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 import httpx
 

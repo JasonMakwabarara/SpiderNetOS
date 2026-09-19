@@ -10,7 +10,7 @@ Verifies:
 """
 import unittest
 
-from atlas.rt_scorer import RTScorer, CopyUnit, MIN_THRESHOLDS
+from atlas.rt_scorer import MIN_THRESHOLDS, CopyUnit, RTScorer
 
 
 class TestRTScorerMinimums(unittest.TestCase):

@@ -11,12 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Represents a third-party integration configured for a tenant
  * (e.g. Google Calendar, HubSpot).
  *
- * @property int    $id
+ * @property int $id
  * @property string $tenant_id
- * @property string $provider          google_calendar | cal_com | hubspot | salesforce
- * @property string $type              calendar | crm | email
- * @property string|null $credentials_ref  reference key in tenant_secrets
- * @property bool   $is_active
+ * @property string $provider google_calendar | cal_com | hubspot | salesforce
+ * @property string $type calendar | crm | email
+ * @property string|null $credentials_ref reference key in tenant_secrets
+ * @property bool $is_active
  * @property array|null $config
  */
 class TenantIntegration extends Model
@@ -36,7 +36,7 @@ class TenantIntegration extends Model
     ];
 
     protected $casts = [
-        'config'    => 'array',
+        'config' => 'array',
         'is_active' => 'boolean',
         'last_verified_at' => 'datetime',
     ];

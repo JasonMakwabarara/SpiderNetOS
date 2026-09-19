@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,28 +16,31 @@ use Illuminate\Support\Facades\DB;
  */
 class StateTransitionEngine
 {
-    public const DAMPING  = 0.85;
+    public const DAMPING = 0.85;
 
     /**
      * All absorbing states per chain — used by the MC simulator to stop walks.
      */
     public const TERMINAL_STATES_SESSION = ['completed', 'abandoned', 'errored'];
-    public const TERMINAL_STATES_TENANT  = ['churned'];
+
+    public const TERMINAL_STATES_TENANT = ['churned'];
 
     /**
      * "Drop-off" subset — negative exits only. Excludes successful completion.
      */
     public const DROPOFF_STATES_SESSION = ['abandoned', 'errored'];
-    public const DROPOFF_STATES_TENANT  = ['churned'];
+
+    public const DROPOFF_STATES_TENANT = ['churned'];
 
     /**
      * Returns the damped transition probability matrix for a chain.
      *
-     * @return array<string, array<string, float>>  from → (to → p)
+     * @return array<string, array<string, float>> from → (to → p)
      */
     public function matrix(string $chain, ?string $tenantId = null): array
     {
         $rows = $this->fetchTransitions($chain, $tenantId);
+
         return $this->buildMatrix($rows);
     }
 
@@ -47,6 +51,7 @@ class StateTransitionEngine
     public function conditionalMatrix(string $chain, array $tagFilter, ?string $tenantId = null): array
     {
         $rows = $this->fetchTransitions($chain, $tenantId, $tagFilter);
+
         return $this->buildMatrix($rows);
     }
 
@@ -54,11 +59,12 @@ class StateTransitionEngine
      * For each state, returns the damped probability of reaching a terminal
      * "drop-off" state (abandoned, errored for session; churned for tenant).
      *
-     * @return array<string, float>  state → P(dropoff|state)
+     * @return array<string, float> state → P(dropoff|state)
      */
     public function dropoffs(string $chain, ?string $tenantId = null): array
     {
         $matrix = $this->matrix($chain, $tenantId);
+
         return $this->computeDropoffs($matrix, $chain);
     }
 
@@ -80,6 +86,7 @@ class StateTransitionEngine
             $result[$from] = round($p, 6);
         }
         ksort($result);
+
         return $result;
     }
 
@@ -106,12 +113,14 @@ class StateTransitionEngine
                 continue;
             }
             foreach ($tags as $tagKey => $tagValue) {
-                if ($tagValue === null) continue;
-                $kv   = $tagKey . '=' . (is_scalar($tagValue) ? (string) $tagValue : json_encode($tagValue));
+                if ($tagValue === null) {
+                    continue;
+                }
+                $kv = $tagKey.'='.(is_scalar($tagValue) ? (string) $tagValue : json_encode($tagValue));
                 $from = $row->from_state;
 
                 $conditional[$from][$kv] ??= ['target' => 0, 'total' => 0];
-                $conditional[$from][$kv]['total']  += (int) $row->count;
+                $conditional[$from][$kv]['total'] += (int) $row->count;
                 if ($row->to_state === $target) {
                     $conditional[$from][$kv]['target'] += (int) $row->count;
                 }
@@ -122,23 +131,26 @@ class StateTransitionEngine
         foreach ($conditional as $from => $tagMap) {
             $baseP = $baseMatrix[$from][$target] ?? 0.0;
             foreach ($tagMap as $kv => $stats) {
-                if ($stats['total'] < 10) continue; // noise floor
+                if ($stats['total'] < 10) {
+                    continue;
+                } // noise floor
 
                 $condP = $stats['target'] / max(1, $stats['total']);
-                $lift  = $condP - $baseP;
+                $lift = $condP - $baseP;
 
                 [$tagKey, $tagValue] = explode('=', $kv, 2);
                 $results[] = [
-                    'tag_key'      => $tagKey,
-                    'tag_value'    => $tagValue,
-                    'from_state'   => $from,
-                    'lift'         => round($lift, 6),
+                    'tag_key' => $tagKey,
+                    'tag_value' => $tagValue,
+                    'from_state' => $from,
+                    'lift' => round($lift, 6),
                     'observations' => (int) $stats['total'],
                 ];
             }
         }
 
         usort($results, fn ($a, $b) => $b['lift'] <=> $a['lift']);
+
         return array_slice($results, 0, $limit);
     }
 
@@ -149,8 +161,11 @@ class StateTransitionEngine
     public function lagSeconds(): int
     {
         $latest = DB::table('ste_transitions')->max('last_seen_at');
-        if (!$latest) return 0;
-        return max(0, now()->diffInSeconds(\Carbon\Carbon::parse($latest), false) * -1);
+        if (! $latest) {
+            return 0;
+        }
+
+        return max(0, now()->diffInSeconds(Carbon::parse($latest), false) * -1);
     }
 
     // -----------------------------------------------------------------------
@@ -170,7 +185,7 @@ class StateTransitionEngine
         }
 
         foreach ($tagFilter as $k => $v) {
-            $q->whereRaw("tags @> ?::jsonb", [json_encode([$k => $v])]);
+            $q->whereRaw('tags @> ?::jsonb', [json_encode([$k => $v])]);
         }
 
         return $q->get(['chain', 'from_state', 'to_state', 'tags', 'count'])->all();
@@ -184,25 +199,25 @@ class StateTransitionEngine
      */
     public function buildMatrix(array $rows): array
     {
-        $sum  = [];   // from => total
+        $sum = [];   // from => total
         $cell = [];   // from => to => count
 
         foreach ($rows as $row) {
             $from = $row->from_state;
-            $to   = $row->to_state;
-            $c    = (int) $row->count;
-            $sum[$from]       = ($sum[$from] ?? 0) + $c;
+            $to = $row->to_state;
+            $c = (int) $row->count;
+            $sum[$from] = ($sum[$from] ?? 0) + $c;
             $cell[$from][$to] = ($cell[$from][$to] ?? 0) + $c;
         }
 
         $matrix = [];
         foreach ($cell as $from => $toCounts) {
-            $total     = $sum[$from] ?: 1;
-            $uniformP  = 1.0 / max(1, count($toCounts));
+            $total = $sum[$from] ?: 1;
+            $uniformP = 1.0 / max(1, count($toCounts));
             $matrix[$from] = [];
             foreach ($toCounts as $to => $c) {
                 $learned = $c / $total;
-                $damped  = self::DAMPING * $learned + (1 - self::DAMPING) * $uniformP;
+                $damped = self::DAMPING * $learned + (1 - self::DAMPING) * $uniformP;
                 $matrix[$from][$to] = round($damped, 6);
             }
 
@@ -218,6 +233,7 @@ class StateTransitionEngine
         }
 
         ksort($matrix);
+
         return $matrix;
     }
 
@@ -226,14 +242,20 @@ class StateTransitionEngine
         if ($chain === 'session_lifecycle') {
             return $metric === 'activation' ? 'completed' : 'completed';
         }
+
         return $metric === 'activation' ? 'active' : 'expanded';
     }
 
     private function decodeJson(mixed $v): array
     {
-        if (is_array($v)) return $v;
-        if (!is_string($v) || $v === '') return [];
+        if (is_array($v)) {
+            return $v;
+        }
+        if (! is_string($v) || $v === '') {
+            return [];
+        }
         $d = json_decode($v, true);
+
         return is_array($d) ? $d : [];
     }
 }

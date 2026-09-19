@@ -20,7 +20,7 @@ interface ConnectorContract
     /**
      * Invoke a named capability.
      *
-     * @param array<string,mixed> $params
+     * @param  array<string,mixed>  $params
      * @return array{success: bool, data?: mixed, error?: string}
      */
     public function execute(string $action, array $params = []): array;

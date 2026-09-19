@@ -10,6 +10,7 @@ class AdminAuditLog extends Model
     use HasFactory;
 
     protected $table = 'admin_audit_log';
+
     public $timestamps = false;
 
     protected $fillable = [

@@ -79,7 +79,7 @@ class SpendAutomationProjection
             $chartAccountCode = $payload['chart_account_code']
                 ?? ($payload['final_fields']['chart_account_code'] ?? null);
 
-            if (!is_string($merchant) || !is_string($category) || $category === '') {
+            if (! is_string($merchant) || ! is_string($category) || $category === '') {
                 return;
             }
 
@@ -95,7 +95,7 @@ class SpendAutomationProjection
                 ->where('merchant_normalized', $normalized)
                 ->first();
 
-            if (!$row) {
+            if (! $row) {
                 DB::table('merchant_category_map')->insert([
                     'id' => (string) Str::uuid(),
                     'tenant_id' => $event->tenant_id,

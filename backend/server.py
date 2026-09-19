@@ -14,6 +14,8 @@ It returns just enough shape for the cockpit to render.
 
 from __future__ import annotations
 
+import os
+
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -25,9 +27,23 @@ from pydantic import BaseModel
 
 app = FastAPI(title="SpiderNetOS Cockpit — Mock API", version="1.0.0")
 
+# Allowed origins come from CORS_ALLOW_ORIGINS (comma separated). The
+# previous allow_origins=["*"] with allow_credentials=True is worse than it
+# looks: Starlette echoes the caller's origin back, so any site could make
+# credentialed calls. These planes are called server to server, where CORS
+# does not apply at all, so the default only has to keep local browsers
+# working.
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        'CORS_ALLOW_ORIGINS', 'http://localhost:3000,http://localhost:5173'
+    ).split(',')
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -11,6 +11,10 @@
  * `publishers` — map of publisher name → base64 Ed25519 public key.
  */
 return [
+    // Where the bundled packs live. Read through config so it still resolves
+    // once `artisan config:cache` has run.
+    'root' => rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/'),
+
     'require_signed' => (bool) env('FEATURE_PACKS_REQUIRE_SIGNED', false),
 
     'publishers' => array_filter([

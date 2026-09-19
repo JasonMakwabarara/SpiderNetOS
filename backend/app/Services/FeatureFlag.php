@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * FeatureFlag
@@ -37,6 +37,7 @@ class FeatureFlag
         if (is_bool($val)) {
             return $val;
         }
+
         return strtolower((string) $val) === 'on';
     }
 
@@ -46,6 +47,7 @@ class FeatureFlag
     public static function fallback(string $name): bool
     {
         $val = static::value($name);
+
         return strtolower((string) $val) === 'fallback';
     }
 
@@ -55,7 +57,7 @@ class FeatureFlag
      */
     public static function value(string $name, ?string $tenantId = null): mixed
     {
-        $cacheKey = 'featureflag:' . $name . ($tenantId ? ':t:' . $tenantId : '');
+        $cacheKey = 'featureflag:'.$name.($tenantId ? ':t:'.$tenantId : '');
 
         return Cache::remember($cacheKey, static::TTL, function () use ($name, $tenantId) {
             return static::resolve($name, $tenantId);
@@ -69,13 +71,13 @@ class FeatureFlag
     public static function set(string $name, string $value, ?string $tenantId = null): void
     {
         $redisKey = $tenantId
-            ? 'feature:' . $name . ':tenant:' . $tenantId
-            : 'feature:' . $name;
+            ? 'feature:'.$name.':tenant:'.$tenantId
+            : 'feature:'.$name;
 
         Redis::set($redisKey, $value);
 
         // Bust local cache
-        $cacheKey = 'featureflag:' . $name . ($tenantId ? ':t:' . $tenantId : '');
+        $cacheKey = 'featureflag:'.$name.($tenantId ? ':t:'.$tenantId : '');
         Cache::forget($cacheKey);
     }
 
@@ -85,12 +87,12 @@ class FeatureFlag
     public static function forget(string $name, ?string $tenantId = null): void
     {
         $redisKey = $tenantId
-            ? 'feature:' . $name . ':tenant:' . $tenantId
-            : 'feature:' . $name;
+            ? 'feature:'.$name.':tenant:'.$tenantId
+            : 'feature:'.$name;
 
         Redis::del($redisKey);
 
-        $cacheKey = 'featureflag:' . $name . ($tenantId ? ':t:' . $tenantId : '');
+        $cacheKey = 'featureflag:'.$name.($tenantId ? ':t:'.$tenantId : '');
         Cache::forget($cacheKey);
     }
 
@@ -100,6 +102,7 @@ class FeatureFlag
     public static function all(): array
     {
         $flags = array_keys((array) config('features', []));
+
         return collect($flags)->mapWithKeys(function (string $flag) {
             return [$flag => static::value($flag)];
         })->all();
@@ -113,14 +116,14 @@ class FeatureFlag
     {
         // 1. Per-tenant Redis override
         if ($tenantId) {
-            $tenantVal = static::tryRedis('feature:' . $name . ':tenant:' . $tenantId);
+            $tenantVal = static::tryRedis('feature:'.$name.':tenant:'.$tenantId);
             if ($tenantVal !== null) {
                 return $tenantVal;
             }
         }
 
         // 2. Global Redis override
-        $globalVal = static::tryRedis('feature:' . $name);
+        $globalVal = static::tryRedis('feature:'.$name);
         if ($globalVal !== null) {
             return $globalVal;
         }
@@ -139,6 +142,7 @@ class FeatureFlag
     {
         try {
             $val = Redis::get($key);
+
             return $val !== null ? $val : null;
         } catch (\Throwable) {
             // Redis unavailable — fall through to config

@@ -1,6 +1,7 @@
-﻿from pydantic import BaseModel, Field
-from typing import List, Dict, Any
-from uuid import UUID
+﻿from typing import Any, Dict, List
+
+from pydantic import BaseModel, Field
+
 
 class WorkflowStep(BaseModel):
     id: str
@@ -51,7 +52,4 @@ class DAGCompiler:
             visited.add(node)
             return False
 
-        for node in graph:
-            if dfs(node):
-                return True
-        return False
+        return any(dfs(node) for node in graph)

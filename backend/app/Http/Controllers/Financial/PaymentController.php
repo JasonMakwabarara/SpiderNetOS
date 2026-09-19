@@ -18,7 +18,7 @@ class PaymentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $payments = Payment::forTenant($tenant->id)
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 20));
@@ -93,7 +93,7 @@ class PaymentController extends Controller
     public function transactions(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $transactions = Transaction::forTenant($tenant->id)
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 20));

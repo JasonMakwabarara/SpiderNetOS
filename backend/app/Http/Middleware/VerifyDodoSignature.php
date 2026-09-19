@@ -12,7 +12,7 @@ class VerifyDodoSignature
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (app()->environment('local', 'testing') && filter_var(env('DODO_SKIP_SIGNATURE_VERIFY', false), FILTER_VALIDATE_BOOLEAN)) {
+        if (app()->environment('local', 'testing') && config('dodo.skip_signature_verify')) {
             return $next($request);
         }
 

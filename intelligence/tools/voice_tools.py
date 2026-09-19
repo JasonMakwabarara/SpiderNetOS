@@ -11,10 +11,12 @@ Phase B additions:
   - Costs are tracked via context.cost_tracker if available.
 """
 
-from typing import Any, Dict, Optional
-import httpx
+import contextlib
 import logging
 import os
+from typing import Any, Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +146,6 @@ async def tool_calendar_booking(context: Any, params: Dict[str, Any]) -> Dict[st
     duration = params.get("duration_minutes", 30)
     attendee_name = params.get("attendee_name", "Caller")
     attendee_phone = params.get("attendee_phone") or getattr(context, "caller_number", None)
-    description = params.get("description", "Call-in booking via VoiceAgent")
 
     if not date or not time:
         return {"success": False, "error": "Date and time are required"}
@@ -310,7 +311,6 @@ async def tool_hold_call(context: Any, params: Dict[str, Any]) -> Dict[str, Any]
     call_sid = params.get("call_sid") or getattr(context, "call_sid", None)
     hold_duration = params.get("hold_duration", 300)
     music_url = params.get("music_url", "http://com.twilio.music.classical.s3.amazonaws.com/MOZART_C_MAJOR_01.mp3")
-    message_interval = params.get("message_interval", 60)
 
     if not call_sid:
         return {"success": False, "error": "No call_sid provided"}
@@ -378,7 +378,9 @@ async def tool_record_call_note(context: Any, params: Dict[str, Any]) -> Dict[st
     # Store to memory graph if available
     memory_graph = getattr(context, "memory_graph", None)
     if memory_graph:
-        try:
+        # Best effort: the note is already returned to the caller, so a memory
+        # graph that is down must not fail the tool.
+        with contextlib.suppress(Exception):
             await memory_graph.store(
                 content=summary,
                 metadata={
@@ -390,9 +392,6 @@ async def tool_record_call_note(context: Any, params: Dict[str, Any]) -> Dict[st
                     "tags": tags,
                 },
             )
-        except Exception as e:
-            # Continue even if memory store fails
-            pass
 
     return {
         "success": True,

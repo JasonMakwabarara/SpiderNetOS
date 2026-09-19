@@ -11,8 +11,8 @@ Dedicated wrapper for OpenAI API calls with:
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Optional, Callable, Any
 from enum import Enum
+from typing import Optional
 
 import httpx
 
@@ -332,7 +332,6 @@ class OpenAIWrapper:
         else:
             budget = CostBudget(ceiling=float("inf"))
 
-        prompt = "\n".join(m.get("content", "") for m in messages)
         last_error = None
         attempts = 0
         retries = 0
@@ -409,7 +408,7 @@ class OpenAIWrapper:
                 last_error = e
                 self.circuit_breaker.record_failure()
                 if e.response.status_code not in self.retry_policy.retryable_status_codes:
-                    raise OpenAIError(f"Non-retryable HTTP {e.response.status_code}: {e}")
+                    raise OpenAIError(f"Non-retryable HTTP {e.response.status_code}: {e}") from e
                 if attempt < self.retry_policy.max_retries:
                     delay = self.retry_policy.delay_for_attempt(attempt)
                     await asyncio.sleep(delay)

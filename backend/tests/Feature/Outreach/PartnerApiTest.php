@@ -140,6 +140,9 @@ class PartnerApiTest extends OutreachTestCase
         // sqlite reads an unknown double-quoted "created_at" as a string literal
         // and silently orders by a constant; Postgres rejects the column.
         $event = Event::where('tenant_id', $this->tenant->id)->where('event_type', 'conversation.message.received')
+            // Not created_at (event_log sets $timestamps = false) and not
+            // occurred_at, which is second-precision and ties when two events
+            // land in the same second. sequence_num is unique and monotonic.
             ->orderByDesc('sequence_num')->get()
             ->first(fn (Event $e) => (($e->payload['message_id'] ?? null) === $inbound->id));
         $this->assertNotNull($event);

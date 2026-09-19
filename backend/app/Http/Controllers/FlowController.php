@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\EventStore;
-use App\Services\ReplayDivergenceService;
-use App\Services\DagExecutionService;
-use App\Services\FlowTemplateBuilder;
 use App\Models\Flow;
-use App\Models\FlowExecution;
+use App\Services\DagExecutionService;
+use App\Services\EventStore;
+use App\Services\FlowTemplateBuilder;
+use App\Services\ReplayDivergenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +15,7 @@ use Illuminate\Support\Str;
 class FlowController extends Controller
 {
     private EventStore $eventStore;
+
     private ReplayDivergenceService $replayDivergence;
 
     public function __construct(EventStore $eventStore, ReplayDivergenceService $replayDivergence)
@@ -189,7 +189,7 @@ class FlowController extends Controller
 
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
@@ -223,7 +223,7 @@ class FlowController extends Controller
 
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
@@ -233,7 +233,7 @@ class FlowController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('slug', $request->input('slug'))
                 ->where('id', '!=', $id)
-    
+
                 ->exists();
 
             if ($slugExists) {
@@ -268,11 +268,21 @@ class FlowController extends Controller
 
         // Update projection
         $updateData = ['updated_at' => now()];
-        if (isset($changes['name'])) $updateData['name'] = $changes['name'];
-        if (isset($changes['slug'])) $updateData['slug'] = $changes['slug'];
-        if (array_key_exists('description', $changes)) $updateData['description'] = $changes['description'];
-        if (isset($changes['dag'])) $updateData['dag'] = json_encode($changes['dag']);
-        if (isset($changes['triggers'])) $updateData['triggers'] = json_encode($changes['triggers']);
+        if (isset($changes['name'])) {
+            $updateData['name'] = $changes['name'];
+        }
+        if (isset($changes['slug'])) {
+            $updateData['slug'] = $changes['slug'];
+        }
+        if (array_key_exists('description', $changes)) {
+            $updateData['description'] = $changes['description'];
+        }
+        if (isset($changes['dag'])) {
+            $updateData['dag'] = json_encode($changes['dag']);
+        }
+        if (isset($changes['triggers'])) {
+            $updateData['triggers'] = json_encode($changes['triggers']);
+        }
 
         DB::table('flows')
             ->where('id', $id)
@@ -304,7 +314,7 @@ class FlowController extends Controller
 
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
@@ -391,7 +401,7 @@ class FlowController extends Controller
 
             ->first();
 
-        if (!$flow) {
+        if (! $flow) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
@@ -445,7 +455,7 @@ class FlowController extends Controller
 
             ->exists();
 
-        if (!$flowExists) {
+        if (! $flowExists) {
             return response()->json(['error' => 'Flow not found.'], 404);
         }
 
@@ -470,7 +480,7 @@ class FlowController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$execution) {
+        if (! $execution) {
             return response()->json(['error' => 'Execution not found.'], 404);
         }
 
@@ -486,6 +496,7 @@ class FlowController extends Controller
             ->get()
             ->map(function ($e) {
                 $e->payload = json_decode($e->payload, true);
+
                 return $e;
             });
 

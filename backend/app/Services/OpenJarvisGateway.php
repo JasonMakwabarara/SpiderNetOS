@@ -24,7 +24,7 @@ class OpenJarvisGateway
 
     public function health(): array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return ['status' => 'disabled'];
         }
 
@@ -54,7 +54,7 @@ class OpenJarvisGateway
      */
     public function ask(array $payload): array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return ['ok' => false, 'reason' => 'disabled'];
         }
 
@@ -80,7 +80,7 @@ class OpenJarvisGateway
 
     public function research(string $query, ?string $tenantId = null, int $maxHops = 3): array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return ['ok' => false, 'reason' => 'disabled'];
         }
 
@@ -104,7 +104,7 @@ class OpenJarvisGateway
 
     private function getJson(string $path): array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return [];
         }
 

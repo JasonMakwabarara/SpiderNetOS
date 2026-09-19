@@ -20,11 +20,11 @@ return new class extends Migration
             $table->timestamp('subscribed_at')->nullable();
             $table->string('status', 16)->default('active');
             $table->timestamps();
-            
+
             $table->index(['status', 'plan']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('tenants');

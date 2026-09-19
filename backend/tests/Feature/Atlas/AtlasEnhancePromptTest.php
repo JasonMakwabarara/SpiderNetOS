@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Atlas;
 
+use App\Http\Controllers\AtlasController;
 use App\Services\FeatureFlag;
 use App\Services\PromptEnhancer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -26,7 +28,7 @@ class AtlasEnhancePromptTest extends TestCase
             'prompt' => 'anything',
         ]);
 
-        $controller = app(\App\Http\Controllers\AtlasController::class);
+        $controller = app(AtlasController::class);
         /** @var JsonResponse $resp */
         $resp = $controller->enhancePrompt($req, app(PromptEnhancer::class));
 
@@ -42,12 +44,12 @@ class AtlasEnhancePromptTest extends TestCase
         config(['services.inference.url' => null]);  // force deterministic branch
 
         $req = Request::create('/api/atlas/enhance-prompt', 'POST', [
-            'prompt'  => 'summarise yesterdays usage',
+            'prompt' => 'summarise yesterdays usage',
             'surface' => 'atlas_chat',
-            'mode'    => 'balanced',
+            'mode' => 'balanced',
         ]);
 
-        $controller = app(\App\Http\Controllers\AtlasController::class);
+        $controller = app(AtlasController::class);
         /** @var JsonResponse $resp */
         $resp = $controller->enhancePrompt($req, app(PromptEnhancer::class));
 
@@ -70,8 +72,8 @@ class AtlasEnhancePromptTest extends TestCase
             'prompt' => '',
         ]);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(\App\Http\Controllers\AtlasController::class)
+        $this->expectException(ValidationException::class);
+        app(AtlasController::class)
             ->enhancePrompt($req, app(PromptEnhancer::class));
 
         FeatureFlag::forget('atlas.enhance_prompt');
@@ -82,12 +84,12 @@ class AtlasEnhancePromptTest extends TestCase
         FeatureFlag::set('atlas.enhance_prompt', 'on');
 
         $req = Request::create('/api/atlas/enhance-prompt', 'POST', [
-            'prompt'  => 'valid',
+            'prompt' => 'valid',
             'surface' => 'weird_surface',
         ]);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(\App\Http\Controllers\AtlasController::class)
+        $this->expectException(ValidationException::class);
+        app(AtlasController::class)
             ->enhancePrompt($req, app(PromptEnhancer::class));
 
         FeatureFlag::forget('atlas.enhance_prompt');

@@ -11,6 +11,7 @@ use App\Models\TenantAlignmentProfile;
 use App\Models\WeeklyRhythm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -203,8 +204,8 @@ class OperatingController extends Controller
         }
 
         $minutes = $rows->map(function ($row) {
-            return \Illuminate\Support\Carbon::parse($row->lead_created_at)
-                ->diffInMinutes(\Illuminate\Support\Carbon::parse($row->first_response_at));
+            return Carbon::parse($row->lead_created_at)
+                ->diffInMinutes(Carbon::parse($row->first_response_at));
         });
 
         return round((float) $minutes->avg(), 1);

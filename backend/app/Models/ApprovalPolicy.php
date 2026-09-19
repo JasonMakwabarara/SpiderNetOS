@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ApprovalPolicy extends Model
 {
-    use \Illuminate\Database\Eloquent\Concerns\HasUuids;
+    use HasUuids;
 
     protected $fillable = [
         'tenant_id', 'resource_type', 'action', 'name',
@@ -58,14 +59,14 @@ class ApprovalPolicy extends Model
             }
         }
 
-        if (!empty($conditions['currency'])
+        if (! empty($conditions['currency'])
             && isset($attributes['currency'])
             && strcasecmp((string) $attributes['currency'], (string) $conditions['currency']) !== 0) {
             return false;
         }
 
-        if (!empty($conditions['categories']) && isset($attributes['category'])) {
-            if (!in_array($attributes['category'], (array) $conditions['categories'], true)) {
+        if (! empty($conditions['categories']) && isset($attributes['category'])) {
+            if (! in_array($attributes['category'], (array) $conditions['categories'], true)) {
                 return false;
             }
         }

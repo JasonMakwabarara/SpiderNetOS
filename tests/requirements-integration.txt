@@ -1,0 +1,10 @@
+# tests/integration, tests/chaos and tests/client only. These need real
+# infrastructure (testcontainers brings up Postgres, Redis and Kafka), so they
+# run on a schedule rather than on every pull request.
+-r requirements.txt
+testcontainers>=4.0
+jsonschema>=4.0
+psycopg2-binary>=2.9
+redis>=5.0
+kafka-python>=2.0
+requests>=2.31

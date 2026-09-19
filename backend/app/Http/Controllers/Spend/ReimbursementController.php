@@ -22,7 +22,7 @@ class ReimbursementController extends Controller
         $query = Reimbursement::forTenant($tenant->id)->with('report');
 
         // Non-admins only see their own payouts.
-        if (!$user->atLeastRole('admin')) {
+        if (! $user->atLeastRole('admin')) {
             $query->where('user_id', $user->id);
         }
 

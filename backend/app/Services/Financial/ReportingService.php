@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Financial;
 
 use App\Models\FinancialReport;
-use App\Models\LedgerEntry;
 use App\Models\Invoice;
+use App\Models\LedgerEntry;
 use App\Models\Payment;
-use App\Models\Transaction;
 use App\Models\Wallet;
-use Illuminate\Support\Facades\DB;
 
 class ReportingService
 {

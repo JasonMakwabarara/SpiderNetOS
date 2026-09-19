@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\VoiceNumber;
+use App\Models\Tenant;
 use App\Models\VoiceCall;
+use App\Models\VoiceNumber;
+use App\Services\CostGovernor;
 use App\Services\FeatureFlag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -50,33 +53,33 @@ class VoiceWebhookTest extends TestCase
     private function twilioPayload(array $overrides = []): array
     {
         return array_merge([
-            'CallSid'    => 'CA' . str_repeat('0', 32),
-            'From'       => '+15555551234',
-            'To'         => '+15555557890',
+            'CallSid' => 'CA'.str_repeat('0', 32),
+            'From' => '+15555551234',
+            'To' => '+15555557890',
             'CallStatus' => 'ringing',
         ], $overrides);
     }
 
-    private function createTenant(): \App\Models\Tenant
+    private function createTenant(): Tenant
     {
-        return \App\Models\Tenant::create([
-            'id'     => \Illuminate\Support\Str::uuid(),
-            'name'   => 'Test Tenant',
-            'slug'   => 'voice-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
+        return Tenant::create([
+            'id' => Str::uuid(),
+            'name' => 'Test Tenant',
+            'slug' => 'voice-'.Str::lower(Str::random(10)),
             'status' => 'active',
-            'plan'   => 'starter',
+            'plan' => 'starter',
         ]);
     }
 
-    private function createVoiceNumber(\App\Models\Tenant $tenant, string $phone = '+15555557890'): VoiceNumber
+    private function createVoiceNumber(Tenant $tenant, string $phone = '+15555557890'): VoiceNumber
     {
         return VoiceNumber::create([
-            'tenant_id'    => $tenant->id,
+            'tenant_id' => $tenant->id,
             'phone_number' => $phone,
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'config'       => ['greeting' => 'Hello from test!'],
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'config' => ['greeting' => 'Hello from test!'],
+            'is_active' => true,
         ]);
     }
 
@@ -145,7 +148,7 @@ class VoiceWebhookTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
 
         $body = $response->getContent();
-        $xml  = simplexml_load_string($body);
+        $xml = simplexml_load_string($body);
         $this->assertNotFalse($xml);
 
         // Expect Gather element (voice interactive loop)
@@ -160,10 +163,10 @@ class VoiceWebhookTest extends TestCase
         $this->createVoiceNumber($tenant);
 
         $response = $this->post('/api/voice/gather', [
-            'CallSid'      => 'CAtest001',
+            'CallSid' => 'CAtest001',
             'SpeechResult' => '',
-            'From'         => '+15555551234',
-            'To'           => '+15555557890',
+            'From' => '+15555551234',
+            'To' => '+15555557890',
         ]);
 
         $response->assertStatus(200);
@@ -178,18 +181,18 @@ class VoiceWebhookTest extends TestCase
         $tenant = $this->createTenant();
 
         $call = VoiceCall::create([
-            'tenant_id'    => $tenant->id,
-            'call_sid'     => 'CAstatus001',
+            'tenant_id' => $tenant->id,
+            'call_sid' => 'CAstatus001',
             'phone_number' => '+15555557890',
-            'from_number'  => '+15555551234',
-            'direction'    => 'inbound',
-            'status'       => 'in-progress',
-            'started_at'   => now(),
+            'from_number' => '+15555551234',
+            'direction' => 'inbound',
+            'status' => 'in-progress',
+            'started_at' => now(),
         ]);
 
         $response = $this->post('/api/voice/status', [
-            'CallSid'      => 'CAstatus001',
-            'CallStatus'   => 'completed',
+            'CallSid' => 'CAstatus001',
+            'CallStatus' => 'completed',
             'CallDuration' => 45,
         ]);
 
@@ -209,19 +212,19 @@ class VoiceWebhookTest extends TestCase
         $tenant = $this->createTenant();
 
         VoiceCall::create([
-            'tenant_id'    => $tenant->id,
-            'call_sid'     => 'CArecord001',
+            'tenant_id' => $tenant->id,
+            'call_sid' => 'CArecord001',
             'phone_number' => '+15555557890',
-            'from_number'  => '+15555551234',
-            'direction'    => 'inbound',
-            'status'       => 'completed',
-            'started_at'   => now(),
+            'from_number' => '+15555551234',
+            'direction' => 'inbound',
+            'status' => 'completed',
+            'started_at' => now(),
         ]);
 
         $response = $this->post('/api/voice/recording', [
-            'CallSid'           => 'CArecord001',
-            'RecordingUrl'      => 'https://api.twilio.com/recordings/RE001',
-            'RecordingSid'      => 'RE001',
+            'CallSid' => 'CArecord001',
+            'RecordingUrl' => 'https://api.twilio.com/recordings/RE001',
+            'RecordingSid' => 'RE001',
             'RecordingDuration' => 30,
         ]);
 
@@ -236,12 +239,12 @@ class VoiceWebhookTest extends TestCase
 
     private function mockCostGovernorAllows(): void
     {
-        $mock = \Mockery::mock(\App\Services\CostGovernor::class);
+        $mock = \Mockery::mock(CostGovernor::class);
         $mock->shouldReceive('canExecute')->andReturn([
-            'allowed'  => true,
+            'allowed' => true,
             'degraded' => false,
-            'action'   => 'allow',
+            'action' => 'allow',
         ]);
-        $this->app->instance(\App\Services\CostGovernor::class, $mock);
+        $this->app->instance(CostGovernor::class, $mock);
     }
 }

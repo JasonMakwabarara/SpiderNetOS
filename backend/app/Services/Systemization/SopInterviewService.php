@@ -21,10 +21,11 @@ class SopInterviewService
     ];
 
     private const MIN_STEPS = 3;
+
     private const MIN_STEP_LENGTH = 20;
 
     /**
-     * @param array{title?: string, purpose?: string, trigger?: string, tools?: array, steps?: array, quality_criteria?: array} $answers
+     * @param  array{title?: string, purpose?: string, trigger?: string, tools?: array, steps?: array, quality_criteria?: array}  $answers
      * @return array{complete: bool, questions: array<int, string>}
      */
     public function evaluate(array $answers): array
@@ -54,7 +55,7 @@ class SopInterviewService
         ));
 
         if (count($steps) < self::MIN_STEPS) {
-            $questions[] = 'Break the task into at least ' . self::MIN_STEPS . ' concrete steps — imagine training someone on their first day.';
+            $questions[] = 'Break the task into at least '.self::MIN_STEPS.' concrete steps — imagine training someone on their first day.';
         } else {
             foreach ($steps as $i => $step) {
                 if ($vagueQuestion = $this->challengeStep((string) $step, $i + 1)) {

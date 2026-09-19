@@ -21,20 +21,20 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
         with:
           php-version: '8.2'
           tools: composer:v2, cs2pr
           coverage: none
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
       - run: composer install --prefer-dist --no-progress --no-interaction
       - name: Pint (code style)
-        run: vendor/bin/pint --test --format=checkstyle | cs2pr
+        run: vendor/bin/pint --test
       - name: Larastan (static analysis, baseline-gated)
         run: php vendor/bin/phpstan.phar analyse --memory-limit=1G --no-progress --error-format=github
 
@@ -45,13 +45,13 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
         with:
           php-version: '8.2'
           extensions: mbstring, xml, pdo_sqlite, bcmath
           coverage: none
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
@@ -63,8 +63,8 @@ jobs:
     name: feature-pack — manifest validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.11'
       - run: pip install pyyaml==6.0.1
@@ -72,24 +72,25 @@ jobs:
         run: python scripts/validate_feature_pack.py packages/feature-packs/real-estate-crm/pack.yaml
 
   cockpit-build:
-    name: cockpit — lint + build
+    name: cockpit — tests + build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cockpit
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: cockpit/package-lock.json
+          cache-dependency-path: package-lock.json
+      # npm workspace: install and run from the root, name the workspace.
       - run: npm ci --prefer-offline --no-audit
-      - name: Type check / lint (best-effort; non-blocking until configured)
-        run: |
-          if npm run | grep -q 'lint'; then npm run lint; else echo "No lint script"; fi
+      # There is no lint script in cockpit/package.json, and the step that
+      # looked for one could only ever print "No lint script". There IS a
+      # vitest suite — 9 files, 64 tests, about four seconds — that no workflow
+      # had ever run. It runs here.
+      - name: Tests
+        run: npm run test --workspace=cockpit
       - name: Build
-        run: npm run build
+        run: npm run build --workspace=cockpit
 
   python-lint:
     name: python planes — ruff
@@ -99,8 +100,8 @@ jobs:
       matrix:
         project: [intelligence, inference]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.11'
       - name: Install ruff
@@ -113,8 +114,8 @@ jobs:
     name: services — ruff (blocking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.11'
       - name: Install ruff
@@ -122,6 +123,23 @@ jobs:
       - name: Ruff check services/
         working-directory: services
         run: ruff check . --output-format=github
+
+  suites-wired:
+    name: registries match the code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.11'
+      - run: pip install --quiet pyyaml
+      # Four suites in this repo had never run in CI. Nothing noticed, because a
+      # tests/ directory and a workflow are separate artefacts and neither knows
+      # about the other. This is what looks.
+      - run: python3 .github/check_suites_wired.py
+      # And the same for work that says it is unfinished: a comment is not a
+      # plan unless somebody owns it and it has a date.
+      - run: python3 .github/check_deferred.py
 
   backend-test-full:
     name: backend — full test suite (Postgres + Redis)
@@ -131,7 +149,12 @@ jobs:
         image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: spidernet
-          POSTGRES_PASSWORD: spidernet
+          # A throwaway container on the runner's loopback, destroyed when
+          # the job ends. `trust` means there is no credential here to
+          # hardcode, leak, rotate or explain to a scanner - and it removes
+          # libpq's "fe_sendauth: no password supplied" failure mode, which
+          # is what killed this lane's migrate step before any test ran.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: spidernet_test
         ports:
           - 5432:5432
@@ -160,13 +183,13 @@ jobs:
       DB_HOST: 127.0.0.1
       REDIS_HOST: 127.0.0.1
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
         with:
           php-version: '8.2'
           extensions: mbstring, xml, pdo_pgsql, bcmath
           coverage: none
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: backend/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
@@ -179,10 +202,10 @@ jobs:
       - name: Enable pgvector
         # memory_nodes declares a vector(384) column, so the extension has to
         # exist before RefreshDatabase runs the migrations.
-        run: PGPASSWORD=spidernet psql -h 127.0.0.1 -U spidernet -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
-      # No migrate step: it ran with neither a .env nor DB_* env vars, so libpq
-      # saw an empty password and the job died before a single test ran
-      # ("fe_sendauth: no password supplied"). RefreshDatabase migrates the
-      # schema itself, which is why the standalone Postgres lane never needed one.
+        run: psql -h 127.0.0.1 -U spidernet -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      # No migrate step, deliberately: RefreshDatabase migrates the schema
+      # itself, which is why the standalone Postgres lane never needed one. The
+      # step that used to be here ran with neither a .env nor DB_* env vars and
+      # died on "fe_sendauth: no password supplied" before a single test ran.
       - name: Run full PHPUnit suite
         run: ./vendor/bin/phpunit -c phpunit.github-full.xml

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\EventStore;
 use App\Models\Approval;
+use App\Services\ApprovalEngine;
+use App\Services\EventStore;
+use App\Services\Outreach\Bot\OutreachReplyService;
+use App\Services\Sales\FunnelSetupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ApprovalController extends Controller
 {
@@ -27,7 +29,7 @@ class ApprovalController extends Controller
 
         $approval = Approval::forTenant($tenantId)->with('steps')->find($id);
 
-        if (!$approval) {
+        if (! $approval) {
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
@@ -51,12 +53,12 @@ class ApprovalController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$approval) {
+        if (! $approval) {
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
         try {
-            $result = app(\App\Services\ApprovalEngine::class)->delegateStep(
+            $result = app(ApprovalEngine::class)->delegateStep(
                 $id,
                 (string) $request->user()?->id,
                 $request->input('to_user_id'),
@@ -113,7 +115,7 @@ class ApprovalController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$approval) {
+        if (! $approval) {
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
@@ -162,7 +164,7 @@ class ApprovalController extends Controller
             ]);
 
         // Resume blocked DAG node if applicable
-        if (!empty($approval->flow_execution_id) && !empty($approval->dag_node_id)) {
+        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
             $this->resumeDagNode(
                 $tenantId,
                 $approval->flow_execution_id,
@@ -208,7 +210,7 @@ class ApprovalController extends Controller
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$approval) {
+        if (! $approval) {
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
@@ -253,7 +255,7 @@ class ApprovalController extends Controller
             ]);
 
         // Fail blocked DAG node if applicable
-        if (!empty($approval->flow_execution_id) && !empty($approval->dag_node_id)) {
+        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
             $this->failDagNode(
                 $tenantId,
                 $approval->flow_execution_id,
@@ -287,7 +289,7 @@ class ApprovalController extends Controller
     private function resolveChainStep(Request $request, string $id, bool $approved, string $response): JsonResponse
     {
         try {
-            $result = app(\App\Services\ApprovalEngine::class)->resolveStep(
+            $result = app(ApprovalEngine::class)->resolveStep(
                 $id,
                 (string) $request->user()?->id,
                 $approved,

@@ -24,6 +24,7 @@ class ComputeTransformationScoreJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public array $backoff = [30, 120];
 
     public function __construct(
@@ -39,11 +40,11 @@ class ComputeTransformationScoreJob implements ShouldQueue
         $rows = DB::table('atlas_interactions')
             ->where(function ($q) use ($rescoreWindow) {
                 $q->whereNull('final_ts')
-                  ->orWhere(function ($q2) use ($rescoreWindow) {
-                      $q2->whereNotNull('final_ts')
-                         ->where('scored_at', '<', $rescoreWindow)
-                         ->whereColumn('updated_at', '>', 'scored_at');
-                  });
+                    ->orWhere(function ($q2) use ($rescoreWindow) {
+                        $q2->whereNotNull('final_ts')
+                            ->where('scored_at', '<', $rescoreWindow)
+                            ->whereColumn('updated_at', '>', 'scored_at');
+                    });
             })
             ->orderBy('created_at')
             ->limit($this->batchSize)
@@ -78,7 +79,7 @@ class ComputeTransformationScoreJob implements ShouldQueue
 
                 $scored++;
             } catch (\Throwable $e) {
-                Log::warning('[ComputeTransformationScoreJob] failed row: ' . $e->getMessage(), [
+                Log::warning('[ComputeTransformationScoreJob] failed row: '.$e->getMessage(), [
                     'interaction_id' => $row->id ?? null,
                 ]);
             }
@@ -96,6 +97,7 @@ class ComputeTransformationScoreJob implements ShouldQueue
             return [];
         }
         $decoded = json_decode((string) $value, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 }

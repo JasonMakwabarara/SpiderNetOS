@@ -34,7 +34,7 @@ class GenerateDailyBriefJob implements ShouldQueue
     private string $targetDate;
 
     /**
-     * @param string|null $date  ISO date override (Y-m-d). Defaults to today.
+     * @param  string|null  $date  ISO date override (Y-m-d). Defaults to today.
      */
     public function __construct(?string $date = null)
     {
@@ -49,6 +49,7 @@ class GenerateDailyBriefJob implements ShouldQueue
 
         if ($tenants->isEmpty()) {
             Log::info('[DailyBrief] No active tenants — skipping.');
+
             return;
         }
 

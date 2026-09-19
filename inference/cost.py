@@ -5,10 +5,10 @@ Pre-inference cost gate + post-inference usage recording via Redis.
 import json
 from typing import Optional
 
-import redis.asyncio as aioredis
-
 from config import REDIS_URL
 from models import InferenceResponse
+
+import redis.asyncio as aioredis
 
 _redis = None
 

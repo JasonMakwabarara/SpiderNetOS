@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\ProcessVoiceCallSummary;
+use App\Models\Tenant;
 use App\Models\VoiceCall;
 use App\Models\VoiceCallSummary;
 use App\Services\FeatureFlag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -41,23 +44,23 @@ class PostCallSummaryTest extends TestCase
 
     private function createCallRecord(string $callSid = 'CAsummary001'): VoiceCall
     {
-        $tenant = \App\Models\Tenant::create([
-            'id'     => \Illuminate\Support\Str::uuid(),
-            'name'   => 'Post-Call Tenant',
-            'slug'   => 'postcall-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
+        $tenant = Tenant::create([
+            'id' => Str::uuid(),
+            'name' => 'Post-Call Tenant',
+            'slug' => 'postcall-'.Str::lower(Str::random(10)),
             'status' => 'active',
-            'plan'   => 'starter',
+            'plan' => 'starter',
         ]);
 
         return VoiceCall::create([
-            'tenant_id'    => $tenant->id,
-            'call_sid'     => $callSid,
+            'tenant_id' => $tenant->id,
+            'call_sid' => $callSid,
             'phone_number' => '+15555557890',
-            'from_number'  => '+15555551234',
-            'direction'    => 'inbound',
-            'status'       => 'in-progress',
-            'started_at'   => now()->subMinutes(3),
-            'transcript'   => [
+            'from_number' => '+15555551234',
+            'direction' => 'inbound',
+            'status' => 'in-progress',
+            'started_at' => now()->subMinutes(3),
+            'transcript' => [
                 ['speaker' => 'caller', 'text' => 'Hi, I need help with my account.', 'timestamp' => now()->toIso8601String()],
                 ['speaker' => 'agent',  'text' => 'Sure! I can help you with that.', 'timestamp' => now()->toIso8601String()],
             ],
@@ -71,8 +74,8 @@ class PostCallSummaryTest extends TestCase
         $this->createCallRecord();
 
         $response = $this->post('/api/voice/status', [
-            'CallSid'      => 'CAsummary001',
-            'CallStatus'   => 'completed',
+            'CallSid' => 'CAsummary001',
+            'CallStatus' => 'completed',
             'CallDuration' => 180,
         ]);
 
@@ -87,7 +90,7 @@ class PostCallSummaryTest extends TestCase
         $this->createCallRecord('CAbusy001');
 
         $this->post('/api/voice/status', [
-            'CallSid'    => 'CAbusy001',
+            'CallSid' => 'CAbusy001',
             'CallStatus' => 'busy',
         ]);
 
@@ -113,7 +116,7 @@ class PostCallSummaryTest extends TestCase
     {
         // Job with non-existent call_sid should not throw. Tenant id must be a
         // real UUID: Postgres rejects non-uuid text where sqlite wouldn't.
-        $job = new ProcessVoiceCallSummary('CAnonexistent999', (string) \Illuminate\Support\Str::uuid());
+        $job = new ProcessVoiceCallSummary('CAnonexistent999', (string) Str::uuid());
         $job->handle(); // should not throw
         $this->assertTrue(true);
     }
@@ -127,24 +130,24 @@ class PostCallSummaryTest extends TestCase
             'choices' => [[
                 'message' => [
                     'content' => json_encode([
-                        'summary'        => 'Caller needed account help.',
-                        'key_points'     => ['Account issue reported'],
-                        'follow_up_tasks'=> ['Check account status'],
-                        'sentiment'      => 'positive',
+                        'summary' => 'Caller needed account help.',
+                        'key_points' => ['Account issue reported'],
+                        'follow_up_tasks' => ['Check account status'],
+                        'sentiment' => 'positive',
                     ]),
                 ],
             ]],
         ]);
 
-        \Illuminate\Support\Facades\Http::fake([
-            '*/generate' => \Illuminate\Support\Facades\Http::response($fakeResponseBody, 200),
+        Http::fake([
+            '*/generate' => Http::response($fakeResponseBody, 200),
         ]);
 
         (new ProcessVoiceCallSummary('CAjobtest001', $call->tenant_id))->handle();
 
         $this->assertDatabaseHas('voice_call_summaries', [
             'voice_call_id' => $call->id,
-            'sentiment'     => 'positive',
+            'sentiment' => 'positive',
         ]);
 
         $summary = VoiceCallSummary::where('voice_call_id', $call->id)->first();

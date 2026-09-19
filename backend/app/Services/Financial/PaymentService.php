@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Transaction;
-use App\Models\Invoice;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class PaymentService
 {

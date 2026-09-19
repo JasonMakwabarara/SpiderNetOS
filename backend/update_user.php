@@ -1,15 +1,17 @@
 <?php
-require "vendor/autoload.php";
-$app = require "bootstrap/app.php";
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Hash;
 
 $user = User::where('email', 'admin@spidernetos.com')->first();
 
-if (!$user) {
+if (! $user) {
     $user = User::create([
         'name' => 'Admin',
         'email' => 'admin@spidernetos.com',
@@ -21,5 +23,5 @@ if (!$user) {
 } else {
     $user->onboarding_completed_at = now();
     $user->save();
-    echo "✅ User updated! Onboarding completed at: " . $user->onboarding_completed_at . "\n";
+    echo '✅ User updated! Onboarding completed at: '.$user->onboarding_completed_at."\n";
 }

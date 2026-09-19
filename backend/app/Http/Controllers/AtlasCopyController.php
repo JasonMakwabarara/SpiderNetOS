@@ -7,7 +7,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * AtlasCopyController — Atlas Copy Delivery API (§11.4)
@@ -29,7 +28,7 @@ class AtlasCopyController extends Controller
     public function serve(Request $request): JsonResponse
     {
         $surface = $request->query('surface', 'empty_state');
-        $rawCtx  = $request->query('context', '');
+        $rawCtx = $request->query('context', '');
 
         $context = [];
         if ($rawCtx) {
@@ -40,14 +39,14 @@ class AtlasCopyController extends Controller
         }
 
         // Check surface-level kill switch
-        if (FeatureFlag::fallback('atlas.copy.' . $surface)) {
+        if (FeatureFlag::fallback('atlas.copy.'.$surface)) {
             return $this->fallbackResponse($surface);
         }
 
         // Select a variant using Thompson Sampling bandit (§11.11)
         $variant = $this->selectVariant($surface, $context, $request);
 
-        if (!$variant) {
+        if (! $variant) {
             return $this->fallbackResponse($surface);
         }
 
@@ -55,14 +54,14 @@ class AtlasCopyController extends Controller
         $this->logImpression($variant, $surface, $context, $request);
 
         return response()->json([
-            'variant_id'   => $variant->id,
-            'surface'      => $surface,
-            'text'         => $variant->features['text'] ?? '',
-            'cta'          => $variant->features['cta'] ?? null,
-            'trust_score'  => (float) $variant->trust_score,
+            'variant_id' => $variant->id,
+            'surface' => $surface,
+            'text' => $variant->features['text'] ?? '',
+            'cta' => $variant->features['cta'] ?? null,
+            'trust_score' => (float) $variant->trust_score,
             'predicted_ts' => (float) $variant->predicted_ts,
-            'fallback'     => false,
-            'expires_at'   => now()->addMinutes(60)->toIso8601String(),
+            'fallback' => false,
+            'expires_at' => now()->addMinutes(60)->toIso8601String(),
         ]);
     }
 
@@ -73,17 +72,17 @@ class AtlasCopyController extends Controller
     public function recordEvent(Request $request, string $variantId): JsonResponse
     {
         $validated = $request->validate([
-            'kind'     => 'required|in:click,action,conversion',
+            'kind' => 'required|in:click,action,conversion',
             'dwell_ms' => 'nullable|integer|min:0',
         ]);
 
-        $kind    = $validated['kind'];
+        $kind = $validated['kind'];
         $dwellMs = $validated['dwell_ms'] ?? null;
-        $now     = now();
+        $now = now();
 
         // Update the impression row (most recent for this variant for this user)
         $tenantId = $request->attributes->get('tenant_id');
-        $userId   = $request->user()?->id;
+        $userId = $request->user()?->id;
 
         $impression = DB::table('atlas_copy_impressions')
             ->where('variant_id', $variantId)
@@ -96,9 +95,9 @@ class AtlasCopyController extends Controller
             $updateData = ['dwell_ms' => $dwellMs ?? $impression->dwell_ms];
 
             match ($kind) {
-                'click'      => $updateData['clicked_at']    = $now,
-                'action'     => $updateData['action_at']      = $now,
-                'conversion' => $updateData['conversion_at']  = $now,
+                'click' => $updateData['clicked_at'] = $now,
+                'action' => $updateData['action_at'] = $now,
+                'conversion' => $updateData['conversion_at'] = $now,
             };
 
             DB::table('atlas_copy_impressions')
@@ -128,10 +127,10 @@ class AtlasCopyController extends Controller
      */
     private function selectVariant(string $surface, array $context, Request $request): ?object
     {
-        $algo        = FeatureFlag::value('atlas.bandit.algo', $request->attributes->get('tenant_id'));
+        $algo = FeatureFlag::value('atlas.bandit.algo', $request->attributes->get('tenant_id'));
         $temperature = (float) FeatureFlag::value('atlas.bandit.temperature');
         $temperature = max(0.5, min(1.2, $temperature));
-        $floor       = (int) FeatureFlag::value('atlas.bandit.min_impressions_floor');
+        $floor = (int) FeatureFlag::value('atlas.bandit.min_impressions_floor');
 
         $variants = DB::table('atlas_copy_variants')
             ->where('surface', $surface)
@@ -151,14 +150,14 @@ class AtlasCopyController extends Controller
             }
 
             $alpha = (float) $variant->alpha + $this->cohortPriorAlpha($surface);
-            $beta  = (float) $variant->beta  + $this->cohortPriorBeta($surface);
+            $beta = (float) $variant->beta + $this->cohortPriorBeta($surface);
 
             if ($algo === 'thompson') {
                 $theta = $this->betaSample($alpha, $beta, $temperature);
             } else {
                 // epsilon-greedy fallback
                 $epsilon = max(0.05, 1.0 / max(1, sqrt((float) $variant->impressions)));
-                $theta   = (random_int(0, 100) / 100) < $epsilon
+                $theta = (random_int(0, 100) / 100) < $epsilon
                     ? (random_int(0, 100) / 100)
                     : (float) $variant->avg_reward;
             }
@@ -175,7 +174,8 @@ class AtlasCopyController extends Controller
             return null;
         }
 
-        usort($scored, fn($a, $b) => $b['theta'] <=> $a['theta']);
+        usort($scored, fn ($a, $b) => $b['theta'] <=> $a['theta']);
+
         return $scored[0]['variant'];
     }
 
@@ -187,7 +187,7 @@ class AtlasCopyController extends Controller
     {
         // Scale parameters by temperature
         $a = $alpha / $temperature;
-        $b = $beta  / $temperature;
+        $b = $beta / $temperature;
         $a = max(0.01, $a);
         $b = max(0.01, $b);
 
@@ -207,16 +207,18 @@ class AtlasCopyController extends Controller
     private function cohortPriorAlpha(string $surface): float
     {
         // Simplified: global click rate across the surface
-        $clicks      = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('clicks');
+        $clicks = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('clicks');
         $impressions = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('impressions');
+
         return $impressions > 0 ? ($clicks / $impressions) * 10 : 1.0;
     }
 
     private function cohortPriorBeta(string $surface): float
     {
-        $clicks      = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('clicks');
+        $clicks = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('clicks');
         $impressions = (float) DB::table('atlas_copy_variants')->where('surface', $surface)->sum('impressions');
-        $noClicks    = max(0, $impressions - $clicks);
+        $noClicks = max(0, $impressions - $clicks);
+
         return $impressions > 0 ? ($noClicks / $impressions) * 10 : 1.0;
     }
 
@@ -225,18 +227,18 @@ class AtlasCopyController extends Controller
         try {
             DB::table('atlas_copy_impressions')->insert([
                 'variant_id' => $variant->id,
-                'tenant_id'  => $request->attributes->get('tenant_id'),
-                'user_id'    => $request->user()?->id,
-                'surface'    => $surface,
-                'context'    => json_encode($context),
-                'shown_at'   => now(),
+                'tenant_id' => $request->attributes->get('tenant_id'),
+                'user_id' => $request->user()?->id,
+                'surface' => $surface,
+                'context' => json_encode($context),
+                'shown_at' => now(),
             ]);
 
             DB::table('atlas_copy_variants')
                 ->where('id', $variant->id)
                 ->increment('impressions');
         } catch (\Throwable $e) {
-            Log::warning('[AtlasCopy] impression log failed: ' . $e->getMessage());
+            Log::warning('[AtlasCopy] impression log failed: '.$e->getMessage());
         }
     }
 
@@ -248,25 +250,25 @@ class AtlasCopyController extends Controller
     {
         try {
             $variant = DB::table('atlas_copy_variants')->find($variantId);
-            if (!$variant) {
+            if (! $variant) {
                 return;
             }
 
             $increment = match ($kind) {
-                'click'      => ['clicks'      => 1],
-                'action'     => ['actions'     => 1],
+                'click' => ['clicks' => 1],
+                'action' => ['actions' => 1],
                 'conversion' => ['conversions' => 1],
             };
 
             DB::table('atlas_copy_variants')->where('id', $variantId)->increment(
-                key(   $increment),
+                key($increment),
                 current($increment),
             );
 
             // Observed reward signal (surface-specific primary metric)
             $observedReward = match ($kind) {
-                'click'      => 0.4,
-                'action'     => 0.7,
+                'click' => 0.4,
+                'action' => 0.7,
                 'conversion' => 1.0,
             };
 
@@ -275,19 +277,19 @@ class AtlasCopyController extends Controller
 
             // Update rolling average reward
             $newImpressions = (int) $variant->impressions;
-            $oldSum         = (float) $variant->sum_reward;
-            $newSum         = $oldSum + $blendedReward;
-            $newAvg         = $newImpressions > 0 ? $newSum / $newImpressions : $blendedReward;
+            $oldSum = (float) $variant->sum_reward;
+            $newSum = $oldSum + $blendedReward;
+            $newAvg = $newImpressions > 0 ? $newSum / $newImpressions : $blendedReward;
 
             // Update Thompson parameters (alpha/beta for success/failure)
             $alphaIncr = in_array($kind, ['action', 'conversion']) ? $blendedReward : 0;
-            $betaIncr  = $alphaIncr === 0 ? (1 - $blendedReward) : 0;
+            $betaIncr = $alphaIncr === 0 ? (1 - $blendedReward) : 0;
 
             DB::table('atlas_copy_variants')->where('id', $variantId)->update([
                 'sum_reward' => $newSum,
                 'avg_reward' => $newAvg,
-                'alpha'      => DB::raw("alpha + {$alphaIncr}"),
-                'beta'       => DB::raw("beta  + {$betaIncr}"),
+                'alpha' => DB::raw("alpha + {$alphaIncr}"),
+                'beta' => DB::raw("beta  + {$betaIncr}"),
                 'updated_at' => now(),
             ]);
 
@@ -300,7 +302,7 @@ class AtlasCopyController extends Controller
                 ->update(['reward' => $blendedReward]);
 
         } catch (\Throwable $e) {
-            Log::warning('[AtlasCopy] bandit update failed: ' . $e->getMessage());
+            Log::warning('[AtlasCopy] bandit update failed: '.$e->getMessage());
         }
     }
 
@@ -308,27 +310,27 @@ class AtlasCopyController extends Controller
     {
         // Returns a static fallback; variant_id is null so cockpit skips event reporting
         return response()->json([
-            'variant_id'   => null,
-            'surface'      => $surface,
-            'text'         => $this->fallbackText($surface),
-            'cta'          => null,
-            'trust_score'  => 1.0,
+            'variant_id' => null,
+            'surface' => $surface,
+            'text' => $this->fallbackText($surface),
+            'cta' => null,
+            'trust_score' => 1.0,
             'predicted_ts' => 1.0,
-            'fallback'     => true,
-            'expires_at'   => now()->addMinutes(5)->toIso8601String(),
+            'fallback' => true,
+            'expires_at' => now()->addMinutes(5)->toIso8601String(),
         ]);
     }
 
     private function fallbackText(string $surface): string
     {
         return match ($surface) {
-            'empty_state'   => 'Your usage insights will appear here once your first request is processed.',
-            'banner'        => 'Your usage insights are live — see where your spend is going today.',
-            'modal'         => 'Your usage data is now accurate and up to date.',
-            'tooltip'       => 'Total API requests processed on this day.',
+            'empty_state' => 'Your usage insights will appear here once your first request is processed.',
+            'banner' => 'Your usage insights are live — see where your spend is going today.',
+            'modal' => 'Your usage data is now accurate and up to date.',
+            'tooltip' => 'Total API requests processed on this day.',
             'success_state' => 'Your usage insights are live and accurate.',
-            'error_state'   => 'Usage data is temporarily unavailable. We\'re working on it.',
-            default         => '',
+            'error_state' => 'Usage data is temporarily unavailable. We\'re working on it.',
+            default => '',
         };
     }
 }

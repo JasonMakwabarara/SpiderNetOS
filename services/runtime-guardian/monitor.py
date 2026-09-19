@@ -1,5 +1,7 @@
-﻿import asyncpg
-import logging
+﻿import logging
+
+import asyncpg
+
 
 class RuntimeGuardian:
     def __init__(self, db_pool: asyncpg.Pool):

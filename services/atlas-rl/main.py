@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Depends
 import asyncpg
+from fastapi import Depends, FastAPI
 
 app = FastAPI(title="Atlas RL Reward Engine")
 

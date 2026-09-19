@@ -29,7 +29,7 @@ class JarvisTierGate
 
     public function agentAllowed(string $tenantId, string $agent, ?string $plan = null): bool
     {
-        if (!FeatureFlag::on('atlas.openjarvis', $tenantId)) {
+        if (! FeatureFlag::on('atlas.openjarvis', $tenantId)) {
             return false;
         }
 
@@ -37,7 +37,7 @@ class JarvisTierGate
         $rank = $this->planRank($plan);
 
         if (in_array($agent, self::ENTERPRISE_AGENTS, true)) {
-            if (!FeatureFlag::on('atlas.jarvis.deep_research', $tenantId)) {
+            if (! FeatureFlag::on('atlas.jarvis.deep_research', $tenantId)) {
                 return false;
             }
 
@@ -45,7 +45,7 @@ class JarvisTierGate
         }
 
         if (in_array($agent, self::GROWTH_AGENTS, true)) {
-            if (!FeatureFlag::on('atlas.jarvis.morning_digest', $tenantId)) {
+            if (! FeatureFlag::on('atlas.jarvis.morning_digest', $tenantId)) {
                 return false;
             }
 
@@ -76,7 +76,7 @@ class JarvisTierGate
 
         try {
             $tenant = Tenant::find($tenantId);
-            if (!$tenant) {
+            if (! $tenant) {
                 return $skills;
             }
 

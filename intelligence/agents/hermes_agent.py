@@ -19,22 +19,14 @@ Key Capabilities:
 import asyncio
 import json
 import logging
-import re
-from typing import Dict, Any, List, Optional, Union, Callable
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import aiohttp
-import websockets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import twilio.rest
-import stripe
-import requests
+from typing import Any, Callable, Dict, List, Optional
 
+import aiohttp
 from core.agent_base import AgentBase, AgentContext, AgentResult
-from core.deepseek_client import get_deepseek_client, DeepSeekClient
+from core.deepseek_client import get_deepseek_client
 
 logger = logging.getLogger(__name__)
 
@@ -261,8 +253,6 @@ class HermesAgent(AgentBase):
         """Handle voice communication"""
 
         # Extract voice-specific data
-        transcript = conv_ctx.channel_metadata.get('transcript', '')
-        voice_features = conv_ctx.channel_metadata.get('voice_features', {})
 
         # Use VoiceAgent for voice processing, then coordinate
         voice_result = await self._delegate_to_agent('voice', agent_ctx)
@@ -445,7 +435,7 @@ class HermesAgent(AgentBase):
             workflow_id = forge_result.output.get('workflow_id')
             conv_ctx.active_workflows.append(workflow_id)
 
-            nexus_result = await self._delegate_to_agent('nexus', AgentContext(
+            await self._delegate_to_agent('nexus', AgentContext(
                 tenant_id=conv_ctx.tenant_id,
                 session_id=conv_ctx.conversation_id,
                 user_id=conv_ctx.user_id,
@@ -467,7 +457,6 @@ class HermesAgent(AgentBase):
         )
 
         required_agents = agent_analysis.get('required_agents', [])
-        coordination_plan = agent_analysis.get('coordination_plan', '')
 
         # Execute coordination plan
         results = []
@@ -558,8 +547,9 @@ class HermesAgent(AgentBase):
         if integration.auth_method == 'bearer':
             headers['Authorization'] = f"Bearer {integration.config['api_key']}"
 
-        async with aiohttp.ClientSession() as session:
-            async with session.request(method, endpoint, json=payload, headers=headers) as response:
+        async with aiohttp.ClientSession() as session, session.request(
+            method, endpoint, json=payload, headers=headers
+        ) as response:
                 return {
                     'status_code': response.status,
                     'data': await response.json() if response.content_type == 'application/json' else await response.text()
@@ -645,7 +635,7 @@ class HermesAgent(AgentBase):
         response = await self.llm.generate_completion(prompt, max_tokens=10)
         try:
             return float(response.strip())
-        except:
+        except Exception:
             return 0.0
 
     async def _detect_intent(self, text: str, context: ConversationContext) -> str:
@@ -672,9 +662,9 @@ class HermesAgent(AgentBase):
     def _find_integration_for_endpoint(self, endpoint: str) -> Optional[str]:
         """Find integration that handles this endpoint"""
         for name, integration in self.integrations.items():
-            if integration.type == 'api' and 'base_url' in integration.config:
-                if endpoint.startswith(integration.config['base_url']):
-                    return name
+            if (integration.type == 'api' and 'base_url' in integration.config
+                    and endpoint.startswith(integration.config['base_url'])):
+                return name
         return None
 
     async def _check_rate_limit(self, integration_name: str, limits: Dict[str, int]) -> bool:

@@ -1,33 +1,22 @@
 <?php
 
-
-
 namespace App\Http\Controllers;
 
-
-
 use App\Models\FeaturePack;
-
+use App\Models\PackEntitlement;
 use App\Services\AtlasDiscoveryService;
-
+use App\Services\EntitlementRequiredException;
 use App\Services\FeaturePackInstaller;
-
+use App\Services\Integrations\DodoPaymentsAdapter;
 use App\Services\PackGrowthService;
-
 use Illuminate\Http\JsonResponse;
-
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\Yaml\Yaml;
 
-
-
 class FeaturePackController extends Controller
-
 {
-
     /** Customer-facing outcome bullets keyed by pack_id. */
-
     private const PACK_OUTCOMES = [
 
         'financial-services' => [
@@ -72,17 +61,14 @@ class FeaturePackController extends Controller
 
     ];
 
-
-
     public function catalogue(Request $request, PackGrowthService $growth): JsonResponse
-
     {
 
         $tenantId = $request->attributes->get('tenant_id');
 
         $installed = $request->user()->tenant->featurePacks()->pluck('pack_id')->all();
 
-        $entitledPackIds = \App\Models\PackEntitlement::forTenant($tenantId)->active()->pluck('pack_id')->all();
+        $entitledPackIds = PackEntitlement::forTenant($tenantId)->active()->pluck('pack_id')->all();
 
         $entries = $growth->personalizeCatalogue($tenantId, $this->loadCatalogueEntries(), $installed);
 
@@ -93,8 +79,6 @@ class FeaturePackController extends Controller
         }
 
         unset($entry);
-
-
 
         return response()->json([
 
@@ -112,10 +96,7 @@ class FeaturePackController extends Controller
 
     }
 
-
-
     public function recommendations(Request $request, PackGrowthService $growth): JsonResponse
-
     {
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -124,21 +105,14 @@ class FeaturePackController extends Controller
 
         $recs = $growth->recommendations($tenantId, $this->loadCatalogueEntries(), $installed);
 
-
-
         return response()->json(['data' => $recs]);
 
     }
 
-
-
     public function recordSignal(Request $request, PackGrowthService $growth): JsonResponse
-
     {
 
         $tenantId = $request->attributes->get('tenant_id');
-
-
 
         $validated = $request->validate([
 
@@ -149,8 +123,6 @@ class FeaturePackController extends Controller
             'context' => 'sometimes|array',
 
         ]);
-
-
 
         $passive = ['pack_view', 'route_visit', 'atlas_suggested'];
 
@@ -184,21 +156,14 @@ class FeaturePackController extends Controller
 
         }
 
-
-
         return response()->json(['accepted' => true], 202);
 
     }
 
-
-
     public function feedback(Request $request, PackGrowthService $growth, AtlasDiscoveryService $discovery): JsonResponse
-
     {
 
         $tenantId = $request->attributes->get('tenant_id');
-
-
 
         $validated = $request->validate([
 
@@ -211,8 +176,6 @@ class FeaturePackController extends Controller
             'outcome' => 'nullable|string|max:200',
 
         ]);
-
-
 
         $growth->recordFeedback(
 
@@ -228,33 +191,22 @@ class FeaturePackController extends Controller
 
         );
 
-
-
         if ($validated['sentiment'] === 'negative' && ! empty($validated['note'])) {
 
             $discovery->absorbAnswer($tenantId, $validated['note']);
 
         }
 
-
-
         $discovery->refreshCompletionPct($tenantId);
-
-
 
         return response()->json(['accepted' => true], 202);
 
     }
 
-
-
     public function index(Request $request)
-
     {
 
         $query = $request->user()->tenant->featurePacks();
-
-
 
         if ($request->filled('vertical')) {
 
@@ -262,15 +214,11 @@ class FeaturePackController extends Controller
 
         }
 
-
-
         if ($request->filled('status')) {
 
             $query->where('status', $request->query('status'));
 
         }
-
-
 
         $packs = $query->get()->map(function (FeaturePack $pack) {
 
@@ -302,16 +250,11 @@ class FeaturePackController extends Controller
 
         });
 
-
-
         return response()->json(['data' => $packs]);
 
     }
 
-
-
     public function show(Request $request, string $id)
-
     {
 
         $pack = $request->user()->tenant->featurePacks()
@@ -319,8 +262,6 @@ class FeaturePackController extends Controller
             ->where('pack_id', $id)
 
             ->firstOrFail();
-
-
 
         return response()->json([
 
@@ -356,21 +297,13 @@ class FeaturePackController extends Controller
 
     }
 
-
-
     /**
-
      * POST /api/feature-packs/{id}/install
-
      */
-
     public function install(Request $request, string $id, FeaturePackInstaller $installer, PackGrowthService $growth): JsonResponse
-
     {
 
         $tenant = $request->user()->tenant;
-
-
 
         try {
 
@@ -380,7 +313,7 @@ class FeaturePackController extends Controller
 
             return response()->json(['message' => $e->getMessage()], 422);
 
-        } catch (\App\Services\EntitlementRequiredException $e) {
+        } catch (EntitlementRequiredException $e) {
 
             return response()->json([
                 'message' => $e->getMessage(),
@@ -396,11 +329,7 @@ class FeaturePackController extends Controller
 
         }
 
-
-
         $growth->recordSignal($tenant->id, 'pack_install', $id, ['source' => 'feature_packs_ui']);
-
-
 
         return response()->json(['data' => $result]);
 
@@ -418,7 +347,7 @@ class FeaturePackController extends Controller
             return response()->json(['message' => 'Pack is not installed.'], 404);
         }
 
-        \Illuminate\Support\Facades\DB::table('agents')
+        DB::table('agents')
             ->where('tenant_id', $tenant->id)
             ->where('config->pack_id', $id)
             ->delete();
@@ -451,7 +380,7 @@ class FeaturePackController extends Controller
 
         // Already owned — don't start a second checkout (a duplicate active
         // entitlement would later collide on the partial-unique index).
-        if (\App\Models\PackEntitlement::forTenant($tenant->id)->where('pack_id', $id)->active()->exists()) {
+        if (PackEntitlement::forTenant($tenant->id)->where('pack_id', $id)->active()->exists()) {
             return response()->json(['message' => 'You already own this pack.'], 409);
         }
 
@@ -460,7 +389,7 @@ class FeaturePackController extends Controller
 
         // Reuse an existing pending entitlement for this pack rather than
         // accumulating an orphan row each time the customer reopens checkout.
-        $entitlement = \App\Models\PackEntitlement::forTenant($tenant->id)
+        $entitlement = PackEntitlement::forTenant($tenant->id)
             ->where('pack_id', $id)
             ->where('status', 'pending')
             ->latest()
@@ -469,7 +398,7 @@ class FeaturePackController extends Controller
         if ($entitlement) {
             $entitlement->update(['amount_cents' => $amountCents, 'currency' => $currency, 'provider' => 'dodo']);
         } else {
-            $entitlement = \App\Models\PackEntitlement::create([
+            $entitlement = PackEntitlement::create([
                 'tenant_id' => $tenant->id,
                 'pack_id' => $id,
                 'source' => 'purchase',
@@ -481,7 +410,7 @@ class FeaturePackController extends Controller
         }
 
         try {
-            $adapter = new \App\Services\Integrations\DodoPaymentsAdapter((array) config('services.dodo'));
+            $adapter = new DodoPaymentsAdapter((array) config('services.dodo'));
             $session = $adapter->createCheckoutSession(
                 $productId,
                 ['tenant_id' => $tenant->id, 'pack_id' => $id, 'entitlement_id' => $entitlement->id],
@@ -508,7 +437,7 @@ class FeaturePackController extends Controller
     {
         $tenant = $request->user()->tenant;
 
-        $entitlements = \App\Models\PackEntitlement::forTenant($tenant->id)
+        $entitlements = PackEntitlement::forTenant($tenant->id)
             ->orderByDesc('created_at')
             ->get(['id', 'pack_id', 'source', 'status', 'amount_cents', 'currency', 'purchased_at', 'expires_at']);
 
@@ -516,28 +445,20 @@ class FeaturePackController extends Controller
     }
 
     /**
-
      * @return list<array<string, mixed>>
-
      */
-
     private function loadCatalogueEntries(): array
-
     {
 
         $root = $this->packsRoot();
 
         $entries = [];
 
-
-
         if (! is_dir($root)) {
 
             return $entries;
 
         }
-
-
 
         foreach (glob($root.'/*/pack.yaml') ?: [] as $path) {
 
@@ -552,8 +473,6 @@ class FeaturePackController extends Controller
                 $agents = $yaml['spec']['provides']['dynamic_agents'] ?? [];
 
                 $flows = $yaml['spec']['provides']['flows'] ?? [];
-
-
 
                 $entries[] = [
 
@@ -589,16 +508,11 @@ class FeaturePackController extends Controller
 
         }
 
-
-
         return $entries;
 
     }
 
-
-
     private function entryPath(string $packId): string
-
     {
 
         return match ($packId) {
@@ -615,16 +529,10 @@ class FeaturePackController extends Controller
 
     }
 
-
-
     private function packsRoot(): string
-
     {
 
-        return rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        return rtrim((string) config('feature_packs.root'), '/');
 
     }
-
 }
-
-

@@ -41,6 +41,7 @@ class EvaluateSpendPolicyJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public array $backoff = [60];
 
     public function __construct(
@@ -52,7 +53,7 @@ class EvaluateSpendPolicyJob implements ShouldQueue
     {
         $report = ExpenseReport::forTenant($this->tenantId)->with('items')->find($this->reportId);
 
-        if (!$report || in_array($report->status, ['draft', 'void'], true)) {
+        if (! $report || in_array($report->status, ['draft', 'void'], true)) {
             return;
         }
 
@@ -250,7 +251,7 @@ class EvaluateSpendPolicyJob implements ShouldQueue
 
     private function budgetFindings(ExpenseReport $report): array
     {
-        if (!method_exists(FinancialGovernor::class, 'checkBudgetLimit') || !Schema::hasTable('budgets')) {
+        if (! method_exists(FinancialGovernor::class, 'checkBudgetLimit') || ! Schema::hasTable('budgets')) {
             return [];
         }
 
@@ -276,13 +277,13 @@ class EvaluateSpendPolicyJob implements ShouldQueue
 
             foreach ($budgets as $budget) {
                 $label = mb_strtolower((string) $budget->category);
-                if (!isset($sums[$label])) {
+                if (! isset($sums[$label])) {
                     continue;
                 }
 
                 $check = $governor->checkBudgetLimit($this->tenantId, $budget->id, $sums[$label]);
 
-                if (!($check['allowed'] ?? true)) {
+                if (! ($check['allowed'] ?? true)) {
                     $findings[] = [
                         'type' => 'budget_exceeded',
                         'budget_id' => $budget->id,
@@ -304,7 +305,7 @@ class EvaluateSpendPolicyJob implements ShouldQueue
 
     private function createAlert(ExpenseReport $report, array $findings): void
     {
-        if (!class_exists(FinancialAlert::class)) {
+        if (! class_exists(FinancialAlert::class)) {
             return;
         }
 

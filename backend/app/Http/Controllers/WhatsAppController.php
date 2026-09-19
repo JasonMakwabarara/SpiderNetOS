@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ConsentRecord;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
 use App\Models\Lead;
@@ -74,7 +75,7 @@ class WhatsAppController extends Controller
             SequenceEnrollment::forTenant($tenantId)->where('lead_id', $lead->id)->where('status', 'active')->update(['status' => 'cancelled']);
             // Audit-trail the opt-out for compliance evidence.
             if ($from) {
-                \App\Models\ConsentRecord::log($tenantId, $from, 'whatsapp', 'stopped', 'inbound_stop', ['lead_id' => $lead->id]);
+                ConsentRecord::log($tenantId, $from, 'whatsapp', 'stopped', 'inbound_stop', ['lead_id' => $lead->id]);
             }
 
             return response('', 200)->header('Content-Type', 'text/xml');

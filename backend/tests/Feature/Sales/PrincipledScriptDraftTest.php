@@ -68,7 +68,7 @@ class PrincipledScriptDraftTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $answers
+     * @param  array<string, string>  $answers
      */
     private function draftFor(array $answers): SalesScript
     {

@@ -22,10 +22,15 @@ use Illuminate\Support\Facades\Log;
 class SignalWireProvider
 {
     private string $projectId;
+
     private string $authToken;
+
     private string $space;
+
     private string $apiBase;
+
     private string $webhookUrl;
+
     private string $statusCallback;
 
     public function __construct(array $config)
@@ -47,6 +52,7 @@ class SignalWireProvider
     {
         if (empty($this->projectId) || empty($this->authToken)) {
             Log::error('signalwire.missing_credentials');
+
             return null;
         }
 
@@ -61,7 +67,7 @@ class SignalWireProvider
         ];
 
         // Optional: Stream for WebSocket media streaming (Phase C)
-        if (!empty($options['stream_url'])) {
+        if (! empty($options['stream_url'])) {
             $payload['StreamUrl'] = $options['stream_url'];
         }
 
@@ -72,6 +78,7 @@ class SignalWireProvider
 
             if ($response->successful()) {
                 $data = $response->json();
+
                 return [
                     'sid' => $data['sid'] ?? '',
                     'status' => $data['status'] ?? 'initiated',
@@ -109,6 +116,7 @@ class SignalWireProvider
             return $response->successful() ? $response->json() : null;
         } catch (\Exception $e) {
             Log::error('signalwire.get_call_error', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -132,6 +140,7 @@ class SignalWireProvider
             return $response->successful();
         } catch (\Exception $e) {
             Log::error('signalwire.end_call_error', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -156,9 +165,11 @@ class SignalWireProvider
                 ]);
 
             $data = $response->successful() ? $response->json() : [];
+
             return $data['calls'] ?? [];
         } catch (\Exception $e) {
             Log::error('signalwire.list_calls_error', ['error' => $e->getMessage()]);
+
             return [];
         }
     }

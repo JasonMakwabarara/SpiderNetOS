@@ -27,7 +27,7 @@ class NotificationService
     public function __construct(private readonly WebPushService $webPush) {}
 
     /**
-     * @param array<string,mixed> $payload {title, body, url}
+     * @param  array<string,mixed>  $payload  {title, body, url}
      */
     public function notify(User $user, string $eventType, array $payload): void
     {

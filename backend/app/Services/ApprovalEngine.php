@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\ApprovalPolicy;
+use App\Models\ApprovalPolicyStep;
 use App\Models\ApprovalStep;
 use App\Models\User;
-use App\Services\EventStore;
-use App\Services\DagExecutionService;
+use App\Services\Financial\PaymentService;
 use App\Services\Notifications\NotificationService;
-use Illuminate\Support\Str;
+use App\Services\Outreach\Bot\OutreachReplyService;
+use App\Services\Sales\FunnelSetupService;
+use App\Services\Spend\BillService;
+use App\Services\Spend\ExpenseService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * ApprovalEngine — SpiderNet OS v3.2
@@ -41,14 +45,14 @@ class ApprovalEngine
     /**
      * Create a new approval request.
      *
-     * @param  string       $tenantId      Tenant scope.
-     * @param  string       $requesterId   User or agent that initiated the request.
-     * @param  string       $type          Approval type (e.g. "manual", "budget", "security").
-     * @param  string       $resourceType  The kind of resource under review (e.g. "flow_execution", "deployment").
-     * @param  string       $resourceId    Identifier of the specific resource instance.
-     * @param  string       $reason        Human-readable justification for the request.
-     * @param  array        $context       Arbitrary metadata attached to the approval.
-     * @return array        The created approval record.
+     * @param  string  $tenantId  Tenant scope.
+     * @param  string  $requesterId  User or agent that initiated the request.
+     * @param  string  $type  Approval type (e.g. "manual", "budget", "security").
+     * @param  string  $resourceType  The kind of resource under review (e.g. "flow_execution", "deployment").
+     * @param  string  $resourceId  Identifier of the specific resource instance.
+     * @param  string  $reason  Human-readable justification for the request.
+     * @param  array  $context  Arbitrary metadata attached to the approval.
+     * @return array The created approval record.
      */
     public function createApproval(
         string $tenantId,
@@ -57,34 +61,34 @@ class ApprovalEngine
         string $resourceType,
         string $resourceId,
         string $reason,
-        array  $context = [],
+        array $context = [],
     ): array {
         $approvalId = (string) Str::uuid();
 
         $record = [
-            'id'            => $approvalId,
-            'tenant_id'     => $tenantId,
-            'requester_id'  => $requesterId,
+            'id' => $approvalId,
+            'tenant_id' => $tenantId,
+            'requester_id' => $requesterId,
             'approval_type' => $type,
             'resource_type' => $resourceType,
-            'resource_id'   => $resourceId,
-            'reason'        => $reason,
-            'context'       => json_encode($context, JSON_THROW_ON_ERROR),
-            'status'        => 'pending',
-            'requested_at'  => now(),
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'resource_id' => $resourceId,
+            'reason' => $reason,
+            'context' => json_encode($context, JSON_THROW_ON_ERROR),
+            'status' => 'pending',
+            'requested_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
 
         DB::table('approvals')->insert($record);
 
         $this->eventStore->append($tenantId, 'approval.requested', [
-            'approval_id'   => $approvalId,
-            'requester_id'  => $requesterId,
+            'approval_id' => $approvalId,
+            'requester_id' => $requesterId,
             'approval_type' => $type,
             'resource_type' => $resourceType,
-            'resource_id'   => $resourceId,
-            'reason'        => $reason,
+            'resource_id' => $resourceId,
+            'reason' => $reason,
         ]);
 
         Log::info('Approval requested', compact('approvalId', 'tenantId', 'resourceType', 'resourceId'));
@@ -99,19 +103,19 @@ class ApprovalEngine
      *
      * @param  string  $approvalId  The approval to resolve.
      * @param  string  $approverId  The user performing the approval action.
-     * @param  bool    $approved    True = granted, false = rejected.
-     * @param  string  $response    Optional message from the approver.
-     * @return array   The updated approval record.
+     * @param  bool  $approved  True = granted, false = rejected.
+     * @param  string  $response  Optional message from the approver.
+     * @return array The updated approval record.
      */
     public function resolveApproval(
         string $approvalId,
         string $approverId,
-        bool   $approved,
+        bool $approved,
         string $response = '',
     ): array {
         $approval = DB::table('approvals')->where('id', $approvalId)->first();
 
-        if (!$approval) {
+        if (! $approval) {
             throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
         }
 
@@ -132,19 +136,19 @@ class ApprovalEngine
         DB::table('approvals')
             ->where('id', $approvalId)
             ->update([
-                'status'      => $newStatus,
+                'status' => $newStatus,
                 'approver_id' => $approverId,
-                'response'    => $response,
+                'response' => $response,
                 'responded_at' => now(),
-                'updated_at'  => now(),
+                'updated_at' => now(),
             ]);
 
         $eventType = $approved ? 'approval.granted' : 'approval.rejected';
 
         $this->eventStore->append($approval->tenant_id, $eventType, [
-            'approval_id'  => $approvalId,
-            'approver_id'  => $approverId,
-            'response'     => $response,
+            'approval_id' => $approvalId,
+            'approver_id' => $approverId,
+            'response' => $response,
         ]);
 
         Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
@@ -196,7 +200,7 @@ class ApprovalEngine
         string $resourceType,
         string $resourceId,
         string $reason,
-        array  $context = [],
+        array $context = [],
         ?ApprovalPolicy $policy = null,
     ): array {
         $policy ??= $this->matchPolicy($tenantId, $resourceType, $context['action'] ?? 'submit', $context['attributes'] ?? []);
@@ -209,20 +213,20 @@ class ApprovalEngine
             $approvalId = (string) Str::uuid();
 
             DB::table('approvals')->insert([
-                'id'            => $approvalId,
-                'tenant_id'     => $tenantId,
-                'requester_id'  => $requesterId,
+                'id' => $approvalId,
+                'tenant_id' => $tenantId,
+                'requester_id' => $requesterId,
                 'approval_type' => $type,
                 'resource_type' => $resourceType,
-                'resource_id'   => $resourceId,
-                'reason'        => $reason,
-                'context'       => json_encode($context, JSON_THROW_ON_ERROR),
-                'status'        => 'pending',
-                'policy_id'     => $policy->id,
-                'current_step'  => 1,
-                'requested_at'  => now(),
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'resource_id' => $resourceId,
+                'reason' => $reason,
+                'context' => json_encode($context, JSON_THROW_ON_ERROR),
+                'status' => 'pending',
+                'policy_id' => $policy->id,
+                'current_step' => 1,
+                'requested_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             foreach ($policy->steps as $template) {
@@ -241,21 +245,21 @@ class ApprovalEngine
             }
 
             $this->eventStore->append($tenantId, 'approval.requested', [
-                'approval_id'   => $approvalId,
-                'requester_id'  => $requesterId,
+                'approval_id' => $approvalId,
+                'requester_id' => $requesterId,
                 'approval_type' => $type,
                 'resource_type' => $resourceType,
-                'resource_id'   => $resourceId,
-                'reason'        => $reason,
+                'resource_id' => $resourceId,
+                'reason' => $reason,
             ]);
 
             $this->eventStore->append($tenantId, 'approval.chain_started', [
-                'approval_id'   => $approvalId,
-                'policy_id'     => $policy->id,
-                'policy_name'   => $policy->name,
-                'step_count'    => $policy->steps->count(),
+                'approval_id' => $approvalId,
+                'policy_id' => $policy->id,
+                'policy_name' => $policy->name,
+                'step_count' => $policy->steps->count(),
                 'resource_type' => $resourceType,
-                'resource_id'   => $resourceId,
+                'resource_id' => $resourceId,
             ]);
 
             $this->notifyStepApprovers($tenantId, $approvalId, 1);
@@ -280,13 +284,13 @@ class ApprovalEngine
     public function resolveStep(
         string $approvalId,
         string $approverId,
-        bool   $approved,
+        bool $approved,
         string $response = '',
     ): array {
         return DB::transaction(function () use ($approvalId, $approverId, $approved, $response) {
             $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
 
-            if (!$approval) {
+            if (! $approval) {
                 throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
             }
             if ($approval->current_step === null) {
@@ -302,12 +306,12 @@ class ApprovalEngine
                 ->lockForUpdate()
                 ->first();
 
-            if (!$step) {
+            if (! $step) {
                 throw new \LogicException("Approval [{$approvalId}] has no pending step at position {$approval->current_step}.");
             }
 
             $approver = User::find($approverId);
-            if (!$approver || !$step->actableBy($approver)) {
+            if (! $approver || ! $step->actableBy($approver)) {
                 throw new \DomainException('User is not authorized to act on this approval step.');
             }
 
@@ -325,7 +329,7 @@ class ApprovalEngine
                 'response' => $response,
             ]);
 
-            if (!$approved) {
+            if (! $approved) {
                 ApprovalStep::where('approval_id', $approvalId)
                     ->where('status', 'queued')
                     ->update(['status' => 'skipped', 'updated_at' => now()]);
@@ -347,7 +351,7 @@ class ApprovalEngine
             }
 
             $template = $approval->policy_id
-                ? \App\Models\ApprovalPolicyStep::where('approval_policy_id', $approval->policy_id)
+                ? ApprovalPolicyStep::where('approval_policy_id', $approval->policy_id)
                     ->where('step_order', $next->step_order)
                     ->first()
                 : null;
@@ -382,7 +386,7 @@ class ApprovalEngine
         return DB::transaction(function () use ($approvalId, $fromUserId, $toUserId, $note) {
             $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
 
-            if (!$approval || $approval->current_step === null || $approval->status !== 'pending') {
+            if (! $approval || $approval->current_step === null || $approval->status !== 'pending') {
                 throw new \LogicException('Only a pending chained approval can be delegated.');
             }
 
@@ -393,14 +397,14 @@ class ApprovalEngine
                 ->firstOrFail();
 
             $from = User::find($fromUserId);
-            if (!$from || !$step->actableBy($from)) {
+            if (! $from || ! $step->actableBy($from)) {
                 throw new \DomainException('User is not authorized to delegate this approval step.');
             }
 
             $delegate = User::where('id', $toUserId)
                 ->where('tenant_id', $approval->tenant_id)
                 ->first();
-            if (!$delegate) {
+            if (! $delegate) {
                 throw new \DomainException('Delegate must belong to the same tenant.');
             }
 
@@ -417,7 +421,7 @@ class ApprovalEngine
             $this->safeNotifyUser($delegate, 'approval_pending', [
                 'title' => 'Approval delegated to you',
                 'body' => $note !== '' ? $note : 'A pending approval step was delegated to you.',
-                'url' => '/approvals/' . $approvalId,
+                'url' => '/approvals/'.$approvalId,
             ]);
 
             return $this->formatApproval(DB::table('approvals')->where('id', $approvalId)->first());
@@ -445,17 +449,17 @@ class ApprovalEngine
                     ->where('status', 'pending')
                     ->lockForUpdate()
                     ->first();
-                if (!$fresh) {
+                if (! $fresh) {
                     return;
                 }
 
                 $approval = DB::table('approvals')->where('id', $fresh->approval_id)->lockForUpdate()->first();
-                if (!$approval || $approval->status !== 'pending') {
+                if (! $approval || $approval->status !== 'pending') {
                     return;
                 }
 
                 $template = $approval->policy_id
-                    ? \App\Models\ApprovalPolicyStep::where('approval_policy_id', $approval->policy_id)
+                    ? ApprovalPolicyStep::where('approval_policy_id', $approval->policy_id)
                         ->where('step_order', $fresh->step_order)
                         ->first()
                     : null;
@@ -477,7 +481,7 @@ class ApprovalEngine
                     $this->safeNotifyRole($approval->tenant_id, [$template->escalate_to_role], 'approval_escalated', [
                         'title' => 'Approval escalated to you',
                         'body' => 'A pending approval step expired and was escalated.',
-                        'url' => '/approvals/' . $approval->id,
+                        'url' => '/approvals/'.$approval->id,
                     ]);
                 } else {
                     $fresh->update(['status' => 'expired', 'responded_at' => now()]);
@@ -574,31 +578,31 @@ class ApprovalEngine
 
         switch ($resourceType) {
             case 'sales_script':
-                $service = app(\App\Services\Sales\FunnelSetupService::class);
+                $service = app(FunnelSetupService::class);
                 $granted
                     ? $service->activateFromApproval($tenantId, $resourceId)
                     : $service->rejectFromApproval($tenantId, $resourceId, $response);
                 break;
 
             case 'expense_report':
-                if (class_exists(\App\Services\Spend\ExpenseService::class)) {
-                    app(\App\Services\Spend\ExpenseService::class)->onApprovalResolved($tenantId, $resourceId, $granted);
+                if (class_exists(ExpenseService::class)) {
+                    app(ExpenseService::class)->onApprovalResolved($tenantId, $resourceId, $granted);
                 }
                 break;
 
             case 'bill':
-                if (class_exists(\App\Services\Spend\BillService::class)) {
-                    app(\App\Services\Spend\BillService::class)->onApprovalResolved($tenantId, $resourceId, $granted);
+                if (class_exists(BillService::class)) {
+                    app(BillService::class)->onApprovalResolved($tenantId, $resourceId, $granted);
                 }
                 break;
 
             case 'outreach_reply':
                 // Fallback when config/approvals.php is absent from a cached config.
-                app(\App\Services\Outreach\Bot\OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
+                app(OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
                 break;
 
             case 'payment':
-                $paymentService = app(\App\Services\Financial\PaymentService::class);
+                $paymentService = app(PaymentService::class);
                 if (method_exists($paymentService, 'onApprovalResolved')) {
                     $paymentService->onApprovalResolved($tenantId, $resourceId, $granted);
                 }
@@ -615,14 +619,14 @@ class ApprovalEngine
         $step = ApprovalStep::where('approval_id', $approvalId)
             ->where('step_order', $stepOrder)
             ->first();
-        if (!$step) {
+        if (! $step) {
             return;
         }
 
         $payload = [
             'title' => 'Approval waiting on you',
             'body' => "Step {$stepOrder} of an approval chain is pending your review.",
-            'url' => '/approvals/' . $approvalId,
+            'url' => '/approvals/'.$approvalId,
         ];
 
         if ($step->approver_type === 'user' && $step->approver_id) {
@@ -659,9 +663,6 @@ class ApprovalEngine
 
     /**
      * Return all pending approvals for a tenant.
-     *
-     * @param  string  $tenantId
-     * @return array
      */
     public function getPendingApprovals(string $tenantId): array
     {
@@ -680,11 +681,6 @@ class ApprovalEngine
      *
      * Approval policies are stored in the `approval_policies` table:
      *   tenant_id | resource_type | action | enabled
-     *
-     * @param  string  $tenantId
-     * @param  string  $resourceType
-     * @param  string  $action
-     * @return bool
      */
     public function isApprovalRequired(string $tenantId, string $resourceType, string $action): bool
     {
@@ -706,25 +702,23 @@ class ApprovalEngine
      *
      * The approval context must contain `execution_id` and `node_id` to
      * identify which execution/node to resume.
-     *
-     * @param  string  $approvalId
-     * @return void
      */
     public function resumeBlockedExecution(string $approvalId): void
     {
         $approval = DB::table('approvals')->where('id', $approvalId)->first();
 
-        if (!$approval) {
+        if (! $approval) {
             return;
         }
 
         $context = json_decode($approval->context, true, 512, JSON_THROW_ON_ERROR);
 
         $executionId = $context['execution_id'] ?? null;
-        $nodeId      = $context['node_id'] ?? null;
+        $nodeId = $context['node_id'] ?? null;
 
-        if (!$executionId || !$nodeId) {
+        if (! $executionId || ! $nodeId) {
             Log::debug('Approval has no linked execution; skipping resume.', ['approvalId' => $approvalId]);
+
             return;
         }
 
@@ -735,7 +729,7 @@ class ApprovalEngine
             ->where('node_id', $nodeId)
             ->where('status', 'waiting_approval')
             ->update([
-                'status'     => 'pending',
+                'status' => 'pending',
                 'updated_at' => now(),
             ]);
 
@@ -789,22 +783,22 @@ class ApprovalEngine
     private function formatApproval(object $row): array
     {
         return [
-            'id'            => $row->id,
-            'tenant_id'     => $row->tenant_id,
-            'requester_id'  => $row->requester_id,
-            'approver_id'   => $row->approver_id ?? null,
-            'type'          => $row->approval_type,
+            'id' => $row->id,
+            'tenant_id' => $row->tenant_id,
+            'requester_id' => $row->requester_id,
+            'approver_id' => $row->approver_id ?? null,
+            'type' => $row->approval_type,
             'resource_type' => $row->resource_type,
-            'resource_id'   => $row->resource_id,
-            'reason'        => $row->reason,
-            'context'       => json_decode($row->context, true),
-            'status'        => $row->status,
-            'response'      => $row->response ?? null,
-            'resolved_at'   => $row->responded_at ?? null,
-            'policy_id'     => $row->policy_id ?? null,
-            'current_step'  => $row->current_step ?? null,
-            'created_at'    => $row->created_at,
-            'updated_at'    => $row->updated_at,
+            'resource_id' => $row->resource_id,
+            'reason' => $row->reason,
+            'context' => json_decode($row->context, true),
+            'status' => $row->status,
+            'response' => $row->response ?? null,
+            'resolved_at' => $row->responded_at ?? null,
+            'policy_id' => $row->policy_id ?? null,
+            'current_step' => $row->current_step ?? null,
+            'created_at' => $row->created_at,
+            'updated_at' => $row->updated_at,
         ];
     }
 }

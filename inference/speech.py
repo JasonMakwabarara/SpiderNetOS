@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Optional, Sequence
 
 import httpx
+from config import OLLAMA_URL
 from fastapi import HTTPException
 from pydantic import BaseModel
 
@@ -217,7 +218,7 @@ class SpeechService:
                         language=request.language,
                         duration_seconds=None,
                     )
-                except:
+                except Exception:
                     # Fallback: assume dedicated whisper service
                     files = {"file": ("audio.wav", io.BytesIO(audio_data), "audio/wav")}
                     resp = await client.post(
@@ -237,7 +238,7 @@ class SpeechService:
                         duration_seconds=data.get("duration"),
                     )
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Whisper STT failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Whisper STT failed: {e}") from e
 
     async def _stt_deepgram(self, request: STTRequest) -> STTResponse:
         """Deepgram cloud STT (higher accuracy)."""
@@ -286,7 +287,7 @@ class SpeechService:
                     duration_seconds=data.get("metadata", {}).get("duration"),
                 )
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Deepgram STT failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Deepgram STT failed: {e}") from e
 
     # ─── TTS Implementations ──────────────────────────────────────────────────
 

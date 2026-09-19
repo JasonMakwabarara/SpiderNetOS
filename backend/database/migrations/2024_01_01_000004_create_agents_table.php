@@ -20,11 +20,11 @@ return new class extends Migration
             $table->jsonb('config')->nullable();
             $table->timestamp('activated_at')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['tenant_id', 'slug']);
             $table->index(['tenant_id', 'status', 'type']);
         });
-        
+
         Schema::create('agent_delegations', function (Blueprint $table) {
             $table->id();
             $table->uuid('agent_id')->index();
@@ -32,12 +32,12 @@ return new class extends Migration
             $table->string('permission', 64);
             $table->jsonb('conditions')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['agent_id', 'delegate_id']);
             $table->index(['agent_id', 'permission']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('agent_delegations');

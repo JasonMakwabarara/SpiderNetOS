@@ -20,8 +20,6 @@ class EnsureOnboardingComplete
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
@@ -29,7 +27,7 @@ class EnsureOnboardingComplete
         $user = $request->user();
 
         // No user = not authenticated; let auth middleware handle it
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 
@@ -41,7 +39,7 @@ class EnsureOnboardingComplete
         }
 
         // Onboarding completed check
-        if (!$user->onboarding_completed_at) {
+        if (! $user->onboarding_completed_at) {
             return response()->json([
                 'redirect' => '/onboarding',
                 'message' => 'Onboarding must be completed before accessing this resource',

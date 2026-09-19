@@ -30,11 +30,11 @@ class AffonsoWebhookController extends Controller
 
         $receiptId = (string) Str::uuid();
 
-        // insertOrIgnore compiles to ON CONFLICT DO NOTHING on Postgres and
-        // INSERT OR IGNORE on sqlite, so a redelivery never raises. Inserting and
-        // catching the unique violation instead is unsafe on Postgres: the failed
-        // INSERT aborts the enclosing transaction, and every later statement in it
-        // then fails with 25P02 "current transaction is aborted".
+        // insertOrIgnore, not insert-and-catch. Postgres aborts the entire
+        // transaction on a failed INSERT, so catching the unique violation and
+        // carrying on left the connection unusable — every query after it died
+        // with "current transaction is aborted". ON CONFLICT DO NOTHING never
+        // raises, and a return of 0 rows is the duplicate.
         $inserted = DB::table('webhook_receipts')->insertOrIgnore([
             'id' => $receiptId,
             'tenant_id' => $tenant,

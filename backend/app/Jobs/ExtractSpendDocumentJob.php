@@ -17,6 +17,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 /**
  * Extracts structured fields from an uploaded spend document.
@@ -32,6 +33,7 @@ class ExtractSpendDocumentJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [30, 120, 300];
 
     public function __construct(
@@ -48,7 +50,7 @@ class ExtractSpendDocumentJob implements ShouldQueue
     ): void {
         $doc = SpendDocument::find($this->documentId);
 
-        if (!$doc || in_array($doc->status, ['confirmed', 'extracted'], true)) {
+        if (! $doc || in_array($doc->status, ['confirmed', 'extracted'], true)) {
             return;
         }
 
@@ -133,7 +135,7 @@ class ExtractSpendDocumentJob implements ShouldQueue
     {
         try {
             $doc = SpendDocument::find($this->documentId);
-            if (!$doc) {
+            if (! $doc) {
                 return;
             }
 
@@ -181,13 +183,13 @@ class ExtractSpendDocumentJob implements ShouldQueue
                 return Storage::disk($doc->disk)->get($doc->path);
             }
 
-            if ($doc->mime_type === 'application/pdf' && class_exists(\Smalot\PdfParser\Parser::class)) {
+            if ($doc->mime_type === 'application/pdf' && class_exists(Parser::class)) {
                 $contents = Storage::disk($doc->disk)->get($doc->path);
                 if ($contents === null || $contents === '') {
                     return null;
                 }
 
-                return (new \Smalot\PdfParser\Parser())->parseContent($contents)->getText();
+                return (new Parser)->parseContent($contents)->getText();
             }
         } catch (\Throwable $e) {
             Log::info('ExtractSpendDocumentJob: text layer unavailable', [

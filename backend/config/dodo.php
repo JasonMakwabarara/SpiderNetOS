@@ -15,6 +15,10 @@
 */
 
 return [
+    // Local/testing escape hatch for webhook signature verification. Never
+    // consulted outside those environments (see VerifyDodoSignature).
+    'skip_signature_verify' => (bool) env('DODO_SKIP_SIGNATURE_VERIFY', false),
+
     'enabled' => env('DODO_ENABLED', false),
 
     // 'test' → test.dodopayments.com, 'live' → live.dodopayments.com
@@ -29,7 +33,7 @@ return [
     ],
 
     // Where Dodo sends the customer after checkout completes.
-    'return_url' => env('DODO_RETURN_URL', env('APP_URL', 'http://localhost:8000') . '/billing/return'),
+    'return_url' => env('DODO_RETURN_URL', env('APP_URL', 'http://localhost:8000').'/billing/return'),
 
     // Reject webhooks whose timestamp drifts more than this many seconds.
     'webhook_tolerance_seconds' => (int) env('DODO_WEBHOOK_TOLERANCE', 300),

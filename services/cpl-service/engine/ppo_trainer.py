@@ -4,11 +4,12 @@ Real-time policy updates with GAE and cost constraints
 Based on Schulman et al. (Proximal Policy Optimization)
 """
 
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-from typing import List, Tuple, Dict, Optional
-from dataclasses import dataclass
-import numpy as np
 
 
 @dataclass
@@ -28,7 +29,7 @@ class Trajectory:
 class StreamingPPOTrainer:
     """
     Streaming PPO trainer for continuous online learning.
-    
+
     Features:
     - GAE (Generalized Advantage Estimation) for low-variance advantages
     - Clipped surrogate objective for policy stability
@@ -36,7 +37,7 @@ class StreamingPPOTrainer:
     - Entropy regularization for exploration
     - Cost constraint via Lagrangian multiplier
     """
-    
+
     def __init__(
         self,
         policy,
@@ -55,7 +56,7 @@ class StreamingPPOTrainer:
     ):
         self.policy = policy
         self.device = device
-        
+
         # Hyperparameters
         self.gamma = gamma
         self.gae_lambda = gae_lambda
@@ -66,7 +67,7 @@ class StreamingPPOTrainer:
         self.max_grad_norm = max_grad_norm
         self.num_epochs = num_epochs
         self.batch_size = batch_size
-        
+
         # Optimizers
         self.optimizer = torch.optim.Adam([
             {'params': self.policy.shared.parameters(), 'lr': lr_policy},
@@ -74,11 +75,11 @@ class StreamingPPOTrainer:
             {'params': self.policy.critic.parameters(), 'lr': lr_value},
             {'params': self.policy.cost_head.parameters(), 'lr': lr_value}
         ])
-        
+
         # Lagrangian multiplier for cost constraint (adaptive)
         self.lagrangian_multiplier = torch.tensor(0.1, device=device, requires_grad=True)
         self.lagrangian_optimizer = torch.optim.Adam([self.lagrangian_multiplier], lr=1e-3)
-        
+
         # Training metrics
         self.metrics = {
             'policy_loss': [],
@@ -88,7 +89,7 @@ class StreamingPPOTrainer:
             'approx_kl': [],
             'lagrangian_multiplier': []
         }
-        
+
     def compute_gae(
         self,
         rewards: torch.Tensor,
@@ -98,46 +99,56 @@ class StreamingPPOTrainer:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute Generalized Advantage Estimation.
-        
+
         Args:
             rewards: (batch,) reward sequence
             values: (batch,) value estimates
             dones: (batch,) episode termination flags
             next_value: Value of next state (for bootstrap)
-            
+
         Returns:
             advantages, returns
         """
         batch_size = len(rewards)
         advantages = torch.zeros_like(rewards)
         last_gae = 0.0
-        
+
         # Append next value for bootstrap
         values_ext = torch.cat([values, torch.tensor([next_value], device=self.device)])
-        
+
         for t in reversed(range(batch_size)):
             if dones[t]:
                 next_value_t = 0.0
                 last_gae = 0.0
             else:
                 next_value_t = values_ext[t + 1]
-                
+
             delta = rewards[t] + self.gamma * next_value_t - values[t]
             last_gae = delta + self.gamma * self.gae_lambda * last_gae
             advantages[t] = last_gae
-            
+
         returns = advantages + values
-        
+
         return advantages, returns
-    
+
     def update(self, trajectory: Trajectory, budget: float = 50.0) -> Dict[str, float]:
+        # Dropout belongs in the optimisation step and nowhere else; the
+        # service serves in eval mode (see main.py).
+        was_training = self.policy.training
+        self.policy.train()
+        try:
+            return self._update(trajectory, budget)
+        finally:
+            self.policy.train(was_training)
+
+    def _update(self, trajectory: Trajectory, budget: float = 50.0) -> Dict[str, float]:
         """
         PPO policy update from trajectory.
-        
+
         Args:
             trajectory: Collected trajectory
             budget: Cost budget for Lagrangian constraint
-            
+
         Returns:
             Training metrics
         """
@@ -147,32 +158,32 @@ class StreamingPPOTrainer:
             trajectory.values,
             trajectory.dones
         )
-        
+
         # Normalize advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        
+
         # Store in trajectory
         trajectory.advantages = advantages
         trajectory.returns = returns
-        
+
         # Multiple epochs over the data
         batch_size = len(trajectory.states)
         indices = np.arange(batch_size)
-        
+
         total_policy_loss = 0
         total_value_loss = 0
         total_entropy = 0
         total_clip_fraction = 0
         total_kl = 0
-        
-        for epoch in range(self.num_epochs):
+
+        for _epoch in range(self.num_epochs):
             # Shuffle for mini-batch training
             np.random.shuffle(indices)
-            
+
             for start in range(0, batch_size, self.batch_size):
                 end = start + self.batch_size
                 mb_indices = indices[start:end]
-                
+
                 # Get mini-batch
                 mb_states = trajectory.states[mb_indices]
                 mb_actions = trajectory.actions[mb_indices]
@@ -180,31 +191,31 @@ class StreamingPPOTrainer:
                 mb_advantages = advantages[mb_indices]
                 mb_returns = returns[mb_indices]
                 mb_costs = trajectory.costs[mb_indices]
-                
+
                 # Evaluate actions with current policy
                 new_log_probs, values, entropy, pred_costs = self.policy.evaluate_actions(
                     mb_states, mb_actions
                 )
-                
+
                 # PPO Policy Loss (clipped surrogate)
                 ratio = torch.exp(new_log_probs - mb_old_log_probs)
                 surr1 = ratio * mb_advantages
                 surr2 = torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * mb_advantages
                 policy_loss = -torch.min(surr1, surr2).mean()
-                
+
                 # Value Loss
                 value_loss = F.mse_loss(values, mb_returns)
-                
+
                 # Cost Loss (constraint prediction)
                 cost_loss = F.mse_loss(pred_costs, mb_costs)
-                
+
                 # Lagrangian penalty
                 cost_violation = torch.clamp(pred_costs.mean() - budget, min=0.0)
                 lagrangian_penalty = self.lagrangian_multiplier * cost_violation
-                
+
                 # Entropy bonus
                 entropy_bonus = -entropy.mean()
-                
+
                 # Total loss
                 loss = (
                     policy_loss
@@ -213,35 +224,35 @@ class StreamingPPOTrainer:
                     + lagrangian_penalty
                     + self.entropy_coef * entropy_bonus
                 )
-                
+
                 # Optimization step
                 self.optimizer.zero_grad()
                 loss.backward()
-                
+
                 # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
-                
+
                 self.optimizer.step()
-                
+
                 # Update Lagrangian multiplier (gradient ascent on constraint)
                 with torch.no_grad():
                     self.lagrangian_multiplier += 0.01 * cost_violation
                     self.lagrangian_multiplier.clamp_(min=0.0, max=10.0)
-                
+
                 # Track metrics
                 total_policy_loss += policy_loss.item()
                 total_value_loss += value_loss.item()
                 total_entropy += entropy.mean().item()
-                
+
                 clip_fraction = ((ratio - 1.0).abs() > self.clip_epsilon).float().mean()
                 total_clip_fraction += clip_fraction.item()
-                
+
                 with torch.no_grad():
                     approx_kl = ((new_log_probs - mb_old_log_probs) ** 2).mean()
                     total_kl += approx_kl.item()
-        
+
         num_updates = self.num_epochs * (batch_size // self.batch_size + 1)
-        
+
         metrics = {
             'policy_loss': total_policy_loss / num_updates,
             'value_loss': total_value_loss / num_updates,
@@ -250,13 +261,13 @@ class StreamingPPOTrainer:
             'approx_kl': total_kl / num_updates,
             'lagrangian_multiplier': self.lagrangian_multiplier.item()
         }
-        
+
         # Store metrics
         for key, value in metrics.items():
             self.metrics[key].append(value)
-        
+
         return metrics
-    
+
     def streaming_update(
         self,
         states: List[torch.Tensor],
@@ -270,21 +281,21 @@ class StreamingPPOTrainer:
     ) -> Optional[Dict[str, float]]:
         """
         Streaming update - accumulate and train when buffer is full.
-        
+
         Args:
             states, actions, log_probs, rewards, values, costs: Trajectory components
             dones: Episode termination flags
             budget: Cost budget
-            
+
         Returns:
             Metrics if update occurred, None otherwise
         """
         buffer_size = len(states)
-        
+
         # Only update when buffer is reasonably full (streaming)
         if buffer_size < 64:  # Minimum batch size
             return None
-            
+
         # Convert to tensors
         trajectory = Trajectory(
             states=torch.stack(states),
@@ -295,12 +306,12 @@ class StreamingPPOTrainer:
             costs=torch.tensor(costs, device=self.device),
             dones=torch.tensor(dones, device=self.device, dtype=torch.float32)
         )
-        
+
         # Perform update
         metrics = self.update(trajectory, budget)
-        
+
         return metrics
-    
+
     def save_checkpoint(self, path: str, episode: int = 0):
         """Save training checkpoint"""
         checkpoint = {
@@ -311,7 +322,7 @@ class StreamingPPOTrainer:
             'metrics': self.metrics
         }
         torch.save(checkpoint, path)
-        
+
     def load_checkpoint(self, path: str):
         """Load training checkpoint"""
         checkpoint = torch.load(path, map_location=self.device)

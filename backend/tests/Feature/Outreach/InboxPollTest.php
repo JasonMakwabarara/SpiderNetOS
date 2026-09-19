@@ -197,8 +197,7 @@ class InboxPollTest extends OutreachTestCase
         // second-precision, so "latest" is non-deterministic there (sqlite happens
         // to return insertion order).
         $out = ConversationMessage::forTenant($this->tenant->id)->where('direction', 'out')
-            ->where('body', 'like', '%Monthly via Affonso%')->first();
-        $this->assertNotNull($out);
+            ->where('body', 'like', '%Monthly via Affonso%')->firstOrFail();
         $this->assertSame('q@creator.test', $out->in_reply_to);
         $this->assertSame((string) $this->admin->id, $out->sent_by);
 

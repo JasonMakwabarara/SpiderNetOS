@@ -19,11 +19,11 @@ class RequireRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if (!$user->atLeastRole($minRole)) {
+        if (! $user->atLeastRole($minRole)) {
             return response()->json([
                 'error' => 'Forbidden',
                 'reason' => 'insufficient_role',

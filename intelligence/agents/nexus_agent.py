@@ -3,24 +3,23 @@ SpiderNet OS v3.2 - Nexus Agent
 Execution & Orchestration: Flow execution engine
 """
 
-from typing import Dict, Any, List, Optional
 from datetime import datetime
-import asyncio
-import json
+from typing import Dict, Optional
+
 from core.agent_base import AgentBase, AgentContext, AgentResult
 
 
 class NexusAgent(AgentBase):
     """
     Nexus: The Execution & Orchestration Agent
-    
+
     Responsibilities:
     - Execute flow DAGs
     - Orchestrate multi-agent workflows
     - Manage execution state
     - Handle errors and retries
     """
-    
+
     def __init__(self, meta_planner, cost_governor, memory_graph, db_pool):
         super().__init__(
             agent_id='nexus',
@@ -32,16 +31,14 @@ class NexusAgent(AgentBase):
         )
         self.db = db_pool
         self.executions: Dict[str, Dict] = {}  # In-memory execution state
-    
+
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute Nexus agent logic"""
-        
+
         ast = context.ast
         ast_type = ast.get('type', '')
-        
-        if ast_type == 'execute':
-            return await self._execute_flow(context)
-        elif ast_type == 'execute_flow':
+
+        if ast_type == 'execute' or ast_type == 'execute_flow':
             return await self._execute_flow(context)
         elif ast_type == 'dag_step':
             return await self._execute_dag_step(context)
@@ -134,7 +131,9 @@ class NexusAgent(AgentBase):
 
     async def _fetch_call_record(self, call_sid: str, tenant_id: str) -> Optional[dict]:
         """Fetch the call record from the backend service."""
-        import httpx, os
+        import os
+
+        import httpx
         backend_url = os.getenv('BACKEND_URL', 'http://backend:8000')
         api_key     = os.getenv('BACKEND_INTERNAL_KEY', '')
 
@@ -149,18 +148,18 @@ class NexusAgent(AgentBase):
         except Exception:
             pass
         return None
-    
+
     async def _execute_flow(self, context: AgentContext) -> AgentResult:
         """Execute a flow by ID or target"""
-        
+
         params = context.ast.get('params', {})
         flow_id = params.get('flow_id')
         target = params.get('target', flow_id)
-        
+
         # Resolve flow
         if not flow_id and target:
             flow_id = await self._resolve_flow_by_name(context.tenant_id, target)
-        
+
         if not flow_id:
             return AgentResult(
                 status='error',
@@ -168,10 +167,10 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         # Load flow structure
         flow = await self._load_flow(context.tenant_id, flow_id)
-        
+
         if not flow:
             return AgentResult(
                 status='error',
@@ -179,7 +178,7 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         # Check cost before execution
         cost_status = await self.cost_governor.can_execute(context.tenant_id)
         if not cost_status['allowed']:
@@ -189,7 +188,7 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         # Create execution record
         execution_id = self._generate_uuid()
         execution = {
@@ -203,9 +202,9 @@ class NexusAgent(AgentBase):
             'results': {},
             'errors': [],
         }
-        
+
         self.executions[execution_id] = execution
-        
+
         # Execute DAG
         try:
             result = await self._execute_dag(
@@ -213,14 +212,14 @@ class NexusAgent(AgentBase):
                 flow=flow,
                 context=context
             )
-            
+
             execution['status'] = 'completed'
             execution['completed_at'] = datetime.utcnow().isoformat()
             execution['results'] = result
-            
+
             # Persist execution
             await self._persist_execution(execution)
-            
+
             return AgentResult(
                 status='success',
                 output={
@@ -234,14 +233,14 @@ class NexusAgent(AgentBase):
                 cost_usd=0.0,
                 metadata={'execution_time_ms': self._calculate_duration(execution)}
             )
-            
+
         except Exception as e:
             execution['status'] = 'failed'
             execution['errors'].append(str(e))
             execution['completed_at'] = datetime.utcnow().isoformat()
-            
+
             await self._persist_execution(execution)
-            
+
             return AgentResult(
                 status='error',
                 output={
@@ -253,7 +252,7 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-    
+
     async def _execute_dag(
         self,
         execution_id: str,
@@ -261,10 +260,10 @@ class NexusAgent(AgentBase):
         context: AgentContext
     ) -> Dict:
         """Execute flow DAG"""
-        
+
         nodes = {n['id']: n for n in flow.get('nodes', [])}
         edges = flow.get('edges', [])
-        
+
         # Build adjacency list
         adjacency = {node_id: [] for node_id in nodes}
         for edge in edges:
@@ -275,16 +274,16 @@ class NexusAgent(AgentBase):
                     'target': target,
                     'condition': edge.get('condition'),
                 })
-        
+
         # Find start nodes (triggers)
         start_nodes = [
             node_id for node_id, node in nodes.items()
             if node.get('type') == 'trigger'
         ]
-        
+
         if not start_nodes:
             raise ValueError('No trigger nodes found in flow')
-        
+
         # Execute from each start node
         results = {}
         for start in start_nodes:
@@ -296,9 +295,9 @@ class NexusAgent(AgentBase):
                 context=context
             )
             results.update(node_results)
-        
+
         return results
-    
+
     async def _execute_node_chain(
         self,
         execution_id: str,
@@ -308,44 +307,44 @@ class NexusAgent(AgentBase):
         context: AgentContext
     ) -> Dict:
         """Execute chain of nodes starting from start_node"""
-        
+
         results = {}
         visited = set()
         queue = [start_node]
-        
+
         while queue:
             node_id = queue.pop(0)
-            
+
             if node_id in visited:
                 continue
-            
+
             visited.add(node_id)
             node = nodes.get(node_id)
-            
+
             if not node:
                 continue
-            
+
             # Execute node
             result = await self._execute_node(execution_id, node, context)
             results[node_id] = result
-            
+
             # Record execution
             self.executions[execution_id]['nodes_executed'].append(node_id)
-            
+
             # Check condition and queue next nodes
             for edge in adjacency.get(node_id, []):
                 condition = edge.get('condition')
                 target = edge['target']
-                
+
                 if condition:
                     # Evaluate condition
                     if self._evaluate_condition(condition, result):
                         queue.append(target)
                 else:
                     queue.append(target)
-        
+
         return results
-    
+
     async def _execute_node(
         self,
         execution_id: str,
@@ -353,14 +352,14 @@ class NexusAgent(AgentBase):
         context: AgentContext
     ) -> Dict:
         """Execute a single node"""
-        
+
         node_type = node.get('type')
         node_id = node.get('id')
-        
+
         if node_type == 'trigger':
             # Triggers just pass through
             return {'status': 'triggered', 'node_id': node_id}
-        
+
         elif node_type == 'agent':
             # Dispatch to agent via MetaPlanner
             agent_id = node.get('agent_id')
@@ -371,20 +370,20 @@ class NexusAgent(AgentBase):
                 'ast': {'type': 'execute', 'params': node.get('config', {})},
                 'metadata': context.metadata,
             }
-            
+
             dispatch_result = await self.meta_planner.dispatch(
                 tenant_id=context.tenant_id,
                 agent_id=agent_id,
                 intent='execute',
                 context=agent_context,
             )
-            
+
             return {
                 'status': dispatch_result.get('status'),
                 'result': dispatch_result,
                 'node_id': node_id,
             }
-        
+
         elif node_type == 'condition':
             # Evaluate condition
             config = node.get('config', {})
@@ -395,39 +394,39 @@ class NexusAgent(AgentBase):
                 'result': self._evaluate_condition(condition, {}),
                 'node_id': node_id,
             }
-        
+
         elif node_type == 'action':
             # Execute action
             config = node.get('config', {})
             action_type = config.get('action_type', 'noop')
-            
+
             # Execute action logic
             return {
                 'status': 'executed',
                 'action': action_type,
                 'node_id': node_id,
             }
-        
+
         elif node_type == 'output':
             # Output result
             config = node.get('config', {})
             destination = config.get('destination', 'user')
-            
+
             return {
                 'status': 'output',
                 'destination': destination,
                 'node_id': node_id,
             }
-        
+
         else:
             return {'status': 'unknown_type', 'node_type': node_type, 'node_id': node_id}
-    
+
     async def _execute_dag_step(self, context: AgentContext) -> AgentResult:
         """Execute a single DAG step (for resumable flows)"""
         params = context.ast.get('params', {})
         execution_id = params.get('execution_id')
         step_index = params.get('step_index', 0)
-        
+
         if execution_id not in self.executions:
             return AgentResult(
                 status='error',
@@ -435,9 +434,9 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         execution = self.executions[execution_id]
-        
+
         return AgentResult(
             status='success',
             output={
@@ -448,12 +447,12 @@ class NexusAgent(AgentBase):
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _retry_execution(self, context: AgentContext) -> AgentResult:
         """Retry a failed execution"""
         params = context.ast.get('params', {})
         execution_id = params.get('execution_id')
-        
+
         if execution_id not in self.executions:
             return AgentResult(
                 status='error',
@@ -461,9 +460,9 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         execution = self.executions[execution_id]
-        
+
         if execution['status'] != 'failed':
             return AgentResult(
                 status='error',
@@ -471,26 +470,26 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         # Reset and retry
         execution['status'] = 'retrying'
         execution['errors'] = []
         execution['started_at'] = datetime.utcnow().isoformat()
-        
+
         # Reload flow and re-execute
         flow = await self._load_flow(execution['tenant_id'], execution['flow_id'])
-        
+
         try:
             result = await self._execute_dag(
                 execution_id=execution_id,
                 flow=flow,
                 context=context
             )
-            
+
             execution['status'] = 'completed'
             execution['results'] = result
             execution['completed_at'] = datetime.utcnow().isoformat()
-            
+
             return AgentResult(
                 status='success',
                 output={
@@ -501,11 +500,11 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-            
+
         except Exception as e:
             execution['status'] = 'failed'
             execution['errors'].append(str(e))
-            
+
             return AgentResult(
                 status='error',
                 output={
@@ -516,12 +515,12 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-    
+
     async def _get_execution_status(self, context: AgentContext) -> AgentResult:
         """Get execution status"""
         params = context.ast.get('params', {})
         execution_id = params.get('execution_id')
-        
+
         if execution_id not in self.executions:
             return AgentResult(
                 status='error',
@@ -529,9 +528,9 @@ class NexusAgent(AgentBase):
                 tokens_used=0,
                 cost_usd=0.0,
             )
-        
+
         execution = self.executions[execution_id]
-        
+
         return AgentResult(
             status='success',
             output={
@@ -546,7 +545,7 @@ class NexusAgent(AgentBase):
             tokens_used=0,
             cost_usd=0.0,
         )
-    
+
     async def _load_flow(self, tenant_id: str, flow_id: str) -> Optional[Dict]:
         """Load flow from database"""
         # In production: query flows table
@@ -564,17 +563,17 @@ class NexusAgent(AgentBase):
                 {'source': 'atlas_1', 'target': 'output_1'},
             ],
         }
-    
+
     async def _resolve_flow_by_name(self, tenant_id: str, name: str) -> Optional[str]:
         """Resolve flow ID by name"""
         # In production: query flows table by slug
         return 'mock-flow-id'
-    
+
     async def _persist_execution(self, execution: Dict) -> None:
         """Persist execution to database"""
         # In production: INSERT/UPDATE flow_executions
         pass
-    
+
     def _evaluate_condition(self, condition: str, data: Dict) -> bool:
         """Evaluate a condition string"""
         # Simple condition evaluation
@@ -582,18 +581,18 @@ class NexusAgent(AgentBase):
             return True
         if condition == 'false':
             return False
-        
+
         # Check for result status conditions
         if 'status' in data:
             return data['status'] in ['success', 'completed', 'triggered']
-        
+
         return True
-    
+
     def _generate_uuid(self) -> str:
         """Generate UUID v4"""
         import uuid
         return str(uuid.uuid4())
-    
+
     def _calculate_duration(self, execution: Dict) -> int:
         """Calculate execution duration in ms"""
         started = datetime.fromisoformat(execution['started_at'])

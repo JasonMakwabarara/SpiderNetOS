@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\VoiceNumber;
 use App\Models\VoiceCall;
+use App\Models\VoiceNumber;
 use App\Services\Telephony\SignalWireProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Redis;
 class TelephonyService
 {
     private string $provider;
+
     private array $config;
 
     public function __construct()
@@ -37,6 +38,7 @@ class TelephonyService
         if ($this->provider === 'signalwire') {
             return new SignalWireProvider($this->config);
         }
+
         return null;
     }
 
@@ -50,11 +52,12 @@ class TelephonyService
             ->where('is_active', true)
             ->first();
 
-        if (!$voiceNumber) {
+        if (! $voiceNumber) {
             Log::warning('No voice number mapping found', [
                 'to' => $toNumber,
                 'from' => $fromNumber,
             ]);
+
             return null;
         }
 
@@ -99,8 +102,9 @@ class TelephonyService
     public function updateCallStatus(string $callSid, string $status, ?int $duration = null): void
     {
         $call = VoiceCall::where('call_sid', $callSid)->first();
-        if (!$call) {
+        if (! $call) {
             Log::warning('Call not found for status update', ['call_sid' => $callSid]);
+
             return;
         }
 
@@ -120,7 +124,7 @@ class TelephonyService
     public function appendTranscript(string $callSid, string $speaker, string $text): void
     {
         $call = VoiceCall::where('call_sid', $callSid)->first();
-        if (!$call) {
+        if (! $call) {
             return;
         }
 
@@ -257,9 +261,11 @@ class TelephonyService
             }
 
             Log::error("Outbound calls not supported for provider: {$this->provider}");
+
             return null;
         } catch (\Exception $e) {
             Log::error('Failed to initiate call', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -272,7 +278,7 @@ class TelephonyService
         $response = Http::withBasicAuth(
             $this->config['sid'],
             $this->config['auth_token']
-        )->post($this->config['api_base'] . '/Accounts/' . $this->config['sid'] . '/Calls.json', [
+        )->post($this->config['api_base'].'/Accounts/'.$this->config['sid'].'/Calls.json', [
             'To' => $toNumber,
             'From' => $fromNumber,
             'Url' => url('/voice/inbound'),
@@ -290,6 +296,7 @@ class TelephonyService
                 'outbound',
                 'initiated'
             );
+
             return ['call_sid' => $data['sid'], 'call' => $call];
         }
 
@@ -318,6 +325,7 @@ class TelephonyService
                 'outbound',
                 $result['status'] ?? 'initiated'
             );
+
             return ['call_sid' => $result['sid'], 'call' => $call];
         }
 
@@ -358,8 +366,8 @@ class TelephonyService
         $normalized = preg_replace('/[^0-9+]/', '', $number);
 
         // Add US country code if missing
-        if (!str_starts_with($normalized, '+') && strlen($normalized) === 10) {
-            $normalized = '+1' . $normalized;
+        if (! str_starts_with($normalized, '+') && strlen($normalized) === 10) {
+            $normalized = '+1'.$normalized;
         }
 
         return $normalized;

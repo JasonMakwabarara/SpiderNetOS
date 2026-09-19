@@ -4,10 +4,10 @@ Unified interface for DeepSeek reasoning and code generation
 """
 
 import json
-import urllib.request
 import urllib.error
-from typing import Dict, Optional, Any
+import urllib.request
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -23,13 +23,13 @@ class DeepSeekResponse:
 class DeepSeekClient:
     """
     Client for DeepSeek v4 via Ollama.
-    
+
     Provides:
     - Strategic reasoning for MetaPlanner
     - Code generation for agent builders
     - JSON-structured outputs
     """
-    
+
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
@@ -39,10 +39,10 @@ class DeepSeekClient:
         self.ollama_url = ollama_url
         self.model = model
         self.timeout = timeout
-        
+
         # Verify model availability
         self._check_model()
-    
+
     def _check_model(self):
         """Verify DeepSeek model is available"""
         try:
@@ -53,7 +53,7 @@ class DeepSeekClient:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
                 models = [m["name"] for m in data.get("models", [])]
-                
+
                 if self.model not in models:
                     # Try fallback models
                     fallbacks = ["deepseek-coder:33b", "deepseek-coder", "qwen3.6:latest"]
@@ -62,14 +62,14 @@ class DeepSeekClient:
                             print(f"[DeepSeek] {self.model} not found, using {fb}")
                             self.model = fb
                             return
-                    
+
                     raise ValueError(f"No suitable model found. Available: {models}")
-                
+
                 print(f"[DeepSeek] Using model: {self.model}")
-                
+
         except Exception as e:
             print(f"[DeepSeek] Warning: Could not verify model: {e}")
-    
+
     def generate(
         self,
         prompt: str,
@@ -81,7 +81,7 @@ class DeepSeekClient:
     ) -> DeepSeekResponse:
         """
         Generate response from DeepSeek.
-        
+
         Args:
             prompt: User prompt
             system_prompt: System context
@@ -90,19 +90,16 @@ class DeepSeekClient:
             expect_json: Parse and validate JSON output
             expect_code: Clean code blocks from output
         """
-        
+
         # Build full prompt with system context
-        if system_prompt:
-            full_prompt = f"{system_prompt}\n\n{prompt}"
-        else:
-            full_prompt = prompt
-        
+        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+
         # Add format instructions
         if expect_json:
             full_prompt += "\n\nRespond ONLY with valid JSON. No markdown, no explanations."
         elif expect_code:
             full_prompt += "\n\nGenerate ONLY clean code. No markdown fences, no explanations."
-        
+
         # Call Ollama
         data = json.dumps({
             "model": self.model,
@@ -115,19 +112,19 @@ class DeepSeekClient:
                 "top_k": 40
             }
         }).encode()
-        
+
         req = urllib.request.Request(
             f"{self.ollama_url}/api/generate",
             data=data,
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        
+
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 result = json.loads(resp.read().decode())
                 raw_content = result.get("response", "")
-                
+
                 # Process based on expected format
                 if expect_json:
                     content = self._extract_json(raw_content)
@@ -135,14 +132,14 @@ class DeepSeekClient:
                     content = self._extract_code(raw_content)
                 else:
                     content = raw_content.strip()
-                
+
                 return DeepSeekResponse(
                     content=content,
                     model=self.model,
                     tokens_used=result.get("eval_count", 0),
                     format_valid=True
                 )
-                
+
         except urllib.error.URLError as e:
             return DeepSeekResponse(
                 content="",
@@ -157,26 +154,26 @@ class DeepSeekClient:
                 format_valid=False,
                 reasoning=f"Error: {e}"
             )
-    
+
     def _extract_json(self, text: str) -> str:
         """Extract JSON from response text"""
         # Remove markdown fences
         lines = text.split("\n")
         start_idx = 0
         end_idx = len(lines)
-        
+
         for i, line in enumerate(lines):
             if line.strip().startswith("```"):
                 start_idx = i + 1
                 break
-        
+
         for i in range(len(lines) - 1, -1, -1):
             if lines[i].strip().startswith("```"):
                 end_idx = i
                 break
-        
+
         json_text = "\n".join(lines[start_idx:end_idx]).strip()
-        
+
         # Validate JSON
         try:
             json.loads(json_text)
@@ -184,32 +181,32 @@ class DeepSeekClient:
         except json.JSONDecodeError:
             # Return raw if can't parse
             return text.strip()
-    
+
     def _extract_code(self, text: str) -> str:
         """Extract clean code from response"""
         lines = text.split("\n")
         start_idx = 0
         end_idx = len(lines)
-        
+
         # Find code block
         for i, line in enumerate(lines):
             if line.strip().startswith("```"):
                 start_idx = i + 1
                 break
-        
+
         for i in range(len(lines) - 1, start_idx - 1, -1):
             if lines[i].strip().startswith("```"):
                 end_idx = i
                 break
-        
+
         code = "\n".join(lines[start_idx:end_idx]).strip()
-        
+
         # Remove common preamble phrases
         preambles = [
             "here is", "here's", "below is", "i have created",
             "the code", "generated", "sure", "okay", "this is"
         ]
-        
+
         lower_code = code.lower()
         for preamble in preambles:
             if lower_code.startswith(preamble):
@@ -220,11 +217,11 @@ class DeepSeekClient:
                         code = "\n".join(code.split("\n")[i:])
                         break
                 break
-        
+
         return code
-    
+
     # Specialized methods for different use cases
-    
+
     def plan_execution(
         self,
         command: str,
@@ -234,11 +231,11 @@ class DeepSeekClient:
         Strategic planning for MetaPlanner.
         Returns structured execution plan.
         """
-        
+
         system_prompt = """You are the SpiderNetOS MetaPlanner's strategic reasoning engine.
 Analyze commands and determine optimal execution strategies.
 Be concise, deterministic, and economically-minded."""
-        
+
         prompt = f"""
 COMMAND: {command}
 
@@ -273,14 +270,14 @@ RESPOND WITH JSON:
     "execution_decision": "execute_now|queue|reject",
     "rationale": "Brief explanation"
 }}"""
-        
+
         response = self.generate(
             prompt=prompt,
             system_prompt=system_prompt,
             temperature=0.05,  # Very deterministic
             expect_json=True
         )
-        
+
         try:
             return json.loads(response.content)
         except json.JSONDecodeError:
@@ -292,7 +289,7 @@ RESPOND WITH JSON:
                 "execution_decision": "execute_now",
                 "rationale": response.content[:200]
             }
-    
+
     def generate_vue_component(
         self,
         component_name: str,
@@ -303,16 +300,16 @@ RESPOND WITH JSON:
         Generate Vue 3 component code.
         Specialized for SpiderNetOS cockpit UI.
         """
-        
+
         system_prompt = """You are the SpiderNetOS Code Architect.
 Generate production-ready Vue 3 components using Composition API (<script setup>).
 Use Tailwind CSS. Ensure every HTML tag has matching closing tag."""
-        
+
         color_scheme = {
             "dark": "Background #0A0A0F, cards #1A1A24, primary #FF6B2C, text #E8E8EF",
             "light": "Background #FFFFFF, cards #F5F5F5, primary #FF6B2C, text #1A1A24"
         }.get(theme, "dark")
-        
+
         prompt = f"""
 Create a Vue 3 component named "{component_name}".
 
@@ -335,7 +332,7 @@ CRITICAL RULES:
 5. Include comments for complex logic
 
 Generate the complete .vue file content:"""
-        
+
         response = self.generate(
             prompt=prompt,
             system_prompt=system_prompt,
@@ -343,12 +340,12 @@ Generate the complete .vue file content:"""
             expect_code=True,
             max_tokens=4000
         )
-        
+
         return response.content
-    
+
     def analyze_code_quality(self, code: str, language: str = "vue") -> Dict:
         """Analyze code for issues and improvements"""
-        
+
         prompt = f"""
 Analyze this {language} code for:
 1. Syntax errors
@@ -369,16 +366,16 @@ Respond with JSON:
     "suggestions": ["improvement suggestion"],
     "confidence": 0.0-1.0
 }}"""
-        
+
         response = self.generate(
             prompt=prompt,
             temperature=0.1,
             expect_json=True
         )
-        
+
         try:
             return json.loads(response.content)
-        except:
+        except Exception:
             return {
                 "valid": False,
                 "issues": ["Could not parse analysis"],
