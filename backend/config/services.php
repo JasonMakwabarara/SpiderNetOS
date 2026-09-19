@@ -18,6 +18,35 @@ return [
         'python' => env('INFERENCE_PYTHON', ''),
     ],
 
+    /*
+     | Hannah AI (hannah-ai.world) — a separate Apex Synchronia product, reached
+     | as a PARTNER, not as a tenant of itself. The connector id, the tool
+     | prefix and the flags are all `hannah_ai`; the core `hannah` character
+     | inside SpiderNetOS is a different thing entirely and the two namespaces
+     | must never be collapsed (ADR-0002).
+     |
+     | Auth is an RS256 assertion signed with SpiderNet's private key and
+     | exchanged at Hannah's POST /api/partner/token for a short-lived bearer.
+     | The key is a FILE PATH, never an env-inlined PEM: the previous shared
+     | key pair leaked into a OneDrive folder as .pem.txt and is treated as
+     | compromised.
+     */
+    'hannah' => [
+        'url' => env('HANNAH_URL', 'https://hannah-ai.world'),
+        'timeout' => (int) env('HANNAH_TIMEOUT', 30),
+        // RS256 private key SpiderNet signs partner assertions with.
+        'signing_key_path' => env('HANNAH_SIGNING_KEY_PATH', ''),
+        'signing_key_id' => env('HANNAH_SIGNING_KEY_ID', 'spidernet-partner-1'),
+        // Public key Hannah's webhooks are verified against (slice 2).
+        'verify_key_path' => env('HANNAH_VERIFY_KEY_PATH', ''),
+        'issuer' => env('HANNAH_ISSUER', 'spidernet'),
+        'audience' => env('HANNAH_AUDIENCE', 'hannah-ai'),
+        // Assertions are single-use and short: Hannah caches the jti to refuse replays.
+        'assertion_ttl_seconds' => (int) env('HANNAH_ASSERTION_TTL', 300),
+        // How long an exchanged bearer is cached before re-exchanging.
+        'token_ttl_seconds' => (int) env('HANNAH_TOKEN_TTL', 900),
+    ],
+
     'intelligence_gateway' => [
         // Host dev: localhost:8005 maps to semantic-gateway container :8000
         'url' => env('INTELLIGENCE_GATEWAY_URL', 'http://localhost:8005'),
@@ -49,13 +78,13 @@ return [
 
         // Transformation Score weights (B6) — sum of positive weights should be 1.0
         'ts_weights' => [
-            'value'         => (float) env('ATLAS_TS_W_VALUE', 0.25),
-            'clarity'       => (float) env('ATLAS_TS_W_CLARITY', 0.15),
-            'emotional'     => (float) env('ATLAS_TS_W_EMOTIONAL', 0.20),
+            'value' => (float) env('ATLAS_TS_W_VALUE', 0.25),
+            'clarity' => (float) env('ATLAS_TS_W_CLARITY', 0.15),
+            'emotional' => (float) env('ATLAS_TS_W_EMOTIONAL', 0.20),
             'actionability' => (float) env('ATLAS_TS_W_ACTIONABILITY', 0.15),
-            'trust'         => (float) env('ATLAS_TS_W_TRUST', 0.15),
-            'cognitive'     => (float) env('ATLAS_TS_W_COGNITIVE', 0.05),
-            'leakage'       => (float) env('ATLAS_TS_W_LEAKAGE', 0.05),
+            'trust' => (float) env('ATLAS_TS_W_TRUST', 0.15),
+            'cognitive' => (float) env('ATLAS_TS_W_COGNITIVE', 0.05),
+            'leakage' => (float) env('ATLAS_TS_W_LEAKAGE', 0.05),
         ],
     ],
 

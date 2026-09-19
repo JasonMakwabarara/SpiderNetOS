@@ -285,6 +285,16 @@ return [
     // Cockpit, briefs, newsletters, evals.
     // -----------------------------------------------------------------------
 
+    /**
+     * Hannah AI hand-off (plan D7 §1): provision the tenant's Hannah workspace,
+     * push the brand from the brain, deep-link them in. `hannah_ai.*` is the
+     * external product; the `hannah` core character shares nothing with it.
+     */
+    'hannah_ai.handoff' => env('FEATURE_HANNAH_AI_HANDOFF', 'off'),
+
+    /** Re-push brand/voice.md to Hannah whenever it changes, after the first approval. */
+    'hannah_ai.brand_autosync' => env('FEATURE_HANNAH_AI_BRAND_AUTOSYNC', 'off'),
+
     /** Board of advisors: GET /api/board/*, five archetype seats plus a chairman. */
     'board.enabled' => env('FEATURE_BOARD_ENABLED', 'off'),
 

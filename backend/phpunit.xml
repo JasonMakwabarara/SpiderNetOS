@@ -28,6 +28,10 @@
 
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Crypt::encryptString has to work: TenantKeyManager::storeSecret encrypts
+             every integration credential, and without a key the SQLite lane could
+             not test any code path that stores a secret. 32 bytes: str_repeat('a', 32). -->
+        <env name="APP_KEY" value="base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE="/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <!-- config/cache.php reads CACHE_STORE (Laravel 11), not CACHE_DRIVER —
