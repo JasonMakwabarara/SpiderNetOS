@@ -136,16 +136,34 @@ def test_catalogue_covers_the_new_provider_mix():
     by_slug = {p["slug"]: p for p in vp.load_personas(CATALOGUE)}
 
     designs = [p for p in by_slug.values() if p.get("kind") == "design"]
-    assert len(designs) == 4 and all(p["provider"] == "elevenlabs" for p in designs)
+    assert len(designs) >= 4 and all(p["provider"] == "elevenlabs" for p in designs)
     assert all(p["provider_voice_id"] is None and p["voice_description"] for p in designs)
     assert all(p["design_model_id"] == "eleven_multilingual_ttv_v2" for p in designs)
+    assert len({p["seed"] for p in designs}) == len(designs)  # one take set per candidate
     assert by_slug["elevenlabs-design-zimbabwean-man"]["recommended_for"] == ["atlas"]
     assert "Zimbabwean" in by_slug["elevenlabs-design-zimbabwean-man"]["voice_description"]
+
+    # Jason, 2026-09-19: the choice is not African-only, it is "not a basic white
+    # American voice" -- so the design set spans the British Isles, South Asia,
+    # the Caribbean, Australasia, South-East Asia and Black British / African-
+    # American voices as well as the Sub-Saharan set.
+    design_accents = " | ".join(p["accent"] for p in designs)
+    for region in ("RP", "Scottish", "Irish", "Northern English", "Welsh", "Indian English",
+                   "Black British", "African-American", "Jamaican", "Trinidadian",
+                   "Australian", "New Zealand", "Singaporean", "Filipino"):
+        assert region in design_accents, region
+    for region in ("Zimbabwean", "Kenyan", "Nigerian", "South African"):
+        assert region in design_accents, region
+    # More than one design candidate is offered for the Atlas seat.
+    assert len([p for p in designs if "atlas" in p["recommended_for"]]) >= 2
 
     assert by_slug["elevenlabs-nz-nigerian-man"]["provider_voice_id"] == "gsyHQ9kWCDIipR26RqQ1"
     assert by_slug["elevenlabs-olufunmilola"]["provider_voice_id"] == "9Dbo4hEvXQ5l7MXGZFQA"
     el_placeholders = [p for p in by_slug.values() if p["provider"] == "elevenlabs" and p.get("discover")]
-    assert {p["discover"]["accent"] for p in el_placeholders} == {"nigerian", "south african", "kenyan", "ghanaian", "zimbabwean"}
+    assert {p["discover"]["accent"] for p in el_placeholders} == {
+        "nigerian", "south african", "kenyan", "ghanaian", "zimbabwean",
+        "british", "irish", "scottish", "indian", "australian", "jamaican",
+    }
 
     fish = [p for p in by_slug.values() if p["provider"] == "fishaudio" and p["provider_voice_id"]]
     assert 4 <= len(fish) <= 6

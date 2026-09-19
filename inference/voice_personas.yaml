@@ -4,6 +4,12 @@
 # removed. The Azure renderer stays in voice_previews.py behind --include-azure (providers.azure
 # below is disabled_by_default) for any future catalogue that lists Azure voices.
 #
+# Jason (2026-09-19): "They do not need to be African voices, just avoid basic white american voices."
+# The Sub-Saharan set stays and is still where the Atlas default candidate sits; alongside it the
+# catalogue now carries British Isles (RP, Northern, Scottish, Irish, Welsh), South Asian, Caribbean,
+# Australasian, South-East Asian and Black British / African-American voices. The one American entry
+# left is the Piper dev baseline, which is the offline fallback, not an Atlas candidate.
+#
 # Read by inference/voice_previews.py (renders the listening page) and, in PR 5, by
 # VoicePersonaSeeder into the voice_personas table. One entry per candidate voice.
 #
@@ -1056,6 +1062,609 @@ personas:
   notes: Intron lists Shona (sn) as a TTS language — the first Shona voice found at any provider. The English sample
     lines are pushed through a Shona-language voice, so treat the result as a Zimbabwean-accent experiment; for
     a Shona greeting, feed Shona text.
+- slug: elevenlabs-design-british-rp-man
+  display_name: Voice Design — British man, 50s (Received Pronunciation)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: British English (RP)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - british
+  - rp
+  recommended_for:
+  - atlas
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A measured British man in his 50s, Received Pronunciation without the plummy edge. Dry, precise, unhurried; a chairman who has read the papers and will tell you the one thing that matters.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 45
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-scottish-man
+  display_name: Voice Design — Scottish man, 50s (Edinburgh)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Scottish English (Edinburgh)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - scottish
+  - edinburgh
+  recommended_for:
+  - character:sentinel
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A composed Scottish man in his 50s, educated Edinburgh accent. Dry, exact, a little wry; the voice of someone who checks the arithmetic before he agrees with you.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 46
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-irish-man
+  display_name: Voice Design — Irish man, 40s (Dublin)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Irish English (Dublin)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - irish
+  - dublin
+  recommended_for:
+  - character:nexus
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A warm Irish man in his 40s, Dublin accent. Quick, friendly, conversational without being casual; the colleague who gets to the point and makes you smile on the way.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 47
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-northern-english-woman
+  display_name: Voice Design — Northern English woman, 40s (Manchester)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Northern English (Manchester)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - british
+  - northern
+  - manchester
+  recommended_for:
+  - character:forge
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A plain-spoken Northern English woman in her 40s, Manchester accent. Warm, grounded, no nonsense; says the difficult thing kindly and does not pad it.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 48
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-welsh-man
+  display_name: Voice Design — Welsh man, 50s (Cardiff)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Welsh English (Cardiff)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - welsh
+  - cardiff
+  recommended_for: []
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A lyrical Welsh man in his 50s, Cardiff accent. Musical rise and fall, calm and grounded; a storyteller who still lands on the facts.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 49
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-indian-man
+  display_name: Voice Design — Indian man, 40s (Bengaluru)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Indian English (Bengaluru)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - indian
+  - south-asian
+  recommended_for:
+  - character:prism
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A crisp Indian man in his 40s, Bengaluru English. Precise, articulate, quietly confident; an engineer turned executive who explains the number and the assumption behind it.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 50
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-indian-woman
+  display_name: Voice Design — Indian woman, 30s (Mumbai)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Indian English (Mumbai)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - indian
+  - south-asian
+  recommended_for:
+  - character:hannah
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A warm Indian woman in her 30s, Mumbai English. Bright, fast, clear; energetic without being breathless, the colleague who has already done the reading.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 51
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-black-british-woman
+  display_name: Voice Design — Black British woman, 30s (London)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Black British English (London)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - british
+  - london
+  recommended_for:
+  - character:hannah
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A Black British woman in her 30s, contemporary London English. Warm, modern, assured; conversational authority, the voice of someone people actually listen to in a meeting.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 52
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-african-american-man
+  display_name: Voice Design — African-American man, 50s (Atlanta)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: African-American English (Atlanta)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - american
+  - atlanta
+  - southern
+  recommended_for:
+  - atlas
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'An African-American man in his 50s, Atlanta cadence. Deep, unhurried, warm gravity; the elder in the room who speaks last and settles it.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 53
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-jamaican-man
+  display_name: Voice Design — Jamaican man, 40s (Kingston)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Jamaican English (Kingston)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - caribbean
+  - jamaican
+  recommended_for: []
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A measured Jamaican man in his 40s, Kingston English. Musical, steady, unhurried; calm authority with an easy warmth underneath it.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 54
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-trinidadian-woman
+  display_name: Voice Design — Trinidadian woman, 40s (Port of Spain)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Trinidadian English (Port of Spain)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - caribbean
+  - trinidadian
+  recommended_for: []
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A Trinidadian woman in her 40s, Port of Spain English. Bright lilt, direct, good-humoured; she gives the verdict plainly and moves on.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 55
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-australian-woman
+  display_name: Voice Design — Australian woman, 40s (Melbourne)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Australian English (Melbourne)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - australian
+  - melbourne
+  recommended_for:
+  - character:forge
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'An Australian woman in her 40s, Melbourne accent. Direct, dry, friendly; cuts the ceremony and tells you what she would do.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 56
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-new-zealand-man
+  display_name: Voice Design — New Zealand man, 40s (Wellington)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: New Zealand English (Wellington)
+  gender: male
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - new-zealand
+  - kiwi
+  recommended_for: []
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A New Zealand man in his 40s, Wellington accent. Even, understated, quietly capable; never oversells, which is why you believe him.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 57
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-singaporean-woman
+  display_name: Voice Design — Singaporean woman, 30s
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Singaporean English
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - singaporean
+  - south-east-asian
+  recommended_for:
+  - character:sentinel
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A Singaporean woman in her 30s, clipped and efficient English. Precise, fast, courteous; the operator who has already checked the compliance point you were about to raise.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 58
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-design-filipino-woman
+  display_name: Voice Design — Filipino woman, 30s (Manila)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Filipino English (Manila)
+  gender: female
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - voice-design
+  - generated
+  - filipino
+  - south-east-asian
+  recommended_for: []
+  consent:
+    type: stock
+  kind: design
+  voice_description: 'A Filipino woman in her 30s, Manila English. Bright, clear, naturally warm; service-desk warmth with executive clarity.'
+  design_model_id: eleven_multilingual_ttv_v2
+  seed: 59
+  notes: "Generated with POST /v1/text-to-voice/design (text = the three sample lines in one clip, 100-1000 chars
+    required). Each preview is a distinct generated_voice_id, saved as take-N.mp3 with design.json. Nothing is
+    created in the ElevenLabs account until the chosen take is promoted with POST /v1/text-to-voice."
+- slug: elevenlabs-library-british-1
+  display_name: Library voice — British English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: British English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - british
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: british
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-irish-1
+  display_name: Library voice — Irish English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Irish English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - irish
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: irish
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-scottish-1
+  display_name: Library voice — Scottish English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Scottish English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - scottish
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: scottish
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-indian-1
+  display_name: Library voice — Indian English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Indian English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - indian
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: indian
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-australian-1
+  display_name: Library voice — Australian English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Australian English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - australian
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: australian
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
+- slug: elevenlabs-library-jamaican-1
+  display_name: Library voice — Jamaican English (to discover)
+  provider: elevenlabs
+  provider_voice_id: null
+  language: en
+  accent: Jamaican English
+  gender: null
+  style: null
+  style_degree: null
+  rate: null
+  pitch: null
+  output_format: mp3_44100_128
+  cost_per_1k_chars: null
+  tags:
+  - elevenlabs
+  - library
+  - placeholder
+  - jamaican
+  recommended_for: []
+  consent:
+    type: stock
+  discover:
+    accent: jamaican
+    language: en
+  notes: 'Placeholder: voice_previews.py fills provider_voice_id from GET /v1/shared-voices (accent filter, free-text
+    search fallback) when ELEVENLABS_API_KEY is present.'
 - slug: piper-en-us-lessac-medium
   display_name: Piper en_US-lessac-medium (dev baseline)
   provider: piper
