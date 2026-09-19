@@ -283,6 +283,7 @@ import { useApStore } from './stores/ap.js'
 import { useSkillsStore } from './stores/skills.js'
 import { useBrainStore } from './stores/brain.js'
 import { useRunsStore } from './stores/runs.js'
+import { useMapStore } from './stores/map.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -298,6 +299,7 @@ const apStore = useApStore()
 const skillsStore = useSkillsStore()
 const brainStore = useBrainStore()
 const runsStore = useRunsStore()
+const mapStore = useMapStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -496,9 +498,10 @@ const autoPillClass = computed(() => {
 //   .skill.updated / .skill.run.updated → skillsStore
 //   .brain.file.updated                 → brainStore
 //   .agent_run.updated / .tool.invoked  → agentRunsStore
+//   .map.node.updated                   → mapStore
 const { isConnected: wsConnected } = useWebSocket(
   authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore,
-  { skillsStore, brainStore, agentRunsStore: runsStore },
+  { skillsStore, brainStore, agentRunsStore: runsStore, mapStore },
 )
 
 function openCommandBar() {

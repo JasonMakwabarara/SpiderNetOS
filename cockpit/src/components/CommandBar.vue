@@ -166,11 +166,13 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAtlasStore } from '../stores/atlas.js'
+import { useVoiceStore } from '../stores/voice.js'
 import api from '../services/api.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const atlasStore = useAtlasStore()
+const voiceStore = useVoiceStore()
 
 const visible = ref(false)
 const cheatVisible = ref(false)
@@ -257,6 +259,8 @@ const ACTIONS = [
   { id: 'a-atlas-anomalies',label: 'Atlas: budget anomalies',        hint: 'Atlas',   run: () => askAtlas('/usage anomalies') },
   { id: 'a-atlas-trace',    label: 'Atlas: latest trace',            hint: 'Atlas',   run: () => askAtlas('/trace latest') },
   { id: 'a-promote',        label: 'Promote agent → autonomous',     hint: 'Atlas',   run: () => askAtlas('/agents promote ag_1') },
+  // Runs from the palette's Enter/click, so the audio unlock stays inside the gesture.
+  { id: 'a-voice-toggle',   label: 'Atlas: read replies aloud (on/off)', hint: 'Voice', run: () => voiceStore.toggleSpeak() },
   { id: 'a-logout',         label: 'Sign out',                       hint: 'Account', run: () => { authStore.logout(); router.push('/login') } },
   { id: 'a-toggle-role-admin', label: 'Switch role → admin',         hint: 'Demo',    run: () => authStore.switchRole('admin') },
   { id: 'a-toggle-role-super', label: 'Switch role → super_admin',   hint: 'Demo',    run: () => authStore.switchRole('super_admin') },

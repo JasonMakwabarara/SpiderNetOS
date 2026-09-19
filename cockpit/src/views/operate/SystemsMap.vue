@@ -1,11 +1,19 @@
 <template>
   <div class="px-6 py-7 max-w-6xl mx-auto" data-testid="systems-map-page">
-    <div class="mb-6">
-      <div class="sn-eyebrow">Operate · Systems Map</div>
-      <h1 class="text-2xl font-semibold mt-1" style="color: var(--text-primary);">Your business, mapped</h1>
-      <p class="text-sm mt-1" style="color: var(--text-secondary);">
-        Every process gets a goal and exactly one owner. Delegate smallest-first until nothing needs you day-to-day.
-      </p>
+    <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+      <div class="min-w-0">
+        <div class="sn-eyebrow">Operate · Systems Map</div>
+        <h1 class="text-2xl font-semibold mt-1" style="color: var(--text-primary);">Your business, mapped</h1>
+        <p class="text-sm mt-1" style="color: var(--text-secondary);">
+          Every process gets a goal and exactly one owner. Delegate smallest-first until nothing needs you day-to-day.
+        </p>
+      </div>
+      <RouterLink
+        to="/map"
+        class="sn-btn-secondary text-xs shrink-0"
+        style="padding: 0.45rem 0.8rem;"
+        data-testid="systems-map-link"
+      >Map</RouterLink>
     </div>
 
     <!-- Founder load -->

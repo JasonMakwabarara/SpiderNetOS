@@ -1,0 +1,126 @@
+{
+  "data": {
+    "id": "sales.outreach_writing",
+    "label": "Outreach writing",
+    "status": "assisted",
+    "owner_type": "agent",
+    "skills": [
+      {
+        "slug": "cold-email-drafting",
+        "name": "Cold Email Drafting",
+        "enabled": true,
+        "stage": "assisted"
+      },
+      {
+        "slug": "linkedin-outreach-specialist",
+        "name": "LinkedIn Outreach Specialist",
+        "enabled": true,
+        "stage": "assisted"
+      }
+    ],
+    "brain_files": [
+      {
+        "path": "business/profile.md",
+        "title": "Business profile",
+        "status": "filled",
+        "required": true
+      },
+      {
+        "path": "offer/offer.md",
+        "title": "Offer",
+        "status": "partial",
+        "required": true
+      },
+      {
+        "path": "brand/voice.md",
+        "title": "Brand voice",
+        "status": "filled",
+        "required": true
+      },
+      {
+        "path": "customers/icp.md",
+        "title": "Ideal customer",
+        "status": "filled",
+        "required": false
+      }
+    ],
+    "builds_on": [
+      "sales.icp",
+      "marketing.brand_voice",
+      "sales.prospect_research"
+    ],
+    "runs": [
+      {
+        "id": "run_blocked_01",
+        "skill_slug": "cold-email-drafting",
+        "skill_name": "Cold Email Drafting",
+        "status": "blocked",
+        "trigger_type": "manual",
+        "cost_usd": 0,
+        "started_at": "2026-09-16T06:00:00Z",
+        "finished_at": null
+      },
+      {
+        "id": "run_ok_02",
+        "skill_slug": "cold-email-drafting",
+        "skill_name": "Cold Email Drafting",
+        "status": "succeeded",
+        "trigger_type": "atlas",
+        "cost_usd": 0.042,
+        "started_at": "2026-09-15T08:10:00Z",
+        "finished_at": "2026-09-15T08:12:00Z"
+      },
+      {
+        "id": "run_ok_03",
+        "skill_slug": "linkedin-outreach-specialist",
+        "skill_name": "LinkedIn Outreach Specialist",
+        "status": "succeeded",
+        "trigger_type": "scheduled",
+        "cost_usd": 0.018,
+        "started_at": "2026-09-14T07:00:00Z",
+        "finished_at": "2026-09-14T07:01:30Z"
+      }
+    ],
+    "process_count": 3,
+    "pillar": {
+      "key": "sales",
+      "label": "Sales"
+    },
+    "description": "Writes the first touch of every outbound sequence — email and LinkedIn — from the offer, the ICP and the brand voice.",
+    "processes": [
+      {
+        "id": "proc_outreach_1",
+        "system_id": "sys_sales",
+        "name": "Draft this week's cold sequence",
+        "owner_type": "agent",
+        "has_published_sop": true,
+        "flow_id": "flow_outreach",
+        "last_run_status": "passed",
+        "needs_attention": false,
+        "schedule_cron": "weekly_monday"
+      },
+      {
+        "id": "proc_outreach_2",
+        "system_id": "sys_sales",
+        "name": "Personalise first lines",
+        "owner_type": "founder",
+        "has_published_sop": true,
+        "flow_id": null,
+        "last_run_status": null,
+        "needs_attention": false,
+        "schedule_cron": null
+      },
+      {
+        "id": "proc_outreach_3",
+        "system_id": "sys_sales",
+        "name": "Refresh subject lines",
+        "owner_type": "team",
+        "has_published_sop": false,
+        "flow_id": "flow_subjects",
+        "last_run_status": "failed",
+        "needs_attention": true,
+        "schedule_cron": "daily_morning"
+      }
+    ]
+  }
+}

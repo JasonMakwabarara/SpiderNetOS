@@ -160,6 +160,33 @@ class VoiceSafetyGuard
         }
     }
 
+    /**
+     * Gate Atlas speech (plan D7 §7, POST /api/atlas/speak).
+     *
+     *   1. The voice vertical's global kill switch (`voice.inbound`, see
+     *      config/features.php — `php artisan feature:set voice.inbound off`
+     *      silences Atlas's voice as well as calls).
+     *   2. CostGovernor — the estimated TTS cost must fit the tenant's budget.
+     *
+     * The per-surface flag `voice.atlas_speak` is checked by AtlasSpeechService.
+     *
+     * @return array{allowed: bool, reason: string|null, degraded: bool}
+     */
+    public function checkSpeech(string $tenantId, float $estimatedCost = 0.0): array
+    {
+        if (!FeatureFlag::on('voice.inbound', $tenantId)) {
+            return $this->deny('voice_killed');
+        }
+
+        $cost = $this->costGovernor->canExecute($tenantId, $estimatedCost);
+        if (!$cost['allowed']) {
+            Log::warning('voice.speech_cost_blocked', ['tenant_id' => $tenantId, 'estimated_cost' => $estimatedCost]);
+            return $this->deny('cost_cap_exceeded', $cost['degraded'] ?? false);
+        }
+
+        return ['allowed' => true, 'reason' => null, 'degraded' => $cost['degraded'] ?? false];
+    }
+
     // ─── Private helpers ─────────────────────────────────────────────────────
 
     private function deny(string $reason, bool $degraded = false): array
