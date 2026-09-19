@@ -20,8 +20,10 @@ updates:
         dependency-type: development
 
   # ─── Node / cockpit (Vue SPA) ───────────────────────────────────────
+  # The workspace root owns the lockfile (root package.json declares cockpit
+  # and packages/*), so Dependabot has to look there, not in /cockpit.
   - package-ecosystem: npm
-    directory: /cockpit
+    directory: /
     schedule:
       interval: weekly
       day: monday
