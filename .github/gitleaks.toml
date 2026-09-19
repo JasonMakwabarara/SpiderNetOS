@@ -29,8 +29,8 @@ regexes = [
 
 # gitleaks' default ruleset is built around high-entropy strings and vendor
 # prefixes, so it cannot see a database password that happens to be a dictionary
-# word. GitGuardian caught `PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres`
-# in a workflow and gitleaks did not; this closes that gap in the scanner we
+# word. GitGuardian caught a bare PGPASSWORD literal on a psql command line in
+# a workflow and gitleaks did not; this closes that gap in the scanner we
 # actually control.
 #
 # Deliberately narrow: it matches a *literal* only. An expansion —

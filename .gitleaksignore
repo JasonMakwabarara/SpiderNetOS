@@ -1,0 +1,35 @@
+# gitleaks findings that are acknowledged rather than fixable.
+#
+# Entries are FINGERPRINTS: commit:file:rule:line. That is the narrowest
+# suppression gitleaks offers - it silences one occurrence, in one commit, in
+# one file, on one line, for one rule. It cannot mask the same rule anywhere
+# else, which is the point: a path- or rule-level exclusion would have turned
+# the scanner off for a whole directory to settle two lines.
+#
+# Every entry needs the four things a suppression is worthless without: what it
+# was, why it is not a risk, what was done about it, and where to look to check.
+#
+# ---------------------------------------------------------------------------
+# 1-2. PGPASSWORD written as a literal in two CI workflows.
+#
+#   What:    A PGPASSWORD assignment written as a bare literal ahead of a psql
+#            call, once in each of the two workflows that stand up a Postgres
+#            service. (Spelled out no further here on purpose: this file is
+#            scanned like any other, and quoting the offending string would
+#            create a third finding to explain.)
+#   Risk:    None. Both address a Postgres service container published on the
+#            GitHub runner's loopback interface, created at the start of one job
+#            and destroyed at the end of it. The value was never a credential to
+#            anything that outlives a CI run or is reachable from outside it.
+#   Fixed:   Yes, in 04af565. Both workflows now set
+#            POSTGRES_HOST_AUTH_METHOD=trust, so there is no password in the
+#            container to pass, and the psql calls carry no credential at all.
+#            A scan of the working tree returns nothing for this rule.
+#   Why here: gitleaks scans every commit in a pull request, so a literal that
+#            has been removed at HEAD is still found in the commit that added
+#            it. The alternative was rewriting nineteen commits of reviewed
+#            history to expunge a string that was never secret.
+#   Verify:  git show 04af565 -- .github/workflows/
+#
+c005799e9a4c0bb6d91505e5ad4106b0eaa99c34:.github/workflows/ci.yml:inline-db-password-literal:183
+69176eb1b662767aad7df8899c065e4d94b3e2f6:.github/workflows/backend-ci.yml:inline-db-password-literal:78
