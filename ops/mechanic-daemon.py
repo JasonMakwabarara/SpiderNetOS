@@ -179,7 +179,6 @@ class MechanicDaemon:
                 fix_cmd = fix_cmd.replace("{cmd}", config["cmd"])
             
             print(f"[MECHANIC] Applying hardcoded fix: {fix_cmd[:60]}...")
-            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
             # fix_cmd is a literal from FIXES in this file with {dir}/{cmd}
             # substituted from the static SERVICES map. Nothing external reaches it,
             # and the commands are compound shell (cd X && Y) by nature.
@@ -198,7 +197,6 @@ class MechanicDaemon:
             known_fix = None
         if known_fix:
             print("[MECHANIC] Trying known fix from KB")
-            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
             # Gated above; the operator has opted in for this session.
             result = subprocess.run(known_fix, shell=True, capture_output=True, text=True)
             if result.returncode == 0:
@@ -213,7 +211,6 @@ class MechanicDaemon:
             print(f"[MECHANIC] Proposed: {fix}")
             fix = None
         if fix:
-            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
             # Gated above; the operator has opted in for this session.
             result = subprocess.run(fix, shell=True, capture_output=True, text=True)
             if result.returncode == 0:

@@ -74,4 +74,7 @@ jobs:
           PGPASSWORD=spidernet psql -h 127.0.0.1 -U spidernet -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Run full suite (Unit + Feature) on Postgres
-        run: php artisan test --configuration phpunit.github-full.xml
+        # `artisan test` supplies its own --configuration, so passing one here was
+        # a duplicate option: PHPUnit warned and the step exited 1 even when every
+        # test passed. Call phpunit directly, the way ci.yml already does.
+        run: ./vendor/bin/phpunit -c phpunit.github-full.xml

@@ -1,127 +1,108 @@
 # Security findings that are not fixed, and why.
 #
 # A suppression without a reason is indistinguishable from a bug nobody looked
-# at, so every entry here carries a classification, the person who owns the
-# decision, and a date to look again. CI fails on a suppression that is not
-# listed here.
+# at, so every entry carries a classification, the person who owns the decision,
+# and a date to look again. security/check_findings.py fails CI on any semgrep
+# finding that is not covered here, and on any entry here that matches nothing.
 #
 # classification:
-#   TRUE_POSITIVE  — real, and fixed elsewhere; listed only while in flight
-#   FALSE_POSITIVE — the rule matched something that is not the thing it detects
-#   ACCEPTED_RISK  — real, understood, and accepted for a stated reason
-#   OBSOLETE_RULE  — the rule no longer describes a risk in this codebase
+#   TRUE_POSITIVE  - real, fixed elsewhere; listed only while in flight
+#   FALSE_POSITIVE - the rule matched something that is not the thing it detects
+#   ACCEPTED_RISK  - real, understood, and accepted for a stated reason
+#   OBSOLETE_RULE  - the rule no longer describes a risk in this codebase
 
 version: 1
-
 exceptions:
-  - rule_id: generic.secrets.security.detected-telegram-bot-api-key.detected-telegram-bot-api-key
-    locations:
-      - docker-compose.unified.yml:91
-      - docker-compose.unified.yml:174
-      - docker-compose.unified.yml:207
-    classification: FALSE_POSITIVE
-    reason: >
-      Matches the local-development fallback for APP_KEY,
-      "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", which is a
-      placeholder of repeated A's, not a Telegram bot token. There is no
-      Telegram integration in this repository. The value is a compose default
-      that is overridden by the real APP_KEY in every deployed environment.
-    owner: jason
-    review_date: 2027-03-19
+- rule_id: generic.secrets.security.detected-telegram-bot-api-key.detected-telegram-bot-api-key
+  locations:
+  - docker-compose.unified.yml
+  classification: FALSE_POSITIVE
+  reason: 'Matches the local-development fallback for APP_KEY, a placeholder of repeated A''s (quoting
+    it here made this very file the fourth hit), not a Telegram bot token. There is no Telegram integration
+    in this repository. The value is a compose default that is overridden by the real APP_KEY in every
+    deployed environment.
 
-  - rule_id: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
-    locations:
-      - ops/mechanic-daemon.py:178
-      - ops/mechanic-daemon.py:203
-      - ops/mechanic-daemon.py:221
-    classification: ACCEPTED_RISK
-    reason: >
-      An operator-run auto-healing script, referenced by no compose file, unit
-      or workflow. The two dangerous call sites executed a command string
-      written by a model — and the "known fix" knowledge base is written by
-      that same model, so a cached fix has the same provenance. Both are now
-      behind MECHANIC_ALLOW_AI_COMMANDS, which is off unless an operator sets
-      it for a session; with it unset the command is printed and not run. The
-      third site runs a literal from the FIXES table in the same file with
-      values substituted from the static SERVICES map, and is compound shell
-      (cd X && Y) by nature. Open question for the owner: whether this script
-      should exist at all.
-    owner: jason
-    review_date: 2026-12-19
+    '
+  owner: jason
+  review_date: 2027-03-19
+- rule_id: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+  locations:
+  - ops/mechanic-daemon.py
+  classification: ACCEPTED_RISK
+  reason: 'An operator-run auto-healing script, referenced by no compose file, unit or workflow. The two
+    dangerous call sites executed a command string written by a model — and the "known fix" knowledge
+    base is written by that same model, so a cached fix has the same provenance. Both are now behind MECHANIC_ALLOW_AI_COMMANDS,
+    which is off unless an operator sets it for a session; with it unset the command is printed and not
+    run. The third site runs a literal from the FIXES table in the same file with values substituted from
+    the static SERVICES map, and is compound shell (cd X && Y) by nature. Open question for the owner:
+    whether this script should exist at all.
 
-  - rule_id: dockerfile.security.missing-user.missing-user
-    locations:
-      - frontend/Dockerfile:21
-    classification: TRUE_POSITIVE
-    reason: >
-      Real, and the only one of the eleven container images not fixed in this
-      pass. The other ten now drop to a non-root user; this one serves on port
-      80, which a non-root process cannot bind. Fixing it properly means moving
-      to nginxinc/nginx-unprivileged on 8080 and changing the compose and proxy
-      configuration to match — a change that has to be verified by building and
-      running the image, which could not be done here (no container runtime
-      available in the environment this was written in). Scheduled rather than
-      guessed at.
-    owner: jason
-    review_date: 2026-10-19
+    '
+  owner: jason
+  review_date: 2026-12-19
+- rule_id: dockerfile.security.missing-user.missing-user
+  locations:
+  - frontend/Dockerfile
+  classification: TRUE_POSITIVE
+  reason: 'Real, and the only one of the eleven container images not fixed in this pass. The other ten
+    now drop to a non-root user; this one serves on port 80, which a non-root process cannot bind. Fixing
+    it properly means moving to nginxinc/nginx-unprivileged on 8080 and changing the compose and proxy
+    configuration to match — a change that has to be verified by building and running the image, which
+    could not be done here (no container runtime available in the environment this was written in). Scheduled
+    rather than guessed at.
 
-  - rule_id: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-    locations:
-      - ops/*.py (16)
-      - intelligence/core/deepseek_client.py (2)
-      - intelligence/core/simulation_aware_planner.py (2)
-      - services/simulation-service/engine/*.py (2)
-      - ops/improve-landing-ui.py, ops/fix-sites-direct.py, ops/fix-all-sites-ui.py, ops/ai-fix-builds.py (4)
-    classification: FALSE_POSITIVE
-    reason: >
-      An `audit.` rule, which semgrep raises to ask for human review rather than
-      to assert a bug. Reviewed: every URL is assembled from a module constant
-      (OLLAMA), an instance attribute set from configuration (self.ollama_url,
-      self.base_url) or an f-string over a port number taken from a static dict
-      in the same file. None is derived from a request, an inbound message or
-      any other attacker-reachable value, so there is no SSRF here. If one of
-      these ever takes a URL from outside, this entry stops being true and the
-      review date is when to check.
-    owner: jason
-    review_date: 2027-03-19
+    '
+  owner: jason
+  review_date: 2026-10-19
+- rule_id: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+  locations:
+  - ops/*.py
+  - intelligence/core/*.py
+  - services/simulation-service/engine/*.py
+  classification: FALSE_POSITIVE
+  reason: 'An `audit.` rule, which semgrep raises to ask for human review rather than to assert a bug.
+    Reviewed: every URL is assembled from a module constant (OLLAMA), an instance attribute set from configuration
+    (self.ollama_url, self.base_url) or an f-string over a port number taken from a static dict in the
+    same file. None is derived from a request, an inbound message or any other attacker-reachable value,
+    so there is no SSRF here. If one of these ever takes a URL from outside, this entry stops being true
+    and the review date is when to check.
 
-  - rule_id: generic.nginx.security.missing-internal.missing-internal
-    locations:
-      - frontend/nginx.conf:39
-      - frontend/nginx.conf:54
-      - frontend/nginx.conf:65
-      - frontend/nginx.conf:76
-    classification: FALSE_POSITIVE
-    reason: >
-      The `internal` directive marks a location reachable only by an internal
-      redirect (X-Accel-Redirect / X-Sendfile). These four are the public
-      gateway's own proxy routes — /api/, /api/v2/, the enterprise and SCIM
-      paths. Adding `internal` would make every one of them return 404 to real
-      clients, which is to say the rule is describing a different kind of
-      location than these are.
-    owner: jason
-    review_date: 2027-03-19
+    '
+  owner: jason
+  review_date: 2027-03-19
+- rule_id: generic.nginx.security.missing-internal.missing-internal
+  locations:
+  - frontend/nginx.conf
+  classification: FALSE_POSITIVE
+  reason: 'The `internal` directive marks a location reachable only by an internal redirect (X-Accel-Redirect
+    / X-Sendfile). These four are the public gateway''s own proxy routes — /api/, /api/v2/, the enterprise
+    and SCIM paths. Adding `internal` would make every one of them return 404 to real clients, which is
+    to say the rule is describing a different kind of location than these are.
 
-  - rule_id: generic.nginx.security.request-host-used.request-host-used
-    locations:
-      - frontend/nginx.conf:44
-      - frontend/nginx.conf:56
-      - frontend/nginx.conf:67
-      - frontend/nginx.conf:81
-      - ops/fix-nginx-vast.sh:18
-      - ops/fix-nginx-vast.sh:23
-      - ops/fix-nginx-vast.sh:29
-    classification: ACCEPTED_RISK
-    reason: >
-      `proxy_set_header Host $host` forwards a header the client controls, and
-      server_name is `_`, so any Host reached Laravel. That was a real path to
-      host-header injection in generated absolute URLs — password resets,
-      signed links, one-click unsubscribe — and it is fixed at the layer that
-      matters: bootstrap/app.php now calls trustHosts(), pinning the accepted
-      host to APP_URL. Preserving the client's Host through the proxy is what a
-      reverse proxy is for, and it stays, because the application no longer
-      trusts it. Revisit if anything starts resolving a tenant from the host,
-      which nothing does today.
-    owner: jason
-    review_date: 2027-03-19
+    '
+  owner: jason
+  review_date: 2027-03-19
+- rule_id: generic.nginx.security.request-host-used.request-host-used
+  locations:
+  - frontend/nginx.conf
+  - ops/fix-nginx-vast.sh
+  classification: ACCEPTED_RISK
+  reason: '`proxy_set_header Host $host` forwards a header the client controls, and server_name is `_`,
+    so any Host reached Laravel. That was a real path to host-header injection in generated absolute URLs
+    — password resets, signed links, one-click unsubscribe — and it is fixed at the layer that matters:
+    bootstrap/app.php now calls trustHosts(), pinning the accepted host to APP_URL. Preserving the client''s
+    Host through the proxy is what a reverse proxy is for, and it stays, because the application no longer
+    trusts it. Revisit if anything starts resolving a tenant from the host, which nothing does today.
 
+    '
+  owner: jason
+  review_date: 2027-03-19
+- rule_id: javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
+  locations:
+  - cockpit/serve-spa.js
+  classification: FALSE_POSITIVE
+  reason: The rule fires on path.resolve() with a request-derived segment and cannot see the check underneath
+    it. The resolved path is compared against DIST_DIR and anything outside is refused before the file
+    is opened, which is the control the rule is asking for.
+  owner: jason
+  review_date: '2027-03-19'

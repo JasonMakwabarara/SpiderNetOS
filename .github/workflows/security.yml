@@ -114,7 +114,6 @@ jobs:
             --config=p/php \
             --config=p/javascript \
             --config=p/python \
-            --error \
             --severity=ERROR \
             --severity=WARNING \
             --sarif --output=semgrep.sarif \
@@ -148,6 +147,12 @@ jobs:
           for rule, path, line, msg in sorted(rows):
               print(path + ':' + str(line) + '  ' + rule + '  ' + msg)
           PY
+
+      - name: Every finding must be fixed or accounted for
+        if: always()
+        run: |
+          pip install --quiet pyyaml
+          python3 security/check_findings.py semgrep.sarif security/exceptions.yaml
 
       - name: Upload SARIF
         if: always()
