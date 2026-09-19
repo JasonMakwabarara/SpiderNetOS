@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Skills\Eval;
 
+use App\Services\Skills\VoiceRules;
+
 /**
  * Deterministic property checks over a skill output (plan D8 #14).
  *
@@ -332,15 +334,13 @@ class PropertyChecker
     private function bannedPhrases(?EvalCase $case, array $p): array
     {
         $phrases = array_map('strval', (array) ($p['phrases'] ?? []));
-        $voice = $case?->fixtureBrain['brand/voice.md'] ?? '';
-        if (preg_match('/don\'?t say\s*(.+?)(?:\.\s|\.$|\n|$)/iu', $voice, $m)) {
-            preg_match_all('/"([^"]+)"|“([^”]+)”/u', $m[1], $q);
-            foreach (array_merge($q[1], $q[2]) as $term) {
-                if (trim($term) !== '') {
-                    $phrases[] = trim($term);
-                }
-            }
+
+        // Same parser the live run uses (SkillPromptBuilder::facts), so a rule
+        // cannot mean one thing in an eval and another in production.
+        foreach (VoiceRules::bannedPhrasesFrom($case?->fixtureBrain['brand/voice.md'] ?? null) as $term) {
+            $phrases[] = $term;
         }
+
         if (class_exists('App\\Services\\Skills\\SkillCard') && defined('App\\Services\\Skills\\SkillCard::DEFAULT_BANNED_PHRASES')) {
             foreach ((array) constant('App\\Services\\Skills\\SkillCard::DEFAULT_BANNED_PHRASES') as $phrase) {
                 $phrases[] = (string) $phrase;
@@ -381,20 +381,8 @@ class PropertyChecker
      */
     private function neverSayTerms(?EvalCase $case): array
     {
-        $section = $case?->fixtureSection('people/user.md', 'Never say or offer') ?? '';
-        if ($section === '') {
-            return [];
-        }
-        $terms = [];
-        foreach (preg_split('/(?<=[.!?])\s+|\n+/u', $section) ?: [] as $sentence) {
-            if (preg_match('/^\W*never\s+(?:say|offer|mention|promise|use|quote|give|claim)\s+(?:a\s+|an\s+|the\s+|any\s+)?(.+?)[.!?]?\s*$/iu', trim($sentence), $m)) {
-                $terms[] = trim($m[1]);
-            } elseif (preg_match('/^\W*never\s+(.+?)[.!?]?\s*$/iu', trim($sentence), $m)) {
-                $terms[] = trim($m[1]);
-            }
-        }
-
-        return array_values(array_unique(array_filter($terms, fn ($t) => $t !== '')));
+        // Same parser the live run uses, for the same reason as bannedPhrases().
+        return VoiceRules::neverSayFrom($case?->fixtureBrain['people/user.md'] ?? null);
     }
 
     // ------------------------------------------------------------------ //

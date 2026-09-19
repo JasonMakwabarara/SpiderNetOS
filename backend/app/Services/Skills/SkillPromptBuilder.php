@@ -93,7 +93,8 @@ class SkillPromptBuilder
      */
     public function facts(SkillCard $card, object $snapshot): array
     {
-        $facts = ['pricing' => null, 'proof_points' => [], 'links' => [], 'products' => [], 'affiliate' => []];
+        $facts = ['pricing' => null, 'proof_points' => [], 'links' => [], 'products' => [], 'affiliate' => [],
+            'banned_phrases' => [], 'never_say' => []];
 
         $offer = $this->read($snapshot, 'offer/offer.md');
         if ($offer !== null) {
@@ -119,6 +120,16 @@ class SkillPromptBuilder
             }
         }
         $facts['links'] = array_values(array_unique($facts['links']));
+
+        // The tenant's own prohibitions. SkillOutputValidator has always read
+        // these two keys and nothing has ever set them, so until now a rule the
+        // owner wrote in their own brain reached the prompt and was never
+        // enforced on the reply.
+        // Not rendered into FACTS — the model already sees both sections in the
+        // BRAIN and PEOPLE blocks. These are for SkillOutputValidator, which
+        // checks the reply.
+        $facts['banned_phrases'] = VoiceRules::bannedPhrasesFrom($this->read($snapshot, VoiceRules::VOICE_PATH)['content'] ?? null);
+        $facts['never_say'] = VoiceRules::neverSayFrom($this->read($snapshot, VoiceRules::USER_PATH)['content'] ?? null);
 
         return $facts;
     }

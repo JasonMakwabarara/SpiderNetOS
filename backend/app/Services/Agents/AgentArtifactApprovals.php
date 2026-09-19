@@ -31,6 +31,7 @@ final class AgentArtifactApprovals
         private readonly ArtifactApplier $applier,
         private readonly EventStore $events,
         private readonly WorkspaceProvisioner $workspaces,
+        private readonly AgentCircuitBreaker $breaker,
     ) {}
 
     public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void
@@ -145,6 +146,34 @@ final class AgentArtifactApprovals
                 : $query->update(['clean_drafts_count' => DB::raw('clean_drafts_count + 1'), 'updated_at' => now()]);
         } catch (\Throwable $e) {
             Log::debug('clean_drafts_count update skipped', ['skill' => $skillSlug, 'error' => $e->getMessage()]);
+        }
+
+        $this->checkTripwires($tenantId, $skillSlug);
+    }
+
+    /**
+     * The other half of the ladder.
+     *
+     * `AgentCircuitBreaker::evaluate()` was written, tested and never called
+     * from anywhere in app/ — so a skill could be rejected ten times in a row
+     * and keep its autonomy level, while the promotion side of the same ladder
+     * worked perfectly. The gate only moves in one direction if nothing
+     * evaluates the tripwires, and a ladder you can only climb is not a ladder.
+     *
+     * This is the right place: the hook already runs on every approval
+     * decision and already holds the tenant and the slug. It can never fail
+     * the approval — a tripwire that breaks an approval would be worse than
+     * one that does not fire.
+     */
+    private function checkTripwires(string $tenantId, string $skillSlug): void
+    {
+        try {
+            $reason = $this->breaker->evaluate($tenantId, $skillSlug);
+            if ($reason !== null) {
+                Log::info('agent.tripwire.demoted', ['tenant_id' => $tenantId, 'skill' => $skillSlug, 'reason' => $reason]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('agent.tripwire.check_failed', ['tenant_id' => $tenantId, 'skill' => $skillSlug, 'error' => $e->getMessage()]);
         }
     }
 

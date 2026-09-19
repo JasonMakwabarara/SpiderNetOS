@@ -20,8 +20,6 @@ owns:
   - identity: delegation_planner
     skills:
       - delegation-planner
-  - identity: runbook_automator
-    skills:
       - runbook-automator
   - identity: growth
     skills:
@@ -86,7 +84,7 @@ work: every placeholder is marked, every shortcut is named.
 - The `forge` identity: `screenshot-to-code` (the vendored screenshot-to-code service behind
   Laravel) and `diagram` (Mermaid/architecture/process diagrams).
 - The business-systemization builders: `delegation-planner` (`delegation_planner` identity) and
-  `runbook-automator` (`runbook_automator` identity).
+  `runbook-automator` (`delegation_planner` identity).
 - The `growth` identity's `landing-page-builder`.
 - The `studio` identity's `demo-video-producer` (scripts, storyboards, the render job).
 - The `systems_mapper` identity: `systems-mapper` — the business map's systems and processes.

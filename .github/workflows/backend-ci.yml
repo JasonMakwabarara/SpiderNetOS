@@ -83,6 +83,16 @@ jobs:
           php artisan key:generate
           php artisan migrate --force
 
+      # The card validator resolves brain.requires against the brain manifest,
+      # checks every tool against the catalogue and every breaks_into /
+      # builds_on / hands_off_to reference. It passed 9/9 from the day it was
+      # written and had never once run outside a developer's terminal, which is
+      # how `runbook_automator` sat in a character sheet as a phantom identity.
+      - name: Validate the skill cards
+        run: |
+          cd backend
+          php artisan skills:validate
+
       - name: Run PHPUnit tests
         run: |
           cd backend
