@@ -153,6 +153,13 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # phpunit.github-full.xml addresses the services by their container names,
+      # which only resolve for a job that runs *in* a container. This job runs on
+      # the runner, where both are published on localhost; real env vars win over
+      # the config's non-forced <env> entries, so only the hosts need overriding.
+      DB_HOST: 127.0.0.1
+      REDIS_HOST: 127.0.0.1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
@@ -170,7 +177,13 @@ jobs:
           until pg_isready -h localhost -U spidernet -d spidernet_test; do
             sleep 1
           done
-      - name: Migrate
-        run: php artisan migrate --force
+      - name: Enable pgvector
+        # memory_nodes declares a vector(384) column, so the extension has to
+        # exist before RefreshDatabase runs the migrations.
+        run: PGPASSWORD=spidernet psql -h 127.0.0.1 -U spidernet -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      # No migrate step: it ran with neither a .env nor DB_* env vars, so libpq
+      # saw an empty password and the job died before a single test ran
+      # ("fe_sendauth: no password supplied"). RefreshDatabase migrates the
+      # schema itself, which is why the standalone Postgres lane never needed one.
       - name: Run full PHPUnit suite
         run: ./vendor/bin/phpunit -c phpunit.github-full.xml
