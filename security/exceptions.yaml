@@ -48,3 +48,20 @@ exceptions:
       should exist at all.
     owner: jason
     review_date: 2026-12-19
+
+  - rule_id: dockerfile.security.missing-user.missing-user
+    locations:
+      - frontend/Dockerfile:21
+    classification: TRUE_POSITIVE
+    reason: >
+      Real, and the only one of the eleven container images not fixed in this
+      pass. The other ten now drop to a non-root user; this one serves on port
+      80, which a non-root process cannot bind. Fixing it properly means moving
+      to nginxinc/nginx-unprivileged on 8080 and changing the compose and proxy
+      configuration to match — a change that has to be verified by building and
+      running the image, which could not be done here (no container runtime
+      available in the environment this was written in). Scheduled rather than
+      guessed at.
+    owner: jason
+    review_date: 2026-10-19
+

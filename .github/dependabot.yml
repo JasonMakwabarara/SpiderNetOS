@@ -20,8 +20,10 @@ updates:
         dependency-type: development
 
   # ─── Node / cockpit (Vue SPA) ───────────────────────────────────────
-  # The workspace root owns the lockfile (root package.json declares cockpit
-  # and packages/*), so Dependabot has to look there, not in /cockpit.
+  # Two npm trees on purpose: the workspace root owns resolution for CI and
+  # local work, and cockpit/ keeps its own lockfile because its container is
+  # built from an isolated context that cannot see the root. Both are watched,
+  # or one of them quietly rots.
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -31,6 +33,14 @@ updates:
       timezone: Europe/Berlin
     open-pull-requests-limit: 10
     labels: [dependencies, cockpit]
+
+  - package-ecosystem: npm
+    directory: /cockpit
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, cockpit, container]
     groups:
       vue:
         patterns:

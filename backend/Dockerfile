@@ -24,6 +24,12 @@ RUN if [ -f composer.json ]; then composer install --no-interaction --prefer-dis
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Drop root. The entrypoint writes vendor/, storage/ and bootstrap/cache and
+# runs migrations, so the tree is handed to www-data; it binds 8000, so nothing
+# needs a privileged port.
+RUN chown -R www-data:www-data /var/www/html
+USER www-data
+
 EXPOSE 8000
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
