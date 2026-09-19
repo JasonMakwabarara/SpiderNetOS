@@ -32,6 +32,7 @@ folders:
   offer:      { title: "Offer",            order: 20 }
   customers:  { title: "Customers",        order: 30 }
   brand:      { title: "Brand",            order: 40 }
+  marketing:  { title: "Marketing",        order: 45 }
   processes:  { title: "Processes",        order: 50 }
   programs:   { title: "Programs",         order: 60 }
   finance:    { title: "Finance",          order: 70 }
@@ -51,12 +52,14 @@ keys:
   offer.pricing:         offer/offer.md#Pricing
   offer.proof:           offer/offer.md#Proof
   offer.approved_sequences: offer/approved-sequences.md
+  offer.changelog:       offer/changelog.md#Changes
   customers.icp:         customers/icp.md#Who we sell to
   customers.disqualifiers: customers/icp.md#Who we do not sell to
   customers.objections:  customers/objections.md#Objections and answers
   voice.tone:            brand/voice.md#Tone
   voice.do_dont:         brand/voice.md#Do and don't
   brand.identity:        brand/identity.md
+  marketing.social_posts: marketing/social/posts.md#Posts
   processes.follow_ups:  processes/follow-ups.md
   programs.affiliate:    programs/affiliate.md
   finance.assumptions:   finance/assumptions.yaml
@@ -162,6 +165,18 @@ paths:
         question: null
         interview_question_id: null
 
+  - path: offer/changelog.md
+    title: "What changed in the offer"
+    data_class: internal
+    source: human                 # the owner logs product changes; agents read, never write
+    stale_after_days: null
+    sections:
+      - name: "Changes"
+        required: false
+        min_chars: 0
+        question: "What has changed in what you sell recently \u2014 a new feature, a price, a policy?"
+        interview_question_id: null
+
   # --------------------------------------------------------------- customers
   - path: customers/icp.md
     title: "Ideal customer profile"
@@ -241,6 +256,33 @@ paths:
         interview_question_id: null
 
   # --------------------------------------------------------------- processes
+  # --------------------------------------------------------------- marketing
+  - path: marketing/social/posts.md
+    title: "Published posts"
+    data_class: internal
+    source: projection            # approved caption artifacts + the social connector
+    stale_after_days: null
+    managed: true
+    sections:
+      - name: "Posts"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
+  - path: marketing/newsletter/subscribers.md
+    title: "Newsletter list"
+    data_class: confidential
+    source: projection            # consent_records channel `newsletter`; counts only, never addresses
+    stale_after_days: null
+    managed: true
+    sections:
+      - name: "Consent"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
   - path: processes/<slug>.md
     pattern: true
     title: "Process"

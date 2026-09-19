@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Models\NewsletterIssue;
+use App\Services\Reports\CustomerNewsletterCadence;
 use App\Services\Reports\MondayLetterComposer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class WeeklyLetterController extends Controller
         return response()->json(['data' => $letter]);
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, CustomerNewsletterCadence $cadence): JsonResponse
     {
         $tenantId = (string) $request->attributes->get('tenant_id');
 
@@ -57,7 +58,15 @@ class WeeklyLetterController extends Controller
             ->limit(min(100, max(1, (int) $request->input('limit', 26))))
             ->get(['id', 'kind', 'period', 'status', 'subject', 'quote_id', 'brain_path', 'channel', 'recipients', 'sent_at', 'created_at']);
 
-        return response()->json(['data' => $issues]);
+        return response()->json([
+            'data' => $issues,
+            'meta' => [
+                // When the next customer issues are due, so the cockpit can say
+                // "next issue Monday" instead of leaving the cadence invisible.
+                'customer_cadence_days' => CustomerNewsletterCadence::INTERVAL_DAYS,
+                'customer_upcoming' => $cadence->upcoming($tenantId, now(), 4),
+            ],
+        ]);
     }
 
     /** "2026-W38" → the Monday of that ISO week, or null when it is not one. */

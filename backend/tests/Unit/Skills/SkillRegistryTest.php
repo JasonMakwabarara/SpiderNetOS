@@ -15,9 +15,10 @@ use Tests\TestCase;
  */
 class SkillRegistryTest extends TestCase
 {
-    public const FIRST_EIGHT = [
+    public const FIRST_RELEASE = [
         'brand-voice-keeper',
         'cold-email-drafting',
+        'customer-newsletter',
         'follow-up-drafting',
         'icp-definition',
         'inbox-triage-reply-classifier',
@@ -41,7 +42,7 @@ class SkillRegistryTest extends TestCase
     {
         $cards = $this->registry()->all();
 
-        $this->assertSame(self::FIRST_EIGHT, array_keys($cards));
+        $this->assertSame(self::FIRST_RELEASE, array_keys($cards));
         foreach ($cards as $slug => $card) {
             $this->assertInstanceOf(SkillCard::class, $card);
             $this->assertSame($slug, $card->id);
@@ -56,7 +57,7 @@ class SkillRegistryTest extends TestCase
 
         $failures = array_filter($results, fn (array $errors) => $errors !== []);
         $this->assertSame([], $failures, "Invalid cards:\n".json_encode($failures, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        $this->assertCount(8, $results);
+        $this->assertCount(count(self::FIRST_RELEASE), $results);
     }
 
     public function test_every_brain_requires_key_resolves_against_the_manifest(): void

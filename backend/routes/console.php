@@ -21,6 +21,12 @@ Schedule::job(new \App\Jobs\FounderBriefJob)->hourly()->withoutOverlapping();
 // Monday 07:00 where they are. Gated per tenant by newsletter.csuite.
 Schedule::job(new \App\Jobs\MondayLetterJob)->hourly()->withoutOverlapping();
 
+// The customer newsletter (plan D8 #16): hourly sweep, each tenant taking the
+// tick that is 09:00 where they are, and only on its 12-day slot. It starts a
+// draft; the card's approval.required=always keeps the send human. Gated per
+// tenant by newsletter.customer.
+Schedule::job(new \App\Jobs\CustomerNewsletterJob)->hourly()->withoutOverlapping();
+
 // Every edit is a lesson (plan D8 #1): weekly distillation of artifact_revisions
 // into people/user.md proposals ("you always shorten the opener → rule"), Sunday 03:00 UTC
 Schedule::job(new \App\Jobs\DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();

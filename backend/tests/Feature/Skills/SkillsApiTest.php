@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * /api/skills: the catalogue lists the eight cards with pillar meta, the card
+ * /api/skills: the catalogue lists the shipped cards with pillar meta, the card
  * JSON carries the ten sections, enable provisions tenant_skills + the
  * identity's agents row + its workspace, and the pipeline PUT gates
  * autonomous on the tenant's automation level.
@@ -101,7 +101,7 @@ class SkillsApiTest extends TestCase
         $this->getJson('/api/skills/cold-email-drafting')->assertUnauthorized();
     }
 
-    public function test_catalogue_lists_the_eight_cards_with_meta(): void
+    public function test_catalogue_lists_the_shipped_cards_with_meta(): void
     {
         $tenant = $this->createTenant();
         $user = $this->createUser($tenant);
@@ -110,8 +110,8 @@ class SkillsApiTest extends TestCase
 
         $response->assertOk();
         $data = $response->json('data');
-        $this->assertCount(8, $data);
-        $this->assertSame(SkillRegistryTestSlugs::FIRST_EIGHT, array_column($data, 'slug'));
+        $this->assertCount(count(SkillRegistryTestSlugs::FIRST_RELEASE), $data);
+        $this->assertSame(SkillRegistryTestSlugs::FIRST_RELEASE, array_column($data, 'slug'));
 
         $first = $data[0];
         foreach (['slug', 'name', 'pillar', 'map_node', 'core_agent', 'identity', 'runs_on', 'pack_id', 'at_a_glance', 'run_kind', 'enabled', 'stage', 'entitlement', 'brain', 'entry_path'] as $key) {
@@ -129,7 +129,7 @@ class SkillsApiTest extends TestCase
         $this->assertContains('growth', $identityKeys);
         $this->assertContains('richard', $identityKeys);
         $this->assertSame(['atlas', 'hannah', 'forge', 'sentinel', 'prism', 'nexus'], array_column($meta['core_agents'], 'slug'));
-        $this->assertSame(8, $meta['total']);
+        $this->assertSame(count(SkillRegistryTestSlugs::FIRST_RELEASE), $meta['total']);
     }
 
     public function test_catalogue_filters(): void
@@ -411,12 +411,13 @@ class SkillsApiTest extends TestCase
     }
 }
 
-/** The eight first-release slugs, shared with the unit suite without cross-suite class loading. */
+/** The first-release slugs, shared with the unit suite without cross-suite class loading. */
 final class SkillRegistryTestSlugs
 {
-    public const FIRST_EIGHT = [
+    public const FIRST_RELEASE = [
         'brand-voice-keeper',
         'cold-email-drafting',
+        'customer-newsletter',
         'follow-up-drafting',
         'icp-definition',
         'inbox-triage-reply-classifier',

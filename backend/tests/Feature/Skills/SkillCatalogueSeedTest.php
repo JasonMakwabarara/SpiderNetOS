@@ -32,23 +32,29 @@ class SkillCatalogueSeedTest extends TestCase
         return new SkillCatalogue(new SkillRegistry);
     }
 
+    /** Counted from the folders on disk: the suite should not need editing for every new card. */
+    private function cardCount(): int
+    {
+        return count((new SkillRegistry)->all());
+    }
+
     public function test_seed_is_idempotent(): void
     {
         $first = $this->catalogue()->seed();
 
-        $this->assertSame(8, $first['created']);
+        $this->assertSame($this->cardCount(), $first['created']);
         $this->assertSame(0, $first['updated']);
         $this->assertSame(0, $first['unchanged']);
         $this->assertGreaterThan(40, $first['relations']);
-        $this->assertSame(8, Skill::count());
+        $this->assertSame($this->cardCount(), Skill::count());
         $relations = SkillRelation::count();
         $this->assertSame($first['relations'], $relations);
 
         $second = $this->catalogue()->seed();
 
-        $this->assertSame(['created' => 0, 'updated' => 0, 'unchanged' => 8], array_intersect_key($second, array_flip(['created', 'updated', 'unchanged'])));
+        $this->assertSame(['created' => 0, 'updated' => 0, 'unchanged' => $this->cardCount()], array_intersect_key($second, array_flip(['created', 'updated', 'unchanged'])));
         $this->assertSame(0, $second['relations'], 'unchanged cards do not rewrite their edges');
-        $this->assertSame(8, Skill::count());
+        $this->assertSame($this->cardCount(), Skill::count());
         $this->assertSame($relations, SkillRelation::count());
     }
 
@@ -61,7 +67,7 @@ class SkillCatalogueSeedTest extends TestCase
         $summary = $this->catalogue()->seed();
 
         $this->assertSame(1, $summary['updated']);
-        $this->assertSame(7, $summary['unchanged']);
+        $this->assertSame($this->cardCount() - 1, $summary['unchanged']);
         $this->assertSame('Cold Email Drafting', Skill::find('cold-email-drafting')->name);
         $this->assertSame($before, SkillRelation::where('from_slug', 'cold-email-drafting')->count());
     }
@@ -151,11 +157,11 @@ class SkillCatalogueSeedTest extends TestCase
         $this->artisan('skills:validate', ['slug' => 'no-such-card'])->assertExitCode(1);
 
         $this->artisan('skills:seed')->assertExitCode(0);
-        $this->assertSame(8, Skill::count());
+        $this->assertSame($this->cardCount(), Skill::count());
         $this->artisan('skills:seed')->assertExitCode(0);
-        $this->assertSame(8, Skill::count());
+        $this->assertSame($this->cardCount(), Skill::count());
 
         $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\SkillCatalogueSeeder'])->assertExitCode(0);
-        $this->assertSame(8, Skill::count());
+        $this->assertSame($this->cardCount(), Skill::count());
     }
 }
