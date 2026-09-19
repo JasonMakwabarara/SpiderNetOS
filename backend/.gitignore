@@ -11,6 +11,8 @@ yarn-error.log
 
 # Runtime state (regenerated; not source)
 /storage/app/feature-packs/
+# `skills:eval` writes a JSON report per run; they are artefacts of a run, not source.
+/storage/app/private/skill-evals/
 Homestead.json
 Homestead.yaml
 auth.json

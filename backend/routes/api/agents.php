@@ -3,6 +3,7 @@
 use App\Http\Controllers\Agents\AgentRunController;
 use App\Http\Controllers\Agents\AgentWorkspaceController;
 use App\Http\Controllers\Agents\ArtifactController;
+use App\Http\Controllers\Agents\GodsEyeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -31,3 +32,8 @@ Route::post('/artifacts/{id}/apply', [ArtifactController::class, 'apply']);
 
 Route::get('/agent-workspaces', [AgentWorkspaceController::class, 'index']);
 Route::get('/agent-workspaces/{slug}', [AgentWorkspaceController::class, 'show']);
+
+// God's Eye (plan D6 §8) — the whole wall in one call, because a board the
+// client has to stitch together from six endpoints is a board that shows six
+// different moments.
+Route::get('/godseye/snapshot', [GodsEyeController::class, 'snapshot']);
