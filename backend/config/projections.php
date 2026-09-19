@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Projections\AgentProjection;
+use App\Services\Projections\BrainProjection;
 use App\Services\Projections\ConversationReplyBridgeProjection;
 use App\Services\Projections\FlowProjection;
 use App\Services\Projections\OutreachReplyProjection;
@@ -10,14 +11,14 @@ use App\Services\Projections\UsageProjection;
 
 return [
     'projectors' => [
-        \App\Services\Projections\AgentProjection::class,
-        \App\Services\Projections\FlowProjection::class,
-        \App\Services\Projections\UsageProjection::class,
-        \App\Services\Projections\StateTransitionProjection::class,
-        \App\Services\Projections\SpendAutomationProjection::class,
-        \App\Services\Projections\ConversationReplyBridgeProjection::class,
-        \App\Services\Projections\OutreachReplyProjection::class,
-        \App\Services\Projections\BrainProjection::class,
+        AgentProjection::class,
+        FlowProjection::class,
+        UsageProjection::class,
+        StateTransitionProjection::class,
+        SpendAutomationProjection::class,
+        ConversationReplyBridgeProjection::class,
+        OutreachReplyProjection::class,
+        BrainProjection::class,
     ],
 
     'map' => [

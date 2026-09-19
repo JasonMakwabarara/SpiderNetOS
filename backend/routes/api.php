@@ -32,6 +32,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ObservabilityController;
 use App\Http\Controllers\Operating\OperatingController;
 use App\Http\Controllers\OutcomesController;
+use App\Http\Controllers\Outreach\LinkedInSettingsController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\Sales\ConversationController;
 use App\Http\Controllers\Sales\FunnelSetupController;
@@ -620,28 +621,28 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
 
         // Partner outreach (affiliate recruitment): prospects, DM queue, settings.
         // Static paths first so they never match the {id} routes below.
-        Route::get('/partners', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'index']);
-        Route::get('/partners/dm-queue', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmQueue']);
-        Route::get('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'settings']);
+        Route::get('/partners', [PartnerProspectController::class, 'index']);
+        Route::get('/partners/dm-queue', [PartnerProspectController::class, 'dmQueue']);
+        Route::get('/partners/settings', [PartnerProspectController::class, 'settings']);
 
         // LinkedIn outreach (plan D7 §3). Default draft_only: Richard drafts,
         // a person sends, and nothing touches LinkedIn. Moving to assisted
         // needs a named, versioned acknowledgement of LinkedIn's terms.
-        Route::get('/partners/linkedin/settings', [\App\Http\Controllers\Outreach\LinkedInSettingsController::class, 'show']);
-        Route::put('/partners/linkedin/settings', [\App\Http\Controllers\Outreach\LinkedInSettingsController::class, 'update'])->middleware('role:admin');
-        Route::put('/partners/settings', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
-        Route::post('/partners/import', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'import'])->middleware('role:admin');
-        Route::post('/partners/run', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'run'])->middleware('role:admin');
-        Route::post('/partners/messages/{messageId}/mark-sent', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'markDmSent']);
-        Route::patch('/partners/drafts/{messageId}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'updateDraft']);
-        Route::get('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'show']);
-        Route::patch('/partners/{id}', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'update']);
-        Route::post('/partners/{id}/dm-reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'dmReply']);
-        Route::post('/partners/{id}/reply', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'reply']);
-        Route::post('/partners/{id}/pause', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'pause']);
-        Route::post('/partners/{id}/resume', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'resume']);
-        Route::post('/partners/{id}/retire', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'retire']);
-        Route::post('/partners/{id}/hand-back', [\App\Http\Controllers\Sales\PartnerProspectController::class, 'handBack']);
+        Route::get('/partners/linkedin/settings', [LinkedInSettingsController::class, 'show']);
+        Route::put('/partners/linkedin/settings', [LinkedInSettingsController::class, 'update'])->middleware('role:admin');
+        Route::put('/partners/settings', [PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
+        Route::post('/partners/import', [PartnerProspectController::class, 'import'])->middleware('role:admin');
+        Route::post('/partners/run', [PartnerProspectController::class, 'run'])->middleware('role:admin');
+        Route::post('/partners/messages/{messageId}/mark-sent', [PartnerProspectController::class, 'markDmSent']);
+        Route::patch('/partners/drafts/{messageId}', [PartnerProspectController::class, 'updateDraft']);
+        Route::get('/partners/{id}', [PartnerProspectController::class, 'show']);
+        Route::patch('/partners/{id}', [PartnerProspectController::class, 'update']);
+        Route::post('/partners/{id}/dm-reply', [PartnerProspectController::class, 'dmReply']);
+        Route::post('/partners/{id}/reply', [PartnerProspectController::class, 'reply']);
+        Route::post('/partners/{id}/pause', [PartnerProspectController::class, 'pause']);
+        Route::post('/partners/{id}/resume', [PartnerProspectController::class, 'resume']);
+        Route::post('/partners/{id}/retire', [PartnerProspectController::class, 'retire']);
+        Route::post('/partners/{id}/hand-back', [PartnerProspectController::class, 'handBack']);
 
         // Inbox — conversations across email + WhatsApp
         Route::get('/conversations', [ConversationController::class, 'index']);
@@ -656,10 +657,10 @@ Route::prefix('internal')->middleware('internal.key')->group(function () {
     if (is_file(__DIR__.'/api/internal.php')) {
         require __DIR__.'/api/internal.php';
     }
-    Route::post('/sales/leads/{id}/stage', [\App\Http\Controllers\Internal\SalesController::class, 'updateStage']);
-    Route::post('/sales/leads/{id}/score', [\App\Http\Controllers\Internal\SalesController::class, 'updateScore']);
-    Route::post('/sales/leads/{id}/message', [\App\Http\Controllers\Internal\SalesController::class, 'sendMessage']);
-    Route::post('/sales/leads/{id}/enroll', [\App\Http\Controllers\Internal\SalesController::class, 'enrollInSequence']);
+    Route::post('/sales/leads/{id}/stage', [SalesController::class, 'updateStage']);
+    Route::post('/sales/leads/{id}/score', [SalesController::class, 'updateScore']);
+    Route::post('/sales/leads/{id}/message', [SalesController::class, 'sendMessage']);
+    Route::post('/sales/leads/{id}/enroll', [SalesController::class, 'enrollInSequence']);
 });
 
 // ─── State Transition Engine (STE) — read-first, super_admin only ──────────

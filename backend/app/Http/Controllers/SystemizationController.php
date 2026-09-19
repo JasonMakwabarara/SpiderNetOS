@@ -11,6 +11,7 @@ use App\Models\Sop;
 use App\Services\ApprovalEngine;
 use App\Services\DagExecutionService;
 use App\Services\EventStore;
+use App\Services\Map\BusinessMapService;
 use App\Services\Systemization\ProcessRunRecorder;
 use App\Services\Systemization\SopFlowCompiler;
 use App\Services\Systemization\SopInterviewService;
@@ -107,7 +108,7 @@ class SystemizationController extends Controller
 
         // Additive: a catalogue problem must never take the systems map down with it.
         try {
-            $skillsByFunction = app(\App\Services\Map\BusinessMapService::class)->skillsByFunction($tenantId);
+            $skillsByFunction = app(BusinessMapService::class)->skillsByFunction($tenantId);
         } catch (\Throwable $e) {
             report($e);
             $skillsByFunction = [];

@@ -180,13 +180,14 @@ class VoiceSafetyGuard
      */
     public function checkSpeech(string $tenantId, float $estimatedCost = 0.0): array
     {
-        if (!FeatureFlag::on('voice.inbound', $tenantId)) {
+        if (! FeatureFlag::on('voice.inbound', $tenantId)) {
             return $this->deny('voice_killed');
         }
 
         $cost = $this->costGovernor->canExecute($tenantId, $estimatedCost);
-        if (!$cost['allowed']) {
+        if (! $cost['allowed']) {
             Log::warning('voice.speech_cost_blocked', ['tenant_id' => $tenantId, 'estimated_cost' => $estimatedCost]);
+
             return $this->deny('cost_cap_exceeded', $cost['degraded'] ?? false);
         }
 

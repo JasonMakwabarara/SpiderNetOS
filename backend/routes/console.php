@@ -1,13 +1,19 @@
 <?php
 
 use App\Jobs\AggregateUsageJob;
+use App\Jobs\BrainSyncJob;
 use App\Jobs\CheckAnomaliesJob;
 use App\Jobs\ComputeTransformationScoreJob;
+use App\Jobs\CustomerNewsletterJob;
 use App\Jobs\DispatchScheduledFlowsJob;
+use App\Jobs\DistilCorrectionsJob;
 use App\Jobs\ExpireApprovalStepsJob;
+use App\Jobs\FailStaleAgentRunsJob;
 use App\Jobs\FailStaleExecutionNodesJob;
+use App\Jobs\FounderBriefJob;
 use App\Jobs\GenerateDailyBriefJob;
 use App\Jobs\GenerateRecurringBillsJob;
+use App\Jobs\MondayLetterJob;
 use App\Jobs\NotifyBillsDueSoonJob;
 use App\Jobs\OutreachDailyDigestJob;
 use App\Jobs\PollPartnerMailboxJob;
@@ -20,6 +26,7 @@ use App\Jobs\SweepScheduledBillPaymentsJob;
 use App\Jobs\SystemizationRunSweepJob;
 use App\Jobs\WeeklyRhythmJob;
 use App\Jobs\WeeklySpendDigestJob;
+use App\Jobs\ZetKaiSyncJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -29,31 +36,31 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 // Daily Brief Generation (06:00 daily) — composes Needs-You Today per tenant (FounderBriefService)
-Schedule::job(new \App\Jobs\GenerateDailyBriefJob)->dailyAt('06:00');
+Schedule::job(new GenerateDailyBriefJob)->dailyAt('06:00');
 
 // Needs-You Today delivery (plan D8 #3): hourly sweep that recomposes and
 // pushes brief_ready at 06:55–07:05 in each tenant's own timezone, then
 // flushes due notification bundles (D8 #4) — same pattern as OutreachDailyDigestJob.
-Schedule::job(new \App\Jobs\FounderBriefJob)->hourly()->withoutOverlapping();
+Schedule::job(new FounderBriefJob)->hourly()->withoutOverlapping();
 
 // The Monday letter (plan D8 #11) and, as its second half, the C-Suite
 // newsletter (D8 #15): hourly sweep, each tenant taking the tick that is
 // Monday 07:00 where they are. Gated per tenant by newsletter.csuite.
-Schedule::job(new \App\Jobs\MondayLetterJob)->hourly()->withoutOverlapping();
+Schedule::job(new MondayLetterJob)->hourly()->withoutOverlapping();
 
 // The customer newsletter (plan D8 #16): hourly sweep, each tenant taking the
 // tick that is 09:00 where they are, and only on its 12-day slot. It starts a
 // draft; the card's approval.required=always keeps the send human. Gated per
 // tenant by newsletter.customer.
-Schedule::job(new \App\Jobs\CustomerNewsletterJob)->hourly()->withoutOverlapping();
+Schedule::job(new CustomerNewsletterJob)->hourly()->withoutOverlapping();
 
 // ZetKai -> Knowledge brain (plan D7 §4): one cursor-driven page a night, per
 // tenant, behind zetkai.enabled + zetkai.nightly_sync.
-Schedule::job(new \App\Jobs\ZetKaiSyncJob)->dailyAt('02:30')->withoutOverlapping();
+Schedule::job(new ZetKaiSyncJob)->dailyAt('02:30')->withoutOverlapping();
 
 // Every edit is a lesson (plan D8 #1): weekly distillation of artifact_revisions
 // into people/user.md proposals ("you always shorten the opener → rule"), Sunday 03:00 UTC
-Schedule::job(new \App\Jobs\DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();
+Schedule::job(new DistilCorrectionsJob)->weeklyOn(0, '03:00')->withoutOverlapping();
 
 // Usage Aggregation (every 5 minutes — runs only when atlas.usage_aggregates_v2=on)
 Schedule::job(new AggregateUsageJob)->everyFiveMinutes();
@@ -122,10 +129,10 @@ Schedule::job(new RunScheduledSpendExportsJob)->dailyAt('04:00')->withoutOverlap
 
 // Accounting (Stage 3): weekly spend digest to tenant admins (Mon 07:30) —
 // gated per tenant by the spend.weekly_digest flag / SPEND_WEEKLY_DIGEST env
-Schedule::job(new \App\Jobs\WeeklySpendDigestJob)->weeklyOn(1, '07:30')->withoutOverlapping();
+Schedule::job(new WeeklySpendDigestJob)->weeklyOn(1, '07:30')->withoutOverlapping();
 
 // Knowledge brain (ADR-0002 D2): hourly re-projection of business context for tenants whose source tables changed
-Schedule::job(new \App\Jobs\BrainSyncJob)->hourly()->withoutOverlapping();
+Schedule::job(new BrainSyncJob)->hourly()->withoutOverlapping();
 
 // Operating brain (ADR-0002): free agent runs whose worker lease expired.
-Schedule::job(new \App\Jobs\FailStaleAgentRunsJob)->everyTenMinutes()->withoutOverlapping();
+Schedule::job(new FailStaleAgentRunsJob)->everyTenMinutes()->withoutOverlapping();

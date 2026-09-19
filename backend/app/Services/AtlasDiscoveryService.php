@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Decides whether Atlas should ask discovery questions or act on a request,
@@ -52,6 +53,7 @@ class AtlasDiscoveryService
 
     /** @var array<string, float>|null skill slug => max replaces[] cost (USD/yr) */
     private ?array $replacesCostCache = null;
+
     private const VAGUE_PATTERNS = [
         'help me',
         'get started',
@@ -318,7 +320,7 @@ class AtlasDiscoveryService
      * (mode=answer) writes to the brain section and stamps the thread.
      *
      * @param  object|null  $matchedSkill  SkillCard (or any object exposing slug / card) from SkillRegistry::matchIntent()
-     * @param  string|null  $mode          chat (default) | answer (message answers the last question) | skip
+     * @param  string|null  $mode  chat (default) | answer (message answers the last question) | skip
      * @return array{question: string, key: string, source: string, path: ?string, section: ?string, run_id: ?string, skill: ?string, score: float, next_step: ?array, thread_id: ?string}|null
      */
     public function oneMoreQuestion(
@@ -1093,8 +1095,8 @@ class AtlasDiscoveryService
         }
         $file = (string) config('agents.brain_manifest', '');
         try {
-            $this->manifestCache = $file !== '' && is_file($file) && class_exists(\Symfony\Component\Yaml\Yaml::class)
-                ? (array) \Symfony\Component\Yaml\Yaml::parseFile($file)
+            $this->manifestCache = $file !== '' && is_file($file) && class_exists(Yaml::class)
+                ? (array) Yaml::parseFile($file)
                 : [];
         } catch (\Throwable $e) {
             Log::info('atlas.one_step.manifest_unreadable', ['error' => $e->getMessage()]);

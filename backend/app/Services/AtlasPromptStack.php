@@ -31,7 +31,7 @@ RULE;
      * Both extras are appended only when passed, so existing callers keep
      * the plain prompt.
      *
-     * @param  array<string, mixed>|null  $brain    {block: string} or key => value/array pairs
+     * @param  array<string, mixed>|null  $brain  {block: string} or key => value/array pairs
      * @param  array<string, mixed>|null  $oneStep  {question?: string, next_step?: {label, does, skill?}}
      */
     public function systemPrompt(?array $brain = null, ?array $oneStep = null): string

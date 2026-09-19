@@ -271,6 +271,7 @@ class BrainController extends Controller
         foreach ($files as $file) {
             if ($this->manifest->isAgentPrivate($file->path)) {
                 $withheld++;
+
                 continue;
             }
             [$section, $snippet] = self::locate((string) $file->content, $q);

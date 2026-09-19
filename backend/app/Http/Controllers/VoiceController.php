@@ -661,7 +661,7 @@ class VoiceController extends Controller
     {
         try {
             // Resolve tenant for this call (needed for the job)
-            $call     = \App\Models\VoiceCall::where('call_sid', $callSid)->select('tenant_id')->first();
+            $call = VoiceCall::where('call_sid', $callSid)->select('tenant_id')->first();
             $tenantId = (string) ($call?->tenant_id ?? '');
 
             // Phase A path: intelligence/main.py consumes agent:dispatch with
@@ -672,13 +672,13 @@ class VoiceController extends Controller
             if ($tenantId !== '') {
                 $dispatchMessage = json_encode([
                     'tenant_id' => $tenantId,
-                    'agent_id'  => 'nexus',
-                    'intent'    => 'voice.post_call_process',
-                    'context'   => [
-                        'call_sid'     => $callSid,
-                        'tenant_id'    => $tenantId,
+                    'agent_id' => 'nexus',
+                    'intent' => 'voice.post_call_process',
+                    'context' => [
+                        'call_sid' => $callSid,
+                        'tenant_id' => $tenantId,
                         'target_agent' => 'nexus',
-                        'channel'      => 'voice',
+                        'channel' => 'voice',
                     ],
                 ]);
 
@@ -687,7 +687,7 @@ class VoiceController extends Controller
             } else {
                 Log::warning('voice.post_call_dispatch_skipped', [
                     'call_sid' => $callSid,
-                    'reason'   => 'no voice_calls row / tenant for this CallSid',
+                    'reason' => 'no voice_calls row / tenant for this CallSid',
                 ]);
             }
 

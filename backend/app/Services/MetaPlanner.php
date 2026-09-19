@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Event;
-use App\Models\Tenant;
 use App\Events\AgentRunUpdated;
 use App\Jobs\RunSkillJob;
 use App\Models\AgentRun;
+use App\Models\Event;
+use App\Models\Tenant;
 use App\Services\Agents\AgentRunService;
 use App\Services\Agents\Collaborators;
 use App\Services\Agents\IdentityResolver;
@@ -348,7 +348,7 @@ class MetaPlanner
         if (! $agent || $agent->status !== 'active') {
             return false;
         }
-        
+
         // Skill runs (dispatchRun): the agent must list the skill in
         // config.skills, or be the identity identities.yaml / the card maps
         // it to. Capabilities are not consulted for run_skill intents.

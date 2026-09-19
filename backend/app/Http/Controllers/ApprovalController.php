@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Approval;
 use App\Services\ApprovalEngine;
 use App\Services\EventStore;
-use App\Services\Outreach\Bot\OutreachReplyService;
-use App\Services\Sales\FunnelSetupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -177,7 +175,7 @@ class ApprovalController extends Controller
         // when their approval is granted, rather than resuming a paused DAG.
         // Driven by config/approvals.php through ApprovalEngine so the
         // single-stage and chained paths fire exactly the same hooks.
-        app(\App\Services\ApprovalEngine::class)->fireResourceHook(
+        app(ApprovalEngine::class)->fireResourceHook(
             (string) $approval->resource_type,
             $tenantId,
             (string) $approval->resource_id,
@@ -266,7 +264,7 @@ class ApprovalController extends Controller
         }
 
         // Same registry-driven hooks as approve() (config/approvals.php).
-        app(\App\Services\ApprovalEngine::class)->fireResourceHook(
+        app(ApprovalEngine::class)->fireResourceHook(
             (string) $approval->resource_type,
             $tenantId,
             (string) $approval->resource_id,
