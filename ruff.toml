@@ -1,17 +1,43 @@
-[tool.ruff]
+# Ruff configuration for inference/, intelligence/ and services/.
+#
+# Until 2026-09-19 this file was written in pyproject.toml form — [tool.ruff],
+# [tool.ruff.lint], [tool.ruff.per-file-ignores]. A standalone ruff.toml takes
+# those settings at the top level and rejects the table prefix with
+# "unknown field `tool`", so every ruff job exited 2 on a parse error and not
+# one Python file in this repo had ever been linted. The three blocking jobs
+# had been reporting a clean bill of health for a check that never ran.
 line-length = 100
 target-version = "py311"
-select = ["E", "F", "W", "I", "N", "D"]
-ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106"]
 
-[tool.ruff.lint]
-extend-select = ["B", "C4", "SIM"]
+[lint]
+select = ["E", "F", "W", "I", "N", "B", "C4", "SIM"]
+ignore = [
+    # Line length is enforced by the formatter, not the linter: E501 fires on
+    # long URLs and comments the formatter cannot split anyway.
+    "E501",
+]
 
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401", "D104"]
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
-[tool.ruff.format]
+[format]
 quote-style = "single"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[lint.flake8-bugbear]
+# FastAPI's documented idiom is a call in the argument default — `Depends(...)`,
+# `Query(...)`, `File(...)`. B008 exists for mutable defaults like `[]`, which
+# these are not, so the rule stays on everywhere else and these are named.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
