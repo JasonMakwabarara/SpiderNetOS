@@ -19,6 +19,6 @@
     "mcp:inspect": "cd services/mcp-server && npm run inspect"
   },
   "devDependencies": {
-    "turbo": "^2.0.0"
+    "turbo": "^2.10.13"
   }
 }
