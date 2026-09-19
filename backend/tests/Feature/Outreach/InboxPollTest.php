@@ -192,7 +192,11 @@ class InboxPollTest extends OutreachTestCase
             && $m->subjectLine === 'Re: Partnering with Hannah AI: 30% recurring for your audience'
             && str_contains($m->bodyText, 'Monthly via Affonso'));
 
-        $out = ConversationMessage::forTenant($this->tenant->id)->where('direction', 'out')->orderByDesc('created_at')->first();
+        // Two outbound rows exist by now — the invite and this reply — and
+        // `timestamps()` is second-precision on Postgres, so ordering by
+        // created_at picks between them arbitrarily. Select the reply by its body.
+        $out = ConversationMessage::forTenant($this->tenant->id)->where('direction', 'out')
+            ->where('body', 'like', '%Monthly via Affonso%')->firstOrFail();
         $this->assertSame('q@creator.test', $out->in_reply_to);
         $this->assertSame((string) $this->admin->id, $out->sent_by);
 

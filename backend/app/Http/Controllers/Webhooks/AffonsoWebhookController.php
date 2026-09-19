@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\HandleAffonsoWebhookJob;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,21 +30,23 @@ class AffonsoWebhookController extends Controller
 
         $receiptId = (string) Str::uuid();
 
-        try {
-            DB::table('webhook_receipts')->insert([
-                'id' => $receiptId,
-                'tenant_id' => $tenant,
-                'provider' => 'affonso',
-                'event_id' => mb_substr($eventId, 0, 128),
-                'event_type' => mb_substr($type, 0, 64),
-                'payload' => json_encode($payload, JSON_UNESCAPED_SLASHES),
-                'received_at' => now(),
-            ]);
-        } catch (QueryException $e) {
-            if (in_array((string) $e->getCode(), ['23000', '23505'], true) || str_contains(strtolower($e->getMessage()), 'unique')) {
-                return response()->json(['received' => true, 'duplicate' => true]);
-            }
-            throw $e;
+        // insertOrIgnore, not insert-and-catch. Postgres aborts the entire
+        // transaction on a failed INSERT, so catching the unique violation and
+        // carrying on left the connection unusable — every query after it died
+        // with "current transaction is aborted". ON CONFLICT DO NOTHING never
+        // raises, and a return of 0 rows is the duplicate.
+        $inserted = DB::table('webhook_receipts')->insertOrIgnore([
+            'id' => $receiptId,
+            'tenant_id' => $tenant,
+            'provider' => 'affonso',
+            'event_id' => mb_substr($eventId, 0, 128),
+            'event_type' => mb_substr($type, 0, 64),
+            'payload' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+            'received_at' => now(),
+        ]);
+
+        if ($inserted === 0) {
+            return response()->json(['received' => true, 'duplicate' => true]);
         }
 
         HandleAffonsoWebhookJob::dispatch($tenant, $receiptId);
