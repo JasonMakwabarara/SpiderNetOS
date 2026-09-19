@@ -12,7 +12,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        # pgvector, not plain postgres: the memory_nodes migration creates a
+        # vector column on pgsql lanes (feature-postgres.yml uses the same image).
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -56,6 +58,11 @@ jobs:
           sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
           sed -i 's/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
           grep -q '^CACHE_STORE=' .env && sed -i 's/CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
+
+      - name: Enable pgvector
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Generate key and migrate
         run: |
