@@ -33,7 +33,10 @@ class VoicePersonaApiTest extends VoiceTestCase
         $this->assertStringContainsString('Zimbabwean man', $design->meta['voice_description']);
         $zulu = VoicePersona::where('slug', 'intron-en-zulu-male')->firstOrFail();
         $this->assertTrue($zulu->is_active);
-        $this->assertSame(['voice_language' => 'en', 'voice_accent' => 'zulu', 'voice_gender' => 'male'], $zulu->meta['intron']);
+        // assertEquals, not assertSame: this round-trips through a jsonb column and
+        // Postgres does not preserve object key order, so identity would compare the
+        // storage engine's ordering rather than the value.
+        $this->assertEquals(['voice_language' => 'en', 'voice_accent' => 'zulu', 'voice_gender' => 'male'], $zulu->meta['intron']);
         $this->assertSame(['character:sentinel'], $zulu->recommended_for);
         $this->assertSame('stock', $zulu->consentType());
 
@@ -153,7 +156,8 @@ class VoicePersonaApiTest extends VoiceTestCase
             ->assertJsonPath('data.resolved_from', 'user');
         $member->refresh();
         $this->assertSame('fish-kenyan', $member->voice_persona_slug);
-        $this->assertSame(['theme' => 'dark', 'atlas_speak' => true, 'atlas_browser_fallback' => false], $member->preferences);
+        // jsonb column read back: Postgres does not preserve key order.
+        $this->assertEquals(['theme' => 'dark', 'atlas_speak' => true, 'atlas_browser_fallback' => false], $member->preferences);
 
         // Partial update leaves the persona alone; unknown and malformed slugs are refused.
         $this->api($member)->putJson('/api/me/voice', ['speak_enabled' => false])->assertOk()->assertJsonPath('data.persona_slug', 'fish-kenyan');
@@ -166,12 +170,12 @@ class VoicePersonaApiTest extends VoiceTestCase
         $this->api($member)->putJson('/api/admin/tenant/voice-default', ['persona_slug' => 'eleven-leah'])->assertForbidden();
         $this->api()->putJson('/api/admin/tenant/voice-default', ['persona_slug' => 'eleven-leah'])
             ->assertOk()->assertJsonPath('data.default_persona', 'eleven-leah')->assertJsonPath('data.persona.slug', 'eleven-leah');
-        $this->assertSame(['brand' => ['colour' => 'teal'], 'voice' => ['default_persona' => 'eleven-leah']], $this->tenant->fresh()->settings);
+        $this->assertEquals(['brand' => ['colour' => 'teal'], 'voice' => ['default_persona' => 'eleven-leah']], $this->tenant->fresh()->settings);
         $this->api($member)->getJson('/api/me/voice')->assertJsonPath('data.resolved_from', 'tenant')->assertJsonPath('data.resolved_persona.slug', 'eleven-leah');
 
         $this->api()->putJson('/api/admin/tenant/voice-default', ['persona_slug' => 'nobody'])->assertStatus(422);
         $this->api()->putJson('/api/admin/tenant/voice-default', [])->assertStatus(422);
         $this->api()->putJson('/api/admin/tenant/voice-default', ['persona_slug' => null])->assertOk();
-        $this->assertSame(['brand' => ['colour' => 'teal'], 'voice' => []], $this->tenant->fresh()->settings);
+        $this->assertEquals(['brand' => ['colour' => 'teal'], 'voice' => []], $this->tenant->fresh()->settings);
     }
 }

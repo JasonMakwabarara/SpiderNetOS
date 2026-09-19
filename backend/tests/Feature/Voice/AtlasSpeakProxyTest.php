@@ -88,7 +88,9 @@ class AtlasSpeakProxyTest extends VoiceTestCase
         $payload = $usage->first()->payload;
         $this->assertSame('tts', $payload['resource_type']);
         $this->assertEqualsWithDelta(mb_strlen($normalized) / 1000 * 0.3, $payload['cost_usd'], 0.000001);
-        $this->assertSame(['surface' => 'atlas_speak', 'persona' => 'eleven-leah', 'provider' => 'elevenlabs', 'fallback_from' => null,
+        // assertEquals, not assertSame: the event payload is stored as jsonb and
+        // Postgres does not preserve object key order.
+        $this->assertEquals(['surface' => 'atlas_speak', 'persona' => 'eleven-leah', 'provider' => 'elevenlabs', 'fallback_from' => null,
             'characters' => mb_strlen($normalized), 'user_id' => (string) $this->admin->id], $payload['metadata']);
     }
 

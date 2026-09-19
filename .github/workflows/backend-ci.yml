@@ -27,6 +27,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # FeatureFlag reads Redis directly (not through the cache store), so the
+      # unit suite needs a real server even with CACHE_STORE=array.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +66,7 @@ jobs:
           # Postgres is published on localhost and there is no Redis service, so
           # keep cache/session/queue off Redis for this job.
           sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
           sed -i 's/CACHE_DRIVER=.*/CACHE_DRIVER=array/' .env
           sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
           sed -i 's/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
