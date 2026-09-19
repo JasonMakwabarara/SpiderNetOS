@@ -12,7 +12,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        # pgvector, not plain postgres: the memory_nodes migration creates a
+        # vector column on pgsql lanes (feature-postgres.yml uses the same image).
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -24,6 +26,18 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      # FeatureFlag reads Redis directly (not through the cache store), so the
+      # unit suite needs a real server even with CACHE_STORE=array.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
@@ -41,11 +55,27 @@ jobs:
       - name: Setup .env
         run: |
           cd backend
-          cp .env.example .env
+          # .env.example lives at the repo root; there has never been a
+          # backend/.env.example, so this step failed on every run.
+          cp ../.env.example .env
           sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env
           sed -i 's/DB_DATABASE=.*/DB_DATABASE=spidernet_test/' .env
           sed -i 's/DB_USERNAME=.*/DB_USERNAME=postgres/' .env
           sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=postgres/' .env
+          # The example points at the docker-compose service names; on the runner
+          # Postgres is published on localhost and there is no Redis service, so
+          # keep cache/session/queue off Redis for this job.
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+          sed -i 's/CACHE_DRIVER=.*/CACHE_DRIVER=array/' .env
+          sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
+          sed -i 's/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
+          grep -q '^CACHE_STORE=' .env && sed -i 's/CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
+
+      - name: Enable pgvector
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d spidernet_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Generate key and migrate
         run: |
