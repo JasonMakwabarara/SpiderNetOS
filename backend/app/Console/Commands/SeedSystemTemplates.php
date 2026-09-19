@@ -124,7 +124,7 @@ class SeedSystemTemplates extends Command
 
     private static function templatesPath(): string
     {
-        $root = rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        $root = rtrim((string) config('feature_packs.root'), '/');
 
         return $root.'/business-systemization/templates';
     }

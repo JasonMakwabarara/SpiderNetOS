@@ -15,6 +15,10 @@
 */
 
 return [
+    // Local/testing escape hatch for webhook signature verification. Never
+    // consulted outside those environments (see VerifyDodoSignature).
+    'skip_signature_verify' => (bool) env('DODO_SKIP_SIGNATURE_VERIFY', false),
+
     'enabled' => env('DODO_ENABLED', false),
 
     // 'test' → test.dodopayments.com, 'live' → live.dodopayments.com

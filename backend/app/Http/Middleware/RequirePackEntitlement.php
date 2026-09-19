@@ -58,7 +58,7 @@ class RequirePackEntitlement
      */
     private function packPricing(string $packId): ?array
     {
-        $root = rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        $root = rtrim((string) config('feature_packs.root'), '/');
         $manifestPath = $root.'/'.$packId.'/pack.yaml';
 
         if (! is_readable($manifestPath)) {

@@ -6,5 +6,15 @@ parameters:
     level: 5
     paths:
         - app
+
+    ignoreErrors:
+        # minishlink/web-push is deliberately not installed: web push is a
+        # planned item, and WebPushService::configured() already requires
+        # class_exists(WebPush::class), so the service reports "not configured"
+        # and returns 0 rather than fataling. Installing the package is what
+        # turns the feature on; until then these references cannot resolve.
+        -
+            message: '#Minishlink\\WebPush#'
+            path: app/Services/Notifications/WebPushService.php
     # Pre-existing findings are frozen in phpstan-baseline.neon; new code
     # must be clean. Shrink the baseline over time, never grow it.

@@ -532,7 +532,7 @@ class FeaturePackController extends Controller
     private function packsRoot(): string
     {
 
-        return rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        return rtrim((string) config('feature_packs.root'), '/');
 
     }
 }
