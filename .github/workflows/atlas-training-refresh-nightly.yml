@@ -108,6 +108,10 @@ jobs:
       - name: Commit and push refresh
         if: steps.detect.outputs.has_input == 'true' && steps.detect.outputs.changed == 'true'
         shell: bash
+        # Context data reaches the shell through the environment, never through
+        # ${{ }} interpolation into the script itself.
+        env:
+          TARGET_REF: ${{ github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -117,4 +121,4 @@ jobs:
             exit 0
           fi
           git commit -m "chore(atlas): nightly refresh training bundle"
-          git push origin HEAD:${{ github.ref_name }}
+          git push origin "HEAD:$TARGET_REF"

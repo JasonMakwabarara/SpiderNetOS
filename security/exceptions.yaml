@@ -1,0 +1,50 @@
+# Security findings that are not fixed, and why.
+#
+# A suppression without a reason is indistinguishable from a bug nobody looked
+# at, so every entry here carries a classification, the person who owns the
+# decision, and a date to look again. CI fails on a suppression that is not
+# listed here.
+#
+# classification:
+#   TRUE_POSITIVE  — real, and fixed elsewhere; listed only while in flight
+#   FALSE_POSITIVE — the rule matched something that is not the thing it detects
+#   ACCEPTED_RISK  — real, understood, and accepted for a stated reason
+#   OBSOLETE_RULE  — the rule no longer describes a risk in this codebase
+
+version: 1
+
+exceptions:
+  - rule_id: generic.secrets.security.detected-telegram-bot-api-key.detected-telegram-bot-api-key
+    locations:
+      - docker-compose.unified.yml:91
+      - docker-compose.unified.yml:174
+      - docker-compose.unified.yml:207
+    classification: FALSE_POSITIVE
+    reason: >
+      Matches the local-development fallback for APP_KEY,
+      "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", which is a
+      placeholder of repeated A's, not a Telegram bot token. There is no
+      Telegram integration in this repository. The value is a compose default
+      that is overridden by the real APP_KEY in every deployed environment.
+    owner: jason
+    review_date: 2027-03-19
+
+  - rule_id: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+    locations:
+      - ops/mechanic-daemon.py:178
+      - ops/mechanic-daemon.py:203
+      - ops/mechanic-daemon.py:221
+    classification: ACCEPTED_RISK
+    reason: >
+      An operator-run auto-healing script, referenced by no compose file, unit
+      or workflow. The two dangerous call sites executed a command string
+      written by a model — and the "known fix" knowledge base is written by
+      that same model, so a cached fix has the same provenance. Both are now
+      behind MECHANIC_ALLOW_AI_COMMANDS, which is off unless an operator sets
+      it for a session; with it unset the command is printed and not run. The
+      third site runs a literal from the FIXES table in the same file with
+      values substituted from the static SERVICES map, and is compound shell
+      (cd X && Y) by nature. Open question for the owner: whether this script
+      should exist at all.
+    owner: jason
+    review_date: 2026-12-19

@@ -5,6 +5,7 @@ Port: 9200
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -155,9 +156,23 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Allowed origins come from CORS_ALLOW_ORIGINS (comma separated). The
+# previous allow_origins=["*"] with allow_credentials=True is worse than it
+# looks: Starlette echoes the caller's origin back, so any site could make
+# credentialed calls. These planes are called server to server, where CORS
+# does not apply at all, so the default only has to keep local browsers
+# working.
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        'CORS_ALLOW_ORIGINS', 'http://localhost:3000,http://localhost:5173'
+    ).split(',')
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -8,6 +8,7 @@ Learns from each fix to improve over time.
 
 import asyncio
 import httpx
+import os
 import subprocess
 import sqlite3
 import time
@@ -15,6 +16,12 @@ import json
 from datetime import datetime
 from pathlib import Path
 import hashlib
+
+# Running a string a model wrote as a shell command, on the host, is the exact
+# thing the rest of this system is built not to do — and the knowledge base is
+# written BY that model, so a cached "known fix" has the same provenance. Both
+# paths are off unless an operator turns them on for a specific session.
+ALLOW_AI_COMMANDS = os.getenv("MECHANIC_ALLOW_AI_COMMANDS", "").strip().lower() in ("1", "true", "yes")
 
 # Configuration
 SERVICES = {
@@ -172,6 +179,10 @@ class MechanicDaemon:
                 fix_cmd = fix_cmd.replace("{cmd}", config["cmd"])
             
             print(f"[MECHANIC] Applying hardcoded fix: {fix_cmd[:60]}...")
+            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+            # fix_cmd is a literal from FIXES in this file with {dir}/{cmd}
+            # substituted from the static SERVICES map. Nothing external reaches it,
+            # and the commands are compound shell (cd X && Y) by nature.
             result = subprocess.run(fix_cmd, shell=True, capture_output=True, text=True)
             
             if result.returncode == 0 or "already in use" not in result.stderr:
@@ -181,8 +192,14 @@ class MechanicDaemon:
         
         # Try known fix from KB
         known_fix = self.kb.find_fix(service, symptom_desc)
+        if known_fix and not ALLOW_AI_COMMANDS:
+            print("[MECHANIC] Known fix found but MECHANIC_ALLOW_AI_COMMANDS is not set; not running it.")
+            print(f"[MECHANIC] The command was: {known_fix}")
+            known_fix = None
         if known_fix:
-            print(f"[MECHANIC] Trying known fix from KB")
+            print("[MECHANIC] Trying known fix from KB")
+            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+            # Gated above; the operator has opted in for this session.
             result = subprocess.run(known_fix, shell=True, capture_output=True, text=True)
             if result.returncode == 0:
                 print(f"[MECHANIC] ✓ Known fix worked")
@@ -191,7 +208,13 @@ class MechanicDaemon:
         # Try AI-generated fix
         print(f"[MECHANIC] Consulting AI for new fix...")
         fix = await self.ask_ai_for_fix(service, symptom_desc)
+        if fix and not ALLOW_AI_COMMANDS:
+            print("[MECHANIC] The model proposed a fix. MECHANIC_ALLOW_AI_COMMANDS is not set, so it was not run.")
+            print(f"[MECHANIC] Proposed: {fix}")
+            fix = None
         if fix:
+            # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+            # Gated above; the operator has opted in for this session.
             result = subprocess.run(fix, shell=True, capture_output=True, text=True)
             if result.returncode == 0:
                 print(f"[MECHANIC] ✓ AI fix worked, saving to KB")

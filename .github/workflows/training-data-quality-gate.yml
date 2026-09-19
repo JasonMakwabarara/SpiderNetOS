@@ -31,10 +31,16 @@ jobs:
       - name: Detect changed bundle directories
         id: detect
         shell: bash
+        # github.base_ref is a branch name an outside contributor chooses.
+        # Interpolated straight into `run:` it is a shell injection into CI;
+        # through the environment it is only ever a string.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git fetch --no-tags --prune --depth=1 origin "${{ github.base_ref }}"
-            CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch --no-tags --prune --depth=1 origin "$BASE_REF"
+            CHANGED=$(git diff --name-only "origin/$BASE_REF"...HEAD)
           else
             CHANGED=$(git diff --name-only HEAD~1 HEAD || true)
           fi
