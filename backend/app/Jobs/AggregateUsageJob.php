@@ -12,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 /**
  * AggregateUsageJob
@@ -41,12 +42,13 @@ class AggregateUsageJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     private string $targetDate;
 
     /**
-     * @param string|null $date  ISO date override (Y-m-d). Defaults to yesterday.
+     * @param  string|null  $date  ISO date override (Y-m-d). Defaults to yesterday.
      */
     public function __construct(?string $date = null)
     {
@@ -55,8 +57,9 @@ class AggregateUsageJob implements ShouldQueue
 
     public function handle(): void
     {
-        if (!FeatureFlag::on('atlas.usage_aggregates_v2')) {
+        if (! FeatureFlag::on('atlas.usage_aggregates_v2')) {
             Log::info('[AggregateUsage] v2 flag is off — skipping.');
+
             return;
         }
 
@@ -66,12 +69,13 @@ class AggregateUsageJob implements ShouldQueue
 
         if ($tenants->isEmpty()) {
             Log::info('[AggregateUsage] No active tenants — skipping.');
+
             return;
         }
 
-        $rowsWritten  = 0;
-        $isShadow     = FeatureFlag::on('atlas.usage_aggregates_v2.shadow');
-        $isCutover    = FeatureFlag::on('atlas.usage_aggregates_v2.cutover');
+        $rowsWritten = 0;
+        $isShadow = FeatureFlag::on('atlas.usage_aggregates_v2.shadow');
+        $isCutover = FeatureFlag::on('atlas.usage_aggregates_v2.cutover');
 
         foreach ($tenants as $tenantId) {
             $rowsWritten += $this->aggregateForTenant($tenantId, $isShadow, $isCutover);
@@ -86,11 +90,11 @@ class AggregateUsageJob implements ShouldQueue
 
     private function aggregateForTenant(
         string $tenantId,
-        bool   $isShadow,
-        bool   $isCutover,
+        bool $isShadow,
+        bool $isCutover,
     ): int {
         // 1. Total daily spend from Redis counter
-        $redisKey   = sprintf('cost:daily:%s:%s', $tenantId, $this->targetDate);
+        $redisKey = sprintf('cost:daily:%s:%s', $tenantId, $this->targetDate);
         $totalSpend = (float) (Redis::get($redisKey) ?: 0.0);
 
         // 2. Tenant's current daily cost ceiling (for the cost_ceiling column)
@@ -108,7 +112,7 @@ class AggregateUsageJob implements ShouldQueue
             ->selectRaw(
                 "SUM(COALESCE((payload->>'tokens_input')::integer, 0) + COALESCE((payload->>'tokens_output')::integer, 0)) as total_tokens"
             )
-            ->selectRaw("COUNT(*) as total_calls")
+            ->selectRaw('COUNT(*) as total_calls')
             ->groupByRaw("payload->>'resource_type'")
             ->get();
 
@@ -116,8 +120,10 @@ class AggregateUsageJob implements ShouldQueue
             if ($totalSpend > 0) {
                 $this->upsertRow($tenantId, 'unclassified', $totalSpend, 0, 0, $costCeiling, $isShadow);
                 $this->emitPersistEvent($tenantId, 'unclassified', $totalSpend, 0, 0);
+
                 return 1;
             }
+
             return 0;
         }
 
@@ -125,9 +131,9 @@ class AggregateUsageJob implements ShouldQueue
 
         foreach ($breakdown as $row) {
             $resourceType = $row->resource_type ?? 'unclassified';
-            $cost         = (float) $row->total_cost;
-            $calls        = (int)   $row->total_calls;
-            $tokens       = (int)   $row->total_tokens;
+            $cost = (float) $row->total_cost;
+            $calls = (int) $row->total_calls;
+            $tokens = (int) $row->total_tokens;
 
             $this->upsertRow($tenantId, $resourceType, $cost, $calls, $tokens, $costCeiling, $isShadow);
             $this->emitPersistEvent($tenantId, $resourceType, $cost, $calls, $tokens);
@@ -146,23 +152,23 @@ class AggregateUsageJob implements ShouldQueue
     private function upsertRow(
         string $tenantId,
         string $resourceType,
-        float  $totalCost,
-        int    $totalCalls,
-        int    $totalTokens,
-        float  $costCeiling,
-        bool   $isShadow,
+        float $totalCost,
+        int $totalCalls,
+        int $totalTokens,
+        float $costCeiling,
+        bool $isShadow,
     ): void {
         $matchKey = [
-            'tenant_id'     => $tenantId,
-            'date'          => $this->targetDate,
+            'tenant_id' => $tenantId,
+            'date' => $this->targetDate,
             'resource_type' => $resourceType,
         ];
 
         $values = [
-            'total_cost'    => $totalCost,
-            'total_calls'   => $totalCalls,
-            'total_tokens'  => $totalTokens,
-            'cost_ceiling'  => $costCeiling,
+            'total_cost' => $totalCost,
+            'total_calls' => $totalCalls,
+            'total_tokens' => $totalTokens,
+            'cost_ceiling' => $costCeiling,
             'calculated_at' => now(),
         ];
 
@@ -177,9 +183,9 @@ class AggregateUsageJob implements ShouldQueue
                 $this->targetDate,
                 $resourceType,
                 existingCalls: $existing ? (int) $existing->total_calls : null,
-                newCalls:      $totalCalls,
-                existingCost:  $existing ? (float) $existing->total_cost : null,
-                newCost:       $totalCost,
+                newCalls: $totalCalls,
+                existingCost: $existing ? (float) $existing->total_cost : null,
+                newCost: $totalCost,
             );
         }
 
@@ -192,37 +198,37 @@ class AggregateUsageJob implements ShouldQueue
     private function emitPersistEvent(
         string $tenantId,
         string $resourceType,
-        float  $totalCost,
-        int    $totalCalls,
-        int    $totalTokens,
+        float $totalCost,
+        int $totalCalls,
+        int $totalTokens,
     ): void {
         try {
             DB::table('event_log')->insert([
-                'id'             => \Illuminate\Support\Str::uuid(),
-                'tenant_id'      => $tenantId,
+                'id' => Str::uuid(),
+                'tenant_id' => $tenantId,
                 'aggregate_type' => 'usage_aggregate',
-                'aggregate_id'   => $tenantId . ':' . $this->targetDate . ':' . $resourceType,
-                'event_type'     => 'usage.aggregate.persisted',
-                'sequence_num'   => 0,
-                'occurred_at'    => now(),
-                'payload'        => json_encode([
+                'aggregate_id' => $tenantId.':'.$this->targetDate.':'.$resourceType,
+                'event_type' => 'usage.aggregate.persisted',
+                'sequence_num' => 0,
+                'occurred_at' => now(),
+                'payload' => json_encode([
                     'schema_version' => '2.0.0',
-                    'tenant_id'      => $tenantId,
-                    'date'           => $this->targetDate,
-                    'resource_type'  => $resourceType,
-                    'total_calls'    => $totalCalls,
-                    'total_tokens'   => $totalTokens,
-                    'total_cost'     => $totalCost,
-                    'calculated_at'  => now()->toIso8601String(),
-                    'atlas'          => [
+                    'tenant_id' => $tenantId,
+                    'date' => $this->targetDate,
+                    'resource_type' => $resourceType,
+                    'total_calls' => $totalCalls,
+                    'total_tokens' => $totalTokens,
+                    'total_cost' => $totalCost,
+                    'calculated_at' => now()->toIso8601String(),
+                    'atlas' => [
                         'ts_signal' => 'observability_integrity',
                     ],
                 ]),
-                'metadata'       => json_encode([]),
+                'metadata' => json_encode([]),
             ]);
         } catch (\Throwable $e) {
             // Never let telemetry block the primary write
-            Log::warning('[AggregateUsage] Failed to emit persist event: ' . $e->getMessage());
+            Log::warning('[AggregateUsage] Failed to emit persist event: '.$e->getMessage());
         }
     }
 }

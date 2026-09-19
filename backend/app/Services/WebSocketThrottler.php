@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Broadcasting\BroadcastManager;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * WebSocketThrottler — SpiderNet OS v3.2
@@ -43,10 +43,10 @@ class WebSocketThrottler
      *   - Entries older than 1 second are pruned.
      *   - If the remaining cardinality is below the limit, the event passes.
      *
-     * @param  string  $tenantId   Tenant scope.
+     * @param  string  $tenantId  Tenant scope.
      * @param  string  $eventType  Logical event name (informational — logged but
      *                             not factored into separate per-type limits).
-     * @return bool    True if the tenant may broadcast right now.
+     * @return bool True if the tenant may broadcast right now.
      */
     public function shouldBroadcast(string $tenantId, string $eventType): bool
     {
@@ -62,10 +62,11 @@ class WebSocketThrottler
 
         if ($currentCount >= self::MAX_EVENTS_PER_SECOND) {
             Log::debug('WebSocket throttle hit', [
-                'tenant_id'  => $tenantId,
+                'tenant_id' => $tenantId,
                 'event_type' => $eventType,
-                'rate'       => $currentCount,
+                'rate' => $currentCount,
             ]);
+
             return false;
         }
 
@@ -78,14 +79,14 @@ class WebSocketThrottler
      * silently dropped and `false` is returned.
      *
      * @param  string  $tenantId  Tenant scope.
-     * @param  string  $channel   Broadcast channel name.
-     * @param  string  $event     Event name.
-     * @param  array   $data      Payload data.
-     * @return bool    True if the event was actually broadcast.
+     * @param  string  $channel  Broadcast channel name.
+     * @param  string  $event  Event name.
+     * @param  array  $data  Payload data.
+     * @return bool True if the event was actually broadcast.
      */
     public function broadcast(string $tenantId, string $channel, string $event, array $data = []): bool
     {
-        if (!$this->shouldBroadcast($tenantId, $event)) {
+        if (! $this->shouldBroadcast($tenantId, $event)) {
             return false;
         }
 
@@ -96,15 +97,15 @@ class WebSocketThrottler
         $this->broadcaster->connection()->send(
             json_encode([
                 'channel' => $channel,
-                'event'   => $event,
-                'data'    => $data,
+                'event' => $event,
+                'data' => $data,
             ], JSON_THROW_ON_ERROR),
         );
 
         Log::debug('WebSocket event broadcast', [
             'tenant_id' => $tenantId,
-            'channel'   => $channel,
-            'event'     => $event,
+            'channel' => $channel,
+            'event' => $event,
         ]);
 
         return true;
@@ -114,8 +115,7 @@ class WebSocketThrottler
      * Return the current event rate (events in the last 1-second window)
      * for the given tenant.
      *
-     * @param  string  $tenantId
-     * @return int     Number of events in the current 1 s window.
+     * @return int Number of events in the current 1 s window.
      */
     public function getEventRate(string $tenantId): int
     {
@@ -137,9 +137,9 @@ class WebSocketThrottler
      */
     private function recordEvent(string $tenantId): void
     {
-        $key   = $this->redisKey($tenantId);
-        $now   = microtime(true);
-        $member = $now . ':' . bin2hex(random_bytes(4)); // unique member
+        $key = $this->redisKey($tenantId);
+        $now = microtime(true);
+        $member = $now.':'.bin2hex(random_bytes(4)); // unique member
 
         Redis::zadd($key, (string) $now, $member);
         Redis::expire($key, self::COUNTER_TTL_SECONDS);
@@ -150,6 +150,6 @@ class WebSocketThrottler
      */
     private function redisKey(string $tenantId): string
     {
-        return self::KEY_PREFIX . $tenantId;
+        return self::KEY_PREFIX.$tenantId;
     }
 }

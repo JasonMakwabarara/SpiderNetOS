@@ -25,14 +25,14 @@ class EnforcePlanLimits
     {
         $tenantId = $request->attributes->get('tenant_id');
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             // No tenant resolved yet — pass through (ResolveTenant runs first)
             return $next($request);
         }
 
         $costStatus = $this->costGovernor->canExecute($tenantId);
 
-        if (!$costStatus['allowed']) {
+        if (! $costStatus['allowed']) {
             return response()->json([
                 'message' => 'Budget exceeded — request blocked by CostGovernor',
                 'cost_status' => [

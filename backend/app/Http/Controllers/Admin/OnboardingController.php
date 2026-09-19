@@ -20,7 +20,9 @@ class OnboardingController extends Controller
 
     /** Enums: 5 persisted steps + 1 observation + schema version */
     private const PERSISTED_STEPS = ['tenant', 'budget', 'invites', 'strictness', 'branding'];
+
     private const OBSERVATION_STEPS = ['observability'];
+
     private const SCHEMA_VERSION = 1;
 
     /**
@@ -48,7 +50,7 @@ class OnboardingController extends Controller
     {
         $validated = $request->validate([
             'version' => 'required|integer|in:1',
-            'step' => 'required|string|in:' . implode(',', self::PERSISTED_STEPS),
+            'step' => 'required|string|in:'.implode(',', self::PERSISTED_STEPS),
             'data' => 'required|array',
         ]);
 
@@ -113,7 +115,7 @@ class OnboardingController extends Controller
     {
         $validated = $request->validate([
             'version' => 'required|integer|in:1',
-            'step' => 'required|string|in:' . implode(',', self::OBSERVATION_STEPS),
+            'step' => 'required|string|in:'.implode(',', self::OBSERVATION_STEPS),
         ]);
 
         $user = $request->user();
@@ -157,12 +159,12 @@ class OnboardingController extends Controller
         // Verify all persisted steps are present
         $missing = [];
         foreach (self::PERSISTED_STEPS as $step) {
-            if (!isset($onboarding[$step])) {
+            if (! isset($onboarding[$step])) {
                 $missing[] = $step;
             }
         }
 
-        if (!empty($missing)) {
+        if (! empty($missing)) {
             return response()->json([
                 'error' => 'Missing required steps',
                 'missing' => $missing,
@@ -312,7 +314,7 @@ class OnboardingController extends Controller
                 break;
 
             case 'budget':
-                if (!isset($data['monthly_limit_usd']) || $data['monthly_limit_usd'] <= 0) {
+                if (! isset($data['monthly_limit_usd']) || $data['monthly_limit_usd'] <= 0) {
                     return 'budget.monthly_limit_usd must be positive';
                 }
                 if (empty($data['currency'])) {
@@ -323,7 +325,7 @@ class OnboardingController extends Controller
             case 'invites':
                 if (isset($data['emails']) && is_array($data['emails'])) {
                     foreach ($data['emails'] as $email) {
-                        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                             return 'invites.emails contains invalid email';
                         }
                     }
@@ -334,13 +336,13 @@ class OnboardingController extends Controller
                 if (empty($data['automation_level'])) {
                     return 'strictness.automation_level is required';
                 }
-                if (!in_array($data['automation_level'], ['manual', 'assisted', 'autonomous'], true)) {
+                if (! in_array($data['automation_level'], ['manual', 'assisted', 'autonomous'], true)) {
                     return 'strictness.automation_level must be manual, assisted, or autonomous';
                 }
                 break;
 
             case 'branding':
-                if (isset($data['primary_color']) && !preg_match('/^#[a-fA-F0-9]{6}$/', $data['primary_color'])) {
+                if (isset($data['primary_color']) && ! preg_match('/^#[a-fA-F0-9]{6}$/', $data['primary_color'])) {
                     return 'branding.primary_color must be valid hex color';
                 }
                 break;

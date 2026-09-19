@@ -3,16 +3,15 @@
 namespace App\Services;
 
 use App\Models\Event;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\TenantKeyManager;
 
 class EventStore
 {
     public function __construct(
         private readonly TenantKeyManager $tenantKeyManager
-    ) {
-    }
+    ) {}
 
     /**
      * Append event to event_log.
@@ -50,16 +49,16 @@ class EventStore
             $resolvedExpectedVersion
         ) {
             $currentVersion = $this->getCurrentVersion($resolvedAggregateType, $resolvedAggregateId);
-            
+
             if ($resolvedExpectedVersion !== null && $currentVersion !== $resolvedExpectedVersion) {
                 throw new \RuntimeException(
                     "Concurrency conflict: expected version {$resolvedExpectedVersion}, found {$currentVersion}"
                 );
             }
-            
+
             $version = $currentVersion + 1;
             $sequenceNum = $this->getNextSequenceNum();
-            
+
             $metadataWithRequest = array_merge($resolvedMetadata, [
                 'ip' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -106,15 +105,15 @@ class EventStore
                 'hash' => $eventHash,
                 'previous_hash' => $previousHash,
             ]);
-            
+
             $event->save();
-            
+
             $this->dispatchToProjectors($event);
-            
+
             return $event;
         });
     }
-    
+
     public function appendMany(array $events): array
     {
         return DB::transaction(function () use ($events) {
@@ -130,53 +129,54 @@ class EventStore
                     $event['expected_version'] ?? null
                 );
             }
+
             return $saved;
         });
     }
-    
+
     public function getEvents(
         string $aggregateType,
         string $aggregateId,
         ?int $fromVersion = null
-    ): \Illuminate\Database\Eloquent\Collection {
+    ): Collection {
         $query = Event::forAggregate($aggregateType, $aggregateId);
-        
+
         if ($fromVersion !== null) {
             $query->where('version', '>=', $fromVersion);
         }
-        
+
         return $query->get();
     }
-    
-    public function getAllEvents(?string $since = null): \Illuminate\Database\Eloquent\Collection
+
+    public function getAllEvents(?string $since = null): Collection
     {
         $query = Event::orderBy('sequence_num');
-        
+
         if ($since) {
             $query->since($since);
         }
-        
+
         return $query->get();
     }
-    
+
     public function rebuildProjection(string $projectionName, ?string $tenantId = null): void
     {
         DB::transaction(function () use ($projectionName, $tenantId) {
             DB::table($projectionName)->truncate();
-            
+
             $query = Event::orderBy('sequence_num');
             if ($tenantId) {
                 $query->forTenant($tenantId);
             }
-            
+
             $projector = $this->resolveProjector($projectionName);
-            
+
             foreach ($query->cursor() as $event) {
                 $projector->handle($event);
             }
         });
     }
-    
+
     private function normalizeAppendArguments(
         string $aggregateType,
         mixed $aggregateId,
@@ -222,13 +222,14 @@ class EventStore
         return Event::forAggregate($aggregateType, $aggregateId)
             ->max('version') ?? 0;
     }
-    
+
     private function getNextSequenceNum(): int
     {
         $row = DB::table('event_sequence')->lockForUpdate()->first();
 
-        if (!$row) {
+        if (! $row) {
             DB::table('event_sequence')->insert(['id' => 1, 'next_num' => 2]);
+
             return 1;
         }
 
@@ -237,11 +238,11 @@ class EventStore
 
         return $num;
     }
-    
+
     private function dispatchToProjectors(Event $event): void
     {
         $projectors = config('projections.projectors', []);
-        
+
         foreach ($projectors as $projectorClass) {
             $projector = app($projectorClass);
             if ($projector->accepts($event)) {
@@ -249,11 +250,12 @@ class EventStore
             }
         }
     }
-    
+
     private function resolveProjector(string $projectionName): object
     {
         $map = config('projections.map', []);
         $class = $map[$projectionName] ?? throw new \RuntimeException("Unknown projection: {$projectionName}");
+
         return app($class);
     }
 }

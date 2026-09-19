@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Financial;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Services\Financial\InvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ class InvoiceController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        
+
         $query = Invoice::forTenant($tenant->id)->with('lineItems');
 
         if ($request->has('status')) {

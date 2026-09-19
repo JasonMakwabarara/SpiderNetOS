@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Models\Budget;
 use App\Models\FinancialAlert;
 use App\Models\Transaction;
-use App\Models\Payment;
-use App\Models\Wallet;
-use App\Models\Budget;
 use App\Services\EventStore;
-use Illuminate\Support\Facades\DB;
 
 class FinancialGovernor
 {
@@ -36,6 +33,7 @@ class FinancialGovernor
                 "Budget '{$budget->name}' exceeded",
                 "Spent {$newSpent} of {$budget->amount} ({$utilization}%)"
             );
+
             return ['allowed' => false, 'reason' => 'Budget exceeded', 'utilization' => $utilization];
         }
 
@@ -101,8 +99,8 @@ class FinancialGovernor
                 $tenantId,
                 'fraud_suspected',
                 'critical',
-                "Suspicious transaction detected",
-                "Transaction {$transactionId}: {$amount} via {$method}. Flags: " . implode(', ', $flags),
+                'Suspicious transaction detected',
+                "Transaction {$transactionId}: {$amount} via {$method}. Flags: ".implode(', ', $flags),
                 ['transaction_id' => $transactionId, 'risk_score' => $riskScore, 'flags' => $flags]
             );
         }

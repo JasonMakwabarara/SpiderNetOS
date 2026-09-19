@@ -17,15 +17,15 @@ class DodoSignatureVerificationTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('dodo.webhook_secret', 'whsec_' . base64_encode(self::RAW_KEY));
+        config()->set('dodo.webhook_secret', 'whsec_'.base64_encode(self::RAW_KEY));
         config()->set('dodo.webhook_tolerance_seconds', 300);
 
-        $this->service = new DodoPaymentsService();
+        $this->service = new DodoPaymentsService;
     }
 
     private function sign(string $payload, string $webhookId, string $timestamp): string
     {
-        return 'v1,' . base64_encode(
+        return 'v1,'.base64_encode(
             hash_hmac('sha256', "{$webhookId}.{$timestamp}.{$payload}", self::RAW_KEY, true)
         );
     }
@@ -50,7 +50,7 @@ class DodoSignatureVerificationTest extends TestCase
         $webhookId = 'msg_456';
         $timestamp = (string) time();
 
-        $header = 'v1,' . base64_encode('bogus') . ' ' . $this->sign($payload, $webhookId, $timestamp);
+        $header = 'v1,'.base64_encode('bogus').' '.$this->sign($payload, $webhookId, $timestamp);
 
         $this->assertTrue($this->service->verifyWebhookSignature($payload, $webhookId, $timestamp, $header));
     }

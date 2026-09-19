@@ -316,7 +316,7 @@ class ExpenseService
     {
         $report = ExpenseReport::forTenant($tenantId)->find($reportId);
 
-        if (!$report || !in_array($report->status, ['submitted', 'awaiting_approval'], true)) {
+        if (! $report || ! in_array($report->status, ['submitted', 'awaiting_approval'], true)) {
             return;
         }
 
@@ -366,7 +366,7 @@ class ExpenseService
         return DB::transaction(function () use ($reportId, $tenantId) {
             $report = ExpenseReport::forTenant($tenantId)->findOrFail($reportId);
 
-            if (!in_array($report->status, ['draft', 'submitted'], true)) {
+            if (! in_array($report->status, ['draft', 'submitted'], true)) {
                 throw new \LogicException("Only draft or submitted reports can be voided. Current status: {$report->status}");
             }
 
@@ -428,7 +428,7 @@ class ExpenseService
     {
         $report = ExpenseReport::forTenant($tenantId)->findOrFail($reportId);
 
-        if (!$report->isDraft()) {
+        if (! $report->isDraft()) {
             throw new \LogicException("Expense report must be in draft status. Current status: {$report->status}");
         }
 

@@ -12,6 +12,8 @@ use App\Models\SpendExportSchedule;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Financial\LedgerService;
+use App\Services\Notifications\NotificationService;
+use App\Services\Spend\Accounting\AccountingExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -238,8 +240,8 @@ class AccountingExportTest extends TestCase
         ]);
 
         (new RunScheduledSpendExportsJob)->handle(
-            app(\App\Services\Spend\Accounting\AccountingExportService::class),
-            app(\App\Services\Notifications\NotificationService::class),
+            app(AccountingExportService::class),
+            app(NotificationService::class),
         );
 
         $this->assertSame(1, AccountingExport::forTenant($tenant->id)->count());
@@ -253,8 +255,8 @@ class AccountingExportTest extends TestCase
 
         // Same-week rerun is a no-op.
         (new RunScheduledSpendExportsJob)->handle(
-            app(\App\Services\Spend\Accounting\AccountingExportService::class),
-            app(\App\Services\Notifications\NotificationService::class),
+            app(AccountingExportService::class),
+            app(NotificationService::class),
         );
 
         $this->assertSame(1, AccountingExport::forTenant($tenant->id)->count());

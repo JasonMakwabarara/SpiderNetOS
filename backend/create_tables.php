@@ -1,16 +1,18 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 echo "Creating tables...\n";
 
 // Create reports table
-if (!Schema::hasTable('reports')) {
+if (! Schema::hasTable('reports')) {
     Schema::create('reports', function (Blueprint $table) {
         $table->uuid('id')->primary();
         $table->string('title');
@@ -26,7 +28,7 @@ if (!Schema::hasTable('reports')) {
 }
 
 // Create audit_logs table
-if (!Schema::hasTable('audit_logs')) {
+if (! Schema::hasTable('audit_logs')) {
     Schema::create('audit_logs', function (Blueprint $table) {
         $table->uuid('id')->primary();
         $table->uuid('user_id');
@@ -41,7 +43,7 @@ if (!Schema::hasTable('audit_logs')) {
 }
 
 // Add 2FA columns to users table
-if (!Schema::hasColumn('users', 'two_factor_secret')) {
+if (! Schema::hasColumn('users', 'two_factor_secret')) {
     Schema::table('users', function (Blueprint $table) {
         $table->string('two_factor_secret')->nullable();
         $table->boolean('two_factor_enabled')->default(false);

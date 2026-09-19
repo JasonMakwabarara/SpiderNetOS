@@ -6,6 +6,7 @@ namespace Tests\Feature\Spend;
 
 use App\Models\ExpenseCategory;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\Spend\CategorySuggestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -173,7 +174,7 @@ class CategorySuggestionTest extends TestCase
         Http::fake(['*' => Http::response([], 500)]);
 
         $tenant = $this->createTenant();
-        $user = \App\Models\User::create([
+        $user = User::create([
             'name' => 'Suggest User',
             'email' => 'suggest-'.Str::lower(Str::random(8)).'@test.test',
             'password' => bcrypt('password'),

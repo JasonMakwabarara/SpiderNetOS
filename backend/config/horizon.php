@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Str;
-
 return [
 
     'domain' => env('HORIZON_DOMAIN'),

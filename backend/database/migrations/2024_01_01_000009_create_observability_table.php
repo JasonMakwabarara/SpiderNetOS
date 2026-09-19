@@ -18,10 +18,10 @@ return new class extends Migration
             $table->timestamp('started_at');
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['tenant_id', 'dag_id', 'started_at']);
         });
-        
+
         Schema::create('anomalies', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
@@ -34,12 +34,12 @@ return new class extends Migration
             $table->timestamp('detected_at');
             $table->timestamp('resolved_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['tenant_id', 'status', 'severity']);
             $table->index(['anomaly_type', 'detected_at']);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('anomalies');

@@ -42,13 +42,13 @@ return new class extends Migration
 
             // Derived TS (computed by scheduled job)
             $table->decimal('value_perception_score', 6, 4)->nullable();
-            $table->decimal('clarity_score',         6, 4)->nullable();
-            $table->decimal('emotional_score',       6, 4)->nullable();
-            $table->decimal('actionability_score',   6, 4)->nullable();
-            $table->decimal('trust_score',           6, 4)->nullable();
-            $table->decimal('cognitive_load_penalty',6, 4)->nullable();
+            $table->decimal('clarity_score', 6, 4)->nullable();
+            $table->decimal('emotional_score', 6, 4)->nullable();
+            $table->decimal('actionability_score', 6, 4)->nullable();
+            $table->decimal('trust_score', 6, 4)->nullable();
+            $table->decimal('cognitive_load_penalty', 6, 4)->nullable();
             $table->decimal('technical_leakage_penalty', 6, 4)->nullable();
-            $table->decimal('final_ts',              6, 4)->nullable()->index();
+            $table->decimal('final_ts', 6, 4)->nullable()->index();
 
             $table->timestamp('scored_at')->nullable();
             $table->timestamps();

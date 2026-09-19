@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\VoiceNumber;
 use App\Services\FeatureFlag;
 use Closure;
 use Illuminate\Http\Request;
@@ -33,13 +34,14 @@ class VoiceFeatureFlag
 
         $flagOn = FeatureFlag::on('voice.inbound', $tenantId);
 
-        if (!$flagOn) {
+        if (! $flagOn) {
             Log::info('voice.feature_flag_blocked', [
                 'tenant_id' => $tenantId,
-                'path'      => $request->path(),
+                'path' => $request->path(),
             ]);
 
             $twiml = $this->unavailableTwiML();
+
             return response($twiml, 200, ['Content-Type' => 'application/xml']);
         }
 
@@ -56,12 +58,12 @@ class VoiceFeatureFlag
     private function resolveTenantId(Request $request): ?string
     {
         $toNumber = $request->input('To');
-        if (!$toNumber) {
+        if (! $toNumber) {
             return null;
         }
 
         try {
-            $voiceNumber = \App\Models\VoiceNumber::where('phone_number', $this->normalize($toNumber))
+            $voiceNumber = VoiceNumber::where('phone_number', $this->normalize($toNumber))
                 ->where('is_active', true)
                 ->select('tenant_id')
                 ->first();
@@ -75,15 +77,16 @@ class VoiceFeatureFlag
     private function normalize(string $number): string
     {
         $n = preg_replace('/[^0-9+]/', '', $number);
-        if (!str_starts_with($n, '+') && strlen($n) === 10) {
-            $n = '+1' . $n;
+        if (! str_starts_with($n, '+') && strlen($n) === 10) {
+            $n = '+1'.$n;
         }
+
         return $n;
     }
 
     private function unavailableTwiML(): string
     {
-        return <<<XML
+        return <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna">Thank you for calling. Our voice service is temporarily unavailable. Please try again later or contact support.</Say>

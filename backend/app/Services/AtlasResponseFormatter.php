@@ -42,11 +42,11 @@ class AtlasResponseFormatter
     public function buildContractPayload(array $fields): array
     {
         return [
-            'future_state'    => (string) ($fields['future_state'] ?? ''),
-            'value'           => (string) ($fields['value'] ?? ''),
+            'future_state' => (string) ($fields['future_state'] ?? ''),
+            'value' => (string) ($fields['value'] ?? ''),
             'emotional_shift' => (string) ($fields['emotional_shift'] ?? ''),
-            'action_summary'  => (string) ($fields['action_summary'] ?? ''),
-            'details'         => isset($fields['details']) && $fields['details'] !== ''
+            'action_summary' => (string) ($fields['action_summary'] ?? ''),
+            'details' => isset($fields['details']) && $fields['details'] !== ''
                 ? (string) $fields['details']
                 : null,
         ];
@@ -57,7 +57,7 @@ class AtlasResponseFormatter
      *
      * @param  array  $response  5-field contract payload
      * @param  array  $executionMetrics  actual execution metrics for truth anchoring
-     * @param  bool   $allowTechnicalInDetails  if true, `details` can contain technical terms
+     * @param  bool  $allowTechnicalInDetails  if true, `details` can contain technical terms
      * @return array{ok: bool, violations: array<int,string>}
      */
     public function validate(array $response, array $executionMetrics = [], bool $allowTechnicalInDetails = true): array
@@ -66,12 +66,12 @@ class AtlasResponseFormatter
 
         // Required structure
         foreach (['future_state', 'value', 'emotional_shift', 'action_summary'] as $key) {
-            if (empty($response[$key]) || !is_string($response[$key])) {
+            if (empty($response[$key]) || ! is_string($response[$key])) {
                 $violations[] = "missing_or_empty_field:{$key}";
             }
         }
 
-        if (!empty($violations)) {
+        if (! empty($violations)) {
             return ['ok' => false, 'violations' => $violations];
         }
 
@@ -90,14 +90,14 @@ class AtlasResponseFormatter
         }
 
         // Hype words in any surface (including details)
-        $allText = $visibleText . ' ' . ($response['details'] ?? '');
+        $allText = $visibleText.' '.($response['details'] ?? '');
         $hypeHits = $this->scanTerms($allText, self::HYPE_TERMS);
         foreach ($hypeHits as $term) {
             $violations[] = "hype_term:{$term}";
         }
 
         // If details contains technical terms and that's disallowed, flag
-        if (!$allowTechnicalInDetails && !empty($response['details'])) {
+        if (! $allowTechnicalInDetails && ! empty($response['details'])) {
             $detailsHits = $this->scanTerms($response['details'], self::FORBIDDEN_TERMS);
             foreach ($detailsHits as $term) {
                 $violations[] = "forbidden_term_in_details:{$term}";
@@ -122,11 +122,11 @@ class AtlasResponseFormatter
         $status = $executionResult['status'] ?? 'received';
 
         return [
-            'future_state'    => "Your request is in motion and ready to move forward.",
-            'value'           => "You have clarity on the next step.",
-            'emotional_shift' => "Less friction, more focus.",
-            'action_summary'  => "I received your request and prepared the next step.",
-            'details'         => null,
+            'future_state' => 'Your request is in motion and ready to move forward.',
+            'value' => 'You have clarity on the next step.',
+            'emotional_shift' => 'Less friction, more focus.',
+            'action_summary' => 'I received your request and prepared the next step.',
+            'details' => null,
         ];
     }
 
@@ -138,11 +138,12 @@ class AtlasResponseFormatter
         $hits = [];
         $lower = strtolower($text);
         foreach ($terms as $term) {
-            $pattern = '/\b' . preg_quote(strtolower($term), '/') . '\b/';
+            $pattern = '/\b'.preg_quote(strtolower($term), '/').'\b/';
             if (preg_match($pattern, $lower)) {
                 $hits[] = strtolower($term);
             }
         }
+
         return array_values(array_unique($hits));
     }
 
@@ -162,7 +163,7 @@ class AtlasResponseFormatter
         $tolerance = (float) config('services.spidernet.truth_anchor_tolerance', 1.25);
 
         // Extract numeric tokens from text
-        if (!preg_match_all('/(\d+(?:\.\d+)?)/', $valueText, $matches)) {
+        if (! preg_match_all('/(\d+(?:\.\d+)?)/', $valueText, $matches)) {
             return [];
         }
 

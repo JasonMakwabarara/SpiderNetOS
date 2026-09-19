@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DispatchScheduledFlowsJob implements ShouldQueue
@@ -50,14 +51,14 @@ class DispatchScheduledFlowsJob implements ShouldQueue
         }
     }
 
-    private function isDue(string $cron, mixed $lastRun, \Illuminate\Support\Carbon $now): bool
+    private function isDue(string $cron, mixed $lastRun, Carbon $now): bool
     {
         if ($lastRun === null) {
             return true;
         }
 
         try {
-            $last = \Illuminate\Support\Carbon::parse($lastRun);
+            $last = Carbon::parse($lastRun);
         } catch (\Throwable) {
             return true;
         }

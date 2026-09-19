@@ -14,7 +14,7 @@ use App\Models\Lead;
 interface ChannelContract
 {
     /**
-     * @param array<string, mixed> $options channel-specific extras (e.g. ['subject' => ...] for email)
+     * @param  array<string, mixed>  $options  channel-specific extras (e.g. ['subject' => ...] for email)
      * @return array{success: bool, provider_message_id?: ?string, error?: string}
      */
     public function send(Lead $lead, string $body, array $options = []): array;

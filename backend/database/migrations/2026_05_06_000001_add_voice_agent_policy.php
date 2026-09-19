@@ -20,20 +20,20 @@ return new class extends Migration
     public function up(): void
     {
         // Guard: only add columns if they don't exist (idempotent)
-        if (!Schema::hasColumn('voice_numbers', 'tool_allowlist')) {
+        if (! Schema::hasColumn('voice_numbers', 'tool_allowlist')) {
             Schema::table('voice_numbers', function (Blueprint $table) {
                 $table->jsonb('tool_allowlist')->nullable()->after('is_active');
             });
         }
 
-        if (!Schema::hasColumn('voice_numbers', 'approval_policy')) {
+        if (! Schema::hasColumn('voice_numbers', 'approval_policy')) {
             Schema::table('voice_numbers', function (Blueprint $table) {
                 $table->string('approval_policy', 16)->default('off')->after('tool_allowlist');
             });
         }
 
         // Agent mode config column on voice_numbers for per-number overrides
-        if (!Schema::hasColumn('voice_numbers', 'agent_config')) {
+        if (! Schema::hasColumn('voice_numbers', 'agent_config')) {
             Schema::table('voice_numbers', function (Blueprint $table) {
                 // Per-number LLM config overrides: model, temperature, max_tokens
                 $table->jsonb('agent_config')->nullable()->after('approval_policy');

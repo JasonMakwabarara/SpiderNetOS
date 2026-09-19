@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class TenantAlignmentProfile extends Model
 {
     protected $primaryKey = 'tenant_id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

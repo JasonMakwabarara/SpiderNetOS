@@ -107,10 +107,10 @@ class ApprovalPolicyController extends Controller
             'conditions.categories' => 'nullable|array',
             'steps' => 'required|array|min:1|max:10',
             'steps.*.approver_type' => 'required|in:role,user',
-            'steps.*.approver_role' => 'nullable|in:' . implode(',', self::VALID_ROLES),
+            'steps.*.approver_role' => 'nullable|in:'.implode(',', self::VALID_ROLES),
             'steps.*.approver_id' => 'nullable|uuid',
             'steps.*.expires_after_hours' => 'nullable|integer|min:1|max:720',
-            'steps.*.escalate_to_role' => 'nullable|in:' . implode(',', self::VALID_ROLES),
+            'steps.*.escalate_to_role' => 'nullable|in:'.implode(',', self::VALID_ROLES),
         ]);
     }
 
@@ -124,7 +124,7 @@ class ApprovalPolicyController extends Controller
                 $approver = User::where('id', $step['approver_id'] ?? '')
                     ->where('tenant_id', $policy->tenant_id)
                     ->first();
-                if (!$approver) {
+                if (! $approver) {
                     abort(422, 'User-based steps require an approver in this tenant.');
                 }
             }

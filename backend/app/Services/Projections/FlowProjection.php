@@ -22,7 +22,7 @@ class FlowProjection
             'flow.edge_removed',
         ]);
     }
-    
+
     public function handle(Event $event): void
     {
         match ($event->event_type) {
@@ -39,7 +39,7 @@ class FlowProjection
             default => null,
         };
     }
-    
+
     private function handleCreated(Event $event): void
     {
         $p = $event->payload;
@@ -56,7 +56,7 @@ class FlowProjection
             'updated_at' => $event->occurred_at,
         ]);
     }
-    
+
     private function handleUpdated(Event $event): void
     {
         $p = $event->payload;
@@ -69,7 +69,7 @@ class FlowProjection
                 'updated_at' => $event->occurred_at,
             ]);
     }
-    
+
     private function handlePublished(Event $event): void
     {
         DB::table('flows')
@@ -80,7 +80,7 @@ class FlowProjection
                 'updated_at' => $event->occurred_at,
             ]);
     }
-    
+
     private function handleArchived(Event $event): void
     {
         DB::table('flows')
@@ -90,14 +90,14 @@ class FlowProjection
                 'updated_at' => $event->occurred_at,
             ]);
     }
-    
+
     private function handleDeleted(Event $event): void
     {
         DB::table('flows')
             ->where('id', $event->aggregate_id)
             ->delete();
     }
-    
+
     private function handleNodeAdded(Event $event): void
     {
         $p = $event->payload;
@@ -113,7 +113,7 @@ class FlowProjection
             'updated_at' => $event->occurred_at,
         ]);
     }
-    
+
     private function handleNodeUpdated(Event $event): void
     {
         $p = $event->payload;
@@ -126,14 +126,14 @@ class FlowProjection
                 'updated_at' => $event->occurred_at,
             ]);
     }
-    
+
     private function handleNodeRemoved(Event $event): void
     {
         DB::table('dag_nodes')
             ->where('id', $event->payload['node_id'])
             ->delete();
     }
-    
+
     private function handleEdgeAdded(Event $event): void
     {
         $p = $event->payload;
@@ -147,7 +147,7 @@ class FlowProjection
             'updated_at' => $event->occurred_at,
         ]);
     }
-    
+
     private function handleEdgeRemoved(Event $event): void
     {
         DB::table('dag_edges')

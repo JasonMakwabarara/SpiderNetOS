@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
 class CommandController extends Controller
 {
     private EventStore $eventStore;
+
     private MetaPlanner $metaPlanner;
+
     private PromptEnhancer $promptEnhancer;
 
     public function __construct(EventStore $eventStore, MetaPlanner $metaPlanner, PromptEnhancer $promptEnhancer)

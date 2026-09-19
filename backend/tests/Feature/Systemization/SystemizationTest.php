@@ -6,6 +6,7 @@ namespace Tests\Feature\Systemization;
 
 use App\Models\BusinessProcess;
 use App\Models\BusinessSystem;
+use App\Models\Sop;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,7 +27,7 @@ class SystemizationTest extends TestCase
         $this->tenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Systemize Co',
-            'slug' => 'systemize-' . Str::lower(Str::random(6)),
+            'slug' => 'systemize-'.Str::lower(Str::random(6)),
             'status' => 'active',
             'plan' => 'growth',
         ]);
@@ -34,7 +35,7 @@ class SystemizationTest extends TestCase
         Sanctum::actingAs(User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Founder',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),
@@ -154,7 +155,7 @@ class SystemizationTest extends TestCase
         $questions = $response->json('questions');
         $this->assertNotEmpty($questions);
         // It must challenge the vague steps, the missing trigger, tools, and success criteria.
-        $this->assertTrue(count($questions) >= 4, 'expected multiple clarification questions, got: ' . json_encode($questions));
+        $this->assertTrue(count($questions) >= 4, 'expected multiple clarification questions, got: '.json_encode($questions));
     }
 
     public function test_complete_sop_is_versioned_and_publishable(): void
@@ -169,16 +170,16 @@ class SystemizationTest extends TestCase
         $v1->assertStatus(201);
         $this->assertSame(1, $v1->json('data.version'));
 
-        $this->postJson('/api/systemization/sops/' . $v1->json('data.id') . '/publish')->assertOk();
+        $this->postJson('/api/systemization/sops/'.$v1->json('data.id').'/publish')->assertOk();
 
         // Revision loop: v2 supersedes v1 on publish.
         $v2 = $this->postJson("/api/systemization/processes/{$processId}/sops", $this->completeSopAnswers());
         $this->assertSame(2, $v2->json('data.version'));
-        $this->postJson('/api/systemization/sops/' . $v2->json('data.id') . '/publish')->assertOk();
+        $this->postJson('/api/systemization/sops/'.$v2->json('data.id').'/publish')->assertOk();
 
         $this->assertSame(
             ['archived', 'published'],
-            \App\Models\Sop::query()->where('process_id', $processId)->orderBy('version')->pluck('status')->all(),
+            Sop::query()->where('process_id', $processId)->orderBy('version')->pluck('status')->all(),
         );
 
         $this->assertDatabaseHas('event_log', [
@@ -198,7 +199,7 @@ class SystemizationTest extends TestCase
         $otherTenant = Tenant::create([
             'id' => Str::uuid(),
             'name' => 'Other Co',
-            'slug' => 'other-' . Str::lower(Str::random(6)),
+            'slug' => 'other-'.Str::lower(Str::random(6)),
             'status' => 'active',
             'plan' => 'starter',
         ]);
@@ -206,7 +207,7 @@ class SystemizationTest extends TestCase
         Sanctum::actingAs(User::create([
             'tenant_id' => $otherTenant->id,
             'name' => 'Outsider',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),

@@ -29,6 +29,7 @@ class RunScheduledSpendExportsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 120;
 
     public function __construct(public readonly ?string $asOf = null) {}
@@ -86,7 +87,7 @@ class RunScheduledSpendExportsJob implements ShouldQueue
 
         $schedule->update(['last_run_at' => $now]);
 
-        if (!$export->isGenerated()) {
+        if (! $export->isGenerated()) {
             Log::warning('RunScheduledSpendExportsJob: export generation failed', [
                 'schedule' => $schedule->id,
                 'export' => $export->id,

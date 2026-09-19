@@ -45,8 +45,8 @@ class AuthController extends Controller
 
         // Create tenant via EventStore (Hard Rule #1)
         $tenantId = (string) Str::uuid();
-        $orgName = $request->organization ?? $request->name . "'s Workspace";
-        $tenantSlug = Str::slug($orgName) . '-' . Str::random(6);
+        $orgName = $request->organization ?? $request->name."'s Workspace";
+        $tenantSlug = Str::slug($orgName).'-'.Str::random(6);
 
         $this->eventStore->append(
             tenantId: $tenantId,
@@ -79,7 +79,7 @@ class AuthController extends Controller
 
         // Read from projection for response
         $user = User::find($userId);
-        if (!$user) {
+        if (! $user) {
             // Projection may not have caught up yet — create directly as fallback
             $user = User::create([
                 'id' => $userId,
@@ -89,7 +89,7 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
                 'role' => 'admin',
             ]);
-            
+
             Tenant::firstOrCreate(['id' => $tenantId], [
                 'name' => $orgName,
                 'slug' => $tenantSlug,
@@ -125,7 +125,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             // Mirrors the ValidationException body exactly, plus `detail` —
             // the marketing-site SignInPage reads only response.data.detail.
             return response()->json([
@@ -221,7 +221,7 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             $this->recordStepUp($user, $request, false, 'bad_password');
             throw ValidationException::withMessages([
                 'password' => ['The provided password is incorrect.'],

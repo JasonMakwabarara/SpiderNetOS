@@ -28,6 +28,7 @@ class WeeklySpendDigestJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 300;
 
     public function handle(SpendDigestService $digests, NotificationService $notifications): void
@@ -40,7 +41,7 @@ class WeeklySpendDigestJob implements ShouldQueue
             ->cursor();
 
         foreach ($tenants as $tenant) {
-            if (!$this->digestEnabled($tenant->id)) {
+            if (! $this->digestEnabled($tenant->id)) {
                 continue;
             }
 

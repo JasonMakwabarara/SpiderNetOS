@@ -19,72 +19,74 @@ class CalComAdapter extends CalendarAdapter
 
     public function book(array $event): array
     {
-        $apiKey    = $this->credentials['api_key'] ?? null;
+        $apiKey = $this->credentials['api_key'] ?? null;
         $eventTypeId = $this->credentials['event_type_id'] ?? null;
 
-        if (!$apiKey || !$eventTypeId) {
+        if (! $apiKey || ! $eventTypeId) {
             return ['success' => false, 'event_id' => null, 'calendar_link' => null, 'error' => 'Missing Cal.com credentials'];
         }
 
         try {
-            $startDatetime = $event['date'] . 'T' . $event['time'] . ':00.000Z';
+            $startDatetime = $event['date'].'T'.$event['time'].':00.000Z';
 
             $response = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                ->post(self::BASE_URL . '/bookings', [
+                ->post(self::BASE_URL.'/bookings', [
                     'eventTypeId' => (int) $eventTypeId,
-                    'start'       => $startDatetime,
-                    'attendee'    => [
-                        'name'     => $event['attendee_name'],
-                        'email'    => $event['attendee_email'] ?? 'noemail@placeholder.com',
+                    'start' => $startDatetime,
+                    'attendee' => [
+                        'name' => $event['attendee_name'],
+                        'email' => $event['attendee_email'] ?? 'noemail@placeholder.com',
                         'timeZone' => 'America/New_York',
                         'language' => 'en',
                     ],
-                    'metadata'    => [
-                        'phone'  => $event['attendee_phone'] ?? '',
+                    'metadata' => [
+                        'phone' => $event['attendee_phone'] ?? '',
                         'source' => 'voice_agent',
                     ],
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::warning('calcom.book_failed', [
                     'tenant_id' => $this->tenantId,
-                    'status'    => $response->status(),
+                    'status' => $response->status(),
                 ]);
+
                 return ['success' => false, 'event_id' => null, 'calendar_link' => null, 'error' => 'Cal.com API error'];
             }
 
             $data = $response->json()['data'] ?? $response->json();
 
             return [
-                'success'       => true,
-                'event_id'      => (string) ($data['uid'] ?? $data['id'] ?? ''),
+                'success' => true,
+                'event_id' => (string) ($data['uid'] ?? $data['id'] ?? ''),
                 'calendar_link' => null,
-                'error'         => null,
+                'error' => null,
             ];
         } catch (\Throwable $e) {
             Log::error('calcom.book_exception', ['error' => $e->getMessage()]);
+
             return ['success' => false, 'event_id' => null, 'calendar_link' => null, 'error' => $e->getMessage()];
         }
     }
 
     public function getAvailableSlots(string $date, ?string $calendarId = null): array
     {
-        $apiKey      = $this->credentials['api_key'] ?? null;
+        $apiKey = $this->credentials['api_key'] ?? null;
         $eventTypeId = $this->credentials['event_type_id'] ?? null;
 
-        if (!$apiKey || !$eventTypeId) {
+        if (! $apiKey || ! $eventTypeId) {
             return ['slots' => []];
         }
 
         try {
             $response = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                ->get(self::BASE_URL . '/slots', [
+                ->get(self::BASE_URL.'/slots', [
                     'eventTypeId' => $eventTypeId,
-                    'startTime'   => $date . 'T00:00:00Z',
-                    'endTime'     => $date . 'T23:59:59Z',
+                    'startTime' => $date.'T00:00:00Z',
+                    'endTime' => $date.'T23:59:59Z',
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return ['slots' => []];
             }
 
@@ -103,13 +105,14 @@ class CalComAdapter extends CalendarAdapter
     public function cancel(string $eventId): bool
     {
         $apiKey = $this->credentials['api_key'] ?? null;
-        if (!$apiKey) {
+        if (! $apiKey) {
             return false;
         }
 
         try {
             $response = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                ->delete(self::BASE_URL . "/bookings/{$eventId}");
+                ->delete(self::BASE_URL."/bookings/{$eventId}");
+
             return $response->successful();
         } catch (\Throwable) {
             return false;

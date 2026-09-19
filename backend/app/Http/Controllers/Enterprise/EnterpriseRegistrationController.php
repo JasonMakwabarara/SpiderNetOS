@@ -25,9 +25,7 @@ use Illuminate\Support\Str;
  */
 class EnterpriseRegistrationController extends Controller
 {
-    public function __construct(private readonly EventStore $eventStore)
-    {
-    }
+    public function __construct(private readonly EventStore $eventStore) {}
 
     /**
      * 503 response when the funnel kill-switch is off, null otherwise.
@@ -58,8 +56,8 @@ class EnterpriseRegistrationController extends Controller
         ]);
 
         $domain = strtolower(trim(($validated['domain'] ?? '') ?: Str::after($validated['contact_email'], '@')));
-        $id = 'ent_' . Str::lower(Str::random(20));
-        $domainToken = 'sn_' . Str::random(24);
+        $id = 'ent_'.Str::lower(Str::random(20));
+        $domainToken = 'sn_'.Str::random(24);
 
         DB::table('enterprise_registrations')->insert([
             'id' => $id,
@@ -164,7 +162,7 @@ class EnterpriseRegistrationController extends Controller
         $region = $validated['region'] ?? 'us-east-1';
 
         $tenant = DB::transaction(function () use ($registration, $region) {
-            $slug = Str::slug(Str::limit($registration->org_name, 24, '')) . '-' . Str::lower(Str::random(4));
+            $slug = Str::slug(Str::limit($registration->org_name, 24, '')).'-'.Str::lower(Str::random(4));
 
             $tenant = Tenant::create([
                 'name' => $registration->org_name,
@@ -179,7 +177,7 @@ class EnterpriseRegistrationController extends Controller
 
             User::create([
                 'tenant_id' => $tenant->id,
-                'name' => $registration->contact_name ?: $registration->org_name . ' Admin',
+                'name' => $registration->contact_name ?: $registration->org_name.' Admin',
                 'email' => $registration->contact_email,
                 // Random unusable password — first login goes through the
                 // password-reset / invite flow, never a shipped credential.
@@ -242,7 +240,7 @@ class EnterpriseRegistrationController extends Controller
 
         return response()->json([
             'scim_token' => $raw,
-            'scim_base_url' => rtrim((string) config('app.url'), '/') . '/api/scim/v2',
+            'scim_base_url' => rtrim((string) config('app.url'), '/').'/api/scim/v2',
             'expires_in_days' => 365,
         ]);
     }
@@ -268,7 +266,7 @@ class EnterpriseRegistrationController extends Controller
             return response()->json(['detail' => 'tenant not found'], 404);
         }
 
-        $bundleId = 'bdl_' . Str::lower(Str::random(20));
+        $bundleId = 'bdl_'.Str::lower(Str::random(20));
         $target = $validated['target'] ?? 'linux-x86_64';
         $components = $validated['components'] ?? ['runtime', 'connectors', 'cockpit-agent'];
 
@@ -316,7 +314,7 @@ class EnterpriseRegistrationController extends Controller
             return response()->json(['detail' => 'bundle not found'], 404);
         }
 
-        $deploymentId = 'dep_' . Str::lower(Str::random(20));
+        $deploymentId = 'dep_'.Str::lower(Str::random(20));
 
         DB::table('aios_deployments')->insert([
             'id' => $deploymentId,
@@ -383,7 +381,7 @@ class EnterpriseRegistrationController extends Controller
 
         foreach ($records as $record) {
             $txt = $record['txt'] ?? '';
-            if (trim($txt) === 'spidernet-verify=' . $token) {
+            if (trim($txt) === 'spidernet-verify='.$token) {
                 return true;
             }
         }

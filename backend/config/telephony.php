@@ -112,8 +112,8 @@ return [
     */
     'post_call' => [
         'summarize_enabled' => true,
-        'email_summary'     => true,
-        'crm_sync'          => false,
+        'email_summary' => true,
+        'crm_sync' => false,
     ],
 
     /*
@@ -138,14 +138,14 @@ return [
     |--------------------------------------------------------------------------
     */
     'streaming' => [
-        'enabled'      => env('VOICE_STREAMING_ENABLED', false),
-        'websocket_url'=> env('VOICE_STREAMING_WS_URL', 'wss://your-domain.com/voice/stream'),
+        'enabled' => env('VOICE_STREAMING_ENABLED', false),
+        'websocket_url' => env('VOICE_STREAMING_WS_URL', 'wss://your-domain.com/voice/stream'),
         // STT provider to use in streaming mode (deepgram preferred for real-time)
         'stt_provider' => env('VOICE_STREAMING_STT_PROVIDER', 'deepgram'),
         // TTS provider to use in streaming mode (elevenlabs for low latency)
         'tts_provider' => env('VOICE_STREAMING_TTS_PROVIDER', 'elevenlabs'),
         // Voice activity detection threshold [0.0–1.0]
-        'vad_threshold'=> (float) env('VOICE_VAD_THRESHOLD', 0.6),
+        'vad_threshold' => (float) env('VOICE_VAD_THRESHOLD', 0.6),
         // Maximum ms to wait for barge-in cut-off
         'barge_in_cutoff_ms' => (int) env('VOICE_BARGE_IN_CUTOFF_MS', 250),
     ],

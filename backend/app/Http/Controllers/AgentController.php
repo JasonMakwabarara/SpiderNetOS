@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agent;
 use App\Services\EventStore;
 use App\Services\MetaPlanner;
 use App\Services\ReplayDivergenceService;
-use App\Models\Agent;
-use App\Models\AgentDelegation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
@@ -16,7 +16,9 @@ use Illuminate\Support\Str;
 class AgentController extends Controller
 {
     private EventStore $eventStore;
+
     private MetaPlanner $metaPlanner;
+
     private ReplayDivergenceService $replayDivergence;
 
     public function __construct(EventStore $eventStore, MetaPlanner $metaPlanner, ReplayDivergenceService $replayDivergence)
@@ -121,7 +123,7 @@ class AgentController extends Controller
             $target = DB::table('agents')
                 ->where('tenant_id', $tenantId)
                 ->where('slug', $targetSlug)
-    
+
                 ->first();
 
             if ($target) {
@@ -157,7 +159,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -198,7 +200,7 @@ class AgentController extends Controller
      * Delegate edges for an agent, EXCLUDING delegates that belong to another
      * tenant — cross-tenant rows must never leak agent names/slugs.
      */
-    private function tenantDelegations(string $tenantId, string $agentId): \Illuminate\Support\Collection
+    private function tenantDelegations(string $tenantId, string $agentId): Collection
     {
         return DB::table('agent_delegations')
             ->join('agents', 'agent_delegations.delegate_id', '=', 'agents.id')
@@ -242,7 +244,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -252,7 +254,7 @@ class AgentController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('slug', $request->input('slug'))
                 ->where('id', '!=', $id)
-    
+
                 ->exists();
 
             if ($slugExists) {
@@ -287,11 +289,21 @@ class AgentController extends Controller
 
         // Update projection
         $updateData = ['updated_at' => now()];
-        if (isset($changes['name'])) $updateData['name'] = $changes['name'];
-        if (isset($changes['slug'])) $updateData['slug'] = $changes['slug'];
-        if (array_key_exists('description', $changes)) $updateData['description'] = $changes['description'];
-        if (isset($changes['capabilities'])) $updateData['capabilities'] = json_encode($changes['capabilities']);
-        if (isset($changes['config'])) $updateData['config'] = json_encode($changes['config']);
+        if (isset($changes['name'])) {
+            $updateData['name'] = $changes['name'];
+        }
+        if (isset($changes['slug'])) {
+            $updateData['slug'] = $changes['slug'];
+        }
+        if (array_key_exists('description', $changes)) {
+            $updateData['description'] = $changes['description'];
+        }
+        if (isset($changes['capabilities'])) {
+            $updateData['capabilities'] = json_encode($changes['capabilities']);
+        }
+        if (isset($changes['config'])) {
+            $updateData['config'] = json_encode($changes['config']);
+        }
 
         DB::table('agents')
             ->where('id', $id)
@@ -302,7 +314,7 @@ class AgentController extends Controller
         if (isset($changes['config'])) {
             $critical = ['model', 'tools', 'delegation', 'system_prompt'];
             $configChanged = array_intersect($critical, array_keys($changes['config'] ?? []));
-            if (!empty($configChanged)) {
+            if (! empty($configChanged)) {
                 $this->replayDivergence->invalidateByCriticalAgentConfig($tenantId, (string) $id);
             }
         }
@@ -327,7 +339,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -356,7 +368,7 @@ class AgentController extends Controller
         DB::table('agent_delegations')
             ->where(function ($q) use ($id) {
                 $q->where('agent_id', $id)
-                  ->orWhere('delegate_id', $id);
+                    ->orWhere('delegate_id', $id);
             })
             ->delete();
 
@@ -386,7 +398,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -403,7 +415,7 @@ class AgentController extends Controller
             tenantId: $tenantId,
             aggregateType: 'agent',
             aggregateId: $id,
-            eventType: "agent.status_toggled",
+            eventType: 'agent.status_toggled',
             payload: [
                 'previous_status' => $agent->status,
                 'new_status' => $newStatus,
@@ -450,7 +462,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -488,7 +500,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -522,7 +534,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -584,7 +596,7 @@ class AgentController extends Controller
 
             ->exists();
 
-        if (!$agentExists) {
+        if (! $agentExists) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 
@@ -612,7 +624,7 @@ class AgentController extends Controller
 
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found.'], 404);
         }
 

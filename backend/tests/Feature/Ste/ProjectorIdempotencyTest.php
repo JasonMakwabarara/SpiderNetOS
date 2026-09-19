@@ -34,13 +34,13 @@ class ProjectorIdempotencyTest extends TestCase
 
         // Seed the mapping row we rely on
         DB::table('ste_event_mapping')->insert([
-            'event_type'   => 'atlas.chat.started',
-            'chain'        => 'session_lifecycle',
-            'from_state'   => null,
-            'to_state'     => 'chat_started',
+            'event_type' => 'atlas.chat.started',
+            'chain' => 'session_lifecycle',
+            'from_state' => null,
+            'to_state' => 'chat_started',
             'extract_tags' => json_encode((object) []),
-            'enabled'      => true,
-            'created_at'   => now(),
+            'enabled' => true,
+            'created_at' => now(),
         ]);
     }
 
@@ -50,21 +50,21 @@ class ProjectorIdempotencyTest extends TestCase
         // resolves to the same (from, to, tags) key and the ON CONFLICT upsert
         // fires, incrementing count from 1 → 2.
         DB::table('ste_event_mapping')->insert([
-            'event_type'   => 'flow.execution.completed',
-            'chain'        => 'session_lifecycle',
-            'from_state'   => 'flow_running',
-            'to_state'     => 'completed',
+            'event_type' => 'flow.execution.completed',
+            'chain' => 'session_lifecycle',
+            'from_state' => 'flow_running',
+            'to_state' => 'completed',
             'extract_tags' => json_encode((object) []),
-            'enabled'      => true,
-            'created_at'   => now(),
+            'enabled' => true,
+            'created_at' => now(),
         ]);
 
-        $tenantId  = (string) Str::uuid();
+        $tenantId = (string) Str::uuid();
         $sessionId = (string) Str::uuid();
 
         $event = $this->makeEvent($tenantId, $sessionId, 'flow.execution.completed', sequence: 100);
 
-        $projector = new StateTransitionProjection();
+        $projector = new StateTransitionProjection;
         $projector->handle($event);
         $projector->handle($event);
 
@@ -84,11 +84,11 @@ class ProjectorIdempotencyTest extends TestCase
         // reads ste_session_states. First call → from='visitor'; second call
         // after state has advanced → from='chat_started'. Documents the
         // expected behaviour rather than a bug.
-        $tenantId  = (string) Str::uuid();
+        $tenantId = (string) Str::uuid();
         $sessionId = (string) Str::uuid();
         $event = $this->makeEvent($tenantId, $sessionId, 'atlas.chat.started', sequence: 100);
 
-        $projector = new StateTransitionProjection();
+        $projector = new StateTransitionProjection;
         $projector->handle($event);
         $projector->handle($event);
 
@@ -102,13 +102,13 @@ class ProjectorIdempotencyTest extends TestCase
 
     public function test_out_of_order_events_do_not_regress_state(): void
     {
-        $tenantId  = (string) Str::uuid();
+        $tenantId = (string) Str::uuid();
         $sessionId = (string) Str::uuid();
 
         $older = $this->makeEvent($tenantId, $sessionId, 'atlas.chat.started', sequence: 10);
         $newer = $this->makeEvent($tenantId, $sessionId, 'atlas.chat.started', sequence: 20);
 
-        $projector = new StateTransitionProjection();
+        $projector = new StateTransitionProjection;
         $projector->handle($newer);
         $projector->handle($older);   // older replayed AFTER newer
 
@@ -120,9 +120,9 @@ class ProjectorIdempotencyTest extends TestCase
     public function test_unmapped_event_recorded_in_unmapped_table(): void
     {
         $tenantId = (string) Str::uuid();
-        $event    = $this->makeEvent($tenantId, (string) Str::uuid(), 'totally.unknown.event', sequence: 42);
+        $event = $this->makeEvent($tenantId, (string) Str::uuid(), 'totally.unknown.event', sequence: 42);
 
-        (new StateTransitionProjection())->handle($event);
+        (new StateTransitionProjection)->handle($event);
 
         $row = DB::table('ste_unmapped_events')->where('event_type', 'totally.unknown.event')->first();
         $this->assertNotNull($row);
@@ -131,18 +131,18 @@ class ProjectorIdempotencyTest extends TestCase
 
     private function makeEvent(string $tenantId, string $sessionId, string $eventType, int $sequence): Event
     {
-        $event               = new Event();
-        $event->id           = (string) Str::uuid();
-        $event->tenant_id    = $tenantId;
+        $event = new Event;
+        $event->id = (string) Str::uuid();
+        $event->tenant_id = $tenantId;
         $event->aggregate_type = 'session';
-        $event->aggregate_id   = $sessionId;
-        $event->event_type   = $eventType;
-        $event->payload      = ['session_id' => $sessionId];
-        $event->metadata     = [];
-        $event->version      = 1;
-        $event->occurred_at  = now();
+        $event->aggregate_id = $sessionId;
+        $event->event_type = $eventType;
+        $event->payload = ['session_id' => $sessionId];
+        $event->metadata = [];
+        $event->version = 1;
+        $event->occurred_at = now();
         $event->sequence_num = $sequence;
-        $event->hash         = str_repeat('0', 64);
+        $event->hash = str_repeat('0', 64);
         $event->previous_hash = null;
 
         return $event;

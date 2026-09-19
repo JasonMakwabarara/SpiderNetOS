@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('recorded_at')->index();
             $table->jsonb('metadata')->nullable();
         });
-        
+
         Schema::create('usage_daily_aggregates', function (Blueprint $table) {
             $table->id();
             $table->uuid('tenant_id')->index();
@@ -34,10 +34,10 @@ return new class extends Migration
             $table->decimal('total_cost', 12, 6)->default(0);
             $table->decimal('cost_ceiling', 12, 6)->default(0);
             $table->timestamp('calculated_at');
-            
+
             $table->unique(['tenant_id', 'date', 'resource_type']);
         });
-        
+
         Schema::create('cost_budgets', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->unique();
@@ -49,7 +49,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('cost_budgets');

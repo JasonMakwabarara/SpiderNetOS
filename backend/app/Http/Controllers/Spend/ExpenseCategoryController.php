@@ -44,7 +44,7 @@ class ExpenseCategoryController extends Controller
 
         $slug = $validated['slug'] ?? Str::slug(Str::limit($validated['name'], 50, ''));
 
-        if (!isset($validated['slug'])
+        if (! isset($validated['slug'])
             && ExpenseCategory::forTenant($tenant->id)->where('slug', $slug)->exists()) {
             return response()->json([
                 'error' => 'A category with this slug already exists.',

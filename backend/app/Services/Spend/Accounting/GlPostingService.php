@@ -62,7 +62,7 @@ class GlPostingService
     {
         $report = ExpenseReport::forTenant($tenantId)->with('items')->find($reportId);
 
-        if (!$report || !in_array($report->status, ['approved', 'reimbursed'], true)) {
+        if (! $report || ! in_array($report->status, ['approved', 'reimbursed'], true)) {
             return null;
         }
 
@@ -87,7 +87,7 @@ class GlPostingService
     {
         $bill = Bill::forTenant($tenantId)->with('lineItems')->find($billId);
 
-        if (!$bill || $bill->status !== 'paid') {
+        if (! $bill || $bill->status !== 'paid') {
             return null;
         }
 
@@ -125,7 +125,7 @@ class GlPostingService
         return DB::transaction(function () use ($tenantId, $postingId) {
             $posting = GlPosting::forTenant($tenantId)->lockForUpdate()->findOrFail($postingId);
 
-            if (!$posting->isDraft()) {
+            if (! $posting->isDraft()) {
                 throw new \LogicException("Only draft postings can be posted. Current status: {$posting->status}");
             }
 
@@ -138,7 +138,7 @@ class GlPostingService
     // ------------------------------------------------------------------ //
 
     /**
-     * @param array<int, array{amount: string, category_id: ?string, gl_account_id: ?string, description: ?string}> $sourceLines
+     * @param  array<int, array{amount: string, category_id: ?string, gl_account_id: ?string, description: ?string}>  $sourceLines
      */
     private function post(
         string $tenantId,
@@ -164,7 +164,7 @@ class GlPostingService
 
         $rule = SpendPostingRule::forTenant($tenantId)->first();
 
-        if (!$rule || !$rule->enabled) {
+        if (! $rule || ! $rule->enabled) {
             return $this->recordSkipped(
                 $tenantId, $sourceType, $sourceId, $total, $currency,
                 'posting_rules_not_configured',
@@ -197,6 +197,7 @@ class GlPostingService
 
             if ($chartId === null) {
                 $unmapped[] = $line['description'] ?? 'line';
+
                 continue;
             }
 
@@ -223,7 +224,7 @@ class GlPostingService
         $debitLines = [];
         foreach ($grouped as $chartId => $amount) {
             $chart = $chartAccounts[$chartId] ?? null;
-            if (!$chart) {
+            if (! $chart) {
                 $posting = $this->recordSkipped(
                     $tenantId, $sourceType, $sourceId, $total, $currency,
                     'gl_mapping_missing',
@@ -244,7 +245,7 @@ class GlPostingService
 
         // --- Resolve credit account -------------------------------------- //
         $creditAccount = $this->resolveAccountByCode($tenantId, $creditCode);
-        if (!$creditAccount) {
+        if (! $creditAccount) {
             return $this->recordFailure(
                 $tenantId, $sourceType, $sourceId, $total, $currency, [],
                 "Credit account code '{$creditCode}' matches no financial or chart account.",
@@ -270,7 +271,7 @@ class GlPostingService
             return $posting; // Concurrent worker won the race.
         }
 
-        if (!$rule->isAuto()) {
+        if (! $rule->isAuto()) {
             // Draft mode: the journal is recorded; an admin executes it via
             // POST /accounting/postings/{id}/post.
             $this->eventStore->append($tenantId, 'gl_posting', $posting->id, 'gl.posting_created', [
@@ -411,7 +412,7 @@ class GlPostingService
 
         $posting = GlPosting::forTenant($tenantId)->forSource($sourceType, $sourceId)->first();
 
-        if ($inserted === 0 && !$posting->isPosted()) {
+        if ($inserted === 0 && ! $posting->isPosted()) {
             // Pre-existing (failed/skipped/draft) row — recompute it.
             $posting->update($attributes);
             $posting = $posting->fresh();
@@ -437,7 +438,7 @@ class GlPostingService
             'error' => $detail,
         ]);
 
-        if (!$posting->isPosted()) {
+        if (! $posting->isPosted()) {
             $this->eventStore->append($tenantId, 'gl_posting', $posting->id, 'gl.posting_failed', [
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,
@@ -467,7 +468,7 @@ class GlPostingService
             'error' => $error,
         ]);
 
-        if (!$posting->isPosted()) {
+        if (! $posting->isPosted()) {
             $this->eventStore->append($tenantId, 'gl_posting', $posting->id, 'gl.posting_failed', [
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,

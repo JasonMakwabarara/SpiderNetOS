@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminAuditLog;
-use App\Models\Event;
 use App\Models\User;
 use App\Services\EventStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -21,9 +19,7 @@ use Illuminate\Validation\ValidationException;
  */
 class AdminController extends Controller
 {
-    public function __construct(private EventStore $eventStore)
-    {
-    }
+    public function __construct(private EventStore $eventStore) {}
 
     // ─── Users ───────────────────────────────────────────────────────────────
 
@@ -72,7 +68,7 @@ class AdminController extends Controller
         ]);
 
         // Prevent privilege escalation: admins cannot invite super_admins
-        if (!$actor->isSuperAdmin() && $request->role === 'super_admin') {
+        if (! $actor->isSuperAdmin() && $request->role === 'super_admin') {
             throw ValidationException::withMessages([
                 'role' => ['Only super admins can grant the super_admin role.'],
             ]);
@@ -154,7 +150,7 @@ class AdminController extends Controller
         $user = User::where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
 
         // Admins can't delete other admins or super_admins; only super_admins can.
-        if (!$actor->isSuperAdmin() && $user->atLeastRole('admin')) {
+        if (! $actor->isSuperAdmin() && $user->atLeastRole('admin')) {
             return response()->json([
                 'error' => 'Forbidden',
                 'reason' => 'cannot_delete_admin',
@@ -203,7 +199,7 @@ class AdminController extends Controller
             'name' => 'nullable|string|max:255',
         ]);
 
-        if (isset($validated['role']) && $validated['role'] === 'super_admin' && !$actor->isSuperAdmin()) {
+        if (isset($validated['role']) && $validated['role'] === 'super_admin' && ! $actor->isSuperAdmin()) {
             throw ValidationException::withMessages([
                 'role' => ['Only super admins can grant the super_admin role.'],
             ]);

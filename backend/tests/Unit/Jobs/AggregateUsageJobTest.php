@@ -3,8 +3,6 @@
 namespace Tests\Unit\Jobs;
 
 use App\Jobs\AggregateUsageJob;
-use App\Services\FeatureFlag;
-use App\Services\UsageAggregateShadow;
 use Tests\TestCase;
 
 /**
@@ -25,7 +23,7 @@ class AggregateUsageJobTest extends TestCase
 
         $this->assertStringNotContainsString('JSON_EXTRACT', $src, 'MySQL JSON_EXTRACT must not appear');
         $this->assertStringNotContainsString('JSON_UNQUOTE', $src, 'MySQL JSON_UNQUOTE must not appear');
-        $this->assertStringContainsString("payload->>", $src, 'Postgres jsonb operator must be used');
+        $this->assertStringContainsString('payload->>', $src, 'Postgres jsonb operator must be used');
     }
 
     public function test_upsert_writes_canonical_columns_not_legacy(): void
@@ -61,7 +59,7 @@ class AggregateUsageJobTest extends TestCase
         $src = file_get_contents((new \ReflectionClass(AggregateUsageJob::class))->getFileName());
 
         $this->assertStringContainsString("FeatureFlag::on('atlas.usage_aggregates_v2')", $src, 'Must gate on v2 flag');
-        $this->assertStringContainsString("atlas.usage_aggregates_v2.shadow", $src, 'Must check shadow flag');
-        $this->assertStringContainsString("atlas.usage_aggregates_v2.cutover", $src, 'Must check cutover flag');
+        $this->assertStringContainsString('atlas.usage_aggregates_v2.shadow', $src, 'Must check shadow flag');
+        $this->assertStringContainsString('atlas.usage_aggregates_v2.cutover', $src, 'Must check cutover flag');
     }
 }

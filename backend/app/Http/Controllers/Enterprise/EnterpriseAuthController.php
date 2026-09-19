@@ -38,8 +38,7 @@ class EnterpriseAuthController extends Controller
     public function __construct(
         private readonly EventStore $eventStore,
         private readonly MfaService $mfa,
-    ) {
-    }
+    ) {}
 
     /**
      * POST /api/enterprise/auth/totp/login

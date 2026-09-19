@@ -179,7 +179,7 @@ class IntelligenceGateway
     {
         $result = $this->getJson("{$this->baseUrl}/api/autonomy/settings/{$workspaceId}");
 
-        if (!is_array($result) || ($result['ok'] ?? true) === false) {
+        if (! is_array($result) || ($result['ok'] ?? true) === false) {
             return [
                 'autonomy_level' => 1,
                 'auto_execute_threshold' => 0.85,
@@ -216,7 +216,7 @@ class IntelligenceGateway
     /** @return array<int, array<string, mixed>> */
     protected function normalizeList(mixed $result): array
     {
-        if (!is_array($result) || ($result['ok'] ?? true) === false) {
+        if (! is_array($result) || ($result['ok'] ?? true) === false) {
             return [];
         }
 

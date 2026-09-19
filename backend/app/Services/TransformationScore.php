@@ -40,16 +40,16 @@ class TransformationScore
     /**
      * Compute TS + sub-scores from an atlas_interactions row (decoded).
      *
-     * @param array $row  {
-     *   atlas_response: {future_state, value, emotional_shift, action_summary, details?},
-     *   execution_result: array,
-     *   parsed_intent: array,
-     *   clicked_expand?: bool,
-     *   accepted_action?: bool,
-     *   follow_up?: bool,
-     *   time_on_response_ms?: ?int,
-     *   rating?: ?int
-     * }
+     * @param  array  $row  {
+     *                      atlas_response: {future_state, value, emotional_shift, action_summary, details?},
+     *                      execution_result: array,
+     *                      parsed_intent: array,
+     *                      clicked_expand?: bool,
+     *                      accepted_action?: bool,
+     *                      follow_up?: bool,
+     *                      time_on_response_ms?: ?int,
+     *                      rating?: ?int
+     *                      }
      * @return array{
      *   final_ts: float,
      *   value_perception_score: float,
@@ -67,34 +67,34 @@ class TransformationScore
         $visible = $this->visibleText($response);
 
         $valuePerception = $this->valuePerceptionScore($response);
-        $clarity         = $this->clarityScore($visible);
-        $emotional       = $this->emotionalScore($response);
-        $actionability   = $this->actionabilityScore($row);
-        $trust           = $this->trustScore($response, (array) ($row['execution_result'] ?? []));
-        $cognitiveLoad   = $this->cognitiveLoadPenalty($visible);
-        $techLeakage     = $this->technicalLeakagePenalty($visible);
+        $clarity = $this->clarityScore($visible);
+        $emotional = $this->emotionalScore($response);
+        $actionability = $this->actionabilityScore($row);
+        $trust = $this->trustScore($response, (array) ($row['execution_result'] ?? []));
+        $cognitiveLoad = $this->cognitiveLoadPenalty($visible);
+        $techLeakage = $this->technicalLeakagePenalty($visible);
 
         $weights = $this->weights();
 
         $ts =
-            $weights['value']        * $valuePerception
-            + $weights['clarity']      * $clarity
-            + $weights['emotional']    * $emotional
-            + $weights['actionability']* $actionability
-            + $weights['trust']        * $trust
-            - $weights['cognitive']    * $cognitiveLoad
-            - $weights['leakage']      * $techLeakage;
+            $weights['value'] * $valuePerception
+            + $weights['clarity'] * $clarity
+            + $weights['emotional'] * $emotional
+            + $weights['actionability'] * $actionability
+            + $weights['trust'] * $trust
+            - $weights['cognitive'] * $cognitiveLoad
+            - $weights['leakage'] * $techLeakage;
 
         $ts = max(0.0, min(1.0, $ts));
 
         return [
             'final_ts' => round($ts, 4),
-            'value_perception_score'    => round($valuePerception, 4),
-            'clarity_score'             => round($clarity, 4),
-            'emotional_score'           => round($emotional, 4),
-            'actionability_score'       => round($actionability, 4),
-            'trust_score'               => round($trust, 4),
-            'cognitive_load_penalty'    => round($cognitiveLoad, 4),
+            'value_perception_score' => round($valuePerception, 4),
+            'clarity_score' => round($clarity, 4),
+            'emotional_score' => round($emotional, 4),
+            'actionability_score' => round($actionability, 4),
+            'trust_score' => round($trust, 4),
+            'cognitive_load_penalty' => round($cognitiveLoad, 4),
             'technical_leakage_penalty' => round($techLeakage, 4),
         ];
     }
@@ -140,10 +140,19 @@ class TransformationScore
         }
         $avgWords = $avgWords / $count;
 
-        if ($avgWords <= 14) return 1.0;
-        if ($avgWords <= 22) return 0.8;
-        if ($avgWords <= 30) return 0.6;
-        if ($avgWords <= 40) return 0.4;
+        if ($avgWords <= 14) {
+            return 1.0;
+        }
+        if ($avgWords <= 22) {
+            return 0.8;
+        }
+        if ($avgWords <= 30) {
+            return 0.6;
+        }
+        if ($avgWords <= 40) {
+            return 0.4;
+        }
+
         return 0.2;
     }
 
@@ -168,9 +177,16 @@ class TransformationScore
     private function actionabilityScore(array $row): float
     {
         $score = 0.4; // baseline when action_summary exists
-        if (!empty($row['accepted_action'])) $score += 0.35;
-        if (!empty($row['follow_up'])) $score += 0.15;
-        if (!empty($row['clicked_expand'])) $score += 0.10;
+        if (! empty($row['accepted_action'])) {
+            $score += 0.35;
+        }
+        if (! empty($row['follow_up'])) {
+            $score += 0.15;
+        }
+        if (! empty($row['clicked_expand'])) {
+            $score += 0.10;
+        }
+
         return min(1.0, $score);
     }
 
@@ -188,7 +204,7 @@ class TransformationScore
 
         $metrics = (array) ($executionResult['metrics'] ?? []);
         $maxMetric = 0.0;
-        foreach (['time_saved_hours','cost_automated_usd','tasks_automated'] as $k) {
+        foreach (['time_saved_hours', 'cost_automated_usd', 'tasks_automated'] as $k) {
             if (isset($metrics[$k])) {
                 $maxMetric = max($maxMetric, (float) $metrics[$k]);
             }
@@ -207,9 +223,16 @@ class TransformationScore
     private function cognitiveLoadPenalty(string $visible): float
     {
         $words = str_word_count($visible);
-        if ($words <= 50) return 0.0;
-        if ($words <= 100) return 0.2;
-        if ($words <= 200) return 0.5;
+        if ($words <= 50) {
+            return 0.0;
+        }
+        if ($words <= 100) {
+            return 0.2;
+        }
+        if ($words <= 200) {
+            return 0.5;
+        }
+
         return 0.9;
     }
 
@@ -218,20 +241,21 @@ class TransformationScore
         $hits = 0;
         $lower = strtolower($visible);
         foreach (self::TECHNICAL_TERMS as $term) {
-            if (preg_match('/\b' . preg_quote(strtolower($term), '/') . '\b/', $lower)) {
+            if (preg_match('/\b'.preg_quote(strtolower($term), '/').'\b/', $lower)) {
                 $hits++;
             }
         }
+
         return min(1.0, 0.3 * $hits);
     }
 
     private function visibleText(array $response): string
     {
         return trim(implode(' ', [
-            (string) ($response['future_state']    ?? ''),
-            (string) ($response['value']           ?? ''),
+            (string) ($response['future_state'] ?? ''),
+            (string) ($response['value'] ?? ''),
             (string) ($response['emotional_shift'] ?? ''),
-            (string) ($response['action_summary']  ?? ''),
+            (string) ($response['action_summary'] ?? ''),
         ]));
     }
 
@@ -248,6 +272,7 @@ class TransformationScore
         ];
 
         $configured = (array) config('services.spidernet.ts_weights', []);
+
         return array_merge($defaults, $configured);
     }
 }

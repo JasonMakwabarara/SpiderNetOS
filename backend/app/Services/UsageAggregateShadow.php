@@ -34,13 +34,13 @@ class UsageAggregateShadow
      * not a diff (it is a normal insert) so we skip logging.
      */
     public function diff(
-        string  $tenantId,
-        string  $date,
-        string  $resourceType,
-        ?int    $existingCalls,
-        int     $newCalls,
-        ?float  $existingCost,
-        float   $newCost,
+        string $tenantId,
+        string $date,
+        string $resourceType,
+        ?int $existingCalls,
+        int $newCalls,
+        ?float $existingCost,
+        float $newCost,
     ): void {
         if ($existingCalls === null) {
             // Brand-new row — not a mismatch
@@ -61,28 +61,28 @@ class UsageAggregateShadow
         foreach ($diffs as $kind) {
             try {
                 DB::table('usage_shadow_diffs')->insert([
-                    'tenant_id'              => $tenantId,
-                    'date'                   => $date,
-                    'resource_type'          => $resourceType,
-                    'legacy_request_count'   => $existingCalls,
-                    'canonical_total_calls'  => $newCalls,
-                    'legacy_total_cost'      => $existingCost,
-                    'canonical_total_cost'   => $newCost,
-                    'diff_kind'              => $kind,
-                    'detected_at'            => now(),
-                    'resolved_at'            => null,
+                    'tenant_id' => $tenantId,
+                    'date' => $date,
+                    'resource_type' => $resourceType,
+                    'legacy_request_count' => $existingCalls,
+                    'canonical_total_calls' => $newCalls,
+                    'legacy_total_cost' => $existingCost,
+                    'canonical_total_cost' => $newCost,
+                    'diff_kind' => $kind,
+                    'detected_at' => now(),
+                    'resolved_at' => null,
                 ]);
 
                 Log::warning("[UsageAggregateShadow] {$kind} detected", [
-                    'tenant_id'     => $tenantId,
-                    'date'          => $date,
+                    'tenant_id' => $tenantId,
+                    'date' => $date,
                     'resource_type' => $resourceType,
-                    'existing'      => ['calls' => $existingCalls, 'cost' => $existingCost],
-                    'new'           => ['calls' => $newCalls, 'cost' => $newCost],
+                    'existing' => ['calls' => $existingCalls, 'cost' => $existingCost],
+                    'new' => ['calls' => $newCalls, 'cost' => $newCost],
                 ]);
             } catch (\Throwable $e) {
                 // Never block the primary write path
-                Log::error('[UsageAggregateShadow] Failed to log diff: ' . $e->getMessage());
+                Log::error('[UsageAggregateShadow] Failed to log diff: '.$e->getMessage());
             }
         }
     }
@@ -106,8 +106,8 @@ class UsageAggregateShadow
 
         return [
             'open_diffs_last_24h' => $openDiffs,
-            'total_open_diffs'    => $totalDiffs,
-            'ready_for_cutover'   => $openDiffs === 0,
+            'total_open_diffs' => $totalDiffs,
+            'ready_for_cutover' => $openDiffs === 0,
         ];
     }
 

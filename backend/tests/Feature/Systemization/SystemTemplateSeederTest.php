@@ -20,8 +20,11 @@ class SystemTemplateSeederTest extends TestCase
 
     // Shapes of packages/feature-packs/business-systemization/templates/*.yaml
     private const RECRUITMENT_SYSTEMS = 3;   // Personal Recruiting, Interview Pipeline, Onboarding & First Days
+
     private const RECRUITMENT_PROCESSES = 10;
+
     private const RETRAINING_SYSTEMS = 3;    // Field Retraining Protocol, Mastery Coaching, Atmosphere & Standards
+
     private const RETRAINING_PROCESSES = 12;
 
     private Tenant $tenant;
@@ -35,7 +38,7 @@ class SystemTemplateSeederTest extends TestCase
         Sanctum::actingAs(User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Founder',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),
@@ -47,7 +50,7 @@ class SystemTemplateSeederTest extends TestCase
         return Tenant::create([
             'id' => Str::uuid(),
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::lower(Str::random(6)),
+            'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
             'status' => $status,
             'plan' => 'growth',
         ]);
@@ -222,7 +225,7 @@ class SystemTemplateSeederTest extends TestCase
         Sanctum::actingAs(User::create([
             'tenant_id' => $plain->id,
             'name' => 'Founder Two',
-            'email' => Str::lower(Str::random(8)) . '@example.test',
+            'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => bcrypt('secret-password'),
             'role' => 'admin',
             'onboarding_completed_at' => now(),

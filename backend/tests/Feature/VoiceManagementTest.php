@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\VoiceNumber;
 use App\Models\VoiceQuota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -28,20 +30,20 @@ class VoiceManagementTest extends TestCase
     {
         parent::setUp();
 
-        $tenant = \App\Models\Tenant::create([
-            'id'     => \Illuminate\Support\Str::uuid(),
-            'name'   => 'Mgmt Tenant',
-            'slug'   => 'mgmt-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
+        $tenant = Tenant::create([
+            'id' => Str::uuid(),
+            'name' => 'Mgmt Tenant',
+            'slug' => 'mgmt-'.Str::lower(Str::random(10)),
             'status' => 'active',
-            'plan'   => 'pro',
+            'plan' => 'pro',
         ]);
 
         $this->user = User::create([
-            'name'      => 'Test User',
-            'email'     => 'test@example.com',
-            'password'  => bcrypt('password'),
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
             'tenant_id' => $tenant->id,
-            'role'      => 'admin',
+            'role' => 'admin',
             // Voice management routes sit behind the onboarding gate — an
             // un-onboarded user is 403'd before reaching the controller.
             'onboarding_completed_at' => now(),
@@ -61,12 +63,12 @@ class VoiceManagementTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->postJson('/api/voice/numbers', [
-                'phone_number'    => '+15551234567',
-                'provider'        => 'twilio',
-                'agent_id'        => 'voice_sales',
+                'phone_number' => '+15551234567',
+                'provider' => 'twilio',
+                'agent_id' => 'voice_sales',
                 'approval_policy' => 'off',
-                'allow_outbound'  => false,
-                'config'          => ['greeting' => 'Hello!'],
+                'allow_outbound' => false,
+                'config' => ['greeting' => 'Hello!'],
             ]);
 
         $response->assertStatus(201);
@@ -74,24 +76,24 @@ class VoiceManagementTest extends TestCase
 
         $this->assertDatabaseHas('voice_numbers', [
             'phone_number' => '+15551234567',
-            'tenant_id'    => $this->user->tenant_id,
+            'tenant_id' => $this->user->tenant_id,
         ]);
     }
 
     public function test_update_number_changes_approval_policy(): void
     {
         $number = VoiceNumber::create([
-            'tenant_id'    => $this->user->tenant_id,
+            'tenant_id' => $this->user->tenant_id,
             'phone_number' => '+15559990001',
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'is_active' => true,
         ]);
 
         $response = $this->actingAs($this->user)
             ->patchJson("/api/voice/numbers/{$number->id}", [
                 'approval_policy' => 'strict',
-                'allow_outbound'  => true,
+                'allow_outbound' => true,
             ]);
 
         $response->assertStatus(200);
@@ -101,11 +103,11 @@ class VoiceManagementTest extends TestCase
     public function test_delete_number_removes_record(): void
     {
         $number = VoiceNumber::create([
-            'tenant_id'    => $this->user->tenant_id,
+            'tenant_id' => $this->user->tenant_id,
             'phone_number' => '+15559990002',
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'is_active' => true,
         ]);
 
         $this->actingAs($this->user)
@@ -117,16 +119,16 @@ class VoiceManagementTest extends TestCase
 
     public function test_cannot_access_other_tenant_number(): void
     {
-        $otherTenant = \App\Models\Tenant::create([
-            'id' => \Illuminate\Support\Str::uuid(), 'name' => 'Other', 'slug' => 'other-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)), 'status' => 'active', 'plan' => 'starter',
+        $otherTenant = Tenant::create([
+            'id' => Str::uuid(), 'name' => 'Other', 'slug' => 'other-'.Str::lower(Str::random(10)), 'status' => 'active', 'plan' => 'starter',
         ]);
 
         $number = VoiceNumber::create([
-            'tenant_id'    => $otherTenant->id,
+            'tenant_id' => $otherTenant->id,
             'phone_number' => '+15558880001',
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'is_active' => true,
         ]);
 
         $this->actingAs($this->user)
@@ -150,13 +152,13 @@ class VoiceManagementTest extends TestCase
     {
         $response = $this->actingAs($this->user)->putJson('/api/voice/quotas', [
             'monthly_minutes_cap' => 500,
-            'outbound_cap'        => 50,
-            'sms_cap'             => 200,
+            'outbound_cap' => 50,
+            'sms_cap' => 200,
         ]);
 
         $response->assertStatus(200);
         $this->assertSame(500, $response->json('data.monthly_minutes_cap'));
-        $this->assertSame(50,  $response->json('data.outbound_cap'));
+        $this->assertSame(50, $response->json('data.outbound_cap'));
     }
 
     public function test_quota_model_can_make_call_when_unlimited(): void

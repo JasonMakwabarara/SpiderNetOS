@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\VoiceNumber;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
 /**
@@ -33,11 +34,11 @@ class VoiceSafetyGuard
 
     /** Estimated cost per tool invocation (USD) */
     private const TOOL_COSTS = [
-        'transfer_call'    => 0.002,
+        'transfer_call' => 0.002,
         'calendar_booking' => 0.000,
-        'send_sms'         => 0.0075,
-        'end_call'         => 0.000,
-        'hold_call'        => 0.000,
+        'send_sms' => 0.0075,
+        'end_call' => 0.000,
+        'hold_call' => 0.000,
         'record_call_note' => 0.000,
     ];
 
@@ -45,8 +46,8 @@ class VoiceSafetyGuard
     private const TURN_COST = 0.005;
 
     public function __construct(
-        private readonly CostGovernor   $costGovernor,
-        private readonly FeatureFlag    $featureFlag,
+        private readonly CostGovernor $costGovernor,
+        private readonly FeatureFlag $featureFlag,
         private readonly ApprovalEngine $approvalEngine,
     ) {}
 
@@ -60,40 +61,41 @@ class VoiceSafetyGuard
     public function checkInbound(string $tenantId): array
     {
         // 1. Feature flag
-        if (!FeatureFlag::on('voice.inbound', $tenantId)) {
+        if (! FeatureFlag::on('voice.inbound', $tenantId)) {
             return $this->deny('feature_flag_off');
         }
 
         // 2. Cost governor
         $cost = $this->costGovernor->canExecute($tenantId, self::TURN_COST);
-        if (!$cost['allowed']) {
+        if (! $cost['allowed']) {
             Log::warning('voice.inbound_cost_blocked', ['tenant_id' => $tenantId, 'cost' => $cost]);
+
             return $this->deny('cost_cap_exceeded', $cost['degraded'] ?? false);
         }
 
         $this->emitMetric('voice_calls_total', $tenantId, ['status' => 'allowed']);
+
         return ['allowed' => true, 'reason' => null, 'degraded' => $cost['degraded'] ?? false];
     }
 
     /**
      * Gate a tool invocation for an active call.
      *
-     * @param  string $tenantId
-     * @param  string $toolId        e.g. 'send_sms'
-     * @param  array  $params        tool params (for cost estimate)
-     * @param  string $callSid       for approval context
-     * @param  string $approvalPolicy 'off' | 'notify' | 'strict'
+     * @param  string  $toolId  e.g. 'send_sms'
+     * @param  array  $params  tool params (for cost estimate)
+     * @param  string  $callSid  for approval context
+     * @param  string  $approvalPolicy  'off' | 'notify' | 'strict'
      * @return array{allowed: bool, awaiting_approval: bool, approval_id: string|null, reason: string|null}
      */
     public function checkTool(
         string $tenantId,
         string $toolId,
-        array  $params = [],
+        array $params = [],
         string $callSid = '',
         string $approvalPolicy = 'off',
     ): array {
         // 1. Feature flag for tool execution
-        if (!FeatureFlag::on('voice.tools', $tenantId)) {
+        if (! FeatureFlag::on('voice.tools', $tenantId)) {
             return array_merge($this->deny('tool_feature_flag_off'), ['awaiting_approval' => false, 'approval_id' => null]);
         }
 
@@ -107,8 +109,9 @@ class VoiceSafetyGuard
         }
 
         $cost = $this->costGovernor->canExecute($tenantId, $toolCost);
-        if (!$cost['allowed']) {
+        if (! $cost['allowed']) {
             Log::warning('voice.tool_cost_blocked', ['tenant_id' => $tenantId, 'tool' => $toolId]);
+
             return array_merge($this->deny('cost_cap_exceeded'), ['awaiting_approval' => false, 'approval_id' => null]);
         }
 
@@ -116,26 +119,28 @@ class VoiceSafetyGuard
         if ($approvalPolicy === 'strict' && in_array($toolId, self::APPROVAL_TOOLS)) {
             $approvalId = $this->requestApproval($tenantId, $toolId, $params, $callSid);
             Log::info('voice.tool_approval_requested', [
-                'tenant_id'   => $tenantId,
-                'tool'        => $toolId,
+                'tenant_id' => $tenantId,
+                'tool' => $toolId,
                 'approval_id' => $approvalId,
             ]);
+
             return [
-                'allowed'           => false,
+                'allowed' => false,
                 'awaiting_approval' => true,
-                'approval_id'       => $approvalId,
-                'reason'            => 'awaiting_approval',
-                'degraded'          => false,
+                'approval_id' => $approvalId,
+                'reason' => 'awaiting_approval',
+                'degraded' => false,
             ];
         }
 
         $this->emitToolMetric($tenantId, $toolId, 'allowed');
+
         return [
-            'allowed'           => true,
+            'allowed' => true,
             'awaiting_approval' => false,
-            'approval_id'       => null,
-            'reason'            => null,
-            'degraded'          => $cost['degraded'] ?? false,
+            'approval_id' => null,
+            'reason' => null,
+            'degraded' => $cost['degraded'] ?? false,
         ];
     }
 
@@ -154,6 +159,7 @@ class VoiceSafetyGuard
     {
         try {
             $vn = VoiceNumber::where('phone_number', $phoneNumber)->select('approval_policy')->first();
+
             return $vn?->approval_policy ?? 'off';
         } catch (\Throwable) {
             return 'off';
@@ -171,17 +177,19 @@ class VoiceSafetyGuard
     {
         try {
             $record = $this->approvalEngine->createApproval(
-                tenantId:     $tenantId,
-                requesterId:  'voice_agent',
-                type:         'manual',
+                tenantId: $tenantId,
+                requesterId: 'voice_agent',
+                type: 'manual',
                 resourceType: 'voice_tool',
-                resourceId:   $toolId . ':' . $callSid,
-                reason:       "Voice tool '{$toolId}' requires approval (strict policy)",
-                context:      ['params' => $params, 'call_sid' => $callSid],
+                resourceId: $toolId.':'.$callSid,
+                reason: "Voice tool '{$toolId}' requires approval (strict policy)",
+                context: ['params' => $params, 'call_sid' => $callSid],
             );
+
             return $record['id'] ?? (string) Str::uuid();
         } catch (\Throwable $e) {
             Log::error('voice.approval_creation_failed', ['tool' => $toolId, 'error' => $e->getMessage()]);
+
             return (string) Str::uuid();
         }
     }
@@ -190,7 +198,7 @@ class VoiceSafetyGuard
     {
         try {
             $key = "metrics:{$metric}:tenant:{$tenantId}";
-            \Illuminate\Support\Facades\Redis::incr($key);
+            Redis::incr($key);
         } catch (\Throwable) {
             // non-critical
         }
@@ -199,7 +207,7 @@ class VoiceSafetyGuard
     private function emitToolMetric(string $tenantId, string $toolId, string $status): void
     {
         try {
-            \Illuminate\Support\Facades\Redis::incr("metrics:voice_tool_invocations_total:tenant:{$tenantId}:tool:{$toolId}:status:{$status}");
+            Redis::incr("metrics:voice_tool_invocations_total:tenant:{$tenantId}:tool:{$toolId}:status:{$status}");
         } catch (\Throwable) {
             // non-critical
         }

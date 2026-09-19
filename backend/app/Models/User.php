@@ -2,19 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Auth\Authenticatable;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Model implements AuthenticatableContract
 {
-    use HasFactory, Authenticatable, HasApiTokens;
-    
-    use \Illuminate\Database\Eloquent\Concerns\HasUuids;
-    
+    use Authenticatable, HasApiTokens, HasFactory;
+    use HasUuids;
+
     protected $fillable = [
         'tenant_id',
         'name',
@@ -115,6 +115,7 @@ class User extends Model implements AuthenticatableContract
     public function atLeastRole(string $role): bool
     {
         $required = self::ROLE_HIERARCHY[$role] ?? PHP_INT_MAX;
+
         return $this->roleRank() >= $required;
     }
 
@@ -123,6 +124,7 @@ class User extends Model implements AuthenticatableContract
     {
         $base = self::ROLE_CAPABILITIES[$this->role] ?? [];
         $overrides = is_array($this->capabilities) ? $this->capabilities : [];
+
         return array_values(array_unique(array_merge($base, $overrides)));
     }
 
@@ -134,24 +136,27 @@ class User extends Model implements AuthenticatableContract
             return true;
         }
         // Wildcard prefix match: e.g. "flows.*" grants "flows.execute"
-        $prefix = explode('.', $capability)[0] . '.*';
+        $prefix = explode('.', $capability)[0].'.*';
+
         return in_array($prefix, $caps, true);
     }
 
     /** True iff MFA step-up is still fresh. */
     public function hasFreshStepUp(): bool
     {
-        if (!$this->step_up_at) {
+        if (! $this->step_up_at) {
             return false;
         }
+
         return $this->step_up_at->diffInSeconds(now()) <= self::STEP_UP_TTL_SECONDS;
     }
 
     public function stepUpSecondsRemaining(): int
     {
-        if (!$this->step_up_at) {
+        if (! $this->step_up_at) {
             return 0;
         }
+
         return max(0, self::STEP_UP_TTL_SECONDS - $this->step_up_at->diffInSeconds(now()));
     }
 }

@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Services\Integrations;
 
 use Illuminate\Support\Facades\Http;
+use Stripe\Webhook;
 
 class StripeAdapter
 {
     private string $apiKey;
+
     private string $webhookSecret;
 
     public function __construct(
         protected readonly string $tenantId,
-        protected readonly array  $credentials,
+        protected readonly array $credentials,
     ) {
         $this->apiKey = $credentials['api_key'] ?? throw new \RuntimeException('Stripe API key required');
         $this->webhookSecret = $credentials['webhook_secret'] ?? '';
@@ -22,7 +24,7 @@ class StripeAdapter
     public function createPaymentIntent(
         float $amount,
         string $currency,
-        string $customerId = null,
+        ?string $customerId = null,
         array $metadata = [],
     ): array {
         $response = Http::withToken($this->apiKey)
@@ -35,7 +37,7 @@ class StripeAdapter
             ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $response->body());
+            throw new \RuntimeException('Stripe API error: '.$response->body());
         }
 
         return $response->json();
@@ -43,8 +45,8 @@ class StripeAdapter
 
     public function createCustomer(
         string $name,
-        string $email = null,
-        string $phone = null,
+        ?string $email = null,
+        ?string $phone = null,
         array $metadata = [],
     ): array {
         $response = Http::withToken($this->apiKey)
@@ -57,7 +59,7 @@ class StripeAdapter
             ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $response->body());
+            throw new \RuntimeException('Stripe API error: '.$response->body());
         }
 
         return $response->json();
@@ -77,7 +79,7 @@ class StripeAdapter
             ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $response->body());
+            throw new \RuntimeException('Stripe API error: '.$response->body());
         }
 
         return $response->json();
@@ -97,7 +99,7 @@ class StripeAdapter
             ]);
 
         if ($invoice->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $invoice->body());
+            throw new \RuntimeException('Stripe API error: '.$invoice->body());
         }
 
         $invoiceData = $invoice->json();
@@ -123,11 +125,11 @@ class StripeAdapter
 
     public function handleWebhook(string $payload, string $signature): array
     {
-        if (!$this->webhookSecret) {
+        if (! $this->webhookSecret) {
             throw new \RuntimeException('Stripe webhook secret not configured');
         }
 
-        $event = \Stripe\Webhook::constructEvent(
+        $event = Webhook::constructEvent(
             $payload,
             $signature,
             $this->webhookSecret
@@ -171,7 +173,7 @@ class StripeAdapter
             ->get("https://api.stripe.com/v1/payment_intentions/{$paymentIntentId}");
 
         if ($response->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $response->body());
+            throw new \RuntimeException('Stripe API error: '.$response->body());
         }
 
         $data = $response->json();
@@ -186,7 +188,7 @@ class StripeAdapter
         ];
     }
 
-    public function refundPayment(string $paymentIntentId, float $amount = null): array
+    public function refundPayment(string $paymentIntentId, ?float $amount = null): array
     {
         $params = ['payment_intent' => $paymentIntentId];
         if ($amount) {
@@ -198,7 +200,7 @@ class StripeAdapter
             ->post('https://api.stripe.com/v1/refunds', $params);
 
         if ($response->failed()) {
-            throw new \RuntimeException("Stripe API error: " . $response->body());
+            throw new \RuntimeException('Stripe API error: '.$response->body());
         }
 
         return $response->json();

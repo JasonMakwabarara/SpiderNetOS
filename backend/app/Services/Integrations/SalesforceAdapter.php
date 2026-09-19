@@ -17,10 +17,10 @@ class SalesforceAdapter extends CrmAdapter
 {
     public function upsertContact(array $contact): array
     {
-        $token       = $this->credentials['access_token'] ?? null;
+        $token = $this->credentials['access_token'] ?? null;
         $instanceUrl = $this->credentials['instance_url'] ?? null;
 
-        if (!$token || !$instanceUrl) {
+        if (! $token || ! $instanceUrl) {
             return ['success' => false, 'contact_id' => null, 'error' => 'Missing Salesforce credentials'];
         }
 
@@ -28,17 +28,18 @@ class SalesforceAdapter extends CrmAdapter
             $response = Http::withToken($token)
                 ->post("{$instanceUrl}/services/data/v59.0/sobjects/Contact/", [
                     'LastName' => $contact['name'],
-                    'Phone'    => $contact['phone'] ?? null,
-                    'Email'    => $contact['email'] ?? null,
+                    'Phone' => $contact['phone'] ?? null,
+                    'Email' => $contact['email'] ?? null,
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return ['success' => false, 'contact_id' => null, 'error' => 'Salesforce API error'];
             }
 
             return ['success' => true, 'contact_id' => $response->json()['id'] ?? null, 'error' => null];
         } catch (\Throwable $e) {
             Log::error('salesforce.upsert_failed', ['error' => $e->getMessage()]);
+
             return ['success' => false, 'contact_id' => null, 'error' => $e->getMessage()];
         }
     }
@@ -47,6 +48,7 @@ class SalesforceAdapter extends CrmAdapter
     {
         // TODO: implement via SFDC Task object
         Log::info('salesforce.log_call_stub', ['account' => $this->tenantId]);
+
         return true;
     }
 

@@ -9,6 +9,7 @@ use App\Models\TenantIntegration;
 use App\Models\User;
 use App\Services\TenantKeyManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -47,7 +48,7 @@ class ConnectorLifecycleTest extends TestCase
         $this->assertSame('xoxb-secret', json_decode((string) $keys->getSecret($this->tenant->id, $ref), true)['bot_token']);
 
         // Stored encrypted, never plaintext.
-        $stored = \Illuminate\Support\Facades\DB::table('tenant_secrets')
+        $stored = DB::table('tenant_secrets')
             ->where('tenant_id', $this->tenant->id)->where('key_name', $ref)->where('active', 1)->value('secret_value');
         $this->assertStringNotContainsString('xoxb-secret', (string) $stored);
 

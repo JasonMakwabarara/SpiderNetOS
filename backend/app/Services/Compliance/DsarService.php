@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Compliance;
 
 use App\Models\AdminAuditLog;
+use App\Models\ConsentRecord;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
-use App\Models\ConsentRecord;
 use App\Models\DsarRequest;
 use App\Models\Lead;
 use App\Models\SequenceEnrollment;

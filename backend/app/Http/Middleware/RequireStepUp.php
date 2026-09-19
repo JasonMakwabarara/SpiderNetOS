@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,15 +22,15 @@ class RequireStepUp
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if (!$user->hasFreshStepUp()) {
+        if (! $user->hasFreshStepUp()) {
             return response()->json([
                 'error' => 'step_up_required',
                 'reason' => 'step_up_stale',
-                'ttl_seconds' => \App\Models\User::STEP_UP_TTL_SECONDS,
+                'ttl_seconds' => User::STEP_UP_TTL_SECONDS,
                 'step_up_url' => '/api/auth/step-up',
             ], 428);
         }

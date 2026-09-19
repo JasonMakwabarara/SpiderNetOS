@@ -1,7 +1,9 @@
-﻿<?php
+<?php
+
 namespace Database\Seeders;
-use Illuminate\Database\Seeder;
+
 use App\Models\Agent;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class AgentSeeder extends Seeder
@@ -22,12 +24,12 @@ class AgentSeeder extends Seeder
                     'type' => 'custom',
                     'capabilities' => ['chat'],
                     'status' => 'active',
-                    'tenant_id' => '00000000-0000-0000-0000-000000000001'
+                    'tenant_id' => '00000000-0000-0000-0000-000000000001',
                 ]);
             }
             echo "✅ Agents seeded!\n";
         } else {
-            echo "Agents already exist: " . Agent::count() . "\n";
+            echo 'Agents already exist: '.Agent::count()."\n";
         }
     }
 }

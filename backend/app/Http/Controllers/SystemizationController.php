@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Console\Commands\SeedSystemTemplates;
 use App\Models\BusinessProcess;
 use App\Models\BusinessSystem;
 use App\Models\Sop;
@@ -15,6 +16,7 @@ use App\Services\Systemization\SopFlowCompiler;
 use App\Services\Systemization\SopInterviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Validation\Rule;
 
 /**
@@ -26,8 +28,7 @@ class SystemizationController extends Controller
     public function __construct(
         private readonly EventStore $eventStore,
         private readonly SopInterviewService $interview,
-    ) {
-    }
+    ) {}
 
     /**
      * POST /api/systemization/bootstrap — seed the six core functions.
@@ -76,8 +77,8 @@ class SystemizationController extends Controller
         $templatesSeeded = false;
 
         if (($validated['seed_templates'] ?? false)
-            && \App\Console\Commands\SeedSystemTemplates::templatesAvailable()) {
-            \Illuminate\Support\Facades\Artisan::call('systems:seed-templates', [
+            && SeedSystemTemplates::templatesAvailable()) {
+            Artisan::call('systems:seed-templates', [
                 '--tenant' => $tenantId,
             ]);
             $templatesSeeded = true;

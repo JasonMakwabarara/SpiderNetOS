@@ -2,19 +2,20 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PortfolioPosition extends Model
 {
-    use \Illuminate\Database\Eloquent\Concerns\HasUuids;
-    
+    use HasUuids;
+
     protected $fillable = [
         'portfolio_id', 'tenant_id', 'asset_type', 'symbol', 'name',
         'quantity', 'avg_cost', 'current_price', 'market_value',
         'unrealized_pnl', 'realized_pnl', 'weight', 'last_price_update',
     ];
-    
+
     protected $casts = [
         'quantity' => 'decimal:8',
         'avg_cost' => 'decimal:4',
@@ -25,12 +26,12 @@ class PortfolioPosition extends Model
         'weight' => 'decimal:2',
         'last_price_update' => 'datetime',
     ];
-    
+
     public function portfolio(): BelongsTo
     {
         return $this->belongsTo(Portfolio::class);
     }
-    
+
     public function updatePrice(float $price): void
     {
         $this->current_price = $price;

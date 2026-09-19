@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,7 +17,7 @@ class ResolveTenant
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Authentication required',
             ], 401);
@@ -24,15 +25,15 @@ class ResolveTenant
 
         $tenantId = $user->tenant_id;
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             return response()->json([
                 'message' => 'User has no associated tenant',
             ], 403);
         }
 
         // Verify tenant exists and is active
-        $tenant = \App\Models\Tenant::find($tenantId);
-        if (!$tenant || !$tenant->isActive()) {
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant || ! $tenant->isActive()) {
             return response()->json([
                 'message' => 'Tenant is inactive or does not exist',
             ], 403);

@@ -17,6 +17,7 @@ use App\Services\Notifications\NotificationService;
 use App\Services\Spend\Rails\PaymentRailManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -234,7 +235,7 @@ class BillService
     {
         $bill = Bill::forTenant($tenantId)->find($billId);
 
-        if (!$bill || $bill->status !== 'awaiting_approval') {
+        if (! $bill || $bill->status !== 'awaiting_approval') {
             return;
         }
 
@@ -340,7 +341,7 @@ class BillService
         return DB::transaction(function () use ($billId, $tenantId, $bankReference, $method) {
             $bill = Bill::forTenant($tenantId)->findOrFail($billId);
 
-            if (!in_array($bill->status, ['approved', 'scheduled'], true)) {
+            if (! in_array($bill->status, ['approved', 'scheduled'], true)) {
                 throw new \LogicException("Only approved or scheduled bills can be marked paid. Current status: {$bill->status}");
             }
 
@@ -502,7 +503,7 @@ class BillService
     }
 
     /** Unpaid bills due within $days (including already-overdue ones). */
-    public function getDueSoon(string $tenantId, int $days = 7): \Illuminate\Support\Collection
+    public function getDueSoon(string $tenantId, int $days = 7): Collection
     {
         return Bill::forTenant($tenantId)
             ->unpaid()
@@ -628,7 +629,7 @@ class BillService
     {
         $bill = Bill::forTenant($tenantId)->findOrFail($billId);
 
-        if (!$bill->isDraft()) {
+        if (! $bill->isDraft()) {
             throw new \LogicException("Bill must be in draft status. Current status: {$bill->status}");
         }
 

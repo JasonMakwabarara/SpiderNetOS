@@ -19,7 +19,7 @@ class JarvisUsageRecorder
             return;
         }
 
-        if (!Schema::hasTable('usage_records')) {
+        if (! Schema::hasTable('usage_records')) {
             return;
         }
 
@@ -39,7 +39,7 @@ class JarvisUsageRecorder
             'metadata' => json_encode(array_merge(['surface' => 'background'], $metadata)),
         ]);
 
-        if (!Schema::hasTable('usage_daily_aggregates')) {
+        if (! Schema::hasTable('usage_daily_aggregates')) {
             return;
         }
 

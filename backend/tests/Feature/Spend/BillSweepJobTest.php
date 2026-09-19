@@ -10,6 +10,7 @@ use App\Models\Bill;
 use App\Models\RecurringBillTemplate;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\EventStore;
 use App\Services\Spend\BillService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -111,8 +112,8 @@ class BillSweepJobTest extends TestCase
             'enabled' => true,
         ]);
 
-        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(\App\Services\EventStore::class));
-        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(\App\Services\EventStore::class));
+        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(EventStore::class));
+        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(EventStore::class));
 
         $this->assertSame(1, Bill::forTenant($tenant->id)->count());
 
@@ -149,7 +150,7 @@ class BillSweepJobTest extends TestCase
             'enabled' => true,
         ]);
 
-        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(\App\Services\EventStore::class));
+        (new GenerateRecurringBillsJob)->handle(app(BillService::class), app(EventStore::class));
 
         // Neither template creates a bill; the manual one emits an event instead.
         $this->assertSame(0, Bill::forTenant($tenant->id)->count());

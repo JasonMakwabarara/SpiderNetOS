@@ -27,13 +27,12 @@ class TransformationEngine
     public function __construct(
         private readonly AtlasPromptStack $prompts,
         private readonly AtlasResponseFormatter $formatter,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array $parsedIntent  desired_future, pain_points, functional_goal, emotional_goal, task_type
-     * @param array $executionResult  status, metrics, agent_used, etc
-     * @param string $style  concise|balanced|emotional|analytical|directive
+     * @param  array  $parsedIntent  desired_future, pain_points, functional_goal, emotional_goal, task_type
+     * @param  array  $executionResult  status, metrics, agent_used, etc
+     * @param  string  $style  concise|balanced|emotional|analytical|directive
      */
     public function transform(
         array $parsedIntent,
@@ -53,7 +52,7 @@ class TransformationEngine
             if ($validation['ok']) {
                 return [
                     'contract' => $contract,
-                    'source'   => 'llm',
+                    'source' => 'llm',
                     'violations' => [],
                     'style' => $style,
                 ];
@@ -123,29 +122,32 @@ class TransformationEngine
         };
 
         return [
-            'future_state'    => $futureState,
-            'value'           => $value,
+            'future_state' => $futureState,
+            'value' => $value,
             'emotional_shift' => $emotionalShift,
-            'action_summary'  => $actionSummary,
-            'details'         => null,
+            'action_summary' => $actionSummary,
+            'details' => null,
         ];
     }
 
     private function buildValueStatement(array $metrics, string $taskType): string
     {
-        if (!empty($metrics['time_saved_hours'])) {
+        if (! empty($metrics['time_saved_hours'])) {
             $hours = (float) $metrics['time_saved_hours'];
-            return sprintf("You reclaim roughly %s hours of effort.", $this->prettyNumber($hours));
+
+            return sprintf('You reclaim roughly %s hours of effort.', $this->prettyNumber($hours));
         }
 
-        if (!empty($metrics['cost_automated_usd'])) {
+        if (! empty($metrics['cost_automated_usd'])) {
             $cost = (float) $metrics['cost_automated_usd'];
-            return sprintf("You automated around \$%s of recurring work.", $this->prettyNumber($cost));
+
+            return sprintf('You automated around $%s of recurring work.', $this->prettyNumber($cost));
         }
 
-        if (!empty($metrics['tasks_automated'])) {
+        if (! empty($metrics['tasks_automated'])) {
             $n = (int) $metrics['tasks_automated'];
-            return sprintf("You removed %d recurring tasks from your plate.", $n);
+
+            return sprintf('You removed %d recurring tasks from your plate.', $n);
         }
 
         return match ($taskType) {
@@ -160,9 +162,9 @@ class TransformationEngine
         $metrics = $executionResult['metrics'] ?? [];
 
         return [
-            'time_saved_hours'   => $metrics['time_saved_hours']   ?? $executionResult['time_saved_hours']   ?? null,
+            'time_saved_hours' => $metrics['time_saved_hours'] ?? $executionResult['time_saved_hours'] ?? null,
             'cost_automated_usd' => $metrics['cost_automated_usd'] ?? $executionResult['cost_automated_usd'] ?? null,
-            'tasks_automated'    => $metrics['tasks_automated']    ?? $executionResult['tasks_automated']    ?? null,
+            'tasks_automated' => $metrics['tasks_automated'] ?? $executionResult['tasks_automated'] ?? null,
         ];
     }
 
@@ -174,6 +176,7 @@ class TransformationEngine
         if ($n >= 10) {
             return number_format($n, 1);
         }
+
         return number_format($n, 2);
     }
 
@@ -190,30 +193,31 @@ class TransformationEngine
 
         try {
             $prompt = $this->prompts->responseConstructionPrompt($intent, $executionResult, $style);
-            $response = Http::timeout(8)->post(rtrim($inferenceUrl, '/') . '/generate', [
-                'prompt'        => $prompt,
+            $response = Http::timeout(8)->post(rtrim($inferenceUrl, '/').'/generate', [
+                'prompt' => $prompt,
                 'system_prompt' => $this->prompts->systemPrompt(),
-                'model'         => (string) config('services.spidernet.prompt_enhancer_model', 'gemma4'),
-                'temperature'   => 0.3,
-                'max_tokens'    => 500,
-                'tenant_id'     => 'system',
-                'cost_ceiling'  => 0.10,
-                'tenant_tier'   => 'growth',
+                'model' => (string) config('services.spidernet.prompt_enhancer_model', 'gemma4'),
+                'temperature' => 0.3,
+                'max_tokens' => 500,
+                'tenant_id' => 'system',
+                'cost_ceiling' => 0.10,
+                'tenant_tier' => 'growth',
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
             $text = (string) ($response->json('text') ?? '');
             $decoded = $this->extractJson($text);
-            if (!is_array($decoded)) {
+            if (! is_array($decoded)) {
                 return null;
             }
 
             return $decoded;
         } catch (\Throwable $e) {
-            Log::info('TransformationEngine: LLM call failed: ' . $e->getMessage());
+            Log::info('TransformationEngine: LLM call failed: '.$e->getMessage());
+
             return null;
         }
     }

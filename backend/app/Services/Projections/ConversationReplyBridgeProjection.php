@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
 class ConversationReplyBridgeProjection
 {
     private const QUEUE = 'agent:dispatch';
+
     private const AGENT_SLUG = 'sales_crm_crm';
 
     public function accepts(Event $event): bool

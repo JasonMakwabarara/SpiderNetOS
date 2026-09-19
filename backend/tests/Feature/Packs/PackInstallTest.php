@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Packs;
 
 use App\Models\FeaturePack;
-use App\Models\PackEntitlement;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;

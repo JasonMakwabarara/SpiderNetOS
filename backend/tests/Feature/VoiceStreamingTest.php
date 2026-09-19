@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Tenant;
 use App\Models\VoiceCall;
+use App\Models\VoiceNumber;
 use App\Services\FeatureFlag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -38,8 +41,8 @@ class VoiceStreamingTest extends TestCase
     {
         return [
             'CallSid' => 'CAstream001',
-            'From'    => '+15555551234',
-            'To'      => '+15555557890',
+            'From' => '+15555551234',
+            'To' => '+15555557890',
         ];
     }
 
@@ -63,20 +66,20 @@ class VoiceStreamingTest extends TestCase
     {
         FeatureFlag::set('voice.streaming', 'on');
 
-        $tenant = \App\Models\Tenant::create([
-            'id'     => \Illuminate\Support\Str::uuid(),
-            'name'   => 'Stream Tenant',
-            'slug'   => 'stream-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
+        $tenant = Tenant::create([
+            'id' => Str::uuid(),
+            'name' => 'Stream Tenant',
+            'slug' => 'stream-'.Str::lower(Str::random(10)),
             'status' => 'active',
-            'plan'   => 'starter',
+            'plan' => 'starter',
         ]);
 
-        \App\Models\VoiceNumber::create([
-            'tenant_id'    => $tenant->id,
+        VoiceNumber::create([
+            'tenant_id' => $tenant->id,
             'phone_number' => '+15555557890',
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'is_active' => true,
         ]);
 
         $response = $this->post('/api/voice/stream/connect', $this->streamPayload());
@@ -85,7 +88,7 @@ class VoiceStreamingTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
 
         $body = $response->getContent();
-        $xml  = simplexml_load_string($body);
+        $xml = simplexml_load_string($body);
 
         $this->assertNotFalse($xml);
 
@@ -100,31 +103,31 @@ class VoiceStreamingTest extends TestCase
     {
         FeatureFlag::set('voice.streaming', 'on');
 
-        $tenant = \App\Models\Tenant::create([
-            'id'     => \Illuminate\Support\Str::uuid(),
-            'name'   => 'Stream T2',
-            'slug'   => 'streamt2-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(10)),
+        $tenant = Tenant::create([
+            'id' => Str::uuid(),
+            'name' => 'Stream T2',
+            'slug' => 'streamt2-'.Str::lower(Str::random(10)),
             'status' => 'active',
-            'plan'   => 'starter',
+            'plan' => 'starter',
         ]);
 
-        \App\Models\VoiceNumber::create([
-            'tenant_id'    => $tenant->id,
+        VoiceNumber::create([
+            'tenant_id' => $tenant->id,
             'phone_number' => '+15555557890',
-            'provider'     => 'twilio',
-            'agent_id'     => 'voice_receptionist',
-            'is_active'    => true,
+            'provider' => 'twilio',
+            'agent_id' => 'voice_receptionist',
+            'is_active' => true,
         ]);
 
         // Create a matching call record
         VoiceCall::create([
-            'tenant_id'    => $tenant->id,
-            'call_sid'     => 'CAstream001',
+            'tenant_id' => $tenant->id,
+            'call_sid' => 'CAstream001',
             'phone_number' => '+15555557890',
-            'from_number'  => '+15555551234',
-            'direction'    => 'inbound',
-            'status'       => 'in-progress',
-            'started_at'   => now(),
+            'from_number' => '+15555551234',
+            'direction' => 'inbound',
+            'status' => 'in-progress',
+            'started_at' => now(),
         ]);
 
         $this->post('/api/voice/stream/connect', $this->streamPayload());

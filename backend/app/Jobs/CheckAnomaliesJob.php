@@ -43,6 +43,7 @@ class CheckAnomaliesJob implements ShouldQueue
 
         if ($tenants->isEmpty()) {
             Log::info('[AnomalyCheck] No active tenants — skipping.');
+
             return;
         }
 
@@ -56,21 +57,21 @@ class CheckAnomaliesJob implements ShouldQueue
                 ->where('status', 'active')
                 ->exists();
 
-            if (!$hasSentinel) {
+            if (! $hasSentinel) {
                 continue;
             }
 
             $message = json_encode([
-                'id'        => (string) Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
-                'agent_id'  => 'sentinel',
-                'intent'    => 'anomaly_check',
-                'context'   => [
+                'agent_id' => 'sentinel',
+                'intent' => 'anomaly_check',
+                'context' => [
                     'check_window_minutes' => 15,
-                    'requested_at'         => now()->toIso8601String(),
+                    'requested_at' => now()->toIso8601String(),
                 ],
-                'priority'  => 'normal',
-                'version'   => '3.2',
+                'priority' => 'normal',
+                'version' => '3.2',
             ]);
 
             Redis::rpush('agent:dispatch', $message);

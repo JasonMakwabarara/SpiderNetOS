@@ -37,7 +37,7 @@ class ReplayDivergenceService
             })
             ->first();
 
-        if (!$row) {
+        if (! $row) {
             return null;
         }
 
@@ -80,7 +80,7 @@ class ReplayDivergenceService
             ->where('id', $executionId)
             ->first();
 
-        if (!$liveExecution) {
+        if (! $liveExecution) {
             throw new \RuntimeException('Execution not found for divergence check.');
         }
 
@@ -128,7 +128,7 @@ class ReplayDivergenceService
                     $replay['execution_status'] = 'running';
                     break;
                 case 'flow.node_started':
-                    if (!empty($payload['node_id'])) {
+                    if (! empty($payload['node_id'])) {
                         $replay['nodes'][$payload['node_id']] = array_merge(
                             $replay['nodes'][$payload['node_id']] ?? [],
                             ['status' => 'running']
@@ -136,7 +136,7 @@ class ReplayDivergenceService
                     }
                     break;
                 case 'flow.node_completed':
-                    if (!empty($payload['node_id'])) {
+                    if (! empty($payload['node_id'])) {
                         $replay['nodes'][$payload['node_id']] = array_merge(
                             $replay['nodes'][$payload['node_id']] ?? [],
                             ['status' => 'completed', 'result' => $payload['result'] ?? null]
@@ -147,7 +147,7 @@ class ReplayDivergenceService
                     $replay['execution_status'] = 'failed';
                     // Exhausted retries fail the node and the execution in one
                     // step, and the node is only named here as failed_node.
-                    if (!empty($payload['failed_node'])) {
+                    if (! empty($payload['failed_node'])) {
                         $replay['nodes'][$payload['failed_node']] = array_merge(
                             $replay['nodes'][$payload['failed_node']] ?? [],
                             ['status' => 'failed']
@@ -159,7 +159,7 @@ class ReplayDivergenceService
                     break;
                 case 'approval.required':
                     $replay['execution_status'] = 'paused';
-                    if (!empty($payload['node_id'])) {
+                    if (! empty($payload['node_id'])) {
                         $replay['nodes'][$payload['node_id']] = array_merge(
                             $replay['nodes'][$payload['node_id']] ?? [],
                             ['status' => 'waiting_approval']
@@ -181,7 +181,7 @@ class ReplayDivergenceService
 
         foreach ($liveNodes as $nodeId => $liveNodeState) {
             $replayedNode = $replay['nodes'][$nodeId] ?? null;
-            if (!$replayedNode) {
+            if (! $replayedNode) {
                 // A node that never started has no events, which only
                 // diverges when the live row says it got past pending.
                 if (($liveNodeState['status'] ?? null) !== 'pending') {
@@ -191,6 +191,7 @@ class ReplayDivergenceService
                         'live' => $liveNodeState['status'] ?? null,
                     ];
                 }
+
                 continue;
             }
 
@@ -270,7 +271,7 @@ class ReplayDivergenceService
             ->where('tenant_id', $tenantId)
             ->where(function ($q) use ($agentId) {
                 $q->whereRaw("JSON_EXTRACT(metadata, '$.agent_id') = ?", [$agentId])
-                  ->orWhereRaw("JSON_SEARCH(JSON_EXTRACT(metadata, '$.related_agents'), 'one', ?) IS NOT NULL", [$agentId]);
+                    ->orWhereRaw("JSON_SEARCH(JSON_EXTRACT(metadata, '$.related_agents'), 'one', ?) IS NOT NULL", [$agentId]);
             })
             ->delete();
     }

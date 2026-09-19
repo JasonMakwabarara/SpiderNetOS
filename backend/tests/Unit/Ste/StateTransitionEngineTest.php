@@ -18,7 +18,7 @@ class StateTransitionEngineTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->ste = new StateTransitionEngine();
+        $this->ste = new StateTransitionEngine;
     }
 
     // ------------------------------------------------------------------
@@ -32,7 +32,7 @@ class StateTransitionEngineTest extends TestCase
 
     public function test_single_row_produces_probability_1(): void
     {
-        $rows   = [$this->row('a', 'b', 10)];
+        $rows = [$this->row('a', 'b', 10)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $this->assertArrayHasKey('a', $matrix);
@@ -43,7 +43,7 @@ class StateTransitionEngineTest extends TestCase
 
     public function test_two_equal_count_rows_produce_equal_probabilities(): void
     {
-        $rows   = [$this->row('a', 'b', 50), $this->row('a', 'c', 50)];
+        $rows = [$this->row('a', 'b', 50), $this->row('a', 'c', 50)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $pb = $matrix['a']['b'];
@@ -68,7 +68,7 @@ class StateTransitionEngineTest extends TestCase
 
     public function test_higher_count_produces_higher_probability(): void
     {
-        $rows   = [$this->row('s', 'completed', 80), $this->row('s', 'abandoned', 20)];
+        $rows = [$this->row('s', 'completed', 80), $this->row('s', 'abandoned', 20)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $this->assertGreaterThan($matrix['s']['abandoned'], $matrix['s']['completed']);
@@ -77,7 +77,7 @@ class StateTransitionEngineTest extends TestCase
     public function test_damping_prevents_zero_probability_for_minority_successor(): void
     {
         // Even with 1 observation vs 999, damping should keep P > 0
-        $rows   = [$this->row('a', 'b', 999), $this->row('a', 'c', 1)];
+        $rows = [$this->row('a', 'b', 999), $this->row('a', 'c', 1)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $this->assertGreaterThan(0.0, $matrix['a']['c']);
@@ -90,7 +90,7 @@ class StateTransitionEngineTest extends TestCase
     public function test_compute_dropoffs_session_lifecycle(): void
     {
         // All transitions go to 'abandoned' → dropoff from 'active' must be 1.0
-        $rows   = [$this->row('active', 'abandoned', 100)];
+        $rows = [$this->row('active', 'abandoned', 100)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $dropoffs = $this->ste->computeDropoffs($matrix, 'session_lifecycle');
@@ -102,7 +102,7 @@ class StateTransitionEngineTest extends TestCase
     public function test_compute_dropoffs_returns_zero_for_safe_transition(): void
     {
         // All transitions go to 'completed' (not a drop-off state)
-        $rows   = [$this->row('active', 'completed', 100)];
+        $rows = [$this->row('active', 'completed', 100)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $dropoffs = $this->ste->computeDropoffs($matrix, 'session_lifecycle');
@@ -113,7 +113,7 @@ class StateTransitionEngineTest extends TestCase
 
     public function test_compute_dropoffs_tenant_lifecycle_uses_churned(): void
     {
-        $rows   = [$this->row('dunning', 'churned', 60), $this->row('dunning', 'active', 40)];
+        $rows = [$this->row('dunning', 'churned', 60), $this->row('dunning', 'active', 40)];
         $matrix = $this->ste->buildMatrix($rows);
 
         $dropoffs = $this->ste->computeDropoffs($matrix, 'tenant_lifecycle');
@@ -131,9 +131,9 @@ class StateTransitionEngineTest extends TestCase
     {
         return (object) [
             'from_state' => $from,
-            'to_state'   => $to,
-            'tags'       => '{}',
-            'count'      => $count,
+            'to_state' => $to,
+            'tags' => '{}',
+            'count' => $count,
         ];
     }
 }

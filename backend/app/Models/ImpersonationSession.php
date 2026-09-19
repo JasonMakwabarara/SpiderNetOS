@@ -12,6 +12,7 @@ class ImpersonationSession extends Model
     use HasFactory, HasUuids;
 
     protected $table = 'impersonation_sessions';
+
     public $timestamps = false;
 
     protected $fillable = [

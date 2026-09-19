@@ -32,32 +32,32 @@ class PromptEnhancer
             return [
                 'original' => $input,
                 'enhanced' => $input,
-                'mode'     => 'noop',
-                'notes'    => ['Empty input; nothing to enhance.'],
+                'mode' => 'noop',
+                'notes' => ['Empty input; nothing to enhance.'],
             ];
         }
 
-        $mode     = $options['mode']     ?? 'balanced';   // concise | balanced | deep
-        $surface  = $options['surface']  ?? 'generic';
+        $mode = $options['mode'] ?? 'balanced';   // concise | balanced | deep
+        $surface = $options['surface'] ?? 'generic';
         $audience = $options['audience'] ?? 'user';
-        $tone     = $options['tone']     ?? 'neutral';
+        $tone = $options['tone'] ?? 'neutral';
 
         $inferenceUrl = config('services.inference.url');
 
         // Best-effort LLM enhancement if inference plane is available
-        if (!empty($inferenceUrl)) {
+        if (! empty($inferenceUrl)) {
             try {
                 $response = Http::timeout(8)
                     ->retry(1, 300)
-                    ->post(rtrim($inferenceUrl, '/') . '/generate', [
-                        'prompt'        => $this->buildEnhancementPrompt($trimmed, $mode, $surface, $audience, $tone),
+                    ->post(rtrim($inferenceUrl, '/').'/generate', [
+                        'prompt' => $this->buildEnhancementPrompt($trimmed, $mode, $surface, $audience, $tone),
                         'system_prompt' => $this->systemPrompt(),
-                        'model'         => config('services.spidernet.prompt_enhancer_model', 'gpt-4o-mini'),
-                        'temperature'   => 0.2,
-                        'max_tokens'    => 700,
-                        'tenant_id'     => 'system',
-                        'cost_ceiling'  => 0.05,
-                        'tenant_tier'   => 'growth',
+                        'model' => config('services.spidernet.prompt_enhancer_model', 'gpt-4o-mini'),
+                        'temperature' => 0.2,
+                        'max_tokens' => 700,
+                        'tenant_id' => 'system',
+                        'cost_ceiling' => 0.05,
+                        'tenant_tier' => 'growth',
                     ]);
 
                 if ($response->successful()) {
@@ -66,9 +66,9 @@ class PromptEnhancer
                         return [
                             'original' => $input,
                             'enhanced' => trim($text),
-                            'mode'     => 'inference',
-                            'surface'  => $surface,
-                            'notes'    => ['Enhanced via inference plane'],
+                            'mode' => 'inference',
+                            'surface' => $surface,
+                            'notes' => ['Enhanced via inference plane'],
                         ];
                     }
                 }
@@ -80,9 +80,9 @@ class PromptEnhancer
         return [
             'original' => $input,
             'enhanced' => $this->deterministicEnhance($trimmed, $mode, $surface),
-            'mode'     => 'deterministic',
-            'surface'  => $surface,
-            'notes'    => ['Enhanced via deterministic fallback'],
+            'mode' => 'deterministic',
+            'surface' => $surface,
+            'notes' => ['Enhanced via deterministic fallback'],
         ];
     }
 
@@ -111,10 +111,10 @@ SYS;
     private function buildEnhancementPrompt(string $input, string $mode, string $surface, string $audience, string $tone): string
     {
         $surfaceHint = match ($surface) {
-            'atlas_chat'    => 'Target: Atlas conversational execution (multi-step orchestration).',
+            'atlas_chat' => 'Target: Atlas conversational execution (multi-step orchestration).',
             'agent_builder' => 'Target: Agent behavior specification (role, goals, constraints, tools).',
-            'flow_builder'  => 'Target: Flow/DAG step specification (inputs, side effects, success criteria).',
-            default         => 'Target: generic SpiderNetOS operator prompt.',
+            'flow_builder' => 'Target: Flow/DAG step specification (inputs, side effects, success criteria).',
+            default => 'Target: generic SpiderNetOS operator prompt.',
         };
 
         return <<<PROMPT
@@ -149,18 +149,18 @@ PROMPT;
     private function deterministicEnhance(string $input, string $mode, string $surface): string
     {
         $surfaceGuard = match ($surface) {
-            'atlas_chat'    => 'Runtime: Atlas orchestration plane. Respect tenant isolation and cost ceiling checks.',
+            'atlas_chat' => 'Runtime: Atlas orchestration plane. Respect tenant isolation and cost ceiling checks.',
             'agent_builder' => 'Runtime: Agent specification. Declare role, goals, tools, and explicit failure modes.',
-            'flow_builder'  => 'Runtime: Flow DAG node. Declare inputs, side effects, and acceptance conditions.',
-            default         => 'Runtime: SpiderNetOS control plane. Maintain tenant isolation and event-sourced writes.',
+            'flow_builder' => 'Runtime: Flow DAG node. Declare inputs, side effects, and acceptance conditions.',
+            default => 'Runtime: SpiderNetOS control plane. Maintain tenant isolation and event-sourced writes.',
         };
 
         $lines = [
             '1) Objective',
-            '   ' . $input,
+            '   '.$input,
             '',
             '2) Context and assumptions',
-            '   - ' . $surfaceGuard,
+            '   - '.$surfaceGuard,
             '   - Assume the caller is authenticated and tenant-scoped.',
             '',
             '3) Required inputs',

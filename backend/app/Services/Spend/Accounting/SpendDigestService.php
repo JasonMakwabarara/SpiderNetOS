@@ -57,7 +57,7 @@ class SpendDigestService
                 $byMerchant[$item->merchant] = bcadd($byMerchant[$item->merchant] ?? '0', (string) $item->amount, 4);
             }
 
-            if (!empty($item->policy_flags)) {
+            if (! empty($item->policy_flags)) {
                 $policyFlagCount++;
             }
         }
@@ -148,7 +148,7 @@ class SpendDigestService
     {
         $fallback = $this->deterministicInsight($digest);
 
-        if (!config('spend.digest_llm_insight', false)) {
+        if (! config('spend.digest_llm_insight', false)) {
             return $fallback;
         }
 

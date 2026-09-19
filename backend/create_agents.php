@@ -1,10 +1,12 @@
 <?php
-require "vendor/autoload.php";
-$app = require "bootstrap/app.php";
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\Agent;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Str;
 
 if (Agent::count() === 0) {
@@ -13,7 +15,7 @@ if (Agent::count() === 0) {
         ['name' => 'Support Agent', 'description' => 'Provides customer support', 'capabilities' => ['chat', 'memory_access']],
         ['name' => 'Data Analyst', 'description' => 'Analyzes data and provides insights', 'capabilities' => ['data_analysis', 'flow_execution']],
     ];
-    
+
     foreach ($agents as $agentData) {
         Agent::create([
             'id' => Str::uuid(),
@@ -27,5 +29,5 @@ if (Agent::count() === 0) {
     }
     echo " Sample agents created!\n";
 } else {
-    echo " Agents already exist: " . Agent::count() . "\n";
+    echo ' Agents already exist: '.Agent::count()."\n";
 }

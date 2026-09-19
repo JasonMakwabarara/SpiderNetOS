@@ -8,6 +8,7 @@ use App\Models\MessagingNumber;
 use App\Models\PackEntitlement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 /**
  * Replicates Hannah's guidance pattern (intelligence/agents/hannah_agent.py +
@@ -132,7 +133,7 @@ class DeploymentReadinessService
     }
 
     /**
-     * @param list<array<string, mixed>> $checks
+     * @param  list<array<string, mixed>>  $checks
      */
     private function raiseAwarenessForGaps(string $tenantId, array $checks): void
     {
@@ -152,7 +153,7 @@ class DeploymentReadinessService
             }
 
             DB::table('awareness_items')->insert([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
                 'source' => 'agent',
                 'title' => $c['label'],

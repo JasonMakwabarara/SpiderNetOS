@@ -154,7 +154,7 @@ class AtlasDiscoveryService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      */
     private function missingCriticalFields(array $profile): bool
     {
@@ -164,7 +164,7 @@ class AtlasDiscoveryService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      * @return array<int, string>
      */
     private function nextQuestions(array $profile): array
@@ -183,7 +183,7 @@ class AtlasDiscoveryService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      * @return array<string, mixed>
      */
     private function suggestedNext(array $profile, ?string $tenantId = null, ?PackGrowthService $growth = null): array
@@ -194,6 +194,7 @@ class AtlasDiscoveryService
                 $growth->recordSignalThrottled($tenantId, 'atlas_suggested', $fromGrowth['pack'] ?? null, [
                     'relevance_score' => $fromGrowth['relevance_score'] ?? null,
                 ]);
+
                 return $fromGrowth;
             }
         }
@@ -225,7 +226,7 @@ class AtlasDiscoveryService
     }
 
     /**
-     * @param array<string, mixed> $profile
+     * @param  array<string, mixed>  $profile
      */
     private function computePct(array $profile): int
     {

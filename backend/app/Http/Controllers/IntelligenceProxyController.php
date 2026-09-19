@@ -35,7 +35,7 @@ class IntelligenceProxyController extends Controller
             ?? $request->attributes->get('tenant_id')
             ?? $request->user()?->tenant_id;
 
-        if (!$workspaceId) {
+        if (! $workspaceId) {
             return response()->json([
                 'ok' => false,
                 'error' => 'workspace_id or tenant_id is required',
@@ -62,7 +62,7 @@ class IntelligenceProxyController extends Controller
             ?? $request->attributes->get('tenant_id')
             ?? $request->user()?->tenant_id;
 
-        if (!$workspaceId) {
+        if (! $workspaceId) {
             return response()->json([
                 'ok' => false,
                 'error' => 'workspace_id or tenant_id is required',
@@ -89,7 +89,6 @@ class IntelligenceProxyController extends Controller
     /**
      * Accept array payloads or JSON/string scalars from clients.
      *
-     * @param  mixed  $raw
      * @return array<string, mixed>
      */
     private function normalizeEventPayload(mixed $raw): array
