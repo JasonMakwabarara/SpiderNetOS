@@ -32,7 +32,6 @@ return [
     'inference.ark_model_id' => env('FEATURE_INFERENCE_ARK_MODEL_ID', ''),
     'inference.ark_model_id.heavy' => env('FEATURE_INFERENCE_ARK_MODEL_ID_HEAVY', ''),
 
-
     // -----------------------------------------------------------------------
     // Blocker A — usage aggregate v2 rollout gates
     // -----------------------------------------------------------------------
@@ -61,12 +60,12 @@ return [
     // Atlas copy surfaces
     // -----------------------------------------------------------------------
 
-    'atlas.copy.empty_state'   => env('FEATURE_ATLAS_COPY_EMPTY_STATE', 'on'),
-    'atlas.copy.banner'        => env('FEATURE_ATLAS_COPY_BANNER', 'on'),
-    'atlas.copy.modal'         => env('FEATURE_ATLAS_COPY_MODAL', 'on'),
-    'atlas.copy.tooltip'       => env('FEATURE_ATLAS_COPY_TOOLTIP', 'on'),
+    'atlas.copy.empty_state' => env('FEATURE_ATLAS_COPY_EMPTY_STATE', 'on'),
+    'atlas.copy.banner' => env('FEATURE_ATLAS_COPY_BANNER', 'on'),
+    'atlas.copy.modal' => env('FEATURE_ATLAS_COPY_MODAL', 'on'),
+    'atlas.copy.tooltip' => env('FEATURE_ATLAS_COPY_TOOLTIP', 'on'),
     'atlas.copy.success_state' => env('FEATURE_ATLAS_COPY_SUCCESS_STATE', 'on'),
-    'atlas.copy.error_state'   => env('FEATURE_ATLAS_COPY_ERROR_STATE', 'on'),
+    'atlas.copy.error_state' => env('FEATURE_ATLAS_COPY_ERROR_STATE', 'on'),
 
     // -----------------------------------------------------------------------
     // Voice AI — Phase A/B/C/E feature flags
@@ -175,6 +174,7 @@ return [
 
     /**
      * OpenJarvis local-first augmentation for Atlas AI (background only — not user-facing).
+     *
      * @see docs/OPENJARVIS_INTEGRATION.md
      */
     'atlas.openjarvis' => env('FEATURE_ATLAS_OPENJARVIS', 'on'),
@@ -284,6 +284,20 @@ return [
     // -----------------------------------------------------------------------
     // Cockpit, briefs, newsletters, evals.
     // -----------------------------------------------------------------------
+
+    /** Board of advisors: GET /api/board/*, five archetype seats plus a chairman. */
+    'board.enabled' => env('FEATURE_BOARD_ENABLED', 'off'),
+
+    /**
+     * Jason's private named roster (advisors/private/*). Off everywhere else by
+     * design: tenant-facing seats are archetypes, because a named living person
+     * reasoning inside a product other people pay for is a right-of-publicity
+     * problem whatever the disclaimer says.
+     */
+    'board.private_roster' => env('FEATURE_BOARD_PRIVATE_ROSTER', 'off'),
+
+    /** Speak a seat's verdict in its own voice persona (needs voice.atlas_speak). */
+    'board.voice' => env('FEATURE_BOARD_VOICE', 'off'),
 
     /** God's Eye board: GET /api/godseye/snapshot + /gods-eye (all agents, runs, spend at once). */
     'cockpit.gods_eye' => env('FEATURE_COCKPIT_GODS_EYE', 'off'),

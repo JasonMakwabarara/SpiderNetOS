@@ -11,7 +11,7 @@ personality:
   - never sleeps
   - suspicious of anything external
 # en-KE Chilemba, serious (standard).
-voice_persona: azure-en-ke-chilemba
+voice_persona: intron-en-zulu-male
 owns:
   - identity: crm
     skills:

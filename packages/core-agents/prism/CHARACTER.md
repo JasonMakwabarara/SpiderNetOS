@@ -11,7 +11,7 @@ personality:
   - impatient with claims
   - quietly sceptical
 # en-ZA Luke, reflective (Dragon HD Omni style variant).
-voice_persona: azure-en-za-luke-hd-reflective
+voice_persona: fishaudio-kenyan-male
 owns:
   - identity: prism
     skills:

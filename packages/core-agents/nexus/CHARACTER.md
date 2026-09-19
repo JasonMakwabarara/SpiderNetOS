@@ -11,7 +11,7 @@ personality:
   - exact about state
   - calm under volume
 # en-NG Ezinne, crisp (standard).
-voice_persona: azure-en-ng-ezinne
+voice_persona: fishaudio-chiedza-zimbabwe
 owns:
   - identity: growth
     skills:

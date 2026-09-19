@@ -11,7 +11,7 @@ personality:
   - proud of finished work
   - allergic to vague briefs
 # en-NG Abeo, confident (Dragon HD Omni style variant).
-voice_persona: azure-en-ng-abeo-hd-confident
+voice_persona: elevenlabs-nz-nigerian-man
 owns:
   - identity: forge
     skills:

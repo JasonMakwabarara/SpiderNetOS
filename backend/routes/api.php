@@ -345,7 +345,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     //   routes/api/voice.php   → /api/voice/personas, /api/me/voice, /api/atlas/speak
     //   routes/api/launch.php  → /api/launch/*             (business-launch pack)
     //   routes/api/reports.php → /api/reports/weekly/*      (Monday letter + C-Suite)
-    foreach (['brain', 'skills', 'agents', 'founder', 'map', 'voice', 'launch', 'reports'] as $programRoutes) {
+    //   routes/api/board.php   → /api/board/*              (board of advisors)
+    foreach (['brain', 'skills', 'agents', 'founder', 'map', 'voice', 'launch', 'reports', 'board'] as $programRoutes) {
         $programRoutesPath = __DIR__.'/api/'.$programRoutes.'.php';
         if (is_file($programRoutesPath)) {
             require $programRoutesPath;

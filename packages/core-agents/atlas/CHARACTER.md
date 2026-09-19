@@ -11,7 +11,7 @@ personality:
   - unhurried
   - candid
 # The tenant's chosen Atlas persona (tenants.settings.voice.default_persona).
-# Catalogue fallback while no choice has been made: azure-en-za-luke-hd-calm.
+# Catalogue fallback while no choice has been made: elevenlabs-design-zimbabwean-man.
 voice_persona: tenant-default
 owns:
   - identity: atlas
