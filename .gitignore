@@ -58,3 +58,6 @@ backend/.env
 *.pem
 *.pem.txt
 *.private-key*
+
+# phpunit scratch (sqlite disks, skill-eval reports)
+backend/storage/framework/testing/
