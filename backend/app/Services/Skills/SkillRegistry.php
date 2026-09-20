@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Skills;
 
+use App\Services\Skills\Eval\PropertyChecker;
+use App\Services\Skills\Eval\PropertyRegistry;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -338,6 +340,11 @@ class SkillRegistry
                                 $errors[] = "evals.cases[{$i}]: missing \"{$key}\"";
                             }
                         }
+
+                        $where = 'evals.cases['.(is_array($case) ? (string) ($case['id'] ?? $i) : (string) $i).']';
+                        foreach ($this->propertyErrors($case, $where) as $error) {
+                            $errors[] = $error;
+                        }
                     }
                 } catch (\Throwable $e) {
                     $errors[] = "evals.cases: {$e->getMessage()}";
@@ -346,6 +353,70 @@ class SkillRegistry
         }
 
         return array_values(array_unique($errors));
+    }
+
+    /**
+     * Every property a case names must be a type the registry declares, and its
+     * argument must fit that type's shape.
+     *
+     * This is the gate that makes `unknown property type` unreachable from a
+     * committed corpus. Before it, a case could name fifty-one checks nothing
+     * implements and `skills:validate` would pass it — the structure was
+     * checked (id, inputs, expect) and the contents were not.
+     *
+     * A `planned` type is deliberately NOT an error yet. It is declared, owned
+     * and dated, and it still cannot pass an eval; naming one becomes an error
+     * once the corpus has stopped using them. What is an error today is a name
+     * nothing declares at all, which can only be a typo or an invention, and an
+     * argument that cannot work — `slots_count:two` should never reach a model.
+     *
+     * @param  mixed  $case  the raw case, which may not even be an array
+     * @return list<string>
+     */
+    private function propertyErrors(mixed $case, string $where): array
+    {
+        if (! is_array($case)) {
+            return [];
+        }
+
+        $properties = $case['expect']['properties'] ?? $case['properties'] ?? [];
+        if (! is_array($properties)) {
+            return ["{$where}: expect.properties must be a list"];
+        }
+
+        $errors = [];
+        foreach ($properties as $property) {
+            if (! is_string($property) && ! is_array($property)) {
+                $errors[] = "{$where}: a property must be a string or a mapping";
+
+                continue;
+            }
+
+            $spec = PropertyChecker::normalise($property);
+            $name = (string) $spec['type'];
+
+            if ($name === '') {
+                // `- steps_count: 3` (with a space) is a YAML mapping, not a
+                // string, and arrives here with no type at all. Worth naming,
+                // because it is invisible otherwise.
+                $errors[] = "{$where}: a property has no type — a colon followed by a space makes it a YAML mapping";
+
+                continue;
+            }
+
+            if (! PropertyRegistry::has($name)) {
+                $errors[] = "{$where}: unknown property type \"{$name}\"";
+
+                continue;
+            }
+
+            $arg = isset($spec['arg']) && is_string($spec['arg']) ? $spec['arg'] : null;
+            if (($why = PropertyRegistry::get($name)?->arg->reject($arg, $name)) !== null) {
+                $errors[] = "{$where}: {$why}";
+            }
+        }
+
+        return $errors;
     }
 
     /** @return array<string, mixed> parsed identities.yaml */
