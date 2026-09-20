@@ -23,14 +23,6 @@ use App\Services\Skills\VoiceRules;
  */
 class PropertyChecker
 {
-    public const ARRAY_TYPES = ['has_key', 'count', 'enum', 'no_banned_phrase', 'cites_fact', 'max_length', 'min_length', 'contains', 'matches'];
-
-    public const STRING_TYPES = [
-        'valid_json', 'schema_valid', 'steps_count', 'beats_in_order', 'subjects_per_step', 'single_cta_per_step',
-        'no_unverified_figures', 'links_allowlisted', 'no_banned_phrases', 'mentions_proof_point', 'respects_never_say',
-        'personalisation_slot_present', 'blocked_missing_brain',
-    ];
-
     private const URL_PATTERN = '~https?://[^\s<>"\'\)\]]+~i';
 
     /**
@@ -82,226 +74,306 @@ class PropertyChecker
      */
     private function one(array $p, mixed $output, ?EvalCase $case, ?array $validator): array
     {
-        $type = (string) $p['type'];
-        $arg = isset($p['arg']) ? (string) $p['arg'] : null;
-        $target = isset($p['path']) && is_string($p['path']) && $p['path'] !== '' ? self::dig($output, $p['path']) : $output;
-        $text = self::text($target);
-        $steps = is_array($output) && is_array($output['steps'] ?? null) ? array_values($output['steps']) : null;
+        $type = PropertyRegistry::get((string) $p['type']);
 
-        switch ($type) {
-            // ---------------------------------------------------------- array form
-            case 'has_key':
-                $key = (string) ($p['key'] ?? $p['path'] ?? '');
-                self::dig($output, $key, $exists);
-
-                return [$exists ? 'passed' : 'failed', $exists ? "has {$key}" : "missing key {$key}"];
-
-            case 'count':
-                if (! is_array($target)) {
-                    return ['failed', 'not a list at '.($p['path'] ?? '(root)')];
-                }
-                $n = count($target);
-                if (isset($p['equals']) && $n !== (int) $p['equals']) {
-                    return ['failed', "count {$n} ≠ {$p['equals']}"];
-                }
-                if (isset($p['min']) && $n < (int) $p['min']) {
-                    return ['failed', "count {$n} < min {$p['min']}"];
-                }
-                if (isset($p['max']) && $n > (int) $p['max']) {
-                    return ['failed', "count {$n} > max {$p['max']}"];
-                }
-
-                return ['passed', "count {$n}"];
-
-            case 'enum':
-                $values = array_map('strval', (array) ($p['values'] ?? []));
-                $actual = is_scalar($target) ? (string) $target : null;
-                $ok = $actual !== null && in_array($actual, $values, true);
-
-                return [$ok ? 'passed' : 'failed', $ok ? "'{$actual}' ∈ enum" : "'".($actual ?? 'null')."' not in [".implode(', ', $values).']'];
-
-            case 'no_banned_phrase':
-                return $this->bannedCheck($text, array_map('strval', (array) ($p['phrases'] ?? [])));
-
-            case 'cites_fact':
-                if (isset($p['fact'])) {
-                    $ok = self::containsCi($text, (string) $p['fact']);
-
-                    return [$ok ? 'passed' : 'failed', $ok ? 'cites fact' : "does not cite \"{$p['fact']}\""];
-                }
-                $anyOf = array_map('strval', (array) ($p['any_of'] ?? []));
-                if ($anyOf === [] && isset($p['from_brain']) && $case !== null) {
-                    $anyOf = self::factLines((string) ($case->fixtureBrain[(string) $p['from_brain']] ?? ''));
-                }
-                if ($anyOf === []) {
-                    return ['failed', 'no facts available to cite (fixture file empty or missing)'];
-                }
-                foreach ($anyOf as $fact) {
-                    if (self::containsCi($text, $fact)) {
-                        return ['passed', 'cites "'.mb_substr(trim($fact), 0, 40).'"'];
-                    }
-                }
-
-                return ['failed', 'cites none of '.count($anyOf).' fact line(s) from '.($p['from_brain'] ?? 'the list')];
-
-            case 'max_length':
-            case 'min_length':
-                $unit = ($p['unit'] ?? 'chars') === 'words' ? 'words' : 'chars';
-                $len = $unit === 'words' ? str_word_count($text) : mb_strlen($text);
-                $limit = (int) ($p[$type === 'max_length' ? 'max' : 'min'] ?? 0);
-                $ok = $type === 'max_length' ? $len <= $limit : $len >= $limit;
-
-                return [$ok ? 'passed' : 'failed', "{$len} {$unit} ".($type === 'max_length' ? '≤' : '≥')." {$limit}".($ok ? '' : ' violated')];
-
-            case 'contains':
-                $ok = self::containsCi($text, (string) ($p['text'] ?? ''));
-
-                return [$ok ? 'passed' : 'failed', $ok ? 'contains text' : "missing \"{$p['text']}\""];
-
-            case 'matches':
-                $pattern = (string) ($p['pattern'] ?? '');
-                $ok = $pattern !== '' && @preg_match($pattern, $text) === 1;
-
-                return [$ok ? 'passed' : 'failed', $ok ? 'matches pattern' : "no match for {$pattern}"];
-
-                // --------------------------------------------------------- string form
-            case 'valid_json':
-                return [is_array($output) ? 'passed' : 'failed', is_array($output) ? 'JSON object' : 'output is not a JSON object'];
-
-            case 'schema_valid':
-                if ($validator === null || ! array_key_exists('ok', $validator) || $validator['ok'] === null) {
-                    return ['skipped', 'SkillOutputValidator not available'];
-                }
-
-                return [$validator['ok'] ? 'passed' : 'failed', $validator['ok'] ? 'validator ok' : 'validator: '.implode('; ', array_slice((array) ($validator['errors'] ?? []), 0, 3))];
-
-            case 'steps_count':
-                if ($steps === null) {
-                    return ['failed', 'no steps[] in output'];
-                }
-                $n = (int) $arg;
-                $ok = count($steps) === $n;
-
-                return [$ok ? 'passed' : 'failed', count($steps)." step(s), expected {$n}"];
-
-            case 'beats_in_order':
-                if ($steps === null) {
-                    return ['failed', 'no steps[] in output'];
-                }
-                $expected = array_values(array_filter(array_map('trim', explode(',', (string) $arg)), fn ($s) => $s !== ''));
-                $actual = array_map(fn ($s) => is_array($s) ? (string) ($s['beat'] ?? '') : '', $steps);
-                $ok = $actual === $expected;
-
-                return [$ok ? 'passed' : 'failed', 'beats '.implode(',', $actual).($ok ? '' : ' ≠ '.implode(',', $expected))];
-
-            case 'subjects_per_step':
-                if ($steps === null) {
-                    return ['failed', 'no steps[] in output'];
-                }
-                $n = (int) $arg;
-                foreach ($steps as $i => $step) {
-                    $subjects = is_array($step) ? ($step['subjects'] ?? null) : null;
-                    if (! is_array($subjects) || count($subjects) !== $n) {
-                        return ['failed', "step {$i} has ".(is_array($subjects) ? count($subjects) : 0)." subject(s), expected {$n}"];
-                    }
-                }
-
-                return ['passed', "{$n} subjects per step"];
-
-            case 'single_cta_per_step':
-                if ($steps === null) {
-                    return ['failed', 'no steps[] in output'];
-                }
-                foreach ($steps as $i => $step) {
-                    $cta = is_array($step) ? ($step['cta'] ?? null) : null;
-                    if (! is_string($cta) || trim($cta) === '') {
-                        return ['failed', "step {$i} has no cta"];
-                    }
-                    $body = is_array($step) ? (string) ($step['body'] ?? '') : '';
-                    if (substr_count($body, '?') > 1) {
-                        return ['failed', "step {$i} body asks more than one question"];
-                    }
-                }
-
-                return ['passed', 'one CTA per step'];
-
-            case 'no_unverified_figures':
-                $allowed = array_flip(self::numbers($case?->fixtureText() ?? ''));
-                $bad = [];
-                foreach (self::figures(self::stringLeaves($output)) as $figure) {
-                    if (! isset($allowed[$figure['number']])) {
-                        $bad[] = $figure['raw'];
-                    }
-                }
-
-                return [$bad === [] ? 'passed' : 'failed', $bad === [] ? 'every figure is in the brain' : 'not in the brain: '.implode(', ', array_unique($bad))];
-
-            case 'links_allowlisted':
-                $allowedHosts = array_flip(array_map([self::class, 'host'], self::urls($case?->fixtureText() ?? '')));
-                $bad = [];
-                foreach (self::urls(self::text($output)) as $url) {
-                    if (! isset($allowedHosts[self::host($url)])) {
-                        $bad[] = $url;
-                    }
-                }
-
-                return [$bad === [] ? 'passed' : 'failed', $bad === [] ? 'all links allowlisted' : 'off-allowlist: '.implode(', ', array_unique($bad))];
-
-            case 'no_banned_phrases':
-                return $this->bannedCheck($text, $this->bannedPhrases($case, $p));
-
-            case 'mentions_proof_point':
-                $proofs = $this->proofPoints($case);
-                if ($proofs === []) {
-                    return ['failed', 'no proof points in the fixture brain'];
-                }
-                $lower = mb_strtolower($text);
-                foreach ($proofs as $proof) {
-                    if (self::overlap($lower, $proof) >= 0.6) {
-                        return ['passed', 'mentions "'.mb_substr($proof, 0, 40).'"'];
-                    }
-                }
-
-                return ['failed', 'no proof point mentioned ('.count($proofs).' on file)'];
-
-            case 'respects_never_say':
-                $forbidden = $this->neverSayTerms($case);
-                if ($forbidden === []) {
-                    return ['skipped', 'no never-say rules in the fixture brain'];
-                }
-                foreach ($forbidden as $term) {
-                    if (self::containsCi($text, $term)) {
-                        return ['failed', "mentions \"{$term}\""];
-                    }
-                }
-
-                return ['passed', 'respects never-say ('.count($forbidden).' term(s))'];
-
-            case 'personalisation_slot_present':
-                $n = max(1, (int) $arg);
-                $found = 0;
-                foreach ($steps ?? [] as $step) {
-                    if (is_array($step) && trim((string) ($step['personalisation_slot'] ?? '')) !== '') {
-                        $found++;
-                    }
-                }
-                $found += preg_match_all('/\{\{[^}]+\}\}|\[\[[^\]]+\]\]/', self::text($output));
-                $ok = $found >= $n;
-
-                return [$ok ? 'passed' : 'failed', "{$found} personalisation slot(s), expected ≥ {$n}"];
-
-            case 'blocked_missing_brain':
-                $ref = (string) $arg;
-                $missing = is_array($output) ? (array) ($output['missing'] ?? $output['missing_brain'] ?? $output['questions'] ?? []) : [];
-                $refs = array_map(fn ($m) => is_array($m) ? ($m['path'] ?? '').(isset($m['section']) ? '#'.$m['section'] : '') : (string) $m, $missing);
-                $blocked = is_array($output) && (($output['status'] ?? null) === 'blocked' || ($output['error'] ?? null) === 'missing_brain' || $missing !== []);
-                $ok = $blocked && in_array($ref, $refs, true);
-
-                return [$ok ? 'passed' : 'failed', $ok ? "blocked on {$ref}" : "not blocked on {$ref}"];
-
-            default:
-                return ['failed', "unknown property type \"{$type}\""];
+        if ($type === null) {
+            return ['failed', 'unknown property type "'.$p['type'].'"'];
         }
+
+        if (! $type->isImplemented()) {
+            return ['failed', "property type \"{$type->name}\" is declared but has no handler yet"];
+        }
+
+        return $this->{$type->handler}(PropertyContext::for($p, $output, $case, $validator));
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Handlers — one per registered type. Registered in PropertyRegistry,
+    //  which is the only thing that can reach them.
+    // ------------------------------------------------------------------ //
+
+    /** `has_key` */
+    private function checkHasKey(PropertyContext $c): array
+    {
+
+        $key = (string) ($c->p['key'] ?? $c->p['path'] ?? '');
+        self::dig($c->output, $key, $exists);
+
+        return [$exists ? 'passed' : 'failed', $exists ? "has {$key}" : "missing key {$key}"];
+    }
+
+    /** `count` */
+    private function checkCount(PropertyContext $c): array
+    {
+
+        if (! is_array($c->target)) {
+            return ['failed', 'not a list at '.($c->p['path'] ?? '(root)')];
+        }
+        $n = count($c->target);
+        if (isset($c->p['equals']) && $n !== (int) $c->p['equals']) {
+            return ['failed', "count {$n} ≠ {$c->p['equals']}"];
+        }
+        if (isset($c->p['min']) && $n < (int) $c->p['min']) {
+            return ['failed', "count {$n} < min {$c->p['min']}"];
+        }
+        if (isset($c->p['max']) && $n > (int) $c->p['max']) {
+            return ['failed', "count {$n} > max {$c->p['max']}"];
+        }
+
+        return ['passed', "count {$n}"];
+    }
+
+    /** `enum` */
+    private function checkEnum(PropertyContext $c): array
+    {
+
+        $values = array_map('strval', (array) ($c->p['values'] ?? []));
+        $actual = is_scalar($c->target) ? (string) $c->target : null;
+        $ok = $actual !== null && in_array($actual, $values, true);
+
+        return [$ok ? 'passed' : 'failed', $ok ? "'{$actual}' ∈ enum" : "'".($actual ?? 'null')."' not in [".implode(', ', $values).']'];
+    }
+
+    /** `cites_fact` */
+    private function checkCitesFact(PropertyContext $c): array
+    {
+
+        if (isset($c->p['fact'])) {
+            $ok = self::containsCi($c->text, (string) $c->p['fact']);
+
+            return [$ok ? 'passed' : 'failed', $ok ? 'cites fact' : "does not cite \"{$c->p['fact']}\""];
+        }
+        $anyOf = array_map('strval', (array) ($c->p['any_of'] ?? []));
+        if ($anyOf === [] && isset($c->p['from_brain']) && $c->case !== null) {
+            $anyOf = self::factLines((string) ($c->case->fixtureBrain[(string) $c->p['from_brain']] ?? ''));
+        }
+        if ($anyOf === []) {
+            return ['failed', 'no facts available to cite (fixture file empty or missing)'];
+        }
+        foreach ($anyOf as $fact) {
+            if (self::containsCi($c->text, $fact)) {
+                return ['passed', 'cites "'.mb_substr(trim($fact), 0, 40).'"'];
+            }
+        }
+
+        return ['failed', 'cites none of '.count($anyOf).' fact line(s) from '.($c->p['from_brain'] ?? 'the list')];
+    }
+
+    /** `max_length / min_length` */
+    private function checkLength(PropertyContext $c): array
+    {
+
+        $unit = ($c->p['unit'] ?? 'chars') === 'words' ? 'words' : 'chars';
+        $len = $unit === 'words' ? str_word_count($c->text) : mb_strlen($c->text);
+        $limit = (int) ($c->p[$c->type === 'max_length' ? 'max' : 'min'] ?? 0);
+        $ok = $c->type === 'max_length' ? $len <= $limit : $len >= $limit;
+
+        return [$ok ? 'passed' : 'failed', "{$len} {$unit} ".($c->type === 'max_length' ? '≤' : '≥')." {$limit}".($ok ? '' : ' violated')];
+    }
+
+    /** `contains` */
+    private function checkContains(PropertyContext $c): array
+    {
+
+        $ok = self::containsCi($c->text, (string) ($c->p['text'] ?? ''));
+
+        return [$ok ? 'passed' : 'failed', $ok ? 'contains text' : "missing \"{$c->p['text']}\""];
+    }
+
+    /** `matches` */
+    private function checkMatches(PropertyContext $c): array
+    {
+
+        $pattern = (string) ($c->p['pattern'] ?? '');
+        $ok = $pattern !== '' && @preg_match($pattern, $c->text) === 1;
+
+        return [$ok ? 'passed' : 'failed', $ok ? 'matches pattern' : "no match for {$pattern}"];
+    }
+
+    /** `valid_json` */
+    private function checkValidJson(PropertyContext $c): array
+    {
+
+        return [is_array($c->output) ? 'passed' : 'failed', is_array($c->output) ? 'JSON object' : 'output is not a JSON object'];
+    }
+
+    /** `schema_valid` */
+    private function checkSchemaValid(PropertyContext $c): array
+    {
+
+        if ($c->validator === null || ! array_key_exists('ok', $c->validator) || $c->validator['ok'] === null) {
+            return ['skipped', 'SkillOutputValidator not available'];
+        }
+
+        return [$c->validator['ok'] ? 'passed' : 'failed', $c->validator['ok'] ? 'validator ok' : 'validator: '.implode('; ', array_slice((array) ($c->validator['errors'] ?? []), 0, 3))];
+    }
+
+    /** `steps_count` */
+    private function checkStepsCount(PropertyContext $c): array
+    {
+
+        if ($c->steps === null) {
+            return ['failed', 'no steps[] in output'];
+        }
+        $n = (int) $c->arg;
+        $ok = count($c->steps) === $n;
+
+        return [$ok ? 'passed' : 'failed', count($c->steps)." step(s), expected {$n}"];
+    }
+
+    /** `beats_in_order` */
+    private function checkBeatsInOrder(PropertyContext $c): array
+    {
+
+        if ($c->steps === null) {
+            return ['failed', 'no steps[] in output'];
+        }
+        $expected = array_values(array_filter(array_map('trim', explode(',', (string) $c->arg)), fn ($s) => $s !== ''));
+        $actual = array_map(fn ($s) => is_array($s) ? (string) ($s['beat'] ?? '') : '', $c->steps);
+        $ok = $actual === $expected;
+
+        return [$ok ? 'passed' : 'failed', 'beats '.implode(',', $actual).($ok ? '' : ' ≠ '.implode(',', $expected))];
+    }
+
+    /** `subjects_per_step` */
+    private function checkSubjectsPerStep(PropertyContext $c): array
+    {
+
+        if ($c->steps === null) {
+            return ['failed', 'no steps[] in output'];
+        }
+        $n = (int) $c->arg;
+        foreach ($c->steps as $i => $step) {
+            $subjects = is_array($step) ? ($step['subjects'] ?? null) : null;
+            if (! is_array($subjects) || count($subjects) !== $n) {
+                return ['failed', "step {$i} has ".(is_array($subjects) ? count($subjects) : 0)." subject(s), expected {$n}"];
+            }
+        }
+
+        return ['passed', "{$n} subjects per step"];
+    }
+
+    /** `single_cta_per_step` */
+    private function checkSingleCtaPerStep(PropertyContext $c): array
+    {
+
+        if ($c->steps === null) {
+            return ['failed', 'no steps[] in output'];
+        }
+        foreach ($c->steps as $i => $step) {
+            $cta = is_array($step) ? ($step['cta'] ?? null) : null;
+            if (! is_string($cta) || trim($cta) === '') {
+                return ['failed', "step {$i} has no cta"];
+            }
+            $body = is_array($step) ? (string) ($step['body'] ?? '') : '';
+            if (substr_count($body, '?') > 1) {
+                return ['failed', "step {$i} body asks more than one question"];
+            }
+        }
+
+        return ['passed', 'one CTA per step'];
+    }
+
+    /** `no_unverified_figures` */
+    private function checkNoUnverifiedFigures(PropertyContext $c): array
+    {
+
+        $allowed = array_flip(self::numbers($c->case?->fixtureText() ?? ''));
+        $bad = [];
+        foreach (self::figures(self::stringLeaves($c->output)) as $figure) {
+            if (! isset($allowed[$figure['number']])) {
+                $bad[] = $figure['raw'];
+            }
+        }
+
+        return [$bad === [] ? 'passed' : 'failed', $bad === [] ? 'every figure is in the brain' : 'not in the brain: '.implode(', ', array_unique($bad))];
+    }
+
+    /** `links_allowlisted` */
+    private function checkLinksAllowlisted(PropertyContext $c): array
+    {
+
+        $allowedHosts = array_flip(array_map([self::class, 'host'], self::urls($c->case?->fixtureText() ?? '')));
+        $bad = [];
+        foreach (self::urls(self::text($c->output)) as $url) {
+            if (! isset($allowedHosts[self::host($url)])) {
+                $bad[] = $url;
+            }
+        }
+
+        return [$bad === [] ? 'passed' : 'failed', $bad === [] ? 'all links allowlisted' : 'off-allowlist: '.implode(', ', array_unique($bad))];
+    }
+
+    /** `no_banned_phrases` */
+    private function checkNoBannedPhrases(PropertyContext $c): array
+    {
+
+        return $this->bannedCheck($c->text, $this->bannedPhrases($c->case, $c->p));
+    }
+
+    /** `mentions_proof_point` */
+    private function checkMentionsProofPoint(PropertyContext $c): array
+    {
+
+        $proofs = $this->proofPoints($c->case);
+        if ($proofs === []) {
+            return ['failed', 'no proof points in the fixture brain'];
+        }
+        $lower = mb_strtolower($c->text);
+        foreach ($proofs as $proof) {
+            if (self::overlap($lower, $proof) >= 0.6) {
+                return ['passed', 'mentions "'.mb_substr($proof, 0, 40).'"'];
+            }
+        }
+
+        return ['failed', 'no proof point mentioned ('.count($proofs).' on file)'];
+    }
+
+    /** `respects_never_say` */
+    private function checkRespectsNeverSay(PropertyContext $c): array
+    {
+
+        $forbidden = $this->neverSayTerms($c->case);
+        if ($forbidden === []) {
+            return ['skipped', 'no never-say rules in the fixture brain'];
+        }
+        foreach ($forbidden as $term) {
+            if (self::containsCi($c->text, $term)) {
+                return ['failed', "mentions \"{$term}\""];
+            }
+        }
+
+        return ['passed', 'respects never-say ('.count($forbidden).' term(s))'];
+    }
+
+    /** `personalisation_slot_present` */
+    private function checkPersonalisationSlotPresent(PropertyContext $c): array
+    {
+
+        $n = max(1, (int) $c->arg);
+        $found = 0;
+        foreach ($c->steps ?? [] as $step) {
+            if (is_array($step) && trim((string) ($step['personalisation_slot'] ?? '')) !== '') {
+                $found++;
+            }
+        }
+        $found += preg_match_all('/\{\{[^}]+\}\}|\[\[[^\]]+\]\]/', self::text($c->output));
+        $ok = $found >= $n;
+
+        return [$ok ? 'passed' : 'failed', "{$found} personalisation slot(s), expected ≥ {$n}"];
+    }
+
+    /** `blocked_missing_brain` */
+    private function checkBlockedMissingBrain(PropertyContext $c): array
+    {
+
+        $ref = (string) $c->arg;
+        $missing = is_array($c->output) ? (array) ($c->output['missing'] ?? $c->output['missing_brain'] ?? $c->output['questions'] ?? []) : [];
+        $refs = array_map(fn ($m) => is_array($m) ? ($m['path'] ?? '').(isset($m['section']) ? '#'.$m['section'] : '') : (string) $m, $missing);
+        $blocked = is_array($c->output) && (($c->output['status'] ?? null) === 'blocked' || ($c->output['error'] ?? null) === 'missing_brain' || $missing !== []);
+        $ok = $blocked && in_array($ref, $refs, true);
+
+        return [$ok ? 'passed' : 'failed', $ok ? "blocked on {$ref}" : "not blocked on {$ref}"];
     }
 
     // ------------------------------------------------------------------ //

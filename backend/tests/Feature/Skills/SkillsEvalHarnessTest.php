@@ -218,7 +218,7 @@ YAML;
 
         $mixed = $checker->check([
             ['type' => 'has_key', 'key' => 'subject'],
-            ['type' => 'no_banned_phrase', 'phrases' => ['demos']],
+            ['type' => 'no_banned_phrases', 'phrases' => ['demos']],
             ['type' => 'min_length', 'path' => 'steps.0.body', 'min' => 500],
             'schema_valid',
             'respects_never_say',

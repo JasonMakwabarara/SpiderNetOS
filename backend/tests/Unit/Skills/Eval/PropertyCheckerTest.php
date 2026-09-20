@@ -6,6 +6,7 @@ namespace Tests\Unit\Skills\Eval;
 
 use App\Services\Skills\Eval\EvalCase;
 use App\Services\Skills\Eval\PropertyChecker;
+use App\Services\Skills\Eval\PropertyRegistry;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -25,11 +26,11 @@ use Tests\TestCase;
  */
 class PropertyCheckerTest extends TestCase
 {
-    /** The 22 types PropertyChecker implements today, from its own constants. */
-    private const IMPLEMENTED = [
-        ...PropertyChecker::ARRAY_TYPES,
-        ...PropertyChecker::STRING_TYPES,
-    ];
+    /** The types with a handler, read from the registry that dispatches them. */
+    private static function implemented(): array
+    {
+        return PropertyRegistry::implemented();
+    }
 
     #[DataProvider('examples')]
     public function test_property_behaves_as_declared(
@@ -67,12 +68,12 @@ class PropertyCheckerTest extends TestCase
 
         $this->assertSame(
             [],
-            array_values(array_diff(self::IMPLEMENTED, array_keys($seen))),
+            array_values(array_diff(self::implemented(), array_keys($seen))),
             'implemented but no example in this provider',
         );
         $this->assertSame(
             [],
-            array_values(array_diff(array_keys($seen), self::IMPLEMENTED)),
+            array_values(array_diff(array_keys($seen), self::implemented())),
             'example for a type PropertyChecker does not implement',
         );
 
@@ -80,25 +81,6 @@ class PropertyCheckerTest extends TestCase
             $this->assertContains('passed', $directions, "{$type} has no passing example");
             $this->assertContains('failed', $directions, "{$type} has no failing example");
         }
-    }
-
-    /**
-     * ARRAY_TYPES and STRING_TYPES are read by nothing in the repo — they are a
-     * declaration sitting directly above the switch they describe, and they
-     * happen to be correct. This is the control they never had, and it is
-     * temporary: the registry replaces both constants.
-     */
-    public function test_the_declared_type_constants_match_the_switch(): void
-    {
-        $source = file_get_contents((new \ReflectionClass(PropertyChecker::class))->getFileName());
-        preg_match_all("/case\s+'([a-z0-9_]+)'\s*:/", (string) $source, $m);
-
-        $arms = array_values(array_unique($m[1]));
-        $declared = self::IMPLEMENTED;
-        sort($arms);
-        sort($declared);
-
-        $this->assertSame($declared, $arms, 'ARRAY_TYPES + STRING_TYPES has drifted from the switch');
     }
 
     /** `schema_valid` with no validator is the one legitimate skip in the checker today. */
@@ -129,9 +111,6 @@ class PropertyCheckerTest extends TestCase
 
             'enum passes' => ['enum', ['type' => 'enum', 'path' => 'classification', 'values' => ['hot', 'warm']], $out, 'passed'],
             'enum fails' => ['enum', ['type' => 'enum', 'path' => 'classification', 'values' => ['cold']], $out, 'failed'],
-
-            'no_banned_phrase passes' => ['no_banned_phrase', ['type' => 'no_banned_phrase', 'phrases' => ['synergy']], $out, 'passed'],
-            'no_banned_phrase fails' => ['no_banned_phrase', ['type' => 'no_banned_phrase', 'phrases' => ['Acme']], $out, 'failed'],
 
             'cites_fact passes' => ['cites_fact', ['type' => 'cites_fact', 'fact' => '14 demos'], $out, 'passed'],
             'cites_fact fails' => ['cites_fact', ['type' => 'cites_fact', 'fact' => 'forty demos'], $out, 'failed'],
