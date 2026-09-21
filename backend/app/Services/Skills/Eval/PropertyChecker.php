@@ -480,7 +480,7 @@ class PropertyChecker
      * The set flavour: the assertion is about the collection as a whole rather
      * than about each member, so it sees the resolved values together.
      *
-     * @param  callable(list<string>): ?array{0: Reason, 1: string, 2: list<string>}  $judge
+     * @param  callable(list<mixed>): ?array{0: Reason, 1: string, 2: list<string>}  $judge
      */
     private function overSet(PropertyContext $c, callable $judge): PropertyResult
     {
@@ -491,9 +491,30 @@ class PropertyChecker
             return $early;
         }
 
-        $verdict = $judge(array_map([self::class, 'scalarText'], $matches->values()));
+        $members = $matches->values();
+
+        // The set operand, stated rather than inferred. `path: tags` resolves
+        // ONE subject whose value is the collection; `path: tags[]` resolves one
+        // subject per member. Both address the same set, so a lone list subject
+        // is read as its members. Stringifying it instead made `["a","b"]` a
+        // single fictitious member and `[]` the member `"[]"`.
+        if (count($members) === 1 && is_array($members[0]) && array_is_list($members[0])) {
+            $members = $members[0];
+        }
+
+        foreach ($members as $member) {
+            if (is_array($member) || is_object($member)) {
+                return PropertyResult::fail(
+                    Reason::TypeMismatch,
+                    'a set member is a '.get_debug_type($member).', and nesting is not part of this comparison',
+                    $path,
+                );
+            }
+        }
+
+        $verdict = $judge($members);
         if ($verdict === null) {
-            return PropertyResult::pass($matches->count().' member(s) satisfy '.$c->type, $path);
+            return PropertyResult::pass(count($members).' member(s) satisfy '.$c->type, $path);
         }
 
         return PropertyResult::fail($verdict[0], $verdict[1], $path, $verdict[2]);
@@ -647,8 +668,10 @@ class PropertyChecker
                 $expected = $c->p[$comparison];
 
                 if ($comparison === 'equals') {
-                    if (self::scalarText($actual) !== self::scalarText($expected)) {
-                        return 'is "'.self::scalarText($actual).'", expected "'.self::scalarText($expected).'"';
+                    // Typed. scalarText(null) and scalarText('') are both '',
+                    // so text equality accepted a null where "" was asserted.
+                    if (self::typedKey($actual) !== self::typedKey($expected)) {
+                        return 'is '.self::memberText($actual).', expected '.self::memberText($expected);
                     }
 
                     continue;
@@ -744,11 +767,14 @@ class PropertyChecker
         return $this->overSet($c, function (array $actual) use ($expected): ?array {
             $have = self::asSet($actual);
             $want = self::asSet($expected);
-            if ($have === $want) {
+
+            // An empty actual set equals an empty expected set. Emptiness is
+            // not the danger here; silently becoming a DIFFERENT set is.
+            if (array_keys($have) === array_keys($want)) {
                 return null;
             }
-            $missing = array_values(array_diff($want, $have));
-            $extra = array_values(array_diff($have, $want));
+            $missing = array_values(array_diff_key($want, $have));
+            $extra = array_values(array_diff_key($have, $want));
 
             return [
                 Reason::SetMismatch,
@@ -767,7 +793,7 @@ class PropertyChecker
         $expected = self::expectedSet($c);
 
         return $this->overSet($c, function (array $actual) use ($expected): ?array {
-            $missing = array_values(array_diff(self::asSet($expected), self::asSet($actual)));
+            $missing = array_values(array_diff_key(self::asSet($expected), self::asSet($actual)));
 
             return $missing === [] ? null : [
                 Reason::SetMemberMissing,
@@ -783,7 +809,22 @@ class PropertyChecker
         $expected = self::expectedSet($c);
 
         return $this->overSet($c, function (array $actual) use ($expected): ?array {
-            $present = array_values(array_intersect(self::asSet($expected), self::asSet($actual)));
+            $have = self::asSet($actual);
+
+            // "No block has role cta" over zero blocks establishes nothing.
+            // The registry entry has always said so; now the code agrees. Note
+            // this is the SET being empty, which is not the same fact as the
+            // path resolving to no subjects - `path: blocks` over `[]` resolves
+            // exactly one subject, so cardinality cannot catch this.
+            if ($have === []) {
+                return [
+                    Reason::NoSubjectsToEvaluate,
+                    'there are no members, so nothing was excluded',
+                    [],
+                ];
+            }
+
+            $present = array_values(array_intersect_key(self::asSet($expected), $have));
 
             return $present === [] ? null : [
                 Reason::SetMemberForbidden,
@@ -793,7 +834,12 @@ class PropertyChecker
         });
     }
 
-    /** @return list<string> */
+    /**
+     * The expected members, with YAML's types intact. Casting them to text here
+     * is what let a declared `false` match the string "false".
+     *
+     * @return list<mixed>
+     */
     private static function expectedSet(PropertyContext $c): array
     {
         $values = $c->p['values'] ?? $c->p['members'] ?? [];
@@ -801,22 +847,62 @@ class PropertyChecker
             $values = explode(',', $values);
         }
 
-        return array_map(static fn (mixed $v): string => trim(self::scalarText($v)), (array) $values);
+        return array_map(static fn (mixed $v): mixed => is_string($v) ? trim($v) : $v, array_values((array) $values));
     }
 
     /**
-     * Order and duplicates are ignored, and the result is sorted so evidence
-     * for the same input is always the same text.
+     * The declared set contract, in one place:
      *
-     * @param  list<string>  $values
-     * @return list<string>
+     *   - members come from the collection value or from the fan-out subjects;
+     *   - scalars and null are members, nested arrays and objects are not;
+     *   - duplicates are ignored, ordering is ignored;
+     *   - comparison preserves type, so null, "", false and "false" are four
+     *     different members;
+     *   - the empty set is permitted or refused per operation, not globally.
+     *
+     * Keyed by type-preserving identity, valued by display text, and sorted so
+     * evidence for the same input is always the same. The previous version
+     * stringified members and then dropped every '' - which silently deleted
+     * null members, because scalarText(null) is ''.
+     *
+     * @param  list<mixed>  $values
+     * @return array<string, string>
      */
     private static function asSet(array $values): array
     {
-        $set = array_values(array_unique(array_filter($values, static fn (string $v): bool => $v !== '')));
-        sort($set);
+        $set = [];
+        foreach ($values as $value) {
+            $set[self::typedKey($value)] = self::memberText($value);
+        }
+        ksort($set);
 
         return $set;
+    }
+
+    /**
+     * Identity that survives comparison. Two values are the same member only
+     * when they are the same type and the same value.
+     */
+    private static function typedKey(mixed $value): string
+    {
+        return match (true) {
+            $value === null => 'null',
+            is_bool($value) => $value ? 'bool:true' : 'bool:false',
+            is_int($value) => 'int:'.$value,
+            is_float($value) => 'float:'.$value,
+            default => 'str:'.(string) $value,
+        };
+    }
+
+    /** What a member is called in evidence, where '' and null must stay visible. */
+    private static function memberText(mixed $value): string
+    {
+        return match (true) {
+            $value === null => '<null>',
+            $value === '' => '<empty string>',
+            is_bool($value) => $value ? 'true' : 'false',
+            default => '"'.(string) $value.'"',
+        };
     }
 
     private static function unquote(string $text): string

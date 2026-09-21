@@ -281,21 +281,171 @@ class PrimitiveConformanceTest extends TestCase
         $this->assertSame('failed', $row['status'], 'an empty collection satisfied a "contains nothing" assertion');
     }
 
+    // ---------------------------------------------------------------- //
+    //  The set operand contract
+    //
+    //  `path: tags` resolves ONE subject whose value is the collection;
+    //  `path: tags[]` resolves one subject per member. Both address the same
+    //  set. Before this was declared, the first spelling stringified the whole
+    //  array into a single fictitious member - `["a","b"]` became the one
+    //  member `'["a","b"]'`, and `[]` became the member `'[]'`.
+    // ---------------------------------------------------------------- //
+
+    public function test_both_spellings_of_a_set_address_the_same_members(): void
+    {
+        $spec = static fn (string $path): array => [
+            ['type' => 'set_equals', 'path' => $path, 'values' => ['a', 'b']],
+        ];
+        $output = ['tags' => ['a', 'b']];
+
+        $whole = (new PropertyChecker)->check($spec('tags'), $output)['results'][0];
+        $fanned = (new PropertyChecker)->check($spec('tags[]'), $output)['results'][0];
+
+        $this->assertSame('passed', $whole['status'], $whole['detail']);
+        $this->assertSame('passed', $fanned['status'], $fanned['detail']);
+
+        // Count evidence, not just colour: the collection must be read as two
+        // members, never as one string that happens to contain both.
+        $this->assertStringContainsString('2 member(s)', $whole['detail']);
+        $this->assertStringContainsString('2 member(s)', $fanned['detail']);
+    }
+
+    public function test_a_nested_member_is_a_type_mismatch_not_a_stringified_member(): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => 'set_equals', 'path' => 'tags[]', 'values' => ['a']]],
+            ['tags' => [['deep' => 'a']]],
+        )['results'][0];
+
+        $this->assertSame('failed', $row['status'], $row['detail']);
+        $this->assertSame(Reason::TypeMismatch->value, $row['reason'], $row['detail']);
+    }
+
+    // ---------------------------------------------------------------- //
+    //  Path cardinality is not set size
+    // ---------------------------------------------------------------- //
+
+    /**
+     * `path: blocks` over `{"blocks": []}` resolves EXACTLY ONE subject whose
+     * value is `[]`. Cardinality is satisfied and cannot help here, so the set
+     * primitive has to refuse on its own - which is what its registry entry
+     * has always claimed: "no block has role cta" over zero blocks establishes
+     * nothing. It used to pass, because `[]` became the member `'[]'` and that
+     * string is not in the forbidden list.
+     */
+    public function test_set_excludes_refuses_an_empty_set_at_a_resolved_path(): void
+    {
+        foreach (['blocks', 'blocks[]'] as $path) {
+            $row = (new PropertyChecker)->check(
+                [['type' => 'set_excludes', 'path' => $path, 'values' => ['cta']]],
+                ['blocks' => []],
+            )['results'][0];
+
+            $this->assertSame('failed', $row['status'], $path.': '.$row['detail']);
+            $this->assertNotSame(
+                Reason::Satisfied->value,
+                $row['reason'],
+                $path.' let "excludes cta" pass over zero members',
+            );
+        }
+    }
+
+    /** An empty actual set genuinely equals an empty expected set. */
+    public function test_an_empty_set_equals_an_empty_expected_set(): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => 'set_equals', 'path' => 'tags', 'values' => []]],
+            ['tags' => []],
+        )['results'][0];
+
+        $this->assertSame('passed', $row['status'], $row['detail']);
+        $this->assertStringContainsString('0 member(s)', $row['detail']);
+    }
+
+    // ---------------------------------------------------------------- //
+    //  Comparison preserves type
+    // ---------------------------------------------------------------- //
+
+    /**
+     * Four members that text comparison collapsed into two. `scalarText(null)`
+     * and `scalarText('')` are both `''`, and `asSet` then dropped every `''`
+     * - so a null member was deleted before the sets were compared.
+     *
+     * @return array<string, array{0: mixed, 1: mixed}>
+     */
+    public static function distinctTypes(): array
+    {
+        return [
+            'null is not the empty string' => [null, ''],
+            'false is not the string false' => [false, 'false'],
+            'zero is not the string zero' => [0, '0'],
+            'true is not the string true' => [true, 'true'],
+        ];
+    }
+
+    #[DataProvider('distinctTypes')]
+    public function test_a_set_keeps_two_types_apart(mixed $actual, mixed $expected): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => 'set_equals', 'path' => 'tags', 'values' => [$expected]]],
+            ['tags' => [$actual]],
+        )['results'][0];
+
+        $this->assertSame('failed', $row['status'], $row['detail']);
+        $this->assertSame(Reason::SetMismatch->value, $row['reason'], $row['detail']);
+    }
+
+    #[DataProvider('distinctTypes')]
+    public function test_field_equality_keeps_two_types_apart(mixed $actual, mixed $expected): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => 'field', 'path' => 'fit', 'field' => 'score', 'equals' => $expected]],
+            ['fit' => ['score' => $actual]],
+        )['results'][0];
+
+        $this->assertSame('failed', $row['status'], $row['detail']);
+        $this->assertSame(Reason::FieldValueMismatch->value, $row['reason'], $row['detail']);
+    }
+
+    /** A null member is a member. It used to be silently removed. */
+    public function test_a_null_member_is_not_deleted_from_the_set(): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => 'set_equals', 'path' => 'tags', 'values' => ['a']]],
+            ['tags' => ['a', null]],
+        )['results'][0];
+
+        $this->assertSame('failed', $row['status'], $row['detail']);
+        $this->assertStringContainsString('<null>', $row['detail'], 'the null member vanished from the comparison');
+    }
+
     /** @param list<string> $bodies */
     private static function bodies(array $bodies): array
     {
         return ['items' => array_map(static fn (string $b): array => ['body' => $b], $bodies)];
     }
 
-    /** The source of one method, for the structural check. */
+    /**
+     * The source of one method, for the structural check.
+     *
+     * The slice ends at the next class-body member, not at the next backticked
+     * marker. `checkSetExcludes` is the last handler carrying one, so the old
+     * bound ran its slice to end of file - roughly 380 lines of unrelated
+     * helpers. That satisfied its allow-pattern from any overSet() call down
+     * there, and would have blamed it for a dig() added anywhere below it. The
+     * eighth primitive was effectively unchecked.
+     */
     private static function bodyOf(string $source, string $method): string
     {
         $at = strpos($source, "function {$method}(");
         if ($at === false) {
             return '';
         }
-        $next = strpos($source, "\n    /** `", $at);
+        $rest = substr($source, $at);
+        $end = preg_match('/\n    (?:\/\*\*|private |public |protected |\})/', $rest, $m, PREG_OFFSET_CAPTURE, 1) === 1
+            ? $m[0][1]
+            : strlen($rest);
 
-        return substr($source, $at, ($next === false ? strlen($source) : $next) - $at);
+        return substr($rest, 0, $end);
     }
 }

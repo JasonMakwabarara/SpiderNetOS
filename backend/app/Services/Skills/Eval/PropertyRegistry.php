@@ -218,7 +218,7 @@ final class PropertyRegistry
         //  interprets an array, a wildcard or a missing path on its own.
         // ------------------------------------------------------------------ //
         'field' => ['arg' => PropertyArg::Structured, 'handler' => 'checkField', 'cardinality' => Cardinality::ExactlyOne,
-            'summary' => 'The value at <path>[.<field>] equals / is at least / is at most the given value. One subject: a selector that matches nothing or twice is an output failure.'],
+            'summary' => 'The value at <path>[.<field>] equals / is at least / is at most the given value. Equality is typed, so null, "" and false are three different values. One subject: a selector that matches nothing or twice is an output failure.'],
         'is_null' => ['arg' => PropertyArg::Structured, 'handler' => 'checkIsNull', 'cardinality' => Cardinality::ExactlyOne,
             'summary' => 'The value at <path>[.<field>] is present and null. Absent is a different state and fails, because the schemas that use this make the key optional AND nullable.'],
         'not_contains' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotContains',
@@ -228,11 +228,11 @@ final class PropertyRegistry
         'not_empty' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotEmpty',
             'summary' => 'The value at <path>[.<field>] is present and not empty. Null, "", [] and whitespace are all empty; false and 0 are not.'],
         'set_equals' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetEquals', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> is exactly values[]. Order and duplicates are ignored.'],
+            'summary' => 'The set of values at <path> is exactly values[]. Members come from the collection value (<path>) or from the fan-out subjects (<path>[]); scalars and null are members, nested arrays and objects are a type mismatch. Order and duplicates ignored, type preserved. An empty set equals an empty values[].'],
         'set_includes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetIncludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> includes every one of values[].'],
+            'summary' => 'The set of values at <path> includes every one of values[]. Same member and type rules as set_equals. An empty set fails whenever values[] is not empty.'],
         'set_excludes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetExcludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> contains none of values[]. Non-empty on purpose: "no block has role cta" over zero blocks establishes nothing.'],
+            'summary' => 'The set of values at <path> contains none of values[]. Same member and type rules as set_equals. An empty set is refused, not passed: "no block has role cta" over zero blocks establishes nothing. Note this is the SET being empty, which cardinality cannot catch - <path> over [] resolves exactly one subject.'],
 
         // ------------------------------------------------------------------ //
         //  Stay domain — the assertion encodes one skill's semantics, and a
