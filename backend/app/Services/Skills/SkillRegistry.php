@@ -521,7 +521,19 @@ class SkillRegistry
     {
         $out = [];
         foreach ($card->outputs as $output) {
-            $properties = $output['schema']['properties'] ?? null;
+            $schema = $output['schema'] ?? null;
+            if (! is_array($schema)) {
+                continue;
+            }
+            if (self::composes($schema)) {
+                // Refusing to read a schema this walker does not understand,
+                // rather than reporting "no minimum" and letting the pairing
+                // check silently pass. No card composes today, and §1.4b #9 adds
+                // a two-branch `oneOf` for the blocked envelope — which is
+                // exactly when a silent walker would start being wrong.
+                return [];
+            }
+            $properties = $schema['properties'] ?? null;
             if (! is_array($properties)) {
                 continue;
             }
@@ -535,6 +547,33 @@ class SkillRegistry
         }
 
         return $out;
+    }
+
+    /**
+     * Whether a schema uses composition this walker cannot follow.
+     *
+     * The walker reads top-level array properties only, which is true of all
+     * nine cards today and is checked rather than assumed. A composed schema
+     * can place the applicable `minItems` behind a branch, so the honest answer
+     * is "cannot tell" — and "cannot tell" must not read as "no guarantee
+     * needed".
+     *
+     * @param  array<string, mixed>  $schema
+     */
+    private static function composes(array $schema): bool
+    {
+        foreach (['$ref', 'allOf', 'anyOf', 'oneOf', 'not', 'if', 'patternProperties'] as $keyword) {
+            if (array_key_exists($keyword, $schema)) {
+                return true;
+            }
+        }
+        foreach ($schema['properties'] ?? [] as $definition) {
+            if (is_array($definition) && self::composes($definition)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

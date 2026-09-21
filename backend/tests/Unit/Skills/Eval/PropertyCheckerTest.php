@@ -280,6 +280,7 @@ class PropertyCheckerTest extends TestCase
         $out = self::draft();
         $blocked = ['status' => 'blocked', 'missing' => [['path' => 'brand/voice.md', 'section' => 'Tone']]];
         $body = 'steps.0.body';
+        $subjects = 'steps.0.subjects[]';
 
         return [
             // ------------------------------------------------------------ array form
@@ -344,6 +345,34 @@ class PropertyCheckerTest extends TestCase
             'personalisation_slot_present passes' => ['personalisation_slot_present', 'personalisation_slot_present:1', $out, 'passed', Reason::Satisfied],
             'personalisation_slot_present fails' => ['personalisation_slot_present', 'personalisation_slot_present:2', $out, 'failed', Reason::PersonalisationSlotsInsufficient],
 
+            // ------------------------------------------------- the eight primitives
+            // `field` and `is_null` address an item and then a member of it,
+            // which is what `classification:m1=hot` and `draft_reply_null:m4`
+            // have always meant. The selector is a sibling key, never syntax.
+            'field passes' => ['field', ['type' => 'field', 'path' => 'steps', 'where' => ['step' => 1], 'field' => 'beat', 'equals' => 'problem'], $out, 'passed', Reason::Satisfied, 'steps'],
+            'field fails' => ['field', ['type' => 'field', 'path' => 'steps', 'where' => ['step' => 1], 'field' => 'beat', 'equals' => 'proof'], $out, 'failed', Reason::FieldValueMismatch, 'steps'],
+
+            'is_null passes' => ['is_null', ['type' => 'is_null', 'path' => 'items', 'where' => ['message_id' => 'm4'], 'field' => 'draft_reply'], self::replies(null), 'passed', Reason::Satisfied, 'items'],
+            'is_null fails' => ['is_null', ['type' => 'is_null', 'path' => 'items', 'where' => ['message_id' => 'm4'], 'field' => 'draft_reply'], self::replies('Sure, Thursday works.'), 'failed', Reason::ValueNotNull, 'items'],
+
+            'not_contains passes' => ['not_contains', ['type' => 'not_contains', 'path' => $body, 'text' => 'Zebra'], $out, 'passed', Reason::Satisfied, $body],
+            'not_contains fails' => ['not_contains', ['type' => 'not_contains', 'path' => $body, 'text' => 'Acme'], $out, 'failed', Reason::TextPresent, $body],
+
+            'not_matches passes' => ['not_matches', ['type' => 'not_matches', 'path' => 'classification', 'pattern' => '/^z/'], $out, 'passed', Reason::Satisfied, 'classification'],
+            'not_matches fails' => ['not_matches', ['type' => 'not_matches', 'path' => 'classification', 'pattern' => '/^h/'], $out, 'failed', Reason::PatternMatched, 'classification'],
+
+            'not_empty passes' => ['not_empty', ['type' => 'not_empty', 'path' => 'steps.0.cta'], $out, 'passed', Reason::Satisfied, 'steps.0.cta'],
+            'not_empty fails' => ['not_empty', ['type' => 'not_empty', 'path' => 'steps.0.cta'], self::draft(cta: '   '), 'failed', Reason::ValueEmpty, 'steps.0.cta'],
+
+            'set_equals passes' => ['set_equals', ['type' => 'set_equals', 'path' => $subjects, 'values' => ['Kitchen-table bookkeeping', 'Your month-end']], $out, 'passed', Reason::Satisfied, $subjects],
+            'set_equals fails' => ['set_equals', ['type' => 'set_equals', 'path' => $subjects, 'values' => ['Your month-end']], $out, 'failed', Reason::SetMismatch, $subjects],
+
+            'set_includes passes' => ['set_includes', ['type' => 'set_includes', 'path' => $subjects, 'values' => ['Your month-end']], $out, 'passed', Reason::Satisfied, $subjects],
+            'set_includes fails' => ['set_includes', ['type' => 'set_includes', 'path' => $subjects, 'values' => ['Nowhere near it']], $out, 'failed', Reason::SetMemberMissing, $subjects],
+
+            'set_excludes passes' => ['set_excludes', ['type' => 'set_excludes', 'path' => $subjects, 'values' => ['Nowhere near it']], $out, 'passed', Reason::Satisfied, $subjects],
+            'set_excludes fails' => ['set_excludes', ['type' => 'set_excludes', 'path' => $subjects, 'values' => ['Your month-end']], $out, 'failed', Reason::SetMemberForbidden, $subjects],
+
             'blocked_missing_brain passes' => ['blocked_missing_brain', 'blocked_missing_brain:brand/voice.md#Tone', $blocked, 'passed', Reason::Satisfied, 'missing'],
             'blocked_missing_brain fails' => ['blocked_missing_brain', 'blocked_missing_brain:brand/voice.md#Tone', $out, 'failed', Reason::NotBlockedOnRef, 'missing'],
         ];
@@ -356,6 +385,15 @@ class PropertyCheckerTest extends TestCase
         sort($values);
 
         return $values;
+    }
+
+    /** An inbox-triage shaped output, for the primitives that address an item then a member. */
+    private static function replies(?string $reply): array
+    {
+        return ['items' => [
+            ['message_id' => 'm1', 'draft_reply' => 'Thursday at ten?'],
+            ['message_id' => 'm4', 'draft_reply' => $reply],
+        ]];
     }
 
     /** One fixture brain behind every example, so a failure is about the property and not the setup. */

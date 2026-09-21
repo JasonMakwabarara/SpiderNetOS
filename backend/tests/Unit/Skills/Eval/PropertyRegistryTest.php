@@ -169,8 +169,8 @@ class PropertyRegistryTest extends TestCase
         // update them deliberately.
         $this->assertCount(43, $collapse);
         $this->assertCount(8, $domain);
-        $this->assertCount(21, PropertyRegistry::implemented());
-        $this->assertCount(72, PropertyRegistry::names());
+        $this->assertCount(29, PropertyRegistry::implemented());
+        $this->assertCount(80, PropertyRegistry::names());
     }
 
     /**
@@ -262,9 +262,9 @@ class PropertyRegistryTest extends TestCase
 
         $this->assertSame([
             'every_match_may_be_empty' => 4,
-            'every_match_non_empty' => 4,
-            'exactly_one' => 8,
-            'root' => 56,
+            'every_match_non_empty' => 7,
+            'exactly_one' => 10,
+            'root' => 59,
         ], $by);
     }
 
@@ -279,10 +279,45 @@ class PropertyRegistryTest extends TestCase
         $this->assertNull(Cardinality::ExactlyOne->reject(PropertyPathStub::matches(1)));
     }
 
-    public function test_the_non_empty_rule_refuses_a_vacuous_pass(): void
+    /**
+     * The condition that matters most here: **no cardinality turns zero
+     * subjects into a pass.**
+     *
+     * The static gate accepts `schema_valid` plus a schema minimum as proof
+     * that a collection cannot be empty. If that premise fails at runtime — the
+     * validator is unavailable, the schema changed, the case stopped asserting
+     * it — the universal assertion sees nothing and must not report success.
+     * Otherwise a missing dependency converts into a green tick, which is the
+     * vacuous truth wearing a different coat.
+     */
+    public function test_no_cardinality_turns_zero_subjects_into_a_pass(): void
     {
-        $this->assertSame(Reason::SelectorMatchedNone, Cardinality::EveryMatchNonEmpty->reject(PropertyPathStub::matches(0)));
-        $this->assertNull(Cardinality::EveryMatchMayBeEmpty->reject(PropertyPathStub::matches(0)), 'the tolerant rule passes — which is why the case-level pairing exists');
+        $empty = PropertyPathStub::matches(0);
+
+        foreach ([
+            Cardinality::ExactlyOne,
+            Cardinality::AtLeastOne,
+            Cardinality::EveryMatchNonEmpty,
+            Cardinality::EveryMatchMayBeEmpty,
+        ] as $rule) {
+            $this->assertNotNull(
+                $rule->reject($empty),
+                "{$rule->value} accepted zero subjects as evidence",
+            );
+        }
+
+        // And the tolerant rule still says something different from the strict
+        // ones, so the later outcome mapping is mechanical rather than a guess.
+        $this->assertSame(Reason::NoSubjectsToEvaluate, Cardinality::EveryMatchMayBeEmpty->reject($empty));
+        $this->assertSame(Reason::SelectorMatchedNone, Cardinality::EveryMatchNonEmpty->reject($empty));
+    }
+
+    /** Its tolerance is an authoring permission, and only that. */
+    public function test_tolerating_emptiness_is_an_authoring_permission_not_a_runtime_one(): void
+    {
+        $this->assertTrue(Cardinality::EveryMatchMayBeEmpty->mayBeAuthoredOverAnEmptyCollection());
+        $this->assertFalse(Cardinality::EveryMatchNonEmpty->mayBeAuthoredOverAnEmptyCollection());
+        $this->assertNotNull(Cardinality::EveryMatchMayBeEmpty->reject(PropertyPathStub::matches(0)));
     }
 
     /**

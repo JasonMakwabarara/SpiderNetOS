@@ -431,6 +431,408 @@ class PropertyChecker
     }
 
     // ------------------------------------------------------------------ //
+    //  The boundary. Every path-addressed primitive passes through here, so
+    //  none of them interprets an array, a fan-out, a missing key or an object
+    //  on its own — which is how eight handlers would otherwise grow eight
+    //  slightly different opinions about what "nothing there" means.
+    // ------------------------------------------------------------------ //
+
+    /**
+     * Resolve the property's path, enforce its cardinality, then let the
+     * primitive judge each resolved subject.
+     *
+     * `$offends` returns null when a subject satisfies the assertion, or a
+     * short description of how it does not. Every offender is collected — not
+     * the first — so a report cannot present one violation as the whole story.
+     *
+     * @param  callable(mixed, string): ?string  $offends
+     */
+    private function overSubjects(PropertyContext $c, Reason $violation, callable $offends, ?string $satisfied = null): PropertyResult
+    {
+        $matches = self::subjects($c);
+        $path = self::pathOf($c);
+
+        if (($early = self::refuse($c, $matches, $path)) !== null) {
+            return $early;
+        }
+
+        $offenders = [];
+        foreach ($matches->matches as $match) {
+            $why = $offends($match['value'], $match['path']);
+            if ($why !== null) {
+                $offenders[] = $match['path'].': '.$why;
+            }
+        }
+
+        if ($offenders !== []) {
+            return PropertyResult::fail(
+                $violation,
+                count($offenders).' of '.$matches->count().' — '.$offenders[0],
+                $path,
+                $offenders,
+            );
+        }
+
+        return PropertyResult::pass($satisfied ?? ($matches->count().' subject(s) satisfy '.$c->type), $path);
+    }
+
+    /**
+     * The set flavour: the assertion is about the collection as a whole rather
+     * than about each member, so it sees the resolved values together.
+     *
+     * @param  callable(list<string>): ?array{0: Reason, 1: string, 2: list<string>}  $judge
+     */
+    private function overSet(PropertyContext $c, callable $judge): PropertyResult
+    {
+        $matches = self::subjects($c);
+        $path = self::pathOf($c);
+
+        if (($early = self::refuse($c, $matches, $path)) !== null) {
+            return $early;
+        }
+
+        $verdict = $judge(array_map([self::class, 'scalarText'], $matches->values()));
+        if ($verdict === null) {
+            return PropertyResult::pass($matches->count().' member(s) satisfy '.$c->type, $path);
+        }
+
+        return PropertyResult::fail($verdict[0], $verdict[1], $path, $verdict[2]);
+    }
+
+    /** One resolution for every primitive, so the count has a single source. */
+    private static function subjects(PropertyContext $c): PathMatches
+    {
+        $path = self::pathOf($c);
+        if ($path === '') {
+            return PathMatches::matched([['path' => '(root)', 'value' => $c->output]]);
+        }
+
+        /** @var array<string, mixed> $where */
+        $where = is_array($c->p['where'] ?? null) ? $c->p['where'] : [];
+        $inputs = $c->case === null ? [] : $c->case->inputs;
+        $matches = PropertyPath::resolve($c->output, $path, $where, $inputs);
+
+        // An explicit null becomes one subject whose value is null. The
+        // resolver keeps saying `NullAtPath`, which is how `is_null` tells it
+        // from a field that was never there — the distinction survives, and the
+        // primitive gets to use it.
+        return $matches->outcome === PathOutcome::NullAtPath
+            ? PathMatches::matched([['path' => $matches->stoppedAt ?? $path, 'value' => null]])
+            : $matches;
+    }
+
+    private static function pathOf(PropertyContext $c): string
+    {
+        return isset($c->p['path']) && is_string($c->p['path']) ? $c->p['path'] : '';
+    }
+
+    /**
+     * An addressing failure, or a match set the cardinality refuses.
+     *
+     * Null means the primitive may proceed. Everything else stops here, which
+     * is what keeps "nothing resolved" from reaching a handler that would read
+     * it as "nothing violated".
+     */
+    private static function refuse(PropertyContext $c, PathMatches $matches, string $path): ?PropertyResult
+    {
+        if (! $matches->isMatch()) {
+            // A null is a value the model produced, not a failure to address
+            // the document, so judging it belongs to the primitive. Refusing it
+            // here would make `is_null` fail on exactly the state it asserts
+            // whenever the path names the nullable field directly.
+            if ($matches->outcome === PathOutcome::NullAtPath) {
+                return null;
+            }
+
+            return PropertyResult::fail(
+                self::reasonForOutcome($matches->outcome),
+                $matches->outcome->value.' at '.($matches->stoppedAt ?? $path).' ('.($matches->found ?? 'nothing').')',
+                $path,
+                $matches->evidence()['malformed'],
+            );
+        }
+
+        $rule = self::cardinalityFor($c);
+        if (($why = $rule->reject($matches)) !== null) {
+            return PropertyResult::fail(
+                $why,
+                $rule->value.' is not satisfied by '.$matches->count().' match(es)',
+                $path,
+                $matches->paths(),
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * The declared rule, with one derivation: a Root default addressing many
+     * subjects becomes non-empty.
+     *
+     * `max_length` over `steps.0.body` is one site and `max_length` over
+     * `items[].subject` is many, so cardinality is not purely a property of the
+     * type — but the safe reading of "assert this over a collection" is that
+     * the collection has to exist. A type that genuinely means something else
+     * says so in the registry.
+     */
+    private static function cardinalityFor(PropertyContext $c): Cardinality
+    {
+        $type = PropertyRegistry::get($c->type);
+        $declared = $type === null ? Cardinality::Root : $type->cardinality;
+        if ($declared !== Cardinality::Root) {
+            return $declared;
+        }
+
+        $fansOut = str_contains(self::pathOf($c), '[]')
+            || (is_array($c->p['where'] ?? null) && $c->p['where'] !== []);
+
+        return $fansOut ? Cardinality::EveryMatchNonEmpty : Cardinality::Root;
+    }
+
+    /**
+     * Exhaustive on purpose. A new PathOutcome must not quietly acquire a
+     * reason by falling through a default arm.
+     */
+    private static function reasonForOutcome(PathOutcome $outcome): Reason
+    {
+        return match ($outcome) {
+            PathOutcome::MissingField => Reason::PathMissing,
+            PathOutcome::NullAtPath => Reason::PathIsNull,
+            PathOutcome::EmptyCollection => Reason::PathEmptyCollection,
+            PathOutcome::NoSelectorMatch => Reason::SelectorMatchedNone,
+            PathOutcome::TypeMismatch => Reason::TypeMismatch,
+            PathOutcome::Inaccessible => Reason::PathInaccessible,
+            PathOutcome::Matched => Reason::Satisfied,
+        };
+    }
+
+    /** The subject itself, or one named member of it. */
+    private static function memberOf(PropertyContext $c, mixed $subject): PathMatches
+    {
+        $field = isset($c->p['field']) && is_string($c->p['field']) ? $c->p['field'] : null;
+
+        return $field === null
+            ? PathMatches::matched([['path' => '(subject)', 'value' => $subject]])
+            : PropertyPath::resolve($subject, $field);
+    }
+
+    private static function scalarText(mixed $value): string
+    {
+        return match (true) {
+            $value === null => '',
+            is_bool($value) => $value ? 'true' : 'false',
+            is_scalar($value) => (string) $value,
+            default => (string) json_encode($value),
+        };
+    }
+
+    // ------------------------------------------------------------------ //
+    //  The eight primitives
+    // ------------------------------------------------------------------ //
+
+    /** `field` */
+    private function checkField(PropertyContext $c): PropertyResult
+    {
+        return $this->overSubjects($c, Reason::FieldValueMismatch, function (mixed $subject) use ($c): ?string {
+            $at = self::memberOf($c, $subject);
+            if (! $at->isMatch()) {
+                return 'no value ('.$at->outcome->value.')';
+            }
+            $actual = $at->sole();
+
+            foreach (['equals', 'gte', 'lte'] as $comparison) {
+                if (! array_key_exists($comparison, $c->p)) {
+                    continue;
+                }
+                $expected = $c->p[$comparison];
+
+                if ($comparison === 'equals') {
+                    if (self::scalarText($actual) !== self::scalarText($expected)) {
+                        return 'is "'.self::scalarText($actual).'", expected "'.self::scalarText($expected).'"';
+                    }
+
+                    continue;
+                }
+                if (! is_numeric($actual) || ! is_numeric($expected)) {
+                    return 'is "'.self::scalarText($actual).'", which is not a number to compare';
+                }
+                if ($comparison === 'gte' && (float) $actual < (float) $expected) {
+                    return self::scalarText($actual).' < '.self::scalarText($expected);
+                }
+                if ($comparison === 'lte' && (float) $actual > (float) $expected) {
+                    return self::scalarText($actual).' > '.self::scalarText($expected);
+                }
+            }
+
+            return null;
+        });
+    }
+
+    /** `is_null` */
+    private function checkIsNull(PropertyContext $c): PropertyResult
+    {
+        return $this->overSubjects($c, Reason::ValueNotNull, function (mixed $subject) use ($c): ?string {
+            $at = self::memberOf($c, $subject);
+
+            // Present-and-null is the assertion. Absent is a different state
+            // and says so, because every schema using this makes the key both
+            // optional and nullable — so "it is null" and "it is not there" are
+            // two answers a model can give and only one was asked about.
+            return match ($at->outcome) {
+                PathOutcome::NullAtPath => null,
+                PathOutcome::Matched => $at->sole() === null ? null : 'is "'.self::scalarText($at->sole()).'", not null',
+                PathOutcome::MissingField => 'is absent, which is not the same as null',
+                default => 'could not be read ('.$at->outcome->value.')',
+            };
+        });
+    }
+
+    /** `not_contains` */
+    private function checkNotContains(PropertyContext $c): PropertyResult
+    {
+        $needle = self::unquote((string) ($c->p['text'] ?? $c->arg ?? ''));
+
+        return $this->overSubjects($c, Reason::TextPresent, function (mixed $subject) use ($needle): ?string {
+            if ($needle === '') {
+                return 'no text to look for';
+            }
+
+            return self::containsCi(self::text($subject), $needle) ? 'contains "'.$needle.'"' : null;
+        });
+    }
+
+    /** `not_matches` */
+    private function checkNotMatches(PropertyContext $c): PropertyResult
+    {
+        $pattern = (string) ($c->p['pattern'] ?? '');
+
+        return $this->overSubjects($c, Reason::PatternMatched, function (mixed $subject) use ($pattern): ?string {
+            if ($pattern === '' || @preg_match($pattern, '') === false) {
+                return 'pattern "'.$pattern.'" is not usable';
+            }
+
+            return preg_match($pattern, self::text($subject)) === 1 ? 'matches '.$pattern : null;
+        });
+    }
+
+    /** `not_empty` */
+    private function checkNotEmpty(PropertyContext $c): PropertyResult
+    {
+        return $this->overSubjects($c, Reason::ValueEmpty, function (mixed $subject) use ($c): ?string {
+            $at = self::memberOf($c, $subject);
+
+            return match (true) {
+                $at->outcome === PathOutcome::MissingField => 'is absent',
+                $at->outcome === PathOutcome::NullAtPath => 'is null',
+                $at->outcome === PathOutcome::EmptyCollection => 'is an empty collection',
+                ! $at->isMatch() => 'could not be read ('.$at->outcome->value.')',
+                // `false` and `0` are values, not emptiness. PHP's `empty()`
+                // disagrees, which is why it is not used here.
+                is_array($at->sole()) => $at->sole() === [] ? 'is an empty collection' : null,
+                is_string($at->sole()) => trim($at->sole()) === '' ? 'is blank' : null,
+                $at->sole() === null => 'is null',
+                default => null,
+            };
+        });
+    }
+
+    /** `set_equals` */
+    private function checkSetEquals(PropertyContext $c): PropertyResult
+    {
+        $expected = self::expectedSet($c);
+
+        return $this->overSet($c, function (array $actual) use ($expected): ?array {
+            $have = self::asSet($actual);
+            $want = self::asSet($expected);
+            if ($have === $want) {
+                return null;
+            }
+            $missing = array_values(array_diff($want, $have));
+            $extra = array_values(array_diff($have, $want));
+
+            return [
+                Reason::SetMismatch,
+                'missing ['.implode(', ', $missing).'], unexpected ['.implode(', ', $extra).']',
+                array_merge(
+                    array_map(static fn (string $v): string => 'missing: '.$v, $missing),
+                    array_map(static fn (string $v): string => 'unexpected: '.$v, $extra),
+                ),
+            ];
+        });
+    }
+
+    /** `set_includes` */
+    private function checkSetIncludes(PropertyContext $c): PropertyResult
+    {
+        $expected = self::expectedSet($c);
+
+        return $this->overSet($c, function (array $actual) use ($expected): ?array {
+            $missing = array_values(array_diff(self::asSet($expected), self::asSet($actual)));
+
+            return $missing === [] ? null : [
+                Reason::SetMemberMissing,
+                'missing ['.implode(', ', $missing).']',
+                array_map(static fn (string $v): string => 'missing: '.$v, $missing),
+            ];
+        });
+    }
+
+    /** `set_excludes` */
+    private function checkSetExcludes(PropertyContext $c): PropertyResult
+    {
+        $expected = self::expectedSet($c);
+
+        return $this->overSet($c, function (array $actual) use ($expected): ?array {
+            $present = array_values(array_intersect(self::asSet($expected), self::asSet($actual)));
+
+            return $present === [] ? null : [
+                Reason::SetMemberForbidden,
+                'contains ['.implode(', ', $present).']',
+                array_map(static fn (string $v): string => 'forbidden: '.$v, $present),
+            ];
+        });
+    }
+
+    /** @return list<string> */
+    private static function expectedSet(PropertyContext $c): array
+    {
+        $values = $c->p['values'] ?? $c->p['members'] ?? [];
+        if (is_string($values)) {
+            $values = explode(',', $values);
+        }
+
+        return array_map(static fn (mixed $v): string => trim(self::scalarText($v)), (array) $values);
+    }
+
+    /**
+     * Order and duplicates are ignored, and the result is sorted so evidence
+     * for the same input is always the same text.
+     *
+     * @param  list<string>  $values
+     * @return list<string>
+     */
+    private static function asSet(array $values): array
+    {
+        $set = array_values(array_unique(array_filter($values, static fn (string $v): bool => $v !== '')));
+        sort($set);
+
+        return $set;
+    }
+
+    private static function unquote(string $text): string
+    {
+        $text = trim($text);
+        if (mb_strlen($text) >= 2) {
+            $first = mb_substr($text, 0, 1);
+            if (($first === '"' || $first === "'") && mb_substr($text, -1) === $first) {
+                return mb_substr($text, 1, -1);
+            }
+        }
+
+        return $text;
+    }
+
+    // ------------------------------------------------------------------ //
     //  Fixture-derived facts
     // ------------------------------------------------------------------ //
 

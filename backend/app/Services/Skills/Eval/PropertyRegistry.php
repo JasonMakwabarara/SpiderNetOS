@@ -211,6 +211,30 @@ final class PropertyRegistry
             'summary' => 'Every blocks[role=proof] has a non-empty source. The schema leaves source optional, so presence is the whole claim.'],
 
         // ------------------------------------------------------------------ //
+        //  The eight new primitives. Six more of the fourteen collapse targets
+        //  already existed and had never been used; these are the ones that
+        //  genuinely did not exist. Each addresses the output through
+        //  PropertyPath and is subject to its declared cardinality — no handler
+        //  interprets an array, a wildcard or a missing path on its own.
+        // ------------------------------------------------------------------ //
+        'field' => ['arg' => PropertyArg::Structured, 'handler' => 'checkField', 'cardinality' => Cardinality::ExactlyOne,
+            'summary' => 'The value at <path>[.<field>] equals / is at least / is at most the given value. One subject: a selector that matches nothing or twice is an output failure.'],
+        'is_null' => ['arg' => PropertyArg::Structured, 'handler' => 'checkIsNull', 'cardinality' => Cardinality::ExactlyOne,
+            'summary' => 'The value at <path>[.<field>] is present and null. Absent is a different state and fails, because the schemas that use this make the key optional AND nullable.'],
+        'not_contains' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotContains',
+            'summary' => 'The text at <path> does not contain <text>, case-insensitively.'],
+        'not_matches' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotMatches',
+            'summary' => 'The text at <path> does not match <pattern>.'],
+        'not_empty' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotEmpty',
+            'summary' => 'The value at <path>[.<field>] is present and not empty. Null, "", [] and whitespace are all empty; false and 0 are not.'],
+        'set_equals' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetEquals', 'cardinality' => Cardinality::EveryMatchNonEmpty,
+            'summary' => 'The set of values at <path> is exactly values[]. Order and duplicates are ignored.'],
+        'set_includes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetIncludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
+            'summary' => 'The set of values at <path> includes every one of values[].'],
+        'set_excludes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetExcludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
+            'summary' => 'The set of values at <path> contains none of values[]. Non-empty on purpose: "no block has role cta" over zero blocks establishes nothing.'],
+
+        // ------------------------------------------------------------------ //
         //  Stay domain — the assertion encodes one skill's semantics, and a
         //  generic name would hide what is actually being checked.
         // ------------------------------------------------------------------ //

@@ -47,6 +47,10 @@ enum Reason: string
     case PathMissing = 'PATH_MISSING';
     case SelectorMatchedNone = 'SELECTOR_MATCHED_NONE';
     case SelectorMatchedMany = 'SELECTOR_MATCHED_MANY';
+    case PathIsNull = 'PATH_IS_NULL';
+    case PathEmptyCollection = 'PATH_EMPTY_COLLECTION';
+    case PathInaccessible = 'PATH_INACCESSIBLE';
+    case NoSubjectsToEvaluate = 'NO_SUBJECTS_TO_EVALUATE';
     case TypeMismatch = 'TYPE_MISMATCH';
     case NotJsonObject = 'NOT_JSON_OBJECT';
     case StepsMissing = 'STEPS_MISSING';
@@ -83,6 +87,16 @@ enum Reason: string
     case NeverSayViolated = 'NEVER_SAY_VIOLATED';
     case PersonalisationSlotsInsufficient = 'PERSONALISATION_SLOTS_INSUFFICIENT';
     case NotBlockedOnRef = 'NOT_BLOCKED_ON_REF';
+
+    // --- the eight primitives the 43 domain names collapse onto ---
+    case FieldValueMismatch = 'FIELD_VALUE_MISMATCH';
+    case TextPresent = 'TEXT_PRESENT';
+    case PatternMatched = 'PATTERN_MATCHED';
+    case ValueNotNull = 'VALUE_NOT_NULL';
+    case ValueEmpty = 'VALUE_EMPTY';
+    case SetMismatch = 'SET_MISMATCH';
+    case SetMemberMissing = 'SET_MEMBER_MISSING';
+    case SetMemberForbidden = 'SET_MEMBER_FORBIDDEN';
 
     /** A dispatch failure: the assertion never executed, so it is not evidence. */
     public function isDispatchFailure(): bool

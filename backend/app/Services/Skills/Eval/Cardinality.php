@@ -39,24 +39,33 @@ enum Cardinality: string
     case EveryMatchNonEmpty = 'every_match_non_empty';
 
     /**
-     * Applies to every match, and zero matches passes.
+     * The case is permitted to name this assertion over a collection that may
+     * legitimately be empty — **provided the case declares what makes it
+     * non-empty**.
      *
-     * Deliberately the longest name, because this is the one that lets a
-     * vacuous assertion through and choosing it should feel like a decision. An
-     * entry declaring it **must** name the collection a sibling count assertion
-     * has to address (`pairs_with`), and `skills:validate` then requires that
-     * count to exist in the same case with a bound that either excludes zero or
-     * asserts exactly zero.
+     * This governs *authoring*, not evaluation. `skills:validate` requires the
+     * case to carry a sibling count over the same collection whose bound
+     * excludes zero or asserts it, or a schema minimum it actually checks. What
+     * it never does is license the runtime to treat no evidence as evidence:
+     * zero subjects still refuses below, exactly as the other rules do.
      *
-     * A registry field alone would not be enough: it can say a companion ought
-     * to exist, but not that it exists *in this case*, addresses *the same
-     * collection*, or actually excludes zero. A count over `sources` proves
-     * nothing about `angles`.
+     * That is the whole distinction. "Zero counterexamples were found because
+     * zero subjects existed" and "subjects existed and all of them complied"
+     * are different facts, and a scoring system that spells them the same way
+     * is the vacuous truth this stage exists to remove.
+     *
+     * A registry field alone would not be enough for the authoring half: it can
+     * say a companion ought to exist, but not that it exists *in this case*,
+     * addresses *the same collection*, or actually excludes zero. A count over
+     * `sources` proves nothing about `angles`.
      */
     case EveryMatchMayBeEmpty = 'every_match_may_be_empty';
 
-    /** Whether zero matches is permitted by this rule alone. */
-    public function admitsEmpty(): bool
+    /**
+     * Whether a case may *name* this assertion over a possibly-empty
+     * collection. Not whether the runtime accepts zero subjects — nothing does.
+     */
+    public function mayBeAuthoredOverAnEmptyCollection(): bool
     {
         return $this === self::EveryMatchMayBeEmpty || $this === self::Root;
     }
@@ -78,7 +87,11 @@ enum Cardinality: string
                 default => Reason::SelectorMatchedMany,
             },
             self::AtLeastOne, self::EveryMatchNonEmpty => $matches->count() >= 1 ? null : Reason::SelectorMatchedNone,
-            self::EveryMatchMayBeEmpty => null,
+            // Not a pass. The tolerance is an authoring permission, checked by
+            // skills:validate against the case's declared count or schema
+            // minimum; at evaluation time an assertion with nothing to evaluate
+            // has produced no evidence, and no evidence is never green.
+            self::EveryMatchMayBeEmpty => $matches->count() >= 1 ? null : Reason::NoSubjectsToEvaluate,
         };
     }
 }
