@@ -87,10 +87,15 @@ enum Cardinality: string
                 default => Reason::SelectorMatchedMany,
             },
             self::AtLeastOne, self::EveryMatchNonEmpty => $matches->count() >= 1 ? null : Reason::SelectorMatchedNone,
-            // Not a pass. The tolerance is an authoring permission, checked by
-            // skills:validate against the case's declared count or schema
-            // minimum; at evaluation time an assertion with nothing to evaluate
-            // has produced no evidence, and no evidence is never green.
+            // Never a silent pass, and not a verdict either: this records that
+            // there was nothing to evaluate and leaves what that means to the
+            // declared policy. A contract may legitimately accept an empty
+            // collection — what it may not do is spell "zero counterexamples
+            // among zero subjects" the same way as "subjects existed and all
+            // complied". The outcome mapping reads this reason together with
+            // what the case declared: an explicit `equals: 0` over the same
+            // target means the empty result was the assertion; anything else
+            // means no evidence, which blocks.
             self::EveryMatchMayBeEmpty => $matches->count() >= 1 ? null : Reason::NoSubjectsToEvaluate,
         };
     }
