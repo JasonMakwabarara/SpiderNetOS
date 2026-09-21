@@ -17,6 +17,17 @@
             <directory suffix="Test.php">./tests/Unit/Billing</directory>
             <directory suffix="Test.php">./tests/Unit/Mfa</directory>
             <directory suffix="Test.php">./tests/Unit/Outreach</directory>
+            <!--
+                Skills joins the fast lane, not just the Postgres+Redis one.
+
+                These tests need no database, no Redis and no network: the
+                registry is a const, the corpus is on disk, and the eval runner
+                touches neither. Leaving them only in the full lane meant the
+                property gate ran once per PR behind two service containers —
+                and a gate that runs late protects nothing in between. A 51-type
+                coverage gap survived precisely because nothing here ran on push.
+            -->
+            <directory suffix="Test.php">./tests/Unit/Skills</directory>
         </testsuite>
     </testsuites>
 
