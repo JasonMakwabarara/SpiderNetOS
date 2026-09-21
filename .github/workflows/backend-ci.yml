@@ -6,6 +6,21 @@ on:
   pull_request:
     branches: [ main ]
 
+
+# A newer push to the same PR supersedes this run, so the older one is
+# cancelled rather than finishing work nobody will read. `github.workflow` is
+# in the group on purpose: without it, workflows sharing a branch cancel each
+# other and Backend CI would kill Frontend CI.
+#
+# Safe here because all four of these only read, build or test against
+# ephemeral service containers — interrupting one leaves nothing behind.
+# Deliberately NOT applied to atlas-training-refresh-nightly.yml, which holds
+# `contents: write` and ends in git add/commit/push: cancelling that mid-run
+# risks a partial refresh, and being schedule-driven it has nothing to gain.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   migrate-and-validate:
     runs-on: ubuntu-latest
