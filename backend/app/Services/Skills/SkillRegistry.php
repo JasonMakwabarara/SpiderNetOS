@@ -342,7 +342,7 @@ class SkillRegistry
                         }
 
                         $where = 'evals.cases['.(is_array($case) ? (string) ($case['id'] ?? $i) : (string) $i).']';
-                        foreach ($this->propertyErrors($case, $where) as $error) {
+                        foreach ($this->propertyErrors($case, $where, $card) as $error) {
                             $errors[] = $error;
                         }
                     }
@@ -373,7 +373,7 @@ class SkillRegistry
      * @param  mixed  $case  the raw case, which may not even be an array
      * @return list<string>
      */
-    private function propertyErrors(mixed $case, string $where): array
+    private function propertyErrors(mixed $case, string $where, ?SkillCard $card = null): array
     {
         if (! is_array($case)) {
             return [];
@@ -385,6 +385,7 @@ class SkillRegistry
         }
 
         $errors = [];
+        $specs = [];
         foreach ($properties as $property) {
             if (! is_string($property) && ! is_array($property)) {
                 $errors[] = "{$where}: a property must be a string or a mapping";
@@ -394,6 +395,7 @@ class SkillRegistry
 
             $spec = PropertyChecker::normalise($property);
             $name = (string) $spec['type'];
+            $specs[] = $spec;
 
             if ($name === '') {
                 // `- steps_count: 3` (with a space) is a YAML mapping, not a
@@ -416,7 +418,152 @@ class SkillRegistry
             }
         }
 
+        return array_merge($errors, $this->pairingErrors($specs, $where, $card));
+    }
+
+    /**
+     * A property that tolerates an empty match set must travel with a count
+     * assertion over the same collection, in the same case.
+     *
+     * The registry alone cannot enforce this. It can declare that
+     * `every_angle_has_source` ought to accompany a count of `angles`, but not
+     * that the count exists *in this case*, addresses *the same collection*, or
+     * has a bound that actually excludes zero. A count over `sources` proves
+     * nothing whatsoever about `angles`.
+     *
+     * Two bounds are acceptable, and they say opposite things on purpose:
+     * a lower bound of at least one means non-empty evidence is required, and
+     * an exact zero means the empty result **is** this case's assertion — as in
+     * follow-up's `cadence_cap_is_respected`, where `items_count:0` is the
+     * correct answer. A bound that merely admits zero without asserting it is
+     * the vacuous case this check exists to refuse.
+     *
+     * @param  list<array<string, mixed>>  $specs
+     * @return list<string>
+     */
+    private function pairingErrors(array $specs, string $where, ?SkillCard $card = null): array
+    {
+        $guaranteed = $card !== null ? self::collectionMinimums($card) : [];
+        $checksSchema = false;
+        foreach ($specs as $spec) {
+            if ((string) $spec['type'] === 'schema_valid') {
+                $checksSchema = true;
+            }
+        }
+
+        /** @var array<string, bool> $counted collection => the bound excludes or asserts empty */
+        $counted = [];
+        foreach ($specs as $spec) {
+            $type = PropertyRegistry::get((string) $spec['type']);
+            $path = $type?->counts;
+            $bound = $type?->bound;
+
+            // The structured form names its own target, so it is read from the
+            // property rather than from the registry row.
+            if ($type !== null && $type->name === 'count' && isset($spec['path']) && is_string($spec['path'])) {
+                $path = $spec['path'];
+                $bound = 'structured';
+            }
+            if ($path === null) {
+                continue;
+            }
+
+            $counted[$path] = ($counted[$path] ?? false) || self::boundSettlesEmptiness($bound, $spec);
+        }
+
+        $errors = [];
+        foreach ($specs as $spec) {
+            $type = PropertyRegistry::get((string) $spec['type']);
+            if ($type === null || ! $type->cardinality->needsPairedCount()) {
+                continue;
+            }
+            $target = (string) $type->pairsWith;
+
+            // The card's own schema is the stronger pairing, and it is already
+            // there: `angles`, `sources` and `blocks` all declare minItems >= 1.
+            // Accepting it is what stops this check pushing authors to restate
+            // a schema constraint in a case, which is the redundancy §1.4b #5
+            // says to delete rather than add. It only counts when the case
+            // actually asserts `schema_valid` — otherwise nothing is enforcing
+            // the minimum for this case.
+            if ($checksSchema && ($guaranteed[$target] ?? 0) >= 1) {
+                continue;
+            }
+
+            if (! array_key_exists($target, $counted)) {
+                $errors[] = "{$where}: \"{$type->name}\" is satisfied by an empty {$target}[], and neither a count "
+                    ."over {$target} nor a schema minimum establishes otherwise — add a count with a minimum of 1, "
+                    .'assert exactly 0 if the empty result is the point, or assert schema_valid where the schema '
+                    .'already guarantees it';
+
+                continue;
+            }
+            if ($counted[$target] === false) {
+                $errors[] = "{$where}: \"{$type->name}\" is paired with a count over {$target}[] whose bound still "
+                    .'admits zero — the pairing has to exclude the empty case or assert it';
+            }
+        }
+
         return $errors;
+    }
+
+    /**
+     * Minimum element counts the card's own output schemas guarantee, by
+     * top-level collection name.
+     *
+     * Limited to top-level array properties on purpose: every `pairs_with`
+     * target in the registry is one, and walking arbitrary nesting here would
+     * duplicate the resolver's job in a place that cannot use it.
+     *
+     * @return array<string, int>
+     */
+    private static function collectionMinimums(SkillCard $card): array
+    {
+        $out = [];
+        foreach ($card->outputs as $output) {
+            $properties = $output['schema']['properties'] ?? null;
+            if (! is_array($properties)) {
+                continue;
+            }
+            foreach ($properties as $name => $definition) {
+                if (! is_array($definition) || ($definition['type'] ?? null) !== 'array') {
+                    continue;
+                }
+                $min = (int) ($definition['minItems'] ?? 0);
+                $out[(string) $name] = max($out[(string) $name] ?? 0, $min);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether a count assertion settles the empty question rather than leaving
+     * it open.
+     *
+     * @param  array<string, mixed>  $spec
+     */
+    private static function boundSettlesEmptiness(?string $bound, array $spec): bool
+    {
+        if ($bound === 'structured') {
+            if (array_key_exists('equals', $spec)) {
+                return true;
+            }
+
+            return isset($spec['min']) && (int) $spec['min'] >= 1;
+        }
+
+        $arg = isset($spec['arg']) && is_string($spec['arg']) ? trim($spec['arg']) : '';
+
+        return match ($bound) {
+            // `items_count:0` asserts the empty result; `messages_count:3`
+            // excludes it. Both settle the question.
+            'equals' => preg_match('/^-?\d+$/', $arg) === 1,
+            // `angles_min:1` excludes it; `angles_min:0` does not.
+            'min' => preg_match('/^-?\d+$/', $arg) === 1 && (int) $arg >= 1,
+            'range' => preg_match('/^\s*(-?\d+)\s*,\s*-?\d+\s*$/', $arg, $m) === 1 && (int) $m[1] >= 1,
+            default => false,
+        };
     }
 
     /** @return array<string, mixed> parsed identities.yaml */

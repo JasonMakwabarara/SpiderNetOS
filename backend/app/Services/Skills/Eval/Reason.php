@@ -45,6 +45,8 @@ enum Reason: string
     //  Structure — the output could not be addressed as the case expects
     // ---------------------------------------------------------------- //
     case PathMissing = 'PATH_MISSING';
+    case SelectorMatchedNone = 'SELECTOR_MATCHED_NONE';
+    case SelectorMatchedMany = 'SELECTOR_MATCHED_MANY';
     case TypeMismatch = 'TYPE_MISMATCH';
     case NotJsonObject = 'NOT_JSON_OBJECT';
     case StepsMissing = 'STEPS_MISSING';

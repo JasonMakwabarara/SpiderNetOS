@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Skills\Eval;
 
+use App\Services\Skills\Eval\Cardinality;
+use App\Services\Skills\Eval\PathMatches;
+use App\Services\Skills\Eval\PathOutcome;
 use App\Services\Skills\Eval\PropertyChecker;
 use App\Services\Skills\Eval\PropertyRegistry;
 use App\Services\Skills\Eval\PropertyType;
+use App\Services\Skills\Eval\Reason;
 use ReflectionClass;
 use ReflectionMethod;
 use Symfony\Component\Yaml\Yaml;
@@ -206,6 +210,81 @@ class PropertyRegistryTest extends TestCase
         }
     }
 
+    // ---------------------------------------------------------------- //
+    //  The vacuous-truth decision is declared, not left to each handler
+    // ---------------------------------------------------------------- //
+
+    public function test_every_entry_declares_what_an_empty_match_set_means(): void
+    {
+        foreach (PropertyRegistry::all() as $name => $type) {
+            $this->assertInstanceOf(Cardinality::class, $type->cardinality, "{$name} has no cardinality");
+        }
+    }
+
+    /**
+     * The one cardinality that lets an assertion pass over nothing has to name
+     * the collection a sibling count must address. Without the target, the
+     * per-case check cannot tell a companion from an unrelated count — one over
+     * `sources` proves nothing about `angles`.
+     */
+    public function test_a_type_that_tolerates_emptiness_names_the_count_that_keeps_it_honest(): void
+    {
+        $tolerant = array_filter(PropertyRegistry::all(), fn (PropertyType $t): bool => $t->cardinality->needsPairedCount());
+        $this->assertNotSame([], $tolerant, 'this test is vacuous with nothing tolerant — delete it then');
+
+        foreach ($tolerant as $name => $type) {
+            $this->assertNotNull($type->pairsWith, "{$name} tolerates an empty match set and names no paired count");
+        }
+    }
+
+    /**
+     * `angles_min:0` admits an empty collection; `items_count:0` asserts one.
+     * The pairing check cannot tell them apart without knowing how the argument
+     * reads, so a count entry that does not say is a hole.
+     */
+    public function test_every_count_entry_says_how_its_bound_reads(): void
+    {
+        foreach (PropertyRegistry::all() as $name => $type) {
+            if ($type->counts === null) {
+                continue;
+            }
+            $this->assertContains($type->bound, ['min', 'equals', 'range'], "{$name} counts {$type->counts} but does not say how its bound reads");
+        }
+    }
+
+    public function test_the_cardinality_split_is_asserted_so_a_change_is_deliberate(): void
+    {
+        $by = [];
+        foreach (PropertyRegistry::all() as $type) {
+            $by[$type->cardinality->value] = ($by[$type->cardinality->value] ?? 0) + 1;
+        }
+        ksort($by);
+
+        $this->assertSame([
+            'every_match_may_be_empty' => 4,
+            'every_match_non_empty' => 4,
+            'exactly_one' => 8,
+            'root' => 56,
+        ], $by);
+    }
+
+    /** A selector that matched nothing and one that matched twice are different failures. */
+    public function test_exactly_one_separates_matching_nothing_from_matching_twice(): void
+    {
+        $none = PropertyPathStub::matches(0);
+        $two = PropertyPathStub::matches(2);
+
+        $this->assertSame(Reason::SelectorMatchedNone, Cardinality::ExactlyOne->reject($none));
+        $this->assertSame(Reason::SelectorMatchedMany, Cardinality::ExactlyOne->reject($two));
+        $this->assertNull(Cardinality::ExactlyOne->reject(PropertyPathStub::matches(1)));
+    }
+
+    public function test_the_non_empty_rule_refuses_a_vacuous_pass(): void
+    {
+        $this->assertSame(Reason::SelectorMatchedNone, Cardinality::EveryMatchNonEmpty->reject(PropertyPathStub::matches(0)));
+        $this->assertNull(Cardinality::EveryMatchMayBeEmpty->reject(PropertyPathStub::matches(0)), 'the tolerant rule passes — which is why the case-level pairing exists');
+    }
+
     /**
      * A retention rationale is a declaration. On its own it is the original
      * problem in miniature.
@@ -258,5 +337,19 @@ class PropertyRegistryTest extends TestCase
                 }
             }
         }
+    }
+}
+
+/** Builds a PathMatches of a given size, so cardinality is tested on its own. */
+class PropertyPathStub
+{
+    public static function matches(int $n): PathMatches
+    {
+        $rows = [];
+        for ($i = 0; $i < $n; $i++) {
+            $rows[] = ['path' => "items.{$i}", 'value' => $i];
+        }
+
+        return $n === 0 ? PathMatches::none(PathOutcome::NoSelectorMatch) : PathMatches::matched($rows);
     }
 }

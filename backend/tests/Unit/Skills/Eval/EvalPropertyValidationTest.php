@@ -100,6 +100,83 @@ class EvalPropertyValidationTest extends TestCase
         $this->assertStringNotContainsString('no handler yet', $errors);
     }
 
+    // ---------------------------------------------------------------- //
+    //  An assertion satisfied by an empty collection must be paired
+    // ---------------------------------------------------------------- //
+
+    /**
+     * The shipped corpus is clean, and it is clean for the right reason.
+     *
+     * The first version of this check flagged five cases and would have forced
+     * five redundant count assertions into the corpus — `angles`, `sources` and
+     * `blocks` all declare `minItems >= 1`, so restating that in a case is the
+     * duplication §1.4b #5 says to delete rather than add.
+     */
+    public function test_the_shipped_corpus_has_no_unpaired_empty_tolerant_assertion(): void
+    {
+        $errors = [];
+        foreach ((new SkillRegistry($this->root))->validateAll() as $slug => $slugErrors) {
+            foreach ($slugErrors as $error) {
+                if (str_contains($error, 'satisfied by an empty') || str_contains($error, 'admits zero')) {
+                    $errors[] = "{$slug}: {$error}";
+                }
+            }
+        }
+
+        $this->assertSame([], $errors);
+    }
+
+    /**
+     * The schema only settles emptiness for a case that actually checks it.
+     * Drop `schema_valid` and the guarantee stops applying to that case.
+     */
+    public function test_a_schema_minimum_counts_only_where_the_case_asserts_schema_valid(): void
+    {
+        $this->doctor(
+            "        - schema_valid\n        - confidence_lte:0.4",
+            '        - confidence_lte:0.4',
+            'prospect-research-analysis/evals/cases.yaml',
+        );
+
+        $this->assertStringContainsString(
+            '"every_angle_has_source" is satisfied by an empty angles[]',
+            implode('
+', $this->errorsFor('prospect-research-analysis')),
+        );
+    }
+
+    /** Remove the schema's guarantee and the same case needs an explicit count. */
+    public function test_a_collection_the_schema_no_longer_guarantees_needs_a_count(): void
+    {
+        $this->doctor("minItems: 1\n          maxItems: 3", "minItems: 0\n          maxItems: 3", 'prospect-research-analysis/card.yaml');
+
+        $this->assertStringContainsString(
+            'is satisfied by an empty angles[]',
+            implode('
+', $this->errorsFor('prospect-research-analysis')),
+        );
+    }
+
+    /**
+     * A companion whose bound still admits zero is not a pairing. This is the
+     * difference between `angles_min:1`, which excludes the empty case, and
+     * `angles_min:0`, which merely tolerates it.
+     */
+    public function test_a_companion_count_whose_bound_admits_zero_is_refused(): void
+    {
+        $this->doctor(
+            "        - schema_valid\n        - confidence_lte:0.4",
+            "        - confidence_lte:0.4\n        - angles_min:0",
+            'prospect-research-analysis/evals/cases.yaml',
+        );
+
+        $this->assertStringContainsString(
+            'whose bound still admits zero',
+            implode('
+', $this->errorsFor('prospect-research-analysis')),
+        );
+    }
+
     /** @return list<string> */
     private function errorsFor(string $slug): array
     {
@@ -108,12 +185,16 @@ class EvalPropertyValidationTest extends TestCase
         return (new SkillRegistry($this->root))->validateAll()[$slug] ?? [];
     }
 
-    private function doctor(string $from, string $to): void
+    private function doctor(string $from, string $to, string $relative = 'meeting-booking/evals/cases.yaml'): void
     {
-        $file = $this->root.'/meeting-booking/evals/cases.yaml';
+        $file = $this->root.'/'.$relative;
         $text = (string) file_get_contents($file);
-        $this->assertStringContainsString($from, $text, 'the fixture this test doctors has moved');
-        file_put_contents($file, str_replace($from, $to, $text));
+        $at = strpos($text, $from);
+        $this->assertNotFalse($at, 'the fixture this test doctors has moved');
+        // The first occurrence only. `slots_count:2` legitimately appears three
+        // times in meeting-booking, and replacing all of them would make the
+        // test read as narrower than it is.
+        file_put_contents($file, substr_replace($text, $to, $at, strlen($from)));
     }
 
     private static function copyTree(string $from, string $to): void
