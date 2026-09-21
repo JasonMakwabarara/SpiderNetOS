@@ -309,7 +309,9 @@ class PropertyChecker
             if (! is_string($cta) || trim($cta) === '') {
                 return PropertyResult::fail(Reason::CtaMissing, 'step '.$i.' has no cta', 'steps.'.$i.'.cta');
             }
-            $body = is_array($step) ? (string) ($step['body'] ?? '') : '';
+            // `$step` is known to be an array here: a non-array would have made
+            // `$cta` null and returned above.
+            $body = (string) ($step['body'] ?? '');
             if (substr_count($body, '?') > 1) {
                 return PropertyResult::fail(Reason::MultipleQuestionsInBody, 'step '.$i.' body asks more than one question', 'steps.'.$i.'.body');
             }
@@ -526,7 +528,7 @@ class PropertyChecker
     {
         $card = 'App\\Services\\Skills\\SkillCard';
         if (class_exists($card) && defined($card.'::DEFAULT_BANNED_PHRASES')) {
-            return array_values(array_map('strval', (array) constant($card.'::DEFAULT_BANNED_PHRASES')));
+            return array_map('strval', (array) constant($card.'::DEFAULT_BANNED_PHRASES'));
         }
 
         return ['guaranteed results', 'guaranteed', 'risk-free', 'limited time only', 'act now', 'as an ai', 'i hope this email finds you well', 'just checking in', 'circling back'];
@@ -719,7 +721,7 @@ class PropertyChecker
     {
         preg_match_all(self::URL_PATTERN, $text, $m);
 
-        return array_values(array_unique(array_map(fn (string $u) => rtrim($u, '.,;:)'), $m[0] ?? [])));
+        return array_values(array_unique(array_map(fn (string $u) => rtrim($u, '.,;:)'), $m[0])));
     }
 
     public static function host(string $url): string

@@ -266,13 +266,13 @@ final class PropertyRegistry
     /** @return list<string> types with a handler that runs today */
     public static function implemented(): array
     {
-        return array_values(array_keys(array_filter(self::all(), fn (PropertyType $t): bool => $t->isImplemented())));
+        return array_keys(array_filter(self::all(), fn (PropertyType $t): bool => $t->isImplemented()));
     }
 
     /** @return list<string> declared, owned, and not yet written */
     public static function planned(): array
     {
-        return array_values(array_keys(array_filter(self::all(), fn (PropertyType $t): bool => ! $t->isImplemented())));
+        return array_keys(array_filter(self::all(), fn (PropertyType $t): bool => ! $t->isImplemented()));
     }
 
     /**

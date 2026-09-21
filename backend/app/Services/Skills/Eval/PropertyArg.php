@@ -131,8 +131,12 @@ enum PropertyArg: string
             // true for every non-empty string and could not reject anything.
             self::Csv => self::listIsWellFormed($given)
                 ? null : "{$type}: expected a comma-separated list with no empty entries, got \"{$given}\"",
-            self::Phrase => $given !== ''
-                ? null : "{$type}: expected a phrase",
+            // The docblock always said "a quoted phrase" and all twelve corpus
+            // usages are quoted, but the check was `$given !== ''` — and the
+            // empty case returns earlier, so it was true for everything that
+            // reached it. Third condition in this enum that could not fail.
+            self::Phrase => preg_match('/^(["\']).+\1$/s', $given) === 1
+                ? null : "{$type}: expected a quoted phrase like \"circling back\", got \"{$given}\"",
             self::Selector => self::splitsOnEquals($given)
                 ? null : "{$type}: expected \"item_id=value\", got \"{$given}\"",
             self::SelectorCsv => self::splitsOnEquals($given) && self::listIsWellFormed(mb_substr($given, (int) mb_strpos($given, '=') + 1))
@@ -156,16 +160,18 @@ enum PropertyArg: string
             self::IntOrSelector => preg_match('/^-?\d+$/', $given) === 1 || self::splitsOnEquals($given)
                 ? null : "{$type}: expected a number or \"item_id=<number>\", got \"{$given}\"",
             self::Str => null,
-            default => null,
         };
     }
 
     /** A comma-separated list with at least one entry and no empty ones. */
     private static function listIsWellFormed(string $given): bool
     {
+        // `explode` never returns an empty array, so a `$parts !== []` clause
+        // would assert nothing. The empty-entry test is the whole check, and
+        // the empty string itself is rejected before reaching here.
         $parts = array_map('trim', explode(',', $given));
 
-        return $parts !== [] && ! in_array('', $parts, true);
+        return ! in_array('', $parts, true);
     }
 
     /** `a=b` with something either side, tolerating quotes around either. */

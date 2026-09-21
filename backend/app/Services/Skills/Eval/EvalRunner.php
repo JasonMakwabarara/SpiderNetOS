@@ -175,7 +175,10 @@ class EvalRunner
 
         $affiliate = $case->fixtureFrontmatter('programs/affiliate.md');
         foreach (['join_url', 'commission', 'cookie_days', 'payout', 'terms_url', 'portal_subdomain', 'postal_address'] as $key) {
-            if (isset($affiliate[$key]) && $affiliate[$key] !== '' && $affiliate[$key] !== null) {
+            // `isset()` already excludes null, so a `!== null` clause here would
+            // assert nothing — the same shape as the dead conditions Larastan found
+            // in PropertyArg.
+            if (isset($affiliate[$key]) && $affiliate[$key] !== '') {
                 $facts['affiliate'][$key] = is_scalar($affiliate[$key]) ? $affiliate[$key] : json_encode($affiliate[$key]);
             }
         }
