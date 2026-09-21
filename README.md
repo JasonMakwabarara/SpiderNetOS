@@ -42,6 +42,7 @@ flowchart LR
 | [`docs/security/threat-model.md`](docs/security/threat-model.md) | STRIDE scope incl. inference plane |
 | [`docs/feature-packs/SPEC.md`](docs/feature-packs/SPEC.md) | Vertical pack manifest semantics |
 | [`docs/internal/scripts-inventory.md`](docs/internal/scripts-inventory.md) | What the extra repo-root automation is for |
+| [`docs/internal/engineering-rules.md`](docs/internal/engineering-rules.md) | How work is reasoned about, verified and reported — evidence layers, failure grouping, sabotaging the guard, denominators, verification dimensions |
 
 ### Local developer quick path
 
