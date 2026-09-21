@@ -207,6 +207,37 @@ class PropertyRegistryTest extends TestCase
     }
 
     /**
+     * A retention rationale is a declaration. On its own it is the original
+     * problem in miniature.
+     *
+     * `retained` explains why an implemented primitive that no case uses is
+     * kept. It does not establish that the primitive works, and an unused,
+     * untested handler is indistinguishable from a broken one — which is how
+     * `no_banned_phrase` survived. So the rule is all three: unused, with a
+     * stated reason, **and** exercised in both directions by name.
+     */
+    public function test_a_retained_primitive_is_exercised_in_both_directions(): void
+    {
+        $directions = [];
+        foreach (PropertyCheckerTest::examples() as $label => $row) {
+            $directions[$row[0]][] = str_contains($label, 'fails') ? 'failed' : 'passed';
+        }
+
+        $retained = [];
+        foreach (PropertyRegistry::all() as $name => $type) {
+            if ($type->isImplemented() && $type->retained !== null) {
+                $retained[] = $name;
+            }
+        }
+        $this->assertNotSame([], $retained, 'this test is vacuous with nothing retained — delete it then');
+
+        foreach ($retained as $name) {
+            $this->assertContains('passed', $directions[$name] ?? [], "{$name} is retained with a reason but has no passing example");
+            $this->assertContains('failed', $directions[$name] ?? [], "{$name} is retained with a reason but has no failing example");
+        }
+    }
+
+    /**
      * @return \Generator<array{0: string, 1: string, 2: string, 3: ?string}>
      */
     private static function corpusProperties(): \Generator

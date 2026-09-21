@@ -42,6 +42,24 @@ final readonly class PropertyContext
     ) {}
 
     /**
+     * The part of the output this check addresses, for the result to name.
+     *
+     * Null means the whole document, which is the honest answer for the checks
+     * that deliberately ignore `path` — `no_unverified_figures` and
+     * `links_allowlisted` are about the document, not a field of it.
+     */
+    public function examined(): ?string
+    {
+        foreach (['path', 'key'] as $k) {
+            if (isset($this->p[$k]) && is_string($this->p[$k]) && $this->p[$k] !== '') {
+                return $this->p[$k];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array<string, mixed>  $p
      * @param  array<string, mixed>|null  $validator
      */
