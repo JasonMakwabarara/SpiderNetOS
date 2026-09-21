@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Breaker;
 
+use App\Models\AgentArtifact;
 use App\Models\AgentRun;
 use App\Models\TenantAgentState;
 use App\Services\Agents\AgentCircuitBreaker;
@@ -82,15 +83,33 @@ class BreakerAuthorityTest extends AgentsTestCase
 
         $this->seedBrain();
 
+        $rejected = [];
+
         for ($i = 0; $i < 3; $i++) {
             $this->model($this->validSequenceCompletion(campaign: 'Run '.$i));
             $run = $this->startRun(['campaign' => 'run-'.$i] + $this->defaultInputs());
             $this->assertSame(AgentRun::STATUS_SUCCEEDED, $run->status, (string) $run->error);
 
-            $approval = $this->approvals('agent_artifact')->sortByDesc('created_at')->first();
-            $this->assertNotNull($approval, 'run '.$i.' produced no draft to reject');
-            $this->approve((string) $approval->id, grant: false, reason: 'Not our voice.');
+            // Bind to THIS run's artifact. Selecting the tenant's newest
+            // `agent_artifact` approval was neither pending-only nor bound to the
+            // run, so a previously resolved approval could be chosen and rejected
+            // twice - a 409. It survived on SQLite and failed on Postgres because
+            // the two order a second-precision tie differently; the tie is what
+            // made the unbound selection reachable, not the cause of it.
+            $approvalId = AgentArtifact::forTenant($t)->where('run_id', $run->id)
+                ->whereNotNull('approval_id')->value('approval_id');
+            $this->assertNotNull($approvalId, 'run '.$i.' produced no draft to reject');
+
+            $approval = $this->approvals('agent_artifact')->firstWhere('id', $approvalId);
+            $this->assertNotNull($approval, 'run '.$i.' left an artifact pointing at no approval');
+            $this->assertSame('pending', $approval->status, 'run '.$i.' selected an already-resolved approval');
+
+            $this->approve((string) $approvalId, grant: false, reason: 'Not our voice.');
+            $rejected[] = (string) $approvalId;
         }
+
+        // Three rejections, not one approval rejected three times.
+        $this->assertCount(3, array_unique($rejected), 'the tripwire must see three distinct rejections');
 
         $state = TenantAgentState::forTenant($t)->where('scope', 'skill')->where('scope_id', 'cold-email-drafting')->first();
 

@@ -214,10 +214,15 @@ class LinkedInDraftOnlyTest extends TestCase
     public function test_quiet_hours_stop_sends_and_say_when_they_resume(): void
     {
         $governor = app(LinkedInSafetyGovernor::class);
-        $this->startSender(now()->subDays(30));
 
-        // 22:00 in Harare — a human does not send forty messages then.
-        $night = Carbon::parse('2026-09-19 20:00:00', 'Africa/Harare');
+        // One clock for the whole test. Ageing the sender from `now()` while
+        // judging at a fixed instant lets the sender's apparent age drift with
+        // the calendar, so the test means something different every day it runs.
+        $day = Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare');
+        $this->startSender($day->copy()->subDays(30));
+
+        // 20:00 in Harare — a human does not send forty messages then.
+        $night = $day->copy()->setTime(20, 0);
         $verdict = $governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, $night);
         $this->assertFalse($verdict['allowed']);
         $this->assertStringContainsString('quiet hours', $verdict['reason']);
@@ -225,18 +230,22 @@ class LinkedInDraftOnlyTest extends TestCase
         $this->assertNotNull($verdict['retry_after']);
         $this->assertSame(LinkedInSafetyGovernor::QUIET_UNTIL_HOUR, (int) Carbon::parse($verdict['retry_after'])->setTimezone('Africa/Harare')->format('G'));
 
-        $day = Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare');
         $this->assertTrue($governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, $day)['allowed']);
     }
 
     public function test_the_weekly_connection_cap_holds(): void
     {
         $governor = app(LinkedInSafetyGovernor::class);
-        $this->startSender(now()->subDays(60));
+        $at = Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare');
+        $this->startSender($at->copy()->subDays(60));
 
-        $this->recordSends(LinkedInSafetyGovernor::MAX_CONNECTS_PER_WEEK, now()->subDays(2));
+        // Two days before the instant being judged — inside the seven-day
+        // window. These were previously recorded at `now() - 2d`, i.e. AFTER the
+        // instant the governor was asked about, and counted only because
+        // countSince() has no upper bound. Green, for a reason the test did not state.
+        $this->recordSends(LinkedInSafetyGovernor::MAX_CONNECTS_PER_WEEK, $at->copy()->subDays(2));
 
-        $verdict = $governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare'));
+        $verdict = $governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, $at);
         $this->assertFalse($verdict['allowed']);
         $this->assertStringContainsString('weekly connection limit', $verdict['reason']);
         $this->assertSame(0, $verdict['remaining']['connects_this_week']);
@@ -245,11 +254,14 @@ class LinkedInDraftOnlyTest extends TestCase
     public function test_sends_outside_the_window_do_not_count_against_it(): void
     {
         $governor = app(LinkedInSafetyGovernor::class);
-        $this->startSender(now()->subDays(60));
+        $at = Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare');
+        $this->startSender($at->copy()->subDays(60));
 
-        $this->recordSends(LinkedInSafetyGovernor::MAX_CONNECTS_PER_WEEK, now()->subDays(9));
+        // Nine days before the instant being judged — outside the seven-day
+        // window. At `now() - 9d` this landed inside it from 2026-09-20 onward.
+        $this->recordSends(LinkedInSafetyGovernor::MAX_CONNECTS_PER_WEEK, $at->copy()->subDays(9));
 
-        $verdict = $governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, Carbon::parse('2026-09-19 10:00:00', 'Africa/Harare'));
+        $verdict = $governor->check($this->tenant->fresh(), LinkedInSafetyGovernor::ACTION_CONNECT, $at);
         $this->assertTrue($verdict['allowed']);
         $this->assertSame(LinkedInSafetyGovernor::MAX_CONNECTS_PER_WEEK, $verdict['remaining']['connects_this_week']);
     }
