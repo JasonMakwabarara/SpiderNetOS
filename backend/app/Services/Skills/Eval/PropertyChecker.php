@@ -56,6 +56,9 @@ class PropertyChecker
                 'reason' => $result->reason->value,
                 'detail' => $result->detail,
                 'path' => $result->path,
+                // The denominator, as data. "passed" over zero subjects is the
+                // vacuous truth, and it must not require reading a sentence.
+                'subjects' => $result->subjects,
                 'evidence' => $result->evidence,
                 'property' => $property,
             ];
@@ -453,7 +456,7 @@ class PropertyChecker
         $path = self::pathOf($c);
 
         if (($early = self::refuse($c, $matches, $path)) !== null) {
-            return $early;
+            return $early->over($matches->count());
         }
 
         $offenders = [];
@@ -470,10 +473,11 @@ class PropertyChecker
                 count($offenders).' of '.$matches->count().' — '.$offenders[0],
                 $path,
                 $offenders,
-            );
+            )->over($matches->count());
         }
 
-        return PropertyResult::pass($satisfied ?? ($matches->count().' subject(s) satisfy '.$c->type), $path);
+        return PropertyResult::pass($satisfied ?? ($matches->count().' subject(s) satisfy '.$c->type), $path)
+            ->over($matches->count());
     }
 
     /**
@@ -488,7 +492,7 @@ class PropertyChecker
         $path = self::pathOf($c);
 
         if (($early = self::refuse($c, $matches, $path)) !== null) {
-            return $early;
+            return $early->over($matches->count());
         }
 
         $members = $matches->values();
@@ -508,16 +512,21 @@ class PropertyChecker
                     Reason::TypeMismatch,
                     'a set member is a '.get_debug_type($member).', and nesting is not part of this comparison',
                     $path,
-                );
+                )->over($matches->count());
             }
         }
 
+        // `subjects` stays the count the BOUNDARY resolved, never the member
+        // count. `path: tags` over ["a","b"] is one subject and two members;
+        // `path: tags[]` over the same output is two of each. Reporting members
+        // here would erase the distinction the operand contract exists to keep.
         $verdict = $judge($members);
         if ($verdict === null) {
-            return PropertyResult::pass(count($members).' member(s) satisfy '.$c->type, $path);
+            return PropertyResult::pass(count($members).' member(s) satisfy '.$c->type, $path)
+                ->over($matches->count());
         }
 
-        return PropertyResult::fail($verdict[0], $verdict[1], $path, $verdict[2]);
+        return PropertyResult::fail($verdict[0], $verdict[1], $path, $verdict[2])->over($matches->count());
     }
 
     /** One resolution for every primitive, so the count has a single source. */
@@ -556,24 +565,50 @@ class PropertyChecker
      */
     private static function refuse(PropertyContext $c, PathMatches $matches, string $path): ?PropertyResult
     {
+        $rule = self::cardinalityFor($c);
+
         if (! $matches->isMatch()) {
             // A null is a value the model produced, not a failure to address
             // the document, so judging it belongs to the primitive. Refusing it
             // here would make `is_null` fail on exactly the state it asserts
-            // whenever the path names the nullable field directly.
+            // whenever the path names the nullable field directly. (`subjects()`
+            // rewrites this outcome before refuse() sees it; the arm stays as
+            // the statement of why.)
             if ($matches->outcome === PathOutcome::NullAtPath) {
                 return null;
             }
 
-            return PropertyResult::fail(
-                self::reasonForOutcome($matches->outcome),
-                $matches->outcome->value.' at '.($matches->stoppedAt ?? $path).' ('.($matches->found ?? 'nothing').')',
-                $path,
-                $matches->evidence()['malformed'],
-            );
+            // Two different findings, one decision point. The document could
+            // not be addressed - a missing field, a scalar where a collection
+            // was needed, an unreadable property - and no policy makes that
+            // acceptable. It is refused here and named for what it was.
+            if ($matches->outcome->isAddressingFailure()) {
+                return PropertyResult::fail(
+                    self::reasonForOutcome($matches->outcome),
+                    $matches->outcome->value.' at '.($matches->stoppedAt ?? $path).' ('.($matches->found ?? 'nothing').')',
+                    $path,
+                    $matches->evidence()['malformed'],
+                );
+            }
+
+            // Or the document is well formed and there is simply nothing here -
+            // a fan-out over an empty array, a selector that matched none.
+            // Whether that is acceptable is the DECLARED CARDINALITY's decision,
+            // not the resolver's. The reason still names what was found, so the
+            // shape stays diagnosable; only the authority moves.
+            if (($why = $rule->reject($matches)) !== null) {
+                return PropertyResult::fail(
+                    self::reasonForOutcome($matches->outcome),
+                    $matches->outcome->value.' at '.($matches->stoppedAt ?? $path)
+                        .' ('.($matches->found ?? 'nothing').'), and '.$rule->value.' does not admit it',
+                    $path,
+                    $matches->evidence()['malformed'],
+                );
+            }
+
+            return null;
         }
 
-        $rule = self::cardinalityFor($c);
         if (($why = $rule->reject($matches)) !== null) {
             return PropertyResult::fail(
                 $why,
@@ -791,6 +826,9 @@ class PropertyChecker
     private function checkSetIncludes(PropertyContext $c): PropertyResult
     {
         $expected = self::expectedSet($c);
+        if (($empty = self::refuseEmptyExpectation($c, $expected, 'includes')) !== null) {
+            return $empty;
+        }
 
         return $this->overSet($c, function (array $actual) use ($expected): ?array {
             $missing = array_values(array_diff_key(self::asSet($expected), self::asSet($actual)));
@@ -807,6 +845,9 @@ class PropertyChecker
     private function checkSetExcludes(PropertyContext $c): PropertyResult
     {
         $expected = self::expectedSet($c);
+        if (($empty = self::refuseEmptyExpectation($c, $expected, 'excludes')) !== null) {
+            return $empty;
+        }
 
         return $this->overSet($c, function (array $actual) use ($expected): ?array {
             $have = self::asSet($actual);
@@ -832,6 +873,31 @@ class PropertyChecker
                 array_map(static fn (string $v): string => 'forbidden: '.$v, $present),
             ];
         });
+    }
+
+    /**
+     * The other side of the empty question, which was left implicit.
+     *
+     * `set_equals` with an empty `values:` is a real assertion - it says this
+     * collection is empty - so it is permitted. `includes nothing` and
+     * `excludes nothing` are true of every output ever produced, so they assert
+     * nothing at all, and a property that cannot fail is the thing this whole
+     * stage exists to remove. Refused rather than passed, and refused as an
+     * ARGUMENT fault because the defect is in the case, not in the output.
+     *
+     * @param  list<mixed>  $expected
+     */
+    private static function refuseEmptyExpectation(PropertyContext $c, array $expected, string $verb): ?PropertyResult
+    {
+        if ($expected !== []) {
+            return null;
+        }
+
+        return PropertyResult::fail(
+            Reason::InvalidArgument,
+            $c->type.' was given no values, and "'.$verb.' nothing" is true of every output',
+            self::pathOf($c),
+        );
     }
 
     /**

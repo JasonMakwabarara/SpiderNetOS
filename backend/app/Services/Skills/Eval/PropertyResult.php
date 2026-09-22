@@ -35,7 +35,25 @@ final readonly class PropertyResult
         public string $detail,
         public ?string $path,
         public array $evidence,
+        /**
+         * How many subjects the boundary resolved, or null where the property
+         * never reached it (a dispatch failure, or a root check that resolves
+         * no path).
+         *
+         * A pass has to name its denominator, and until now it named it only in
+         * prose - `detail` carries "3 subject(s) satisfy ...", which a test can
+         * only read by string-matching a sentence this suite deliberately
+         * unfroze. Zero here with a passed status is the vacuous truth in one
+         * field, and it is now assertable rather than inferable.
+         */
+        public ?int $subjects = null,
     ) {}
+
+    /** The same conclusion, carrying the count the boundary resolved. */
+    public function over(int $subjects): self
+    {
+        return new self($this->status, $this->reason, $this->detail, $this->path, $this->evidence, $subjects);
+    }
 
     /** @param list<string> $evidence */
     public static function pass(string $detail, ?string $path = null, array $evidence = []): self

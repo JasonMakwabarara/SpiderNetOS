@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Skills\Eval;
 
 use App\Services\Skills\Eval\Cardinality;
+use App\Services\Skills\Eval\PathMatches;
+use App\Services\Skills\Eval\PathOutcome;
 use App\Services\Skills\Eval\PropertyChecker;
 use App\Services\Skills\Eval\PropertyRegistry;
 use App\Services\Skills\Eval\Reason;
@@ -279,6 +281,119 @@ class PrimitiveConformanceTest extends TestCase
         )['results'][0];
 
         $this->assertSame('failed', $row['status'], 'an empty collection satisfied a "contains nothing" assertion');
+    }
+
+    // ---------------------------------------------------------------- //
+    //  Subject counts, asserted rather than inferred
+    //
+    //  The boundary answers three questions and no others: was the path
+    //  resolved, how many subjects, what was each value. Until `subjects`
+    //  was carried on the result, "one subject reached the handler" could
+    //  only be inferred from a reason code that happens to have a single
+    //  producer - a property no test asserted and any second call site
+    //  would have broken silently.
+    // ---------------------------------------------------------------- //
+
+    /** @return array<string, array{0: array<string, mixed>, 1: string, 2: int, 3: Reason}> */
+    public static function boundaryCounts(): array
+    {
+        return [
+            'missing path' => [['elsewhere' => 1], 'fit_score', 0, Reason::PathMissing],
+            'present with null' => [['fit_score' => null], 'fit_score', 1, Reason::ValueEmpty],
+            'present with ""' => [['fit_score' => ''], 'fit_score', 1, Reason::ValueEmpty],
+            'present with []' => [['fit_score' => []], 'fit_score', 1, Reason::ValueEmpty],
+            'present with false' => [['fit_score' => false], 'fit_score', 1, Reason::Satisfied],
+            'present with 0' => [['fit_score' => 0], 'fit_score', 1, Reason::Satisfied],
+            'present with "0"' => [['fit_score' => '0'], 'fit_score', 1, Reason::Satisfied],
+            'fan-out, empty parent' => [['items' => []], 'items[].body', 0, Reason::PathEmptyCollection],
+            'fan-out, three incl null' => [
+                ['items' => [['body' => 'a'], ['body' => null], ['body' => 'c']]],
+                'items[].body', 3, Reason::ValueEmpty,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $output
+     */
+    #[DataProvider('boundaryCounts')]
+    public function test_the_boundary_reports_how_many_subjects_it_resolved(array $output, string $path, int $subjects, Reason $reason): void
+    {
+        $row = (new PropertyChecker)->check([['type' => 'not_empty', 'path' => $path]], $output)['results'][0];
+
+        $this->assertSame($subjects, $row['subjects'], $row['detail']);
+        $this->assertSame($reason->value, $row['reason'], $row['detail']);
+    }
+
+    /**
+     * The same output, two spellings, two different subject counts - and the
+     * same member count. This is the separation in one assertion: path
+     * cardinality is not set size.
+     */
+    public function test_path_cardinality_and_set_size_are_different_numbers(): void
+    {
+        $output = ['tags' => ['a', 'b']];
+        $spec = static fn (string $p): array => [['type' => 'set_equals', 'path' => $p, 'values' => ['a', 'b']]];
+
+        $whole = (new PropertyChecker)->check($spec('tags'), $output)['results'][0];
+        $fanned = (new PropertyChecker)->check($spec('tags[]'), $output)['results'][0];
+
+        $this->assertSame(1, $whole['subjects'], 'the collection itself is ONE subject');
+        $this->assertSame(2, $fanned['subjects'], 'fanning out over it is TWO subjects');
+        $this->assertStringContainsString('2 member(s)', $whole['detail']);
+        $this->assertStringContainsString('2 member(s)', $fanned['detail']);
+    }
+
+    /**
+     * `Root` means the path addresses one site and permits no selector, so zero
+     * sites is not a state it can be satisfied by. It cannot arrive through
+     * PropertyChecker today, because refuse() answers an unresolved path first
+     * and every zero-yielding outcome escalates Root to EveryMatchNonEmpty -
+     * but that is an invariant of two other functions, and a rule that depends
+     * on somebody else's escalation is one refactor from letting zero pass.
+     */
+    public function test_root_cardinality_is_not_satisfied_by_zero_subjects(): void
+    {
+        $nothing = PathMatches::none(PathOutcome::EmptyCollection, 'items[]', 'empty collection');
+
+        $this->assertSame(Reason::NoSubjectsToEvaluate, Cardinality::Root->reject($nothing));
+        $this->assertNull(
+            Cardinality::Root->reject(PathMatches::matched([['path' => 'items', 'value' => 'x']])),
+            'one subject still satisfies Root',
+        );
+    }
+
+    // ---------------------------------------------------------------- //
+    //  An empty expectation is not an assertion
+    // ---------------------------------------------------------------- //
+
+    /**
+     * `set_equals` with no values says "this collection is empty", which is a
+     * real claim. "Includes nothing" and "excludes nothing" are true of every
+     * output ever produced, so they claim nothing - and a property that cannot
+     * fail is what this stage exists to remove.
+     *
+     * @return array<string, array{0: string, 1: string, 2: Reason}>
+     */
+    public static function emptyExpectations(): array
+    {
+        return [
+            'set_equals accepts it' => ['set_equals', 'passed', Reason::Satisfied],
+            'set_includes refuses it' => ['set_includes', 'failed', Reason::InvalidArgument],
+            'set_excludes refuses it' => ['set_excludes', 'failed', Reason::InvalidArgument],
+        ];
+    }
+
+    #[DataProvider('emptyExpectations')]
+    public function test_an_empty_expected_set_has_a_declared_behaviour(string $type, string $status, Reason $reason): void
+    {
+        $row = (new PropertyChecker)->check(
+            [['type' => $type, 'path' => 'tags', 'values' => []]],
+            ['tags' => []],
+        )['results'][0];
+
+        $this->assertSame($status, $row['status'], $row['detail']);
+        $this->assertSame($reason->value, $row['reason'], $row['detail']);
     }
 
     // ---------------------------------------------------------------- //

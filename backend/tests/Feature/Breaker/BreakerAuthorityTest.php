@@ -11,6 +11,7 @@ use App\Services\Agents\AgentCircuitBreaker;
 use App\Services\Agents\AgentRunner;
 use App\Services\Agents\AgentRunService;
 use App\Services\Agents\Collaborators;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Agents\AgentsTestCase;
 use Tests\Feature\Agents\Support\UnavailableCircuitBreaker;
 
@@ -74,6 +75,59 @@ class BreakerAuthorityTest extends AgentsTestCase
         $this->assertSame(AgentRun::STATUS_FAILED, $run->status);
         $this->assertStringContainsString('circuit_breaker_paused', (string) $run->error);
         $this->assertSame([], $this->generateRequests, 'the model was never called, so nothing was paid for or drafted');
+    }
+
+    /**
+     * The tie, made deliberate rather than waited for.
+     *
+     * The original selection was `approvals(...)->sortByDesc('created_at')->first()`
+     * over every agent_artifact approval for the tenant at any status. With two
+     * approvals sharing a second-precision timestamp and one of them already
+     * resolved, which row comes back is the database's business - and rejecting
+     * a resolved approval is a 409. This asserts the property the repair relies
+     * on, without depending on that ordering: the approval acted on is the
+     * PENDING one belonging to the run just created.
+     */
+    public function test_a_tied_timestamp_never_selects_an_already_resolved_approval(): void
+    {
+        $t = (string) $this->tenant->id;
+        $this->seedBrain();
+
+        $runs = [];
+        foreach ([0, 1] as $i) {
+            $this->model($this->validSequenceCompletion(campaign: 'Tie '.$i));
+            $runs[$i] = $this->startRun(['campaign' => 'tie-'.$i] + $this->defaultInputs());
+            $this->assertSame(AgentRun::STATUS_SUCCEEDED, $runs[$i]->status, (string) $runs[$i]->error);
+        }
+
+        $idOf = static fn (AgentRun $run): string => (string) AgentArtifact::forTenant($t)
+            ->where('run_id', $run->id)->whereNotNull('approval_id')->value('approval_id');
+
+        $first = $idOf($runs[0]);
+        $second = $idOf($runs[1]);
+        $this->assertNotSame('', $first);
+        $this->assertNotSame('', $second);
+        $this->assertNotSame($first, $second, 'two runs must not share one approval');
+
+        // Force the tie the calendar only sometimes supplies.
+        DB::table('approvals')->whereIn('id', [$first, $second])
+            ->update(['created_at' => '2026-09-19 10:00:00', 'requested_at' => '2026-09-19 10:00:00']);
+
+        $this->approve($first, grant: false, reason: 'Not our voice.');
+
+        $tied = $this->approvals('agent_artifact')->whereIn('id', [$first, $second]);
+        $this->assertCount(2, $tied, 'the scenario needs both approvals present');
+        $this->assertCount(1, $tied->pluck('created_at')->unique(), 'the timestamps are not actually tied, so this proves nothing');
+        $this->assertSame(1, $tied->where('status', 'pending')->count(), 'exactly one of the tied pair must still be pending');
+
+        // The binding, which is what the repair depends on.
+        $selected = $idOf($runs[1]);
+        $this->assertSame($second, $selected, 'the run-bound selection drifted off its own run');
+        $this->assertSame('pending', $this->approvals('agent_artifact')->firstWhere('id', $selected)->status);
+
+        // And it resolves: a 409 here would mean an already-resolved approval was chosen.
+        $this->approve($selected, grant: false, reason: 'Not our voice either.');
+        $this->assertSame('rejected', $this->approvals('agent_artifact')->firstWhere('id', $selected)->status);
     }
 
     public function test_rejecting_three_drafts_in_a_row_fires_the_tripwire_and_demotes_the_skill(): void

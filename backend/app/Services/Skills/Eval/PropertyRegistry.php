@@ -228,11 +228,11 @@ final class PropertyRegistry
         'not_empty' => ['arg' => PropertyArg::Structured, 'handler' => 'checkNotEmpty',
             'summary' => 'The value at <path>[.<field>] is present and not empty. Null, "", [] and whitespace are all empty; false and 0 are not.'],
         'set_equals' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetEquals', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> is exactly values[]. Members come from the collection value (<path>) or from the fan-out subjects (<path>[]); scalars and null are members, nested arrays and objects are a type mismatch. Order and duplicates ignored, type preserved. An empty set equals an empty values[].'],
+            'summary' => 'The set of values at <path> is exactly values[]. Members come from the collection value (<path>) or from the fan-out subjects (<path>[]); scalars and null are members, nested arrays and objects are a type mismatch. Order and duplicates ignored, type preserved. An empty actual set equals an empty values[], and an empty values[] is a real claim here - it says this collection is empty.'],
         'set_includes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetIncludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> includes every one of values[]. Same member and type rules as set_equals. An empty set fails whenever values[] is not empty.'],
+            'summary' => 'The set of values at <path> includes every one of values[]. Same member and type rules as set_equals. An empty actual set fails whenever values[] is not empty; an empty values[] is refused as INVALID_ARGUMENT, because "includes nothing" is true of every output.'],
         'set_excludes' => ['arg' => PropertyArg::Structured, 'handler' => 'checkSetExcludes', 'cardinality' => Cardinality::EveryMatchNonEmpty,
-            'summary' => 'The set of values at <path> contains none of values[]. Same member and type rules as set_equals. An empty set is refused, not passed: "no block has role cta" over zero blocks establishes nothing. Note this is the SET being empty, which cardinality cannot catch - <path> over [] resolves exactly one subject.'],
+            'summary' => 'The set of values at <path> contains none of values[]. Same member and type rules as set_equals. An empty actual set returns NO_SUBJECTS_TO_EVALUATE - a chosen assertion policy, not a property of exclusion: "no block has role cta" over zero blocks establishes nothing. Its reason code stays explicit so the outcome mapping can place it. An empty values[] is refused as INVALID_ARGUMENT. Note the SET being empty is not the path resolving to nothing - <path> over [] is exactly one subject, so cardinality cannot catch it.'],
 
         // ------------------------------------------------------------------ //
         //  Stay domain — the assertion encodes one skill's semantics, and a

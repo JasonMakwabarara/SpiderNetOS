@@ -80,7 +80,15 @@ enum Cardinality: string
     public function reject(PathMatches $matches): ?Reason
     {
         return match ($this) {
-            self::Root => null,
+            // Root means the path addresses ONE site and permits no selector,
+            // so zero sites is not a state Root can be satisfied by. It cannot
+            // arrive today - refuse() answers an unresolved path before asking
+            // cardinality, and every outcome that yields zero (fan-out over an
+            // empty array, a selector matching nothing) escalates Root to
+            // EveryMatchNonEmpty. That is an invariant of two other functions,
+            // not of this one, and a rule that depends on somebody else's
+            // escalation is one refactor away from letting zero subjects pass.
+            self::Root => $matches->count() >= 1 ? null : Reason::NoSubjectsToEvaluate,
             self::ExactlyOne => match (true) {
                 $matches->count() === 1 => null,
                 $matches->count() === 0 => Reason::SelectorMatchedNone,
