@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Agents;
 
+use App\Jobs\ResumeAgentRunJob;
 use App\Models\AgentArtifact;
 use App\Models\AgentRun;
+use App\Services\Agents\AgentRunResumer;
 use App\Services\Agents\Collaborators;
 use App\Services\Skills\SkillRegistry;
 use App\Services\Tools\ToolCatalogue;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Tests\Feature\Agents\Support\FakeSkillRegistry;
 use Tests\Feature\Agents\Support\FakeTool;
 
@@ -117,5 +121,54 @@ class AgenticLoopTest extends AgentsTestCase
         $this->assertSame([], $this->writeTool->calls);
         $this->assertStringContainsString('rejected_by_human', (string) $this->generateRequests[1]['prompt']);
         $this->assertNotNull(Collaborators::resolve(Collaborators::SKILL_REGISTRY));
+    }
+
+    /**
+     * Two resolution paths can deliver one decision (the chain and the
+     * controller both report). The resumer records it once, under a lock on
+     * the run, and queues one resume — a second would execute the call twice.
+     */
+    public function test_a_decision_delivered_twice_resumes_the_run_once(): void
+    {
+        $this->model(['tool_calls' => [['name' => 'crm.update_stage', 'params' => ['stage' => 'qualified']]]]);
+        $run = $this->startRun(['topic' => 'stage'], null, 'agentic-note-test');
+        $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->status, (string) $run->error);
+
+        Queue::fake();
+        $resumer = app(AgentRunResumer::class);
+        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'first');
+        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'second');
+
+        // The job count alone cannot show a second decision: the job is
+        // ShouldBeUnique, so its cache lock drops a second dispatch while the
+        // first is queued. The event count and the kept response can.
+        Queue::assertPushed(ResumeAgentRunJob::class, 1);
+        $this->assertCount(1, $this->events('agent.run.approval_resolved'));
+        $this->assertSame('first', $run->refresh()->state['pending_tool_call']['response']);
+    }
+
+    /**
+     * The resume job waits for the decision to commit. Dispatched inside the
+     * transaction — as the chain path's is — a sync queue ran it at once, and
+     * a rollback after that could not take back a tool call already made.
+     */
+    public function test_the_resume_waits_for_the_decision_to_commit(): void
+    {
+        $this->model(['tool_calls' => [['name' => 'crm.update_stage', 'params' => ['stage' => 'qualified']]]]);
+        $run = $this->startRun(['topic' => 'stage'], null, 'agentic-note-test');
+        $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->status, (string) $run->error);
+
+        try {
+            DB::transaction(function () use ($run): void {
+                app(AgentRunResumer::class)->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true);
+                throw new \RuntimeException('the enclosing decision rolled back');
+            });
+        } catch (\RuntimeException) {
+        }
+
+        $this->assertSame([], $this->writeTool->calls, 'no resume ran for a decision that never committed');
+        $run->refresh();
+        $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->status);
+        $this->assertNull($run->state['pending_tool_call']['decision'], 'the parked call is still undecided (parking writes decision: null)');
     }
 }

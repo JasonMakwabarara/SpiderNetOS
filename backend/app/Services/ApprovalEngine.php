@@ -133,23 +133,36 @@ class ApprovalEngine
         // (approval.granted / approval.rejected) are unchanged.
         $newStatus = $approved ? 'approved' : 'rejected';
 
-        DB::table('approvals')
-            ->where('id', $approvalId)
-            ->update([
-                'status' => $newStatus,
+        // The check above is a fast path; this write is the decision. The
+        // expected state travels in the WHERE clause, so of two concurrent
+        // resolutions exactly one changes the row (on Postgres the other
+        // waits on the row lock, then re-reads it as resolved) — and the
+        // event commits with the decision or not at all. The same rule as
+        // ApprovalController::decide().
+        DB::transaction(function () use ($approval, $approvalId, $approverId, $approved, $newStatus, $response): void {
+            $changed = DB::table('approvals')
+                ->where('id', $approvalId)
+                ->where('status', 'pending')
+                ->whereNull('current_step')
+                ->update([
+                    'status' => $newStatus,
+                    'approver_id' => $approverId,
+                    'response' => $response,
+                    'responded_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                $status = DB::table('approvals')->where('id', $approvalId)->value('status');
+                throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$status}).");
+            }
+
+            $this->eventStore->append($approval->tenant_id, $approved ? 'approval.granted' : 'approval.rejected', [
+                'approval_id' => $approvalId,
                 'approver_id' => $approverId,
                 'response' => $response,
-                'responded_at' => now(),
-                'updated_at' => now(),
             ]);
-
-        $eventType = $approved ? 'approval.granted' : 'approval.rejected';
-
-        $this->eventStore->append($approval->tenant_id, $eventType, [
-            'approval_id' => $approvalId,
-            'approver_id' => $approverId,
-            'response' => $response,
-        ]);
+        });
 
         Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
 

@@ -9,7 +9,6 @@ use App\Models\BusinessAsset;
 use App\Models\MessageTemplate;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -205,17 +204,19 @@ final class ArtifactApplier
             $lines[] = '';
         }
 
-        try {
-            $store->upsertSection(
+        // In a savepoint: the approval hook applies inside its own transaction,
+        // and a swallowed failure there would otherwise abort it on Postgres.
+        BestEffort::attempt(
+            fn () => $store->upsertSection(
                 $tenantId,
                 'offer/approved-sequences.md',
                 sprintf('%s (%s)', $campaign, now()->toDateString()),
                 implode("\n", $lines),
                 'agent',
                 $artifact->run_id ? 'run:'.$artifact->run_id : 'artifact:'.$artifact->id,
-            );
-        } catch (\Throwable $e) {
-            Log::warning('approved sequence brain projection failed', ['artifact_id' => $artifact->id, 'error' => $e->getMessage()]);
-        }
+            ),
+            'approved sequence brain projection failed',
+            ['artifact_id' => $artifact->id],
+        );
     }
 }

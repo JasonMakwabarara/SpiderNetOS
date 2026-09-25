@@ -208,4 +208,12 @@ jobs:
       # step that used to be here ran with neither a .env nor DB_* env vars and
       # died on "fe_sendauth: no password supplied" before a single test ran.
       - name: Run full PHPUnit suite
-        run: ./vendor/bin/phpunit -c phpunit.github-full.xml
+        run: ./vendor/bin/phpunit -c phpunit.github-full.xml --exclude-group postgres-only
+      # Tests only Postgres can run meaningfully: approval races between separate
+      # processes, and savepoint behaviour SQLite does not have. They skip on any
+      # other database, so this step fails on a skip and on finding no tests at
+      # all - a lane that ran none of them must not read as a pass. Runs even
+      # when the suite above failed, so its result is never hidden behind one.
+      - name: Run Postgres-only tests (races, savepoints)
+        if: success() || failure()
+        run: ./vendor/bin/phpunit -c phpunit.github-full.xml --group postgres-only --fail-on-skipped --fail-on-empty-test-suite

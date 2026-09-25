@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Approval;
+use App\Models\Event;
 use App\Services\ApprovalEngine;
 use App\Services\EventStore;
 use Illuminate\Http\JsonResponse;
@@ -117,6 +118,7 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
+        // A fast path for an obvious replay. It decides nothing — see decide().
         if ($approval->status !== 'pending') {
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
@@ -129,52 +131,16 @@ class ApprovalController extends Controller
             return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''));
         }
 
-        // Hard Rule #1: All writes go through EventStore
-        $event = $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'approval',
-            aggregateId: $id,
-            eventType: 'approval.granted',
-            payload: [
-                'approved_by' => $request->user()?->id,
-                'reason' => $request->input('reason'),
-                'flow_execution_id' => $approval->flow_execution_id ?? null,
-                'dag_node_id' => $approval->dag_node_id ?? null,
-            ],
-            metadata: [
-                'user_id' => $request->user()?->id,
-            ]
-        );
-
-        // Update approval projection. Columns must match the actual
-        // `approvals` schema (2024_01_01_000008_create_approvals_table.php):
-        // approver_id / responded_at — NOT resolved_by / resolved_at, which
-        // do not exist and previously made this UPDATE fail on every call.
-        DB::table('approvals')
-            ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'status' => 'approved',
-                'approver_id' => $request->user()?->id,
-                'response' => $request->input('reason'),
-                'responded_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        // Resume blocked DAG node if applicable
-        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
-            $this->resumeDagNode(
-                $tenantId,
-                $approval->flow_execution_id,
-                $approval->dag_node_id,
-                $event->id,
-            );
+        $event = $this->decide($request, $tenantId, $approval, granted: true);
+        if ($event === null) {
+            return $this->alreadyDecided($tenantId, $id);
         }
 
         // Resource-type hooks: some resources activate a downstream workflow
         // when their approval is granted, rather than resuming a paused DAG.
         // Driven by config/approvals.php through ApprovalEngine so the
-        // single-stage and chained paths fire exactly the same hooks.
+        // single-stage and chained paths fire exactly the same hooks. Fired
+        // after the decision commits, and only by the request that made it.
         app(ApprovalEngine::class)->fireResourceHook(
             (string) $approval->resource_type,
             $tenantId,
@@ -212,6 +178,7 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
+        // A fast path for an obvious replay. It decides nothing — see decide().
         if ($approval->status !== 'pending') {
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
@@ -223,44 +190,9 @@ class ApprovalController extends Controller
             return $this->resolveChainStep($request, $id, false, (string) $request->input('reason', ''));
         }
 
-        // Hard Rule #1: All writes go through EventStore
-        $event = $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'approval',
-            aggregateId: $id,
-            eventType: 'approval.rejected',
-            payload: [
-                'rejected_by' => $request->user()?->id,
-                'reason' => $request->input('reason'),
-                'flow_execution_id' => $approval->flow_execution_id ?? null,
-                'dag_node_id' => $approval->dag_node_id ?? null,
-            ],
-            metadata: [
-                'user_id' => $request->user()?->id,
-            ]
-        );
-
-        // Update approval projection (see approve() for the column-name note).
-        DB::table('approvals')
-            ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'status' => 'rejected',
-                'approver_id' => $request->user()?->id,
-                'response' => $request->input('reason'),
-                'responded_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        // Fail blocked DAG node if applicable
-        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
-            $this->failDagNode(
-                $tenantId,
-                $approval->flow_execution_id,
-                $approval->dag_node_id,
-                $request->input('reason'),
-                $event->id,
-            );
+        $event = $this->decide($request, $tenantId, $approval, granted: false);
+        if ($event === null) {
+            return $this->alreadyDecided($tenantId, $id);
         }
 
         // Same registry-driven hooks as approve() (config/approvals.php).
@@ -278,6 +210,90 @@ class ApprovalController extends Controller
             'status' => 'rejected',
             'message' => 'Approval rejected.',
         ]);
+    }
+
+    /**
+     * The single-stage decision, made exactly once.
+     *
+     * The status check above is a fast path and decides nothing: two
+     * requests can both read `pending` before either writes. Until this, both
+     * then appended an event, both wrote the projection and both fired the
+     * resource hook — for an `agent_artifact` bundle, a double apply and two
+     * clean-draft increments from one review. So the expected state is part
+     * of the write: the update carries `status = pending` (and no chain) in
+     * its WHERE clause, and only the request whose update changed a row goes
+     * on. On Postgres a competing update waits on the row lock and then
+     * re-evaluates that condition against the committed row, so the loser
+     * sees zero rows rather than a stale `pending`.
+     *
+     * The decision, its event and the DAG node transition commit together or
+     * not at all. The resource hook is deliberately outside: it can send mail
+     * and dispatch work, and a transaction held across that would also hold
+     * the global event-sequence lock for as long as the hook takes.
+     *
+     * Returns null when another request already decided it.
+     */
+    private function decide(Request $request, string $tenantId, object $approval, bool $granted): ?Event
+    {
+        $actor = $request->user()?->id;
+        $reason = $request->input('reason');
+
+        return DB::transaction(function () use ($tenantId, $approval, $granted, $actor, $reason): ?Event {
+            // Columns must match the actual `approvals` schema
+            // (2024_01_01_000008_create_approvals_table.php): approver_id /
+            // responded_at — NOT resolved_by / resolved_at, which do not
+            // exist and previously made this UPDATE fail on every call.
+            $changed = DB::table('approvals')
+                ->where('id', $approval->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->whereNull('current_step')
+                ->update([
+                    'status' => $granted ? 'approved' : 'rejected',
+                    'approver_id' => $actor,
+                    'response' => $reason,
+                    'responded_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                return null;
+            }
+
+            // Hard Rule #1: All writes go through EventStore
+            $event = $this->eventStore->append(
+                tenantId: $tenantId,
+                aggregateType: 'approval',
+                aggregateId: $approval->id,
+                eventType: $granted ? 'approval.granted' : 'approval.rejected',
+                payload: [
+                    ($granted ? 'approved_by' : 'rejected_by') => $actor,
+                    'reason' => $reason,
+                    'flow_execution_id' => $approval->flow_execution_id ?? null,
+                    'dag_node_id' => $approval->dag_node_id ?? null,
+                ],
+                metadata: [
+                    'user_id' => $actor,
+                ]
+            );
+
+            // Resume or fail the blocked DAG node, if there is one.
+            if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
+                $granted
+                    ? $this->resumeDagNode($tenantId, $approval->flow_execution_id, $approval->dag_node_id, $event->id)
+                    : $this->failDagNode($tenantId, $approval->flow_execution_id, $approval->dag_node_id, (string) $reason, $event->id);
+            }
+
+            return $event;
+        });
+    }
+
+    /** The loser of a race, or a replay: the answer that was already given. */
+    private function alreadyDecided(string $tenantId, string $id): JsonResponse
+    {
+        $status = DB::table('approvals')->where('id', $id)->where('tenant_id', $tenantId)->value('status');
+
+        return response()->json(['error' => "Approval has already been {$status}."], 409);
     }
 
     /**
