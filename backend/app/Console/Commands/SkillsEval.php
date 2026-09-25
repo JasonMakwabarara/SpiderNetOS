@@ -65,9 +65,10 @@ class SkillsEval extends Command
         $s = $report['summary'];
         $exploratory = (bool) $this->option('allow-incomplete');
 
-        // Correctness always decides; completeness decides too unless the
-        // incomplete run was explicitly asked for.
-        $succeeded = $s['failed'] === 0 && ($s['complete'] || $exploratory);
+        // Correctness always decides, and so does an evaluator that broke:
+        // neither is missing evidence, so exploratory mode relaxes neither.
+        // Completeness decides too unless the incomplete run was asked for.
+        $succeeded = $s['failed'] === 0 && $s['errors'] === 0 && ($s['complete'] || $exploratory);
 
         if ($this->option('json')) {
             $this->line((string) json_encode($report + ['mode_policy' => $exploratory ? 'exploratory' : 'required'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
@@ -105,8 +106,8 @@ class SkillsEval extends Command
         $this->newLine();
         // Coverage first, then correctness — never a rate over whatever happened to run.
         $this->line(sprintf(
-            'Executed %d of %d declared · passed %d · failed %d · skipped %d · unavailable %d',
-            $s['executed'], $s['declared'], $s['passed'], $s['failed'], $s['skipped'], $s['unavailable'],
+            'Executed %d of %d declared · passed %d · failed %d · skipped %d · unavailable %d · errors %d',
+            $s['executed'], $s['declared'], $s['passed'], $s['failed'], $s['skipped'], $s['unavailable'], $s['errors'],
         ));
 
         if (! $s['complete']) {

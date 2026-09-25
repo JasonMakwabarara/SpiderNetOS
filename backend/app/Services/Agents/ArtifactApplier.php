@@ -117,9 +117,12 @@ final class ArtifactApplier
             $assetId = $asset->id;
         }
 
-        $this->projectToBrain($tenantId, $artifact, $campaign, $channel, $steps);
+        // The projection may fail without undoing the application, but never
+        // silently: the applied reference says it is missing.
+        $projected = $this->projectToBrain($tenantId, $artifact, $campaign, $channel, $steps);
 
-        return sprintf('message_templates:%d;business_asset:%s', count($keys), $assetId ?? 'none');
+        return sprintf('message_templates:%d;business_asset:%s', count($keys), $assetId ?? 'none')
+            .($projected === false ? ';brain_projection:failed' : '');
     }
 
     /**
@@ -185,12 +188,16 @@ final class ArtifactApplier
         return ['', $content];
     }
 
-    /** Projection of the approved sequence into offer/approved-sequences.md (BrainStore, source `agent`). */
-    private function projectToBrain(string $tenantId, AgentArtifact $artifact, string $campaign, string $channel, array $steps): void
+    /**
+     * Projection of the approved sequence into offer/approved-sequences.md
+     * (BrainStore, source `agent`). Null when no brain store is installed,
+     * otherwise whether the projection was written.
+     */
+    private function projectToBrain(string $tenantId, AgentArtifact $artifact, string $campaign, string $channel, array $steps): ?bool
     {
         $store = Collaborators::brainStore();
         if ($store === null) {
-            return;
+            return null;
         }
 
         $lines = [
@@ -206,7 +213,7 @@ final class ArtifactApplier
 
         // In a savepoint: the approval hook applies inside its own transaction,
         // and a swallowed failure there would otherwise abort it on Postgres.
-        BestEffort::attempt(
+        return BestEffort::succeeded(
             fn () => $store->upsertSection(
                 $tenantId,
                 'offer/approved-sequences.md',

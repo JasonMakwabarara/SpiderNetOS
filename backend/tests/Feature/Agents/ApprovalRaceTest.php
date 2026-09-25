@@ -143,9 +143,49 @@ class ApprovalRaceTest extends AgentsTestCase
         $this->assertSame(['returned', 'returned'], array_column($outcomes, 'status'), json_encode($outcomes));
     }
 
+    /**
+     * Atomicity under contention. The first request wins the compare-and-set
+     * and holds the row; the second queues behind it; the first then fails
+     * to write its event and rolls back. The waiter must re-read the row as
+     * `pending` and decide it — one committed decision, one application —
+     * rather than inherit a half-made one or be told it was already decided.
+     *
+     * The first competitor fails only after it has seen the second blocked
+     * behind it (`saw_waiter`), so the interleaving is the one named here
+     * and not a lucky ordering.
+     */
+    public function test_a_winner_that_rolls_back_leaves_the_decision_to_the_waiter(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        $tag = $this->tag();
+
+        $failing = $this->approveJob($approval->id) + ['fail_event' => [
+            'type' => 'approval.granted', 'signal' => "{$tag}-0-past-cas", 'await_waiter' => "{$tag}-1",
+        ]];
+        $this->workers[] = $first = $this->worker($failing, "{$tag}-0");
+        $first->start();
+        $this->waitForSession("{$tag}-0-past-cas");
+
+        $this->workers[] = $second = $this->worker($this->approveJob($approval->id), "{$tag}-1");
+        $second->start();
+        $first->wait();
+        $second->wait();
+
+        $outcomes = [$this->outcome($first), $this->outcome($second)];
+        $this->assertSame(self::APPROVED_ONCE, $this->effects($run, $approval->id), 'outcomes: '.json_encode($outcomes));
+        $this->assertSame([500, true], [$outcomes[0]['status'], $outcomes[0]['saw_waiter'] ?? null], json_encode($outcomes[0]));
+        $this->assertSame(200, $outcomes[1]['status'], json_encode($outcomes[1]));
+    }
+
     // ------------------------------------------------------------------ //
     //  helpers
     // ------------------------------------------------------------------ //
+
+    /** A per-test prefix for the competitors' session names. */
+    private function tag(): string
+    {
+        return 'race-'.substr((string) $this->tenant->id, 0, 8);
+    }
 
     private function onPostgres(): bool
     {
@@ -192,18 +232,19 @@ class ApprovalRaceTest extends AgentsTestCase
      */
     private function race(string $lockSql, array $bindings, array $jobs): array
     {
-        $tag = 'race-'.substr((string) $this->tenant->id, 0, 8);
+        $tag = $this->tag();
         $holder = DB::connection(self::HOLDER);
         $holder->beginTransaction();
 
         try {
             $held = $holder->select($lockSql, $bindings);
             $this->assertNotEmpty($held, 'the contested rows exist and are held');
+            $holderPid = (int) $holder->selectOne('select pg_backend_pid() as pid')->pid;
 
             foreach ($jobs as $i => $job) {
                 $this->workers[] = $worker = $this->worker($job, "{$tag}-{$i}");
                 $worker->start();
-                $this->waitUntilWaiting($tag, $i + 1);
+                $this->waitUntilQueuedBehind($holderPid, $tag, $i + 1);
             }
         } finally {
             // The holder changed nothing; releasing its lock is the starting gun.
@@ -243,26 +284,60 @@ class ApprovalRaceTest extends AgentsTestCase
         return $process;
     }
 
-    private function waitUntilWaiting(string $tag, int $expected): void
+    /**
+     * Wait until $expected competitors are blocked, and blocked on the right
+     * thing. Two sessions "waiting on a lock somewhere" would prove nothing:
+     * each named competitor must be blocked by the holder or by a competitor
+     * queued ahead of it for the same rows, by nothing else, and the queue
+     * must start at the holder.
+     */
+    private function waitUntilQueuedBehind(int $holderPid, string $tag, int $expected): void
     {
         $deadline = microtime(true) + 60;
         while (true) {
-            $waiting = (int) DB::selectOne(
-                "select count(*) as n from pg_stat_activity where application_name like ? and wait_event_type = 'Lock'",
+            $waiting = DB::select(
+                "select pid, pg_blocking_pids(pid)::text as blockers from pg_stat_activity
+                 where application_name like ? and wait_event_type = 'Lock'",
                 [$tag.'-%'],
-            )->n;
-            if ($waiting >= $expected) {
+            );
+            $blockers = [];
+            foreach ($waiting as $row) {
+                $blockers[(int) $row->pid] = array_map('intval', array_filter(explode(',', trim((string) $row->blockers, '{}'))));
+            }
+            $allowed = [$holderPid, ...array_keys($blockers)];
+            $onlyOnEachOther = $blockers !== [] && array_filter($blockers, fn (array $b) => $b === [] || array_diff($b, $allowed) !== []) === [];
+            $rootedAtHolder = array_filter($blockers, fn (array $b) => in_array($holderPid, $b, true)) !== [];
+
+            if (count($blockers) >= $expected && $onlyOnEachOther && $rootedAtHolder) {
                 return;
             }
-            foreach ($this->workers as $worker) {
-                if (! $worker->isRunning()) {
-                    $this->fail('A competitor finished before reaching the lock, so nothing overlapped: '.json_encode($this->outcome($worker)));
-                }
-            }
+            $this->failIfAnyCompetitorExited();
             if (microtime(true) > $deadline) {
-                $this->fail("Only {$waiting} of {$expected} competitors reached the lock within 60s.");
+                $this->fail(sprintf('Only %d of %d competitors queued behind the holder (pid %d) within 60s: %s', count($blockers), $expected, $holderPid, json_encode($blockers)));
             }
             usleep(50_000);
+        }
+    }
+
+    /** Wait until a session with this name exists, i.e. a competitor has announced a point in its work. */
+    private function waitForSession(string $applicationName): void
+    {
+        $deadline = microtime(true) + 60;
+        while ((int) DB::selectOne('select count(*) as n from pg_stat_activity where application_name = ?', [$applicationName])->n === 0) {
+            $this->failIfAnyCompetitorExited();
+            if (microtime(true) > $deadline) {
+                $this->fail("No session named {$applicationName} appeared within 60s.");
+            }
+            usleep(50_000);
+        }
+    }
+
+    private function failIfAnyCompetitorExited(): void
+    {
+        foreach ($this->workers as $worker) {
+            if (! $worker->isRunning()) {
+                $this->fail('A competitor finished before the race was set, so nothing overlapped: '.json_encode($this->outcome($worker)));
+            }
         }
     }
 

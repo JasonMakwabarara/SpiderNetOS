@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Inference;
 
 use App\Services\FeatureFlag;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -63,18 +64,27 @@ class InferencePlaneClient
             $payload['provider_model_id'] = $arkModelId;
         }
 
-        $response = $request->post('/generate', $payload);
+        try {
+            $response = $request->post('/generate', $payload);
+        } catch (ConnectionException $e) {
+            throw new InferenceUnavailableException('Inference plane unreachable: '.$e->getMessage(), 0, $e);
+        }
 
         if ($response->failed()) {
-            throw new \RuntimeException(
-                'Inference plane error ('.$response->status().'): '.mb_substr($response->body(), 0, 300)
-            );
+            $message = 'Inference plane error ('.$response->status().'): '.mb_substr($response->body(), 0, 300);
+
+            // Unavailable only when the plane could not serve: overload,
+            // timeout, rate limit. Any other refusal means the request, the
+            // token or the route is wrong, and stays a plain error.
+            throw $response->serverError() || in_array($response->status(), [408, 429], true)
+                ? new InferenceUnavailableException($message)
+                : new \RuntimeException($message);
         }
 
         $text = $response->json('text');
 
         if (! is_string($text) || trim($text) === '') {
-            throw new \RuntimeException('Inference plane returned an empty completion.');
+            throw new InferenceUnavailableException('Inference plane returned an empty completion.');
         }
 
         return [

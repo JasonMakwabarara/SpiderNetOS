@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Skills;
 
 use App\Services\Inference\InferencePlaneClient;
+use App\Services\Inference\InferenceUnavailableException;
 use App\Services\Skills\Eval\EvalCase;
 use App\Services\Skills\Eval\EvalRunner;
 use App\Services\Skills\Eval\PropertyChecker;
@@ -184,7 +185,7 @@ YAML;
         $report = app(EvalRunner::class)->run(self::SLUG, ['deterministic' => true, 'prompt_version' => '1.0.0', 'cases_file' => $this->synthetic]);
 
         $this->assertSame([
-            'declared' => 3, 'executed' => 2, 'passed' => 1, 'failed' => 1, 'skipped' => 1, 'unavailable' => 0,
+            'declared' => 3, 'executed' => 2, 'passed' => 1, 'failed' => 1, 'skipped' => 1, 'unavailable' => 0, 'errors' => 0,
             'complete' => false, 'incomplete_reasons' => ['1 of 3 case(s) did not execute'],
         ], $report['summary']);
 
@@ -331,6 +332,25 @@ YAML;
     }
 
     /**
+     * The whole file is checked before anything runs: in live mode a later
+     * malformed entry must not be discovered after the earlier cases have
+     * already been paid for.
+     */
+    public function test_a_malformed_file_is_refused_before_any_generation_is_paid_for(): void
+    {
+        $this->mock(InferencePlaneClient::class, function ($mock): void {
+            $mock->shouldNotReceive('generate');
+        });
+        $doc = Yaml::parse((string) file_get_contents($this->casesFile(['good_sequence'])));
+        $doc['cases'][] = 'oops';
+        $file = $this->rawCasesFile(Yaml::dump($doc, 8, 2));
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--live' => true, '--cases' => $file])
+            ->expectsOutputToContain('cases[1]: not a case mapping')
+            ->assertExitCode(1);
+    }
+
+    /**
      * Inside a case the same rule holds: a property or judge the loader cannot
      * read would vanish from what the case claims to check. Every problem is
      * named, with its index, in one error.
@@ -383,6 +403,11 @@ YAML;
         $report = app(EvalRunner::class)->run(self::SLUG, ['cases_file' => $file, 'write_report' => false]);
         $this->assertSame('failed', $report['cases'][0]['status']);
         $this->assertSame(['respects_never_say (NO_NEVER_SAY_RULES_AVAILABLE)'], $report['cases'][0]['missing_dependencies']);
+        // Failed and incomplete, both recorded: the verdict does not make the
+        // rest of the case evaluated, and the summary does not claim it was.
+        $this->assertFalse($report['cases'][0]['evidence_complete']);
+        $this->assertFalse($report['summary']['complete']);
+        $this->assertSame(['1 failed case(s) also lacked evidence'], $report['summary']['incomplete_reasons']);
 
         $this->artisan('skills:eval', ['slug' => self::SLUG, '--allow-incomplete' => true, '--cases' => $file])
             ->assertExitCode(1);
@@ -437,17 +462,42 @@ YAML;
     }
 
     /** No output to judge is missing evidence, not a contradiction — and still blocks. */
-    public function test_a_failed_live_call_is_unavailable_not_failed(): void
+    public function test_an_unavailable_plane_is_unavailable_not_failed(): void
     {
         $this->mock(InferencePlaneClient::class, function ($mock): void {
-            $mock->shouldReceive('generate')->andThrow(new \RuntimeException('plane unreachable'));
+            $mock->shouldReceive('generate')->andThrow(new InferenceUnavailableException('plane unreachable'));
         });
 
         $report = app(EvalRunner::class)->run(self::SLUG, ['live' => true, 'cases_file' => $this->casesFile(['good_sequence']), 'write_report' => false]);
 
         $this->assertSame('unavailable', $report['cases'][0]['status']);
         $this->assertSame('live call failed: plane unreachable', $report['cases'][0]['note']);
+        $this->assertSame(0, $report['summary']['errors']);
         $this->assertFalse($report['summary']['complete']);
+    }
+
+    /**
+     * Any other exception is the evaluator's own fault — a bad request, a
+     * broken adapter, a bug — and must not pass for an outage. It fails the
+     * run in exploratory mode too: it is not missing evidence.
+     */
+    public function test_an_evaluator_fault_is_an_error_not_an_outage(): void
+    {
+        $this->mock(InferencePlaneClient::class, function ($mock): void {
+            $mock->shouldReceive('generate')->andThrow(new \RuntimeException('Inference plane error (422): schema mismatch'));
+        });
+        $file = $this->casesFile(['good_sequence']);
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['live' => true, 'cases_file' => $file, 'write_report' => false]);
+
+        $this->assertSame('error', $report['cases'][0]['status']);
+        $this->assertSame('evaluator error: RuntimeException: Inference plane error (422): schema mismatch', $report['cases'][0]['note']);
+        $this->assertSame(1, $report['summary']['errors']);
+        $this->assertSame(['1 case(s) hit an evaluator error'], $report['summary']['incomplete_reasons']);
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--live' => true, '--allow-incomplete' => true, '--cases' => $file])
+            ->expectsOutputToContain('errors 1')
+            ->assertExitCode(1);
     }
 
     /**

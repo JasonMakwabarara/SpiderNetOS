@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Skills\Eval;
 
 use App\Services\Inference\InferencePlaneClient;
+use App\Services\Inference\InferenceUnavailableException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -47,7 +48,7 @@ class EvalRunner
      * over an empty executed set says nothing, and it read as a result.
      *
      * @param  array{deterministic?: bool, live?: bool, model?: ?string, prompt_version?: ?string, write_report?: bool, cases_file?: ?string}  $options
-     * @return array{slug: string, mode: string, cases_file: string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{declared: int, executed: int, passed: int, failed: int, skipped: int, unavailable: int, complete: bool, incomplete_reasons: list<string>}, report_path: ?string}
+     * @return array{slug: string, mode: string, cases_file: string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{declared: int, executed: int, passed: int, failed: int, skipped: int, unavailable: int, errors: int, complete: bool, incomplete_reasons: list<string>}, report_path: ?string}
      */
     public function run(string $slug, array $options = []): array
     {
@@ -73,6 +74,10 @@ class EvalRunner
         $declared = count($results);
         $skipped = $count('skipped');
         $unavailable = $count('unavailable');
+        $errors = $count('error');
+        // A case can be failed AND incomplete: a contradiction settles its
+        // verdict, not whether the rest of it was evaluated.
+        $failedIncomplete = count(array_filter($results, fn (array $r): bool => $r['status'] === 'failed' && ! $r['evidence_complete']));
 
         // Every way the evidence falls short, named rather than folded into a rate.
         $incomplete = [];
@@ -84,6 +89,12 @@ class EvalRunner
         }
         if ($unavailable > 0) {
             $incomplete[] = "{$unavailable} case(s) could not gather required evidence — a schema verdict, a dependency, a judge or the generation itself";
+        }
+        if ($errors > 0) {
+            $incomplete[] = "{$errors} case(s) hit an evaluator error";
+        }
+        if ($failedIncomplete > 0) {
+            $incomplete[] = "{$failedIncomplete} failed case(s) also lacked evidence";
         }
 
         $report = [
@@ -100,6 +111,7 @@ class EvalRunner
                 'failed' => $count('failed'),
                 'skipped' => $skipped,
                 'unavailable' => $unavailable,
+                'errors' => $errors,
                 'complete' => $incomplete === [],
                 'incomplete_reasons' => $incomplete,
             ],
@@ -132,17 +144,21 @@ class EvalRunner
                 $live => 'not_executed',
                 default => 'not_applicable_in_mode',
             },
-            'missing_dependencies' => [], 'generated_by' => null, 'note' => null,
+            'missing_dependencies' => [], 'evidence_complete' => false, 'generated_by' => null, 'note' => null,
         ];
 
         if ($live) {
             try {
                 $generation = $this->generate($slug, $case, $options);
-            } catch (\Throwable $e) {
-                // The evaluator could not obtain an output — an absence of
+            } catch (InferenceUnavailableException $e) {
+                // The plane could not produce an output — an absence of
                 // evidence, not a contradiction, and a different fix. It still
                 // blocks: unavailable is never a pass.
                 return ['status' => 'unavailable', 'note' => 'live call failed: '.$e->getMessage()] + $base;
+            } catch (\Throwable $e) {
+                // Anything else is the evaluator's own fault — a bad request, a
+                // broken adapter, a bug — and must not pass for an outage.
+                return ['status' => 'error', 'note' => 'evaluator error: '.$e::class.': '.$e->getMessage()] + $base;
             }
             $raw = $generation['text'];
             // What actually ran, from the plane's own answer — never the model
@@ -189,6 +205,10 @@ class EvalRunner
             // missing input need different fixes, and the first must not hide
             // the second.
             'missing_dependencies' => $missing,
+            // Whether every piece of evidence the case requires was gathered,
+            // separate from the verdict — so a failed case can still say it
+            // was not fully evaluated.
+            'evidence_complete' => $validatorOk !== null && $missing === [] && ! $judgesPending,
             'output_excerpt' => mb_substr((string) $raw, 0, 400),
             'note' => match (true) {
                 $status !== 'unavailable' => null,

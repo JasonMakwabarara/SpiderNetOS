@@ -32,9 +32,29 @@ use Illuminate\Support\Str;
  * draft. It now runs one short transaction that locks the whole bundle in
  * id order, re-reads the status under that lock, and only then transitions,
  * applies, records evidence and appends its events; the loser finds the
- * bundle already decided and does nothing. Best-effort writes run in
- * savepoints (BestEffort) so a failed one cannot abort the transaction on
- * Postgres, and the broadcast waits for commit.
+ * bundle already decided and does nothing. The broadcast waits for commit.
+ *
+ * Each write inside the transaction fails the way its purpose requires —
+ * decided per write, because "best effort" is safe for some and silently
+ * wrong for others:
+ *
+ *   status, application, events   required: a failure rolls the whole
+ *                                  decision back and leaves it re-deliverable
+ *   clean-draft reset (edit,       required: a streak that survives a
+ *   rejection)                     rejection or an edit inflates promotion
+ *                                  evidence
+ *   clean-draft increment          best effort: failing under-counts, the
+ *                                  safe direction
+ *   revision record                best effort, but never silent: the
+ *                                  artifact is marked `revision_unrecorded`
+ *                                  so the edit's size reads as unknown, not
+ *                                  as clean
+ *   tripwire evaluation            best effort: it is re-run on the next
+ *                                  decision; a tripwire must not fail an
+ *                                  approval
+ *
+ * Best-effort writes run in savepoints (BestEffort), so a failed one cannot
+ * abort the enclosing transaction on Postgres.
  */
 final class AgentArtifactApprovals
 {
@@ -89,7 +109,12 @@ final class AgentArtifactApprovals
             $original = (string) ($meta['original_content'] ?? '');
             if ($original !== '' && $original !== (string) $item->content) {
                 $edited = true;
-                $this->recordRevision($tenantId, $item, $original, $granted, $response);
+                if (! $this->recordRevision($tenantId, $item, $original, $granted, $response)) {
+                    // The edit happened and its size is unknown. Say so on the
+                    // artifact, so nothing downstream reads the missing
+                    // revision as a clean draft.
+                    $item->forceFill(['meta' => ((array) $item->meta) + ['revision_unrecorded' => true]])->save();
+                }
             }
         }
 
@@ -161,15 +186,16 @@ final class AgentArtifactApprovals
             ->get();
     }
 
-    private function recordRevision(string $tenantId, AgentArtifact $item, string $original, bool $granted, string $response): void
+    /** Whether the revision was recorded. */
+    private function recordRevision(string $tenantId, AgentArtifact $item, string $original, bool $granted, string $response): bool
     {
         $recorder = Collaborators::revisionRecorder();
         if ($recorder === null) {
-            return;
+            return false;
         }
         $meta = (array) $item->meta;
 
-        BestEffort::attempt(
+        return BestEffort::succeeded(
             fn () => $recorder->record($tenantId, 'agent_artifact', (string) $item->id, $original, (string) $item->content, $meta['edited_by'] ?? null, [
                 'kind' => $item->kind,
                 'run_id' => $item->run_id,
@@ -183,24 +209,29 @@ final class AgentArtifactApprovals
         );
     }
 
-    /** Promotion gate counter (plan D5): +1 for a clean approval, 0 on an edit or rejection. */
+    /**
+     * Promotion gate counter (plan D5): +1 for a clean approval, 0 on an edit
+     * or rejection. The two directions fail differently on purpose: a lost
+     * increment under-counts, which is safe; a lost reset lets a streak
+     * survive the rejection that should have ended it, so the reset is
+     * required and its failure rolls the decision back.
+     */
     private function bumpCleanDrafts(string $tenantId, string $skillSlug, bool $reset): void
     {
         if ($skillSlug === '') {
             return;
         }
 
-        BestEffort::attempt(
-            function () use ($tenantId, $skillSlug, $reset): void {
-                $query = TenantSkill::forTenant($tenantId)->where('skill_slug', $skillSlug);
-                $reset
-                    ? $query->update(['clean_drafts_count' => 0, 'updated_at' => now()])
-                    : $query->update(['clean_drafts_count' => DB::raw('clean_drafts_count + 1'), 'updated_at' => now()]);
-            },
-            'clean_drafts_count update skipped',
-            ['skill' => $skillSlug],
-            'debug',
-        );
+        $query = TenantSkill::forTenant($tenantId)->where('skill_slug', $skillSlug);
+        if ($reset) {
+            $query->update(['clean_drafts_count' => 0, 'updated_at' => now()]);
+        } else {
+            BestEffort::attempt(
+                fn () => $query->update(['clean_drafts_count' => DB::raw('clean_drafts_count + 1'), 'updated_at' => now()]),
+                'clean_drafts_count increment skipped',
+                ['skill' => $skillSlug],
+            );
+        }
 
         $this->checkTripwires($tenantId, $skillSlug);
     }

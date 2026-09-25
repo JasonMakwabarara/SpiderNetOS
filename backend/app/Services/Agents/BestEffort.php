@@ -44,4 +44,19 @@ final class BestEffort
             return null;
         }
     }
+
+    /**
+     * The same, answering only whether the write happened — for callers that
+     * must record a failure rather than infer one from a null return value.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function succeeded(callable $write, string $message, array $context = [], string $level = 'warning'): bool
+    {
+        return self::attempt(static function () use ($write): bool {
+            $write();
+
+            return true;
+        }, $message, $context, $level) === true;
+    }
 }
