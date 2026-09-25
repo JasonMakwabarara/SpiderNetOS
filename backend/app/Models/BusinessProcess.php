@@ -18,6 +18,8 @@ class BusinessProcess extends Model
         'flow_id', 'schedule_cron', 'last_execution_id', 'last_run_at',
         'last_run_status', 'consecutive_failures', 'needs_attention',
         'escalation_approval_id',
+        // Business map: the skill card that does this process (nullable, no FK — see the migration).
+        'skill_slug',
     ];
 
     protected $casts = [

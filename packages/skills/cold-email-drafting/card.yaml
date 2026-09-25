@@ -1,0 +1,321 @@
+# Cold Email Drafting — Sales · Outreach writing (plan D5, Appendix A card 1)
+# The first written touch to a stranger. Growth identity, Nexus executes.
+
+id: cold-email-drafting
+display_name: "Cold Email Drafting"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › Outreach writing"
+core_agent: nexus
+runs_on: growth
+pack_id: sales-crm
+
+intent_keywords:
+  - cold email
+  - cold emails
+  - outreach sequence
+  - email sequence
+  - outbound sequence
+  - write outreach
+  - first touch
+  - prospecting email
+  - cold outreach
+
+at_a_glance: >-
+  Writes multi-step cold email sequences tuned to your vertical and the product or
+  service you sell: three steps, problem → proof → close, two subject lines per step,
+  every figure and link taken from your offer file and nothing invented.
+
+covers: >-
+  Sales › Outreach writing — the first written touch to a stranger, before any reply exists.
+
+breaks_into:
+  - name: "Sequence Writer"
+    does: "Drafts the three-step arc problem → proof → close using the hook-problem-solution and five-beat frames from the sales files."
+  - name: "Subject Line Generator"
+    does: "Two subject variants per step, specific and plain, no clickbait, under 80 characters."
+  - name: "Personalisation Line Writer"
+    does: "One opening line per step that proves we know who they are; slots marked for a research report to fill."
+  - name: "A/B Variant Maker"
+    does: "Pairs each step's subjects so the outreach sender can test a and b without touching the body."
+  - name: "Spintax Builder"
+    does: "Marks the phrases that may vary between recipients so a proven sequence can be varied within the approved frame."
+
+builds_on:
+  - name: "ICP Definition"
+    slug: icp-definition
+    why: "Who we write to, and who we never write to."
+  - name: "Prospect Research Analysis"
+    slug: prospect-research-analysis
+    why: "The personalisation line and the angle come from the report when one exists."
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+    why: "How it sounds — and what it must never sound like."
+  - name: "Offer and proof"
+    ref: "brain:offer/offer.md#Proof"
+    why: "The only proof points, prices and links the sequence may quote."
+  - name: "Value before price"
+    ref: "principle:value-cost-gap"
+  - name: "Pre-empt the brush-off"
+    ref: "principle:preemptive-strike"
+  - name: "One ask per message"
+    ref: "principle:five-beat-conversation-arc"
+  - name: "Hook, problem, solution"
+    ref: "principle:hook-problem-solution"
+
+replaces:
+  - what: "An SDR's core written output"
+    cost: "$60–80k/yr"
+    kind: salary
+    note: "The sequence writing, not the sending or the judgement."
+  - what: "An outbound agency retainer that sends the same template to everyone"
+    cost: "$2–4k/mo"
+    kind: retainer
+  - what: "The emails that never get sent because nobody had a free afternoon"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted, autonomous]
+  stage_copy:
+    human_led:
+      summary: "You brief, it drafts one sequence, you send."
+      your_role: "Give it a campaign name and a segment, read the three drafts, send them yourself from your own mailbox."
+      atlas_role: "Growth (Nexus) drafts one sequence from your offer, voice and ICP files and stops. Nothing leaves the workspace."
+      default: true
+    assisted:
+      summary: "Every sequence lands in Drafts for one approval; approved sequences send through the outreach sender."
+      your_role: "Approve every new sequence before launch and own the offer itself. Edits are welcome — each one teaches the next draft."
+      atlas_role: "Drafts per segment, submits one approval per sequence; approved sequences go out through the outreach sender with warm-up, quiet hours and bounce auto-pause."
+    autonomous:
+      summary: "Sequences per campaign, A/B variants, reply data feeds the next round."
+      your_role: "Read the weekly numbers. Change the offer, the ICP or the voice file when the market moves — the drafts follow."
+      atlas_role: "Varies proven sequences within the approved frame, rotates subject variants by reply rate and hands replies to Inbox Triage. Any bounce spike drops it back to assisted."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "bounce > 5% on 20+ sends"
+      - "three rejected sequences in a row"
+    shadow_agreement: 0.95
+    shadow_decisions: 30
+
+brain:
+  requires:
+    - key: business.profile
+      path: business/profile.md
+      sections: ["What we do"]
+    - key: business.differentiator
+      path: business/profile.md
+      sections: ["What makes us different"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+    - key: offer.proof
+      path: offer/offer.md
+      sections: ["Proof"]
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+    - key: customers.icp
+      path: customers/icp.md
+      sections: ["Who we sell to"]
+  reads:
+    - offer/offer.md#Pricing
+    - brand/voice.md#Do and don't
+    - customers/icp.md#Who we do not sell to
+    - customers/objections.md
+    - offer/approved-sequences.md
+    - people/user.md
+  writes:
+    - offer/approved-sequences.md
+
+hands_off_to:
+  - type: skill
+    slug: follow-up-drafting
+    name: "Follow-up Drafting"
+    when: "Day 3, no reply — the follow-up adds a new angle, never a nudge."
+  - type: skill
+    slug: inbox-triage-reply-classifier
+    name: "Inbox Triage & Reply Classifier"
+    when: "The moment anyone answers."
+  - type: skill
+    slug: meeting-booking
+    name: "Meeting Booking"
+    when: "A hot reply asks for a call or a time."
+  - type: identity
+    ref: richard
+    name: "Richard"
+    when: "When the channel switches to LinkedIn (draft-only until HeyReach is connected)."
+
+one_step_further:
+  summary: >-
+    Beyond the three drafts it proposes the follow-up cadence for the same segment and
+    the rules Inbox Triage should use to classify the replies this sequence will earn.
+  allow_dynamic: true
+  steps:
+    - id: propose_follow_up_cadence
+      label: "Propose the follow-up cadence"
+      does: "Drafts day-3 / day-7 / day-14 follow-ups for this campaign so the sequence has a tail before the first send."
+      skill: follow-up-drafting
+      inputs_from:
+        campaign: inputs.campaign
+        segment: inputs.segment
+        sequence_id: outputs.sequence_id
+      when: on_approval_applied
+      requires_brain:
+        - processes/follow-ups.md
+      risk: write
+      cost_hint_usd: 0.08
+    - id: define_reply_rules
+      label: "Define the reply classification rules"
+      does: "Turns this sequence's ask and objections into hot / warm / cold rules so Inbox Triage sorts the replies the way you would."
+      skill: inbox-triage-reply-classifier
+      inputs_from:
+        campaign: inputs.campaign
+        sequence_id: outputs.sequence_id
+      when: on_success
+      requires_brain:
+        - customers/objections.md
+      risk: write
+      cost_hint_usd: 0.04
+
+inputs:
+  type: object
+  additionalProperties: false
+  required: [campaign, segment]
+  properties:
+    campaign:
+      type: string
+      title: "Campaign name"
+      minLength: 2
+      maxLength: 80
+      description: "Keys the drafts: outreach.<campaign>.step{n}.{a|b}"
+    segment:
+      type: string
+      title: "Segment"
+      minLength: 2
+      maxLength: 120
+      description: "Who this sequence is for, in one line (a slice of the ICP)."
+    steps:
+      type: integer
+      title: "Steps"
+      const: 3
+      default: 3
+      description: "Fixed at 3 in this version: problem → proof → close."
+    variants:
+      type: integer
+      title: "Subject variants per step"
+      const: 2
+      default: 2
+    channel:
+      type: string
+      title: "Channel"
+      enum: [email]
+      default: email
+    research_report_id:
+      type: string
+      title: "Prospect research report"
+      description: "Optional artifact id from Prospect Research Analysis; fills the personalisation slots."
+    notes:
+      type: string
+      title: "Anything the drafts must know"
+      maxLength: 600
+
+outputs:
+  - kind: draft_sequence
+    primary: true
+    description: "One three-step sequence, problem → proof → close, two subject variants per step, one approval."
+    key_pattern: "outreach.<campaign>.step{n}.{a|b}"
+    count: "3 steps × 2 subjects"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [campaign, segment, angle, steps]
+      properties:
+        campaign: { type: string, minLength: 1 }
+        segment: { type: string, minLength: 1 }
+        angle:
+          type: string
+          minLength: 10
+          maxLength: 300
+          description: "Why this arc for this segment, in one or two sentences."
+        steps:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [step, beat, subjects, body, send_day, cta]
+            properties:
+              step: { type: integer, minimum: 1, maximum: 3 }
+              beat: { type: string, enum: [problem, proof, close] }
+              subjects:
+                type: array
+                minItems: 2
+                maxItems: 2
+                items: { type: string, minLength: 3, maxLength: 80 }
+              body: { type: string, minLength: 40, maxLength: 900 }
+              send_day: { type: integer, minimum: 0, maximum: 30 }
+              cta: { type: string, minLength: 5, maxLength: 160 }
+              personalisation_slot: { type: string, maxLength: 200 }
+        spintax_phrases:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 120 }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+
+cost_budget:
+  daily_limit_usd: 1.0
+  per_run_usd: 0.15
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=draft_sequence; segment; tainted runs always approval"
+
+model:
+  heavy: false
+  temperature: 0.6
+  max_tokens: 2400
+  json_mode: true
+
+limits:
+  max_artifacts: 1
+  timeout_seconds: 120
+
+mode: single_shot
+
+run:
+  kind: agent
+  entry_path: /skills/cold-email-drafting
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save_sequence
+    - drafts.submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.8
+
+tags: [sales, outreach, email, sequence]

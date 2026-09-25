@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Projections\AgentProjection;
+use App\Services\Projections\BrainProjection;
 use App\Services\Projections\ConversationReplyBridgeProjection;
 use App\Services\Projections\FlowProjection;
 use App\Services\Projections\OutreachReplyProjection;
@@ -17,6 +18,7 @@ return [
         SpendAutomationProjection::class,
         ConversationReplyBridgeProjection::class,
         OutreachReplyProjection::class,
+        BrainProjection::class,
     ],
 
     'map' => [

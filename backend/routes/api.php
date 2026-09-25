@@ -32,6 +32,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ObservabilityController;
 use App\Http\Controllers\Operating\OperatingController;
 use App\Http\Controllers\OutcomesController;
+use App\Http\Controllers\Outreach\LinkedInSettingsController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\Sales\ConversationController;
 use App\Http\Controllers\Sales\FunnelSetupController;
@@ -214,7 +215,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/agents/templates', [AgentController::class, 'templates']);
     Route::get('/agents/graph/delegation', [AgentController::class, 'delegationGraph']);
     Route::get('/agents/{agent}/delegations', [AgentController::class, 'delegations']);
-    Route::get('/agents/{agent}', [AgentController::class, 'show']);
+    // `breaker` is the circuit-breaker endpoint (routes/api/founder.php), not an agent id.
+    Route::get('/agents/{agent}', [AgentController::class, 'show'])->where('agent', '^(?!breaker$).+');
     Route::put('/agents/{agent}', [AgentController::class, 'update']);
     Route::delete('/agents/{agent}', [AgentController::class, 'destroy']);
     Route::patch('/agents/{agent}/status', [AgentController::class, 'toggleStatus']);
@@ -365,6 +367,25 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/autonomy', [OutcomesController::class, 'autonomy']);
         Route::put('/autonomy', [OutcomesController::class, 'updateAutonomy']);
     });
+
+    // ─── Brain / Workspaces / Skills program (ADR-0002) ──────────────
+    // One route file per stream so parallel work never edits this file:
+    //   routes/api/brain.php   → /api/brain/*            (Knowledge brain)
+    //   routes/api/skills.php  → /api/skills/*           (catalogue, cards, run)
+    //   routes/api/agents.php  → /api/agent-runs/*, /api/artifacts/*, /api/agents/breaker
+    //   routes/api/founder.php → /api/today, /api/atlas/sessions/*, /api/notifications/*
+    //   routes/api/map.php     → /api/map/*                (business map)
+    //   routes/api/voice.php   → /api/voice/personas, /api/me/voice, /api/atlas/speak
+    //   routes/api/launch.php  → /api/launch/*             (business-launch pack)
+    //   routes/api/reports.php → /api/reports/weekly/*      (Monday letter + C-Suite)
+    //   routes/api/board.php   → /api/board/*              (board of advisors)
+    //   routes/api/hannah.php  → /api/hannah/*             (Hannah AI hand-off)
+    foreach (['brain', 'skills', 'agents', 'founder', 'map', 'voice', 'launch', 'reports', 'board', 'hannah'] as $programRoutes) {
+        $programRoutesPath = __DIR__.'/api/'.$programRoutes.'.php';
+        if (is_file($programRoutesPath)) {
+            require $programRoutesPath;
+        }
+    }
 });
 
 // ─── Admin workspace (role:admin) ───────────────────────────────
@@ -603,6 +624,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::get('/partners', [PartnerProspectController::class, 'index']);
         Route::get('/partners/dm-queue', [PartnerProspectController::class, 'dmQueue']);
         Route::get('/partners/settings', [PartnerProspectController::class, 'settings']);
+
+        // LinkedIn outreach (plan D7 §3). Default draft_only: Richard drafts,
+        // a person sends, and nothing touches LinkedIn. Moving to assisted
+        // needs a named, versioned acknowledgement of LinkedIn's terms.
+        Route::get('/partners/linkedin/settings', [LinkedInSettingsController::class, 'show']);
+        Route::put('/partners/linkedin/settings', [LinkedInSettingsController::class, 'update'])->middleware('role:admin');
         Route::put('/partners/settings', [PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
         Route::post('/partners/import', [PartnerProspectController::class, 'import'])->middleware('role:admin');
         Route::post('/partners/run', [PartnerProspectController::class, 'run'])->middleware('role:admin');
@@ -626,6 +653,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
 // Backend-internal — called by Python intelligence workers only (never the
 // cockpit). Shared-key auth via X-Internal-Key, tenant scope via X-Tenant-Id.
 Route::prefix('internal')->middleware('internal.key')->group(function () {
+    // Program internal routes (tool gateway / brain reads for the Python plane)
+    if (is_file(__DIR__.'/api/internal.php')) {
+        require __DIR__.'/api/internal.php';
+    }
     Route::post('/sales/leads/{id}/stage', [SalesController::class, 'updateStage']);
     Route::post('/sales/leads/{id}/score', [SalesController::class, 'updateScore']);
     Route::post('/sales/leads/{id}/message', [SalesController::class, 'sendMessage']);

@@ -166,11 +166,13 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAtlasStore } from '../stores/atlas.js'
+import { useVoiceStore } from '../stores/voice.js'
 import api from '../services/api.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const atlasStore = useAtlasStore()
+const voiceStore = useVoiceStore()
 
 const visible = ref(false)
 const cheatVisible = ref(false)
@@ -199,6 +201,15 @@ const ICONS = {
 const ROUTES = [
   { id: 'r-dashboard',  label: 'Dashboard',           hint: 'Overview & ops feed', path: '/' },
   { id: 'r-atlas',      label: 'Atlas',               hint: 'Command surface',     path: '/atlas' },
+  { id: 'r-launch',     label: 'Start a business with Atlas', hint: 'Launch interview', path: '/atlas?mode=launch' },
+  { id: 'r-skills',     label: 'Skills',              hint: 'Roster & skill cards', path: '/skills' },
+  { id: 'r-map',        label: 'Business map',        hint: 'Brain at the core',    path: '/map' },
+  { id: 'r-systems',    label: 'Systems',             hint: 'Processes & owners',   path: '/operate/systems' },
+  { id: 'r-brain',      label: 'Brain',               hint: 'Business files',       path: '/brain' },
+  { id: 'r-runs',       label: 'Agent runs',          hint: 'Live & past runs',     path: '/agents/runs' },
+  { id: 'r-godseye',    label: "God's Eye",           hint: 'Everything at once',   path: '/gods-eye' },
+  { id: 'r-board',      label: 'Board room',          hint: 'Board of advisors',    path: '/board' },
+  { id: 'r-voice',      label: 'Atlas voice',         hint: 'Pick how Atlas sounds', path: '/settings/voice' },
   { id: 'r-approvals',  label: 'Approvals',           hint: 'Review queue',        path: '/approvals' },
   { id: 'r-traces',     label: 'Traces',              hint: 'Execution history',   path: '/traces' },
   { id: 'r-agents',     label: 'Agents',              hint: 'Manage AI workers',   path: '/agents' },
@@ -248,6 +259,8 @@ const ACTIONS = [
   { id: 'a-atlas-anomalies',label: 'Atlas: budget anomalies',        hint: 'Atlas',   run: () => askAtlas('/usage anomalies') },
   { id: 'a-atlas-trace',    label: 'Atlas: latest trace',            hint: 'Atlas',   run: () => askAtlas('/trace latest') },
   { id: 'a-promote',        label: 'Promote agent → autonomous',     hint: 'Atlas',   run: () => askAtlas('/agents promote ag_1') },
+  // Runs from the palette's Enter/click, so the audio unlock stays inside the gesture.
+  { id: 'a-voice-toggle',   label: 'Atlas: read replies aloud (on/off)', hint: 'Voice', run: () => voiceStore.toggleSpeak() },
   { id: 'a-logout',         label: 'Sign out',                       hint: 'Account', run: () => { authStore.logout(); router.push('/login') } },
   { id: 'a-toggle-role-admin', label: 'Switch role → admin',         hint: 'Demo',    run: () => authStore.switchRole('admin') },
   { id: 'a-toggle-role-super', label: 'Switch role → super_admin',   hint: 'Demo',    run: () => authStore.switchRole('super_admin') },
@@ -273,6 +286,9 @@ const CHEATS = {
     { label: 'Jump to Atlas',          keys: ['G', 'A'] },
     { label: 'Jump to Approvals',      keys: ['G', 'P'] },
     { label: 'Jump to Traces',         keys: ['G', 'T'] },
+    { label: 'Jump to Skills',         keys: ['G', 'S'] },
+    { label: 'Jump to Business map',   keys: ['G', 'M'] },
+    { label: 'Jump to Brain',          keys: ['G', 'B'] },
     { label: 'New flow',               keys: ['N', 'F'] },
     { label: 'New agent',              keys: ['N', 'A'] },
     { label: 'Switch role',            keys: ['R'] },
@@ -287,6 +303,9 @@ const CHEATS = {
     { cmd: '/flows publish <slug>',    label: 'Publish a draft flow (queues approval)' },
     { cmd: '/budget set <usd>',        label: 'Set monthly budget cap' },
     { cmd: '/memory search <q>',       label: 'Search tenant memory' },
+    { cmd: '/skills <slug>',           label: 'Open a skill card' },
+    { cmd: '/brain fill <file>',       label: 'Ask Atlas to fill a brain file' },
+    { cmd: '/launch',                  label: 'Start a business with Atlas' },
   ],
 }
 

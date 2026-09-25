@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --card: #1c2029; --line: #2a2f3a;
+    --text: #e6e9f0; --muted: #8b93a7; --accent: #7cc4ff;
+    --ok: #4cd07d; --warn: #f0b64a; --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: 24px 20px 240px;
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 36px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 0; }
+  .sub { color: var(--muted); margin: 0; }
+  .status { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+  .status span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; }
+  .status .ok { border-color: var(--ok); color: var(--ok); }
+  .status .no { border-color: var(--warn); color: var(--warn); }
+  .lines { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+  .lines dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .lines dd { margin: 0 0 8px; }
+  .accent { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+          display: flex; flex-direction: column; gap: 10px; }
+  .card.disabled { opacity: .45; }
+  .card-head code { display: block; color: var(--muted); font-size: 12px; word-break: break-all; }
+  .desc { margin: 0; color: var(--muted); font-size: 13px; font-style: italic; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 12px; background: #232838; color: #c7cee0; padding: 2px 8px; border-radius: 999px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .samples { display: flex; flex-direction: column; gap: 6px; }
+  .sample { display: flex; align-items: center; gap: 10px; }
+  .sample .label { width: 70px; flex: 0 0 70px; color: var(--muted); font-size: 13px; }
+  .sample .pick { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+  audio { width: 100%; height: 32px; }
+  .missing { color: var(--warn); font-size: 13px; }
+  .err { color: var(--bad); font-size: 13px; }
+  .choose { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px;
+            border-top: 1px solid var(--line); cursor: pointer; }
+  .dock { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line);
+          padding: 12px 20px; display: flex; flex-direction: column; gap: 10px; max-height: 45vh; overflow: auto; }
+  .dock .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .dock label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .dock select { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+                 padding: 6px; max-width: 260px; }
+  .dock button { background: var(--accent); color: #08131f; border: 0; border-radius: 8px; padding: 10px 16px;
+                 font-weight: 600; cursor: pointer; }
+  .dock textarea { width: 100%; min-height: 64px; background: var(--card); color: var(--text); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 8px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0; }
+  .hint strong { color: var(--text); }
+</style>
+</head>
+<body>
+<h1>__TITLE__</h1>
+<p class="sub">Generated __GENERATED_AT__ · __PERSONA_COUNT__ candidates across ElevenLabs, Fish Audio, Intron Sahara and Piper · every card plays the same three lines, so you compare voices, not scripts.</p>
+<div class="status">__PROVIDER_STATUS__</div>
+<dl class="lines">__SAMPLE_LINES__</dl>
+<p class="hint">Voice Design cards (ElevenLabs) play all three lines in one clip per take; each take is a different generated voice. Library voices play the three lines separately.</p>
+
+__GROUPS__
+
+<div class="dock">
+  <div class="row">
+    <span class="hint">Atlas: <strong id="atlas-choice">none chosen</strong> — pick with "Choose for Atlas" on a card (or "Atlas" next to a Voice Design take).</span>
+  </div>
+  <div class="row">__SEATS__</div>
+  <div class="row">
+    <button type="button" id="copy">Copy my choices</button>
+    <span class="hint" id="copy-hint">Produces a JSON blob ({"atlas": slug, "seats": {...}}) to paste back. A Voice Design pick is slug@generated_voice_id.</span>
+  </div>
+  <textarea id="choices" readonly spellcheck="false"></textarea>
+</div>
+
+<script>
+(function () {
+  var out = document.getElementById('choices');
+  var hint = document.getElementById('copy-hint');
+  var atlasEl = document.getElementById('atlas-choice');
+
+  function choices() {
+    var radio = document.querySelector('input[name="atlas"]:checked');
+    var seats = {};
+    document.querySelectorAll('select[data-seat]').forEach(function (select) {
+      if (select.value) { seats[select.getAttribute('data-seat')] = select.value; }
+    });
+    return { atlas: radio ? radio.value : null, seats: seats };
+  }
+
+  function refresh() {
+    var current = choices();
+    atlasEl.textContent = current.atlas || 'none chosen';
+    out.value = JSON.stringify(current, null, 2);
+  }
+
+  document.addEventListener('change', refresh);
+  document.getElementById('copy').addEventListener('click', function () {
+    refresh();
+    var text = out.value;
+    out.focus();
+    out.select();
+    function ok() { hint.textContent = 'Copied. Paste it back into the chat or the PR.'; }
+    function fallback() { hint.textContent = 'Clipboard blocked — the text is selected below; copy it by hand.'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else {
+      try { document.execCommand('copy') ? ok() : fallback(); } catch (e) { fallback(); }
+    }
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

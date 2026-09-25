@@ -1,0 +1,275 @@
+# SpiderNetOS — skill identities (plan D5, ADR-0002)
+#
+# An identity is the role a skill runs as: the `agents` row that owns the
+# workspace, the prompt persona and the tool allowlist. Every identity
+# reports to exactly one of the six core characters (`reports_to`), which is
+# seeded into agent_delegation_edges so the org chart, the business map and
+# every skill card show the chain skill → identity → character → Atlas.
+#
+# Why a mapping file: pack agents are provisioned by FeaturePackInstaller as
+# `<pack_id>_<agent_id>` (Str::slug with '_'), `compliance` merges two pack
+# agents, `recruiter_bot` is a PHP service with no agents row, and the core
+# characters use their bare slug. Skill cards reference the *key* here in
+# `runs_on`; SkillRegistry resolves it to `agents_slug` at enable time.
+#
+# Fields
+#   agents_slug   agents.slug for this tenant (null = no row; run_kind service/route)
+#   pack          feature pack that provisions the row (null = core / platform)
+#   status        existing | planned (planned rows are created by the PR named)
+#   reports_to    core character: atlas | hannah | forge | sentinel | prism | nexus
+#   display_name  what the cockpit shows on cards, the roster and the map
+#   character_note how the character's sheet colours this identity's voice
+#   workspace     true = gets an agent_workspaces row on first skill enable
+#   merges        other agents rows folded into this identity (compliance)
+#   service       run_kind=service identities: the PHP class that does the work
+#   skills        the roster (plan D5 table); cards must agree (`runs_on`)
+
+version: 1
+
+core_characters:
+  atlas:    { display_name: "Atlas",    role: "The executive brain" }
+  hannah:   { display_name: "Hannah",   role: "The guide and teacher" }   # core character; the product is always hannah_ai
+  forge:    { display_name: "Forge",    role: "The builder" }
+  sentinel: { display_name: "Sentinel", role: "The watcher" }
+  prism:    { display_name: "Prism",    role: "The analyst" }
+  nexus:    { display_name: "Nexus",    role: "The executor" }
+
+identities:
+
+  # ------------------------------------------------------------ sales-crm pack
+  growth:
+    agents_slug: sales_crm_growth
+    pack: sales-crm
+    status: existing
+    reports_to: nexus
+    display_name: "Growth"
+    character_note: "Nexus executes the writing and the campaigns; Forge lends the builder voice for landing pages."
+    workspace: true
+    skills:
+      - cold-email-drafting
+      - linkedin-outreach-specialist
+      - landing-page-builder          # builder work — Forge's voice, Nexus's discipline
+      - ad-campaign-manager
+
+  crm:
+    agents_slug: sales_crm_crm
+    pack: sales-crm
+    status: existing
+    reports_to: nexus
+    display_name: "Pipeline"
+    character_note: "Nexus does the pipeline work; the monitoring half of inbox triage is Sentinel watching the inbox."
+    workspace: true
+    skills:
+      - follow-up-drafting
+      - inbox-triage-reply-classifier # monitor half → Sentinel; drafting half → Nexus
+      - lead-scoring-routing
+      - meeting-booking
+      - deal-pipeline-tracker
+      - proposal-quote-drafting
+      - nurture-sequence-runner
+
+  funnel_architect:
+    agents_slug: sales_crm_funnel_architect
+    pack: sales-crm
+    status: existing
+    reports_to: hannah
+    display_name: "Funnel Architect"
+    character_note: "Hannah's interview voice — warm, plain-spoken, keeps the brain complete."
+    workspace: true
+    skills:
+      - sales-script-studio
+      - icp-definition
+
+  retention:
+    agents_slug: sales_crm_retention
+    pack: sales-crm
+    status: existing
+    reports_to: nexus
+    display_name: "Delight"
+    character_note: "Nexus executes onboarding, win-back and support drafts; churn-radar is Sentinel watching."
+    workspace: true
+    skills:
+      - onboarding-delight
+      - churn-radar                   # watcher half → Sentinel
+      - win-back-campaigner
+      - support-reply-drafting
+
+  richard:
+    agents_slug: sales_crm_richard
+    pack: sales-crm
+    status: existing                  # agents/richard.yaml + prompts/richard.md ship in the pack
+    reports_to: nexus
+    display_name: "Richard"
+    character_note: "The LinkedIn half, peer to peer. Draft-only by default and by design: it is the only mode that does not touch LinkedIn's User Agreement. Assisted sending needs a named, versioned acknowledgement."
+    workspace: true
+    skills:
+      - linkedin-campaign-runner
+
+  studio:
+    agents_slug: sales_crm_studio
+    pack: sales-crm                   # marketing skills ship in the sales-crm pack until a marketing pack exists
+    status: planned                   # PR 3 (social/newsletter) and PR 6 (Hannah hand-off)
+    reports_to: nexus
+    display_name: "Studio"
+    character_note: "Nexus executes captions, briefs and the customer newsletter; brand-voice-keeper speaks with Hannah's guide voice."
+    workspace: true
+    skills:
+      - brand-voice-keeper            # brand-voice → Hannah (the guide keeps the brain complete)
+      - social-caption-drafting
+      - demo-video-producer           # builder work → Forge's voice
+      - campaign-brief-handoff        # → hannah_ai (the product), never the hannah character
+      - customer-newsletter
+
+  recruiter_bot:
+    agents_slug: null
+    pack: sales-crm
+    status: existing
+    reports_to: nexus
+    display_name: "Partner Recruiter"
+    character_note: "A PHP service, not a runtime agent: FACTS prompt + ReplyPostFilter + approval row. Stays on its current path."
+    workspace: false
+    run_kind: service
+    service: App\Services\Outreach\Bot\RecruiterBot
+    skills:
+      - partner-affiliate-recruiter
+
+  # ------------------------------------------- business-systemization pack
+  systems_mapper:
+    agents_slug: business_systemization_systems_mapper
+    pack: business-systemization
+    status: existing
+    reports_to: forge
+    display_name: "Systems Mapper"
+    workspace: true
+    skills:
+      - systems-mapper
+
+  sop_coach:
+    agents_slug: business_systemization_sop_coach
+    pack: business-systemization
+    status: existing
+    reports_to: hannah
+    display_name: "SOP Coach"
+    character_note: "Hannah teaches; the persona-with-guardrails in prompts/sop-coach.md is the template."
+    workspace: true
+    skills:
+      - sop-coach
+
+  delegation_planner:
+    agents_slug: business_systemization_delegation_planner
+    pack: business-systemization
+    status: existing
+    reports_to: forge
+    display_name: "Delegation Planner"
+    workspace: true
+    skills:
+      - delegation-planner
+      - runbook-automator
+
+  # ------------------------------------------------------------ people (new)
+  people_coach:
+    agents_slug: sales_crm_people_coach
+    pack: sales-crm                   # recruitment/retraining systems live in the sales-crm pack content
+    status: planned                   # PR 8 (catalogue growth)
+    reports_to: hannah
+    display_name: "People Coach"
+    character_note: "Hannah onboards and coaches people the way she onboards the user."
+    workspace: true
+    skills:
+      - recruitment-pipeline
+      - retraining-coach
+
+  # ------------------------------------------------- financial-services pack
+  finance_agent:
+    agents_slug: financial_services_finance_agent
+    pack: financial-services
+    status: existing
+    reports_to: prism
+    display_name: "Finance"
+    character_note: "Prism owns the numbers (cashflow-analyst, the 13-week forecast); invoice-bills-clerk is executed by Nexus through tools."
+    workspace: true
+    skills:
+      - invoice-bills-clerk           # executor half → Nexus
+      - cashflow-analyst
+
+  compliance:
+    agents_slug: compliance_radar_compliance_guide
+    pack: compliance-radar
+    status: existing
+    reports_to: sentinel
+    display_name: "Compliance"
+    character_note: "One identity for two pack agents: the compliance-radar guide and the financial-services compliance agent."
+    workspace: true
+    merges:
+      - financial_services_compliance_agent
+    skills:
+      - compliance-radar
+
+  portfolio_agent:
+    agents_slug: financial_services_portfolio_agent
+    pack: financial-services
+    status: existing
+    reports_to: prism
+    display_name: "Portfolio"
+    workspace: true
+    skills:
+      - portfolio-manager
+
+  # ------------------------------------------------------- core characters
+  prism:
+    agents_slug: prism
+    pack: null
+    status: existing
+    reports_to: prism
+    display_name: "Prism"
+    workspace: true
+    skills:
+      - prospect-research-analysis
+      - source-scanner-note-filer
+      - deep-research
+      - kpi-scoreboard-analyst
+      - weekly-ops-report
+
+  forge:
+    agents_slug: forge
+    pack: null
+    status: existing
+    reports_to: forge
+    display_name: "Forge"
+    workspace: true
+    skills:
+      - screenshot-to-code
+      - diagram
+
+  atlas:
+    agents_slug: atlas
+    pack: null
+    status: existing
+    reports_to: atlas
+    display_name: "Atlas"
+    character_note: "Atlas reports to no one; it is the chairman. Listed so the founder skills resolve like every other card."
+    workspace: true
+    skills:
+      - business-launch-interviewer
+      - board-of-advisors
+      - founder-operating-rhythm
+
+# Identities the characters own beyond the ones above (from the D5 table),
+# kept here so SkillRegistry can assert the character → identity map is
+# closed: every identity appears exactly once under `owns`.
+owns:
+  atlas:    [atlas]
+  hannah:   [funnel_architect, sop_coach, people_coach]           # + studio's brand-voice-keeper
+  forge:    [forge, systems_mapper, delegation_planner]           # + growth's landing pages, studio's demo video
+  sentinel: [compliance]                                          # + monitor halves of crm / retention
+  prism:    [prism, finance_agent, portfolio_agent]
+  nexus:    [growth, crm, retention, richard, studio, recruiter_bot]
+
+# Slugs every card's `hands_off_to[].ref` / `builds_on[].ref` may use besides
+# identity keys and card slugs.
+external_refs:
+  hannah_ai: { kind: product, display_name: "Hannah AI", note: "The marketing product at hannah-ai.world (connector hannah_ai). Never the core character `hannah`." }
+  zetkai:    { kind: product, display_name: "ZetKai" }
+  heyreach:  { kind: connector, display_name: "HeyReach" }
+  bundlesocial: { kind: connector, display_name: "bundle.social" }
+  beehiiv:   { kind: connector, display_name: "beehiiv" }

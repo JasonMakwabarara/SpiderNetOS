@@ -1,0 +1,254 @@
+# Brand Voice Keeper — Marketing · Brand voice (plan D5 roster: studio → Hannah's guide voice)
+# An interview that writes brand/voice.md — the file every drafting skill reads before it writes.
+
+id: brand-voice-keeper
+display_name: "Brand Voice Keeper"
+version: 1.0.0
+pillar: marketing
+map_node: "Marketing › Brand voice"
+core_agent: hannah
+runs_on: studio
+pack_id: sales-crm
+
+intent_keywords:
+  - brand voice
+  - tone of voice
+  - how we sound
+  - how should we sound
+  - our tone
+  - writing style
+  - voice guide
+  - what we never say
+  - sound like me
+
+at_a_glance: >-
+  A short interview that writes brand/voice.md — tone, do and don't, and a voice sample in
+  your own words — and keeps it current, so every email, DM, caption and newsletter sounds
+  like you and never like a bot. Nothing is saved until you have read it back.
+
+covers: >-
+  Marketing › Brand voice — how the business sounds in writing, kept in one file everyone reads.
+
+breaks_into:
+  - name: "Tone Interview"
+    does: "Two adjectives, one brand you admire, and why — asked one question at a time, with the reason each matters."
+  - name: "Do / Don't Extractor"
+    does: "The words and claims that are off-limits, and the phrases that are unmistakably yours."
+  - name: "Voice Sample Curator"
+    does: "Two or three sentences you actually wrote, kept verbatim as the reference sample."
+  - name: "Voice Drift Check"
+    does: "When approved drafts keep getting the same edit, proposes the rule that would have prevented it."
+
+builds_on:
+  - name: "Business profile"
+    ref: "brain:business/profile.md#What we do"
+    why: "The voice describes how this business speaks, not a generic brand."
+  - name: "Preferred tone from the discovery interview"
+    ref: "brain:brand/voice.md#Tone"
+    why: "The interview's preferred_tone answer seeds the first draft when one exists."
+  - name: "The user"
+    ref: "brain:people/user.md#Never say or offer"
+    why: "What must never be said under your name is part of the voice."
+  - name: "Keep it simple"
+    ref: "principle:keep-it-simple"
+
+replaces:
+  - what: "A brand-voice guide from an agency"
+    cost: "$2–5k"
+    kind: retainer
+    note: "One-off, usually a PDF nobody opens again."
+  - what: "A brand strategist's half-day workshop"
+    cost: "$1–3k"
+    kind: retainer
+  - what: "The tone file that never got written, so every draft sounds like a template"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted]
+  stage_copy:
+    human_led:
+      summary: "You answer; it writes the file; you read it back and save."
+      your_role: "Answer a few short questions in your own words. Read the draft back — it is yours — and save it. Edit any line that does not sound like you."
+      atlas_role: "Hannah asks one question at a time, quotes your answers back, drafts brand/voice.md and stops until you approve the file."
+      default: true
+    assisted:
+      summary: "Drift proposals arrive when your edits show a pattern; you approve each."
+      your_role: "Approve or reject the occasional proposed rule ('you always remove exclamation marks')."
+      atlas_role: "Watches the edit ledger and proposes voice-file rules that would have prevented repeated edits; each lands as a brain proposal for approval."
+    autonomous:
+      summary: "Not offered: the voice file is always the owner's."
+      your_role: "Not offered. The voice file is yours; nothing changes it without your approval."
+      atlas_role: "Not offered for this skill; the brand voice is never edited without the owner reading the change."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+
+brain:
+  requires:
+    - key: business.profile
+      path: business/profile.md
+      sections: ["What we do"]
+  reads:
+    - brand/voice.md
+    - brand/identity.md
+    - people/user.md#Never say or offer
+    - people/user.md#Who I am
+    - offer/offer.md#Products and services
+  writes:
+    - brand/voice.md
+
+hands_off_to:
+  - type: skill
+    slug: cold-email-drafting
+    name: "Cold Email Drafting"
+    when: "The voice file is ready — the first sequence can be drafted in it."
+  - type: skill
+    slug: social-caption-drafting
+    name: "Social Caption Drafting"
+    when: "Captions switch on once Tone exists."
+  - type: skill
+    slug: customer-newsletter
+    name: "Customer Newsletter"
+    when: "The newsletter reads the voice file every issue."
+  - type: product
+    ref: hannah_ai
+    name: "Hannah AI"
+    when: "The brand sync pushes brand/voice.md to the marketing product once the hand-off is linked (PR 6)."
+
+one_step_further:
+  summary: >-
+    Beyond writing the file it names the next unlock (which skills switch on now that Tone
+    exists) and offers to fill the ICP so the first outreach draft has both halves.
+  allow_dynamic: false
+  steps:
+    - id: define_icp_next
+      label: "Define the ideal customer next"
+      does: "Runs the ICP interview so Cold Email Drafting has who to write to as well as how to sound."
+      skill: icp-definition
+      when: on_approval_applied
+      risk: write
+      cost_hint_usd: 0.05
+    - id: first_sequence_in_voice
+      label: "Draft the first sequence in this voice"
+      does: "Runs Cold Email Drafting once the voice and ICP files are ready."
+      skill: cold-email-drafting
+      when: on_approval_applied
+      requires_brain:
+        - customers/icp.md#Who we sell to
+        - offer/offer.md#Proof
+      risk: write
+      cost_hint_usd: 0.15
+
+inputs:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      title: "Mode"
+      enum: [interview, refresh, drift_check]
+      default: interview
+      description: "interview = first fill; refresh = re-ask what changed; drift_check = propose rules from the edit ledger."
+    answers:
+      type: object
+      title: "Answers"
+      description: "Answers keyed by question id (tone_adjectives, admired_brand, never_say, sample_sentences) when re-POSTing after gaps."
+    sample_text:
+      type: string
+      title: "Something you wrote"
+      maxLength: 2000
+      description: "Paste two or three sentences that sound exactly like you."
+
+outputs:
+  - kind: brain_proposal
+    primary: true
+    description: "A proposed brand/voice.md (frontmatter + Tone, Do and don't, Voice), applied on approval."
+    key_pattern: "brand/voice.md"
+    count: "1"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [path, frontmatter, sections, read_back]
+      properties:
+        path: { type: string, enum: ["brand/voice.md"] }
+        frontmatter:
+          type: object
+          required: [tone]
+          properties:
+            brand: { type: string }
+            tagline: { type: string, maxLength: 120 }
+            one_liner: { type: string, maxLength: 200 }
+            tone:
+              type: array
+              minItems: 2
+              maxItems: 4
+              items: { type: string, minLength: 3, maxLength: 30 }
+            admired_brand: { type: string, maxLength: 80 }
+        sections:
+          type: object
+          additionalProperties: false
+          required: ["Tone", "Do and don't"]
+          properties:
+            "Tone": { type: string, minLength: 60, maxLength: 1200 }
+            "Do and don't": { type: string, minLength: 60, maxLength: 1500 }
+            "Voice": { type: string, maxLength: 1500 }
+        read_back:
+          type: string
+          minLength: 20
+          maxLength: 600
+          description: "One or two lines quoting the owner's own words back before saving."
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - brain.propose_update
+
+triggers:
+  - type: manual
+
+cost_budget:
+  daily_limit_usd: 0.5
+  per_run_usd: 0.08
+
+approval:
+  resource_type: brain_proposal
+  required: always
+  policy_hint: "the owner reads the file back before it is saved; no auto-apply"
+
+model:
+  heavy: false
+  temperature: 0.4
+  max_tokens: 1800
+  json_mode: true
+
+limits:
+  max_artifacts: 1
+  timeout_seconds: 90
+
+mode: single_shot
+
+run:
+  kind: interview
+  entry_path: /brain?file=brand/voice.md
+  interview: interview/questions.yaml
+  prompt: prompts/task.md
+  post_actions:
+    - brain.propose_update
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.85
+
+tags: [marketing, brand, voice, interview, hannah]

@@ -1,0 +1,235 @@
+# South Africa — business-launch jurisdiction pack.
+#
+# Not legal or financial advice. Same schema as uk.yaml. Where a figure or
+# a deadline is known to be under review or could not be confirmed against
+# the official source for `valid_as_of`, the item says so and carries
+# `confidence: medium` — check the link before relying on it.
+
+code: za
+name: "South Africa"
+valid_as_of: 2026-09-16
+review_after_days: 180
+currency: ZAR
+disclaimer: "Not legal or financial advice. Check with CIPC, SARS or a qualified adviser before you act."
+
+structures:
+  - id: sole_trader
+    local_name: "Sole proprietor"
+  - id: partnership
+    local_name: "Partnership"
+  - id: company
+    local_name: "Private company ((Pty) Ltd)"
+
+registration:
+  body: "Companies and Intellectual Property Commission (CIPC)"
+  website: "https://www.cipc.co.za"
+  applies_to: [company]
+  api:
+    availability: partner_api
+    name: "CIPC APIVerse — Companies and Beneficial Ownership APIs"
+    docs: "https://www.cipc.co.za"
+    auth: "CIPC APIVerse subscription (credentials issued to the subscriber)"
+    notes: "Companies APIs (company search and status) and Beneficial Ownership APIs are available to subscribers. Atlas uses them read-only, and only when the tenant has its own subscription and launch.registry_checks is on."
+  beneficial_ownership:
+    law: "Companies Act 69 of 2006, as amended by the General Laws (Anti-Money Laundering and Combating Terrorism Financing) Amendment Act 22 of 2022"
+    mandatory_since: 2023-05-24
+    how: "File your beneficial ownership information with CIPC when the company is registered, and update it whenever it changes."
+    link: "https://www.cipc.co.za"
+  atlas_may:
+    - search_company_register
+    - read_company_status
+    - check_beneficial_ownership_filing_status
+  atlas_never:
+    - register_company
+    - file_annual_return
+    - file_beneficial_ownership
+    - register_for_tax_with_sars
+
+tax:
+  authority: "South African Revenue Service (SARS)"
+  website: "https://www.sars.gov.za"
+  corporate_rate_pct: 27
+  notes: "Company income tax 27%. Qualifying small business corporations may pay less — ask your accountant. Sole proprietors are taxed as individuals."
+  confidence: high
+
+tax_registrations:
+  - id: income_tax
+    title: "Income tax"
+    applies_to: [sole_trader, partnership, company]
+    when: "Companies registered with CIPC are normally registered for income tax with SARS automatically; confirm your tax reference number. Sole proprietors register as individual taxpayers."
+    confidence: medium
+  - id: provisional_tax
+    title: "Provisional tax"
+    applies_to: [sole_trader, partnership, company]
+    when: "Companies are provisional taxpayers: the first payment is due within 6 months of the start of the financial year and the second by its end."
+    confidence: medium
+  - id: vat
+    title: "VAT"
+    applies_to: [sole_trader, partnership, company]
+    threshold: 1000000
+    threshold_currency: ZAR
+    when: "Compulsory once taxable supplies exceed R1 million in any 12 months (the figure used at valid_as_of; an increase has been proposed — confirm the current threshold with SARS). Voluntary registration is possible from R50,000."
+    confidence: medium
+  - id: paye_uif_sdl
+    title: "PAYE, UIF and SDL (as an employer)"
+    applies_to: [sole_trader, partnership, company]
+    when: "Register with SARS (and with the Department of Employment and Labour for UIF) when you start employing people."
+    confidence: medium
+
+deadlines:
+  - id: za_bo_filing
+    title: "Beneficial ownership filing"
+    relative_to: incorporation
+    offset: { days: 0 }
+    rule: "File at registration, then update CIPC whenever beneficial ownership changes (CIPC guidance at valid_as_of: within 10 business days of the change)."
+    confidence: medium
+  - id: za_annual_return
+    title: "First annual return to CIPC"
+    relative_to: incorporation
+    offset: { months: 12, business_days: 30 }
+    recurring: annual
+    rule: "Every year, within 30 business days after the anniversary of the date of incorporation."
+    confidence: high
+  - id: za_provisional_tax
+    title: "Provisional tax payments"
+    relative_to: financial_year_start
+    offset: { months: 6 }
+    rule: "First payment within 6 months of the start of the financial year; second payment by the last day of the financial year."
+    confidence: medium
+  - id: za_paye_register
+    title: "Register as an employer with SARS"
+    relative_to: first_employee
+    rule: "Register within 21 business days of becoming an employer."
+    confidence: medium
+
+checklist:
+  - id: za_choose_structure
+    title: "Choose how you'll trade: sole proprietor, partnership or (Pty) Ltd"
+    detail: "This decides your tax, paperwork and personal liability. An accountant can talk it through in half an hour."
+    owner: advisor
+    category: registration
+    applies_to: [all]
+    links: ["https://www.bizportal.gov.za"]
+    confidence: high
+
+  - id: za_register_company
+    title: "Register your private company with CIPC"
+    detail: "Register online through BizPortal or CIPC's e-services. BizPortal can also help with the tax reference, UIF and a business bank account in the same journey."
+    owner: founder
+    category: registration
+    applies_to: [company]
+    severity: action_needed
+    links: ["https://www.bizportal.gov.za", "https://www.cipc.co.za"]
+    confidence: high
+
+  - id: za_beneficial_ownership
+    title: "File your beneficial ownership information with CIPC"
+    detail: "Required for companies since 24 May 2023. Keep it current whenever shareholding or control changes."
+    owner: founder
+    category: registration
+    applies_to: [company]
+    severity: action_needed
+    deadline: za_bo_filing
+    links: ["https://www.cipc.co.za"]
+    confidence: medium
+
+  - id: za_atlas_check_registry
+    title: "Atlas checks company and beneficial ownership status through CIPC APIVerse"
+    detail: "Read-only, and only with your own APIVerse subscription (flag launch.registry_checks). Atlas never registers the company, never files returns and never files beneficial ownership for you."
+    owner: atlas
+    category: registration
+    applies_to: [company]
+    links: ["https://www.cipc.co.za"]
+    confidence: medium
+
+  - id: za_annual_return
+    title: "File your CIPC annual return every year"
+    owner: founder
+    category: registration
+    applies_to: [company]
+    deadline: za_annual_return
+    links: ["https://www.cipc.co.za"]
+    confidence: high
+
+  - id: za_income_tax
+    title: "Confirm your SARS income tax registration and tax reference number"
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    links: ["https://www.sars.gov.za"]
+    confidence: medium
+
+  - id: za_provisional_tax
+    title: "Diarise provisional tax payments"
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    deadline: za_provisional_tax
+    links: ["https://www.sars.gov.za"]
+    confidence: medium
+
+  - id: za_vat
+    title: "Register for VAT once taxable supplies pass the compulsory threshold"
+    detail: "R1 million in any 12 months at valid_as_of — an increase has been proposed, so confirm the figure with SARS."
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    trigger: vat_threshold
+    links: ["https://www.sars.gov.za"]
+    confidence: medium
+
+  - id: za_paye_uif_sdl
+    title: "Register for PAYE, UIF and (if applicable) SDL when you employ people"
+    owner: founder
+    category: people
+    applies_to: [all]
+    trigger: hires
+    deadline: za_paye_register
+    links: ["https://www.sars.gov.za", "https://www.labour.gov.za"]
+    confidence: medium
+
+  - id: za_popia
+    title: "Register your Information Officer and follow POPIA"
+    detail: "If you process personal information, the Protection of Personal Information Act applies. Register your Information Officer with the Information Regulator and keep a simple record of what you collect and why."
+    owner: founder
+    category: data
+    applies_to: [all]
+    trigger: handles_personal_data
+    links: ["https://inforegulator.org.za"]
+    confidence: high
+
+  - id: za_licences
+    title: "Check business licences and permits for your activity"
+    detail: "Some trades (for example food, liquor, health services) need a municipal business licence or a sector licence."
+    owner: advisor
+    category: licences
+    applies_to: [all]
+    trigger: regulated_activity
+    links: []
+    confidence: medium
+
+  - id: za_bbbee
+    title: "Know your B-BBEE position"
+    detail: "Small businesses often use a sworn affidavit to show their B-BBEE level when customers or tenders ask for it."
+    owner: advisor
+    category: registration
+    applies_to: [all]
+    severity: awareness
+    links: []
+    confidence: medium
+
+  - id: za_business_bank
+    title: "Open a separate business bank account"
+    owner: founder
+    category: banking
+    applies_to: [all]
+    links: []
+    confidence: high
+
+  - id: za_records
+    title: "Keep tax records for at least 5 years"
+    owner: founder
+    category: records
+    applies_to: [all]
+    links: ["https://www.sars.gov.za"]
+    confidence: high

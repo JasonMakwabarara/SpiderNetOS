@@ -22,9 +22,21 @@ import { ref, onMounted, onUnmounted } from 'vue'
  *     .bill.created | .bill.updated
  *     .trace.appended
  *     .atlas.task.updated | .atlas.agent.updated | .atlas.stream.chunk
+ *     .skill.updated | .skill.run.updated
+ *     .brain.file.updated
+ *     .map.node.updated
+ *     .agent_run.updated | .tool.invoked
  *   }
+ *
+ * The positional store params are the legacy shell wiring and are kept
+ * as-is. Newer stores arrive through the trailing `extras` bag so callers
+ * only pass what they have; every handler is optional-chained:
+ *   extras.skillsStore    → handleSkillUpdated / handleSkillRunUpdated
+ *   extras.brainStore     → handleFileUpdated
+ *   extras.mapStore       → handleNodeUpdated
+ *   extras.agentRunsStore → handleRunUpdated / handleToolInvoked
  */
-export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore) {
+export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore, extras = {}) {
   const isConnected = ref(false)
   const lastMessage = ref(null)
 
@@ -95,6 +107,20 @@ export function useWebSocket(authStore, agentsStore, flowsStore, usageStore, app
     channel.listen('.atlas.task.updated',  (data) => { atlasStore?.handleTaskUpdate?.(data) })
     channel.listen('.atlas.agent.updated', (data) => { atlasStore?.handleAgentUpdate?.(data) })
     channel.listen('.atlas.stream.chunk',  (data) => { atlasStore?.handleStreamChunk?.(data) })
+
+    // ── Skills (slice 0+) ───────────────────────────────────────────
+    channel.listen('.skill.updated',     (data) => { extras.skillsStore?.handleSkillUpdated?.(data);    lastMessage.value = { type: 'skill.updated', data } })
+    channel.listen('.skill.run.updated', (data) => { extras.skillsStore?.handleSkillRunUpdated?.(data); lastMessage.value = { type: 'skill.run.updated', data } })
+
+    // ── Brain files ─────────────────────────────────────────────────
+    channel.listen('.brain.file.updated', (data) => { extras.brainStore?.handleFileUpdated?.(data); lastMessage.value = { type: 'brain.file.updated', data } })
+
+    // ── Business map ────────────────────────────────────────────────
+    channel.listen('.map.node.updated', (data) => { extras.mapStore?.handleNodeUpdated?.(data); lastMessage.value = { type: 'map.node.updated', data } })
+
+    // ── Agent runs / tool calls ─────────────────────────────────────
+    channel.listen('.agent_run.updated', (data) => { extras.agentRunsStore?.handleRunUpdated?.(data);   lastMessage.value = { type: 'agent_run.updated', data } })
+    channel.listen('.tool.invoked',      (data) => { extras.agentRunsStore?.handleToolInvoked?.(data);  lastMessage.value = { type: 'tool.invoked', data } })
 
     echo.connector.pusher.connection.bind('connected',    () => { isConnected.value = true })
     echo.connector.pusher.connection.bind('disconnected', () => { isConnected.value = false })

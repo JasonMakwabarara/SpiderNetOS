@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AtlasThread;
 use App\Services\AtlasClarityGate;
 use App\Services\AtlasDiscoveryService;
 use App\Services\AtlasInteractionLogger;
 use App\Services\AtlasJarvisAugmentor;
+use App\Services\AtlasPromptStack;
 use App\Services\DagExecutionService;
 use App\Services\EventStore;
 use App\Services\FeatureFlag;
 use App\Services\FlowTemplateBuilder;
+use App\Services\Launch\BusinessLaunchService;
 use App\Services\MetaPlanner;
 use App\Services\Onboarding\OnboardingPolicy;
 use App\Services\PackGrowthService;
@@ -20,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class AtlasController extends Controller
@@ -107,6 +111,11 @@ class AtlasController extends Controller
             'message' => 'required|string|max:4000',
             'session_id' => 'nullable|string',
             'style' => 'sometimes|string|in:concise,balanced,emotional,analytical,directive',
+            // "One step further" (plan D8): the context thread and how this message relates to the last ASK.
+            'thread_id' => 'sometimes|nullable|string|uuid',
+            // `launch` routes the turn into the business-launch interview
+            // (plan D7 §5) instead of the planner.
+            'mode' => 'sometimes|nullable|string|in:chat,answer,skip,run,launch',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -116,11 +125,29 @@ class AtlasController extends Controller
         $style = $request->input('style', config('services.spidernet.atlas_default_style', 'balanced'));
         $interactionId = (string) Str::uuid();
         $startedAt = microtime(true);
+        $threadId = $this->resolveThreadId($tenantId, $request->input('thread_id'), $sessionId);
+        $mode = $request->input('mode') ?: 'chat';
+
+        // "Atlas, I want to start a business": the launch surface drives the
+        // same chat box, so the turn goes to BusinessLaunchService instead of
+        // the planner. Returns null (and falls through to normal chat) when
+        // the pack is not enabled or the service is unavailable.
+        if ($mode === 'launch') {
+            $launchTurn = $this->launchTurn($tenantId, $message, $sessionId, $interactionId, $threadId, $userId);
+            if ($launchTurn !== null) {
+                return $launchTurn;
+            }
+        }
 
         // Learn from user input and check discovery mode (skip for slash commands)
         $this->discoveryService->absorbAnswer($tenantId, $message);
         $discovery = $this->discoveryService->evaluate($tenantId, $message, $this->packGrowth);
         $isSlashCommand = str_starts_with(trim($message), '/');
+
+        // One more question + next step for this turn (flag atlas.one_more_question).
+        // Computed before the branches so a skip/answer stamps the thread even
+        // when Atlas ends up asking a discovery or clarifying question itself.
+        $oneStep = $this->oneStepFor($tenantId, (string) $userId, $threadId, $message, $mode);
 
         if (($discovery['mode'] ?? 'act') === 'discover' && ! $isSlashCommand) {
             $question = ($discovery['questions'][0] ?? 'What task eats the most time in your week?');
@@ -237,7 +264,172 @@ class AtlasController extends Controller
             interactionId: $interactionId,
             request: $request,
             startedAt: $startedAt,
+            oneStep: $oneStep,
         );
+    }
+
+    /**
+     * One turn of the business-launch interview (plan D7 §5).
+     *
+     * The founder's message is recorded as the answer to whatever question
+     * the launch runner would have asked next; the reply carries the next
+     * question, `metadata.launch` (status, stage, next_question, progress and
+     * the file being filled) and `metadata.brain` readiness so the cockpit
+     * panel can render without a second round trip.
+     *
+     * Returns null when `launch.enabled` is off or anything goes wrong, so
+     * the caller falls back to ordinary Atlas chat.
+     */
+    private function launchTurn(
+        string $tenantId,
+        string $message,
+        string $sessionId,
+        string $interactionId,
+        ?string $threadId,
+        mixed $userId,
+    ): ?JsonResponse {
+        if (! FeatureFlag::on('launch.enabled', $tenantId)) {
+            return null;
+        }
+
+        try {
+            $service = app(BusinessLaunchService::class);
+            $launch = $service->start($tenantId);
+            $result = trim($message) === ''
+                ? $service->state($launch) + ['recorded' => false]
+                : $service->answer($launch, $message);
+            $brain = $service->readiness($tenantId);
+        } catch (\Throwable $e) {
+            Log::warning('AtlasController: launch turn failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'atlas_session',
+            aggregateId: $sessionId,
+            eventType: 'atlas.message.received',
+            payload: [
+                'user_id' => $userId,
+                'role' => 'user',
+                'content' => $message,
+                'interaction_id' => $interactionId,
+                'mode' => 'launch',
+            ],
+        );
+
+        $next = $result['next_question'] ?? null;
+        $nowFilling = $result['now_filling'] ?? null;
+        $disclaimer = (string) ($result['disclaimer'] ?? 'Not legal or financial advice.');
+
+        $contract = [
+            'future_state' => 'Your business brain fills in as you answer, so every agent after this reads the same story.',
+            'value' => 'One question at a time instead of a blank page.',
+            'emotional_shift' => 'Momentum — you can see the plan taking shape.',
+            'action_summary' => $next['prompt'] ?? 'That is everything I need for now. Generate your finance model and plan when you are ready.',
+            'details' => $nowFilling !== null && $nowFilling !== '' ? 'Now filling: '.$nowFilling : null,
+        ];
+
+        return response()->json([
+            'contract_version' => '1',
+            'session_id' => $sessionId,
+            'interaction_id' => $interactionId,
+            'message' => [
+                'id' => (string) Str::uuid(),
+                'role' => 'atlas',
+                'contract' => $contract,
+                'timestamp' => now()->toIso8601String(),
+                'metadata' => [
+                    'intent' => 'launch',
+                    'mode' => 'launch',
+                    'agent_used' => 'launch-guide',
+                    'status' => (string) ($result['status'] ?? 'interviewing'),
+                    'questions' => $next !== null ? [(string) $next['prompt']] : [],
+                    'thread_id' => $threadId,
+                    'disclaimer' => $disclaimer,
+                    'launch' => [
+                        'id' => $result['id'] ?? null,
+                        'status' => $result['status'] ?? null,
+                        'stage' => $result['stage'] ?? null,
+                        'stage_title' => $result['stage_title'] ?? null,
+                        'next_question' => $next,
+                        'now_filling' => $nowFilling,
+                        'progress_pct' => $result['progress_pct'] ?? 0,
+                        'jurisdiction' => $result['jurisdiction'] ?? null,
+                        'jurisdictions' => $result['jurisdictions'] ?? [],
+                        'stages' => $result['stages'] ?? [],
+                        'deliverables' => $result['deliverables'] ?? [],
+                        'approval_id' => $result['approval_id'] ?? null,
+                        'disclaimer' => $disclaimer,
+                    ],
+                    'brain' => $brain,
+                ],
+            ],
+            'ast' => ['type' => 'launch'],
+            'cost_status' => null,
+        ]);
+    }
+
+    /**
+     * The thread this message belongs to: an explicit thread_id, else the
+     * session id when it is an atlas_threads row (the cockpit uses the
+     * session created by POST /atlas/sessions as its session_id).
+     */
+    private function resolveThreadId(string $tenantId, mixed $threadId, mixed $sessionId): ?string
+    {
+        foreach ([$threadId, $sessionId] as $candidate) {
+            if (! is_string($candidate) || ! Str::isUuid($candidate)) {
+                continue;
+            }
+            try {
+                if (Schema::hasTable('atlas_threads')
+                    && AtlasThread::forTenant($tenantId)->whereKey($candidate)->exists()) {
+                    return $candidate;
+                }
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * "Dig deeper, ask one more question, go one step further" (plan D8):
+     * {question, next_step} for this turn, or null when the flag is off,
+     * the discovery service stays quiet (skip/ack/cooldown) or it fails.
+     *
+     * @return array{question: ?string, next_step: ?array}|null
+     */
+    private function oneStepFor(string $tenantId, string $userId, ?string $threadId, string $message, string $mode): ?array
+    {
+        if (! FeatureFlag::on('atlas.one_more_question', $tenantId)) {
+            return null;
+        }
+
+        try {
+            $result = $this->discoveryService->oneMoreQuestion($tenantId, $userId, $threadId, $message, null, $mode);
+        } catch (\Throwable $e) {
+            Log::warning('[Atlas] one_more_question failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if ($result === null) {
+            return null;
+        }
+
+        return [
+            'question' => $result['question'] ?? null,
+            'next_step' => $result['next_step'] ?? null,
+            'key' => $result['key'] ?? null,
+            'source' => $result['source'] ?? null,
+            'path' => $result['path'] ?? null,
+            'section' => $result['section'] ?? null,
+            'run_id' => $result['run_id'] ?? null,
+            'thread_id' => $result['thread_id'] ?? $threadId,
+        ];
     }
 
     /**
@@ -416,6 +608,7 @@ class AtlasController extends Controller
         string $interactionId,
         Request $request,
         float $startedAt,
+        ?array $oneStep = null,
     ): JsonResponse {
         // Check for onboarding policy override (soft gate)
         $overridePolicy = $this->onboardingPolicy->overrideFor($request->user());
@@ -430,15 +623,23 @@ class AtlasController extends Controller
             ]);
         }
 
+        $plannerContext = [
+            'override_policy' => $overridePolicy,
+            'onboarding_state' => $onboardingState,
+        ];
+        if ($oneStep !== null) {
+            // The prompt stack renders <NEXT_STEP>/<ONE_MORE_QUESTION> plus the
+            // standing rule; the plane appends it to Atlas's system prompt.
+            $plannerContext['one_step'] = $oneStep;
+            $plannerContext['system_prompt'] = app(AtlasPromptStack::class)->systemPrompt(null, $oneStep);
+        }
+
         $result = $this->metaPlanner->processAtlasRequest(
             tenantId: $tenantId,
             userId: $userId,
             message: $message,
             sessionId: $sessionId,
-            context: [
-                'override_policy' => $overridePolicy,
-                'onboarding_state' => $onboardingState,
-            ],
+            context: $plannerContext,
         );
 
         $ast = $this->metaPlanner->parseCommandToAst($message);
@@ -528,6 +729,11 @@ class AtlasController extends Controller
             ],
             'ast' => $result['ast'] ?? null,
             'cost_status' => $result['cost_status'] ?? null,
+            // One step further: the cockpit renders both as chips (answer inline / run / skip).
+            'one_step' => $oneStep !== null && ($oneStep['question'] !== null || $oneStep['next_step'] !== null)
+                ? ['question' => $oneStep['question'], 'next_step' => $oneStep['next_step']]
+                    + array_filter(['key' => $oneStep['key'] ?? null, 'source' => $oneStep['source'] ?? null, 'thread_id' => $oneStep['thread_id'] ?? null], fn ($v) => $v !== null)
+                : null,
         ]);
     }
 

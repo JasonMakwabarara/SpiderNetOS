@@ -1,0 +1,18 @@
+{
+  "data": {
+    "path": "offer/offer.md",
+    "title": "Offer",
+    "content": "# Offer\n\n## Products\n\n- **Apex Cockpit** — the operating system for a founder-led business.\n- **Launch sprint** — six weeks from idea to first ten customers.\n\n## Differentiators\n\n_Still thin — Atlas will ask._\n\n## Pricing frame\n\nValue before price. Never quote a number before the second call.\n\n## Proof\n\n- 14 founders through the launch sprint, 11 shipped.\n",
+    "frontmatter": { "owner": "founder", "stale_after_days": 90, "data_class": "internal" },
+    "version": 2,
+    "status": "partial",
+    "updated_at": "2026-09-12T09:30:00Z",
+    "source": "human"
+  },
+  "versions": {
+    "data": [
+      { "version": 2, "updated_at": "2026-09-12T09:30:00Z", "source": "human", "summary": "Added the launch sprint" },
+      { "version": 1, "updated_at": "2026-09-02T08:00:00Z", "source": "agent", "summary": "Seeded from the launch interview" }
+    ]
+  }
+}

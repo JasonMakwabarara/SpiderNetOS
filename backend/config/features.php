@@ -218,4 +218,140 @@ return [
     /** Public-profile contact enrichment (terms grey area; stays a stub until reviewed). */
     'outreach.profile_enrichment' => env('FEATURE_OUTREACH_PROFILE_ENRICHMENT', 'off'),
 
+    // -----------------------------------------------------------------------
+    // Operating brain — PHP skill runtime (ADR-0002, config/agents.php).
+    // All OFF until a tenant is enabled per skill; the runtime never sends
+    // or publishes directly (every write is a draft/proposal + approval).
+    // -----------------------------------------------------------------------
+
+    /** Master switch: MetaPlanner::dispatchRun() → RunSkillJob on the `agents` queue. */
+    'agents.runtime' => env('FEATURE_AGENTS_RUNTIME', 'off'),
+
+    /** ToolGateway::call() at all (read tools + draft-only writes). */
+    'agents.tools' => env('FEATURE_AGENTS_TOOLS', 'off'),
+
+    /** Allow risk=send tools to be *proposed* (still applied only via ApprovalEngine). */
+    'agents.tools.send' => env('FEATURE_AGENTS_TOOLS_SEND', 'off'),
+
+    /** Allow risk=irreversible tools to be proposed (publish, delete, pay). */
+    'agents.tools.irreversible' => env('FEATURE_AGENTS_TOOLS_IRREVERSIBLE', 'off'),
+
+    /** AgentHeartbeatJob: minute cron that fires scheduled card triggers (needs D8 #4 first). */
+    'agents.heartbeat' => env('FEATURE_AGENTS_HEARTBEAT', 'off'),
+
+    /** SkillTriggerProjection: event_log events start runs (skips automation_level=manual tenants). */
+    'agents.event_triggers' => env('FEATURE_AGENTS_EVENT_TRIGGERS', 'off'),
+
+    /** Native JSON-schema function calling on POST /generate (Phase 4) instead of the text ToolCallParser. */
+    'agents.native_tool_calling' => env('FEATURE_AGENTS_NATIVE_TOOL_CALLING', 'off'),
+
+    /** Shadow autonomy level: run as assisted, record `would_have`, score agreement (D8 #9). */
+    'agents.shadow_mode' => env('FEATURE_AGENTS_SHADOW_MODE', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Knowledge brain — versioned virtual filesystem (brain_files).
+    // -----------------------------------------------------------------------
+
+    /** BrainStore + /api/brain/* (files, tree, versions, proposals, sync). */
+    'brain.enabled' => env('FEATURE_BRAIN_ENABLED', 'on'),
+
+    /** BrainIndexer: chunk → POST /embed → memory_nodes (pgsql only; no-op on sqlite). */
+    'brain.embed' => env('FEATURE_BRAIN_EMBED', 'on'),
+
+    // -----------------------------------------------------------------------
+    // Atlas — brain context, "one step further", research on demand.
+    // -----------------------------------------------------------------------
+
+    /** Append the BRAIN block (AtlasBrainContext) to AtlasPromptStack::systemPrompt(). */
+    'atlas.brain_context' => env('FEATURE_ATLAS_BRAIN_CONTEXT', 'off'),
+
+    /** NEXT/ASK blocks: one proposed next step + exactly one question after every answer. */
+    'atlas.one_more_question' => env('FEATURE_ATLAS_ONE_MORE_QUESTION', 'off'),
+
+    /** Research toggle (/research, context.research=true) → deep-research via Prism. */
+    'atlas.research' => env('FEATURE_ATLAS_RESEARCH', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Atlas voice (cockpit playback; telephony flags are above under voice.*).
+    // -----------------------------------------------------------------------
+
+    /** POST /api/atlas/speak + the cockpit SpeakButton / per-message play. */
+    'voice.atlas_speak' => env('FEATURE_VOICE_ATLAS_SPEAK', 'off'),
+
+    /** Azure Speech provider (en-ZA / en-NG / en-KE personas); ElevenLabs fallback when off. */
+    'voice.azure' => env('FEATURE_VOICE_AZURE', 'off'),
+
+    // -----------------------------------------------------------------------
+    // Cockpit, briefs, newsletters, evals.
+    // -----------------------------------------------------------------------
+
+    /**
+     * Hannah AI hand-off (plan D7 §1): provision the tenant's Hannah workspace,
+     * push the brand from the brain, deep-link them in. `hannah_ai.*` is the
+     * external product; the `hannah` core character shares nothing with it.
+     */
+    'hannah_ai.handoff' => env('FEATURE_HANNAH_AI_HANDOFF', 'off'),
+
+    /** Re-push brand/voice.md to Hannah whenever it changes, after the first approval. */
+    'hannah_ai.brand_autosync' => env('FEATURE_HANNAH_AI_BRAND_AUTOSYNC', 'off'),
+
+    /**
+     * ZetKai <-> SpiderNetOS (plan D7 §4). Off until ZetKai's own side forces
+     * the privacy exclusion for integration tokens: a guard on the consumer
+     * only protects you while the consumer is running the code you think it is.
+     */
+    'zetkai.enabled' => env('FEATURE_ZETKAI_ENABLED', 'off'),
+
+    /** Nightly 02:30 pull of the vault into notes/zetkai/**. */
+    'zetkai.nightly_sync' => env('FEATURE_ZETKAI_NIGHTLY_SYNC', 'off'),
+
+    /** File a note back into ZetKai without an approval. Off: a vault is not a drafts folder. */
+    'zetkai.autofile' => env('FEATURE_ZETKAI_AUTOFILE', 'off'),
+
+    /** Board of advisors: GET /api/board/*, five archetype seats plus a chairman. */
+    'board.enabled' => env('FEATURE_BOARD_ENABLED', 'off'),
+
+    /**
+     * Jason's private named roster (advisors/private/*). Off everywhere else by
+     * design: tenant-facing seats are archetypes, because a named living person
+     * reasoning inside a product other people pay for is a right-of-publicity
+     * problem whatever the disclaimer says.
+     */
+    'board.private_roster' => env('FEATURE_BOARD_PRIVATE_ROSTER', 'off'),
+
+    /** Speak a seat's verdict in its own voice persona (needs voice.atlas_speak). */
+    'board.voice' => env('FEATURE_BOARD_VOICE', 'off'),
+
+    /** God's Eye board: GET /api/godseye/snapshot + /gods-eye (all agents, runs, spend at once). */
+    'cockpit.gods_eye' => env('FEATURE_COCKPIT_GODS_EYE', 'off'),
+
+    /** Needs-You Today brief: 07:00 reports/daily + GET /api/today (replaces the dead daily_brief intent). */
+    'brief.enabled' => env('FEATURE_BRIEF_ENABLED', 'off'),
+
+    /** C-Suite newsletter: internal, positive, rides with the Monday letter (never a third-party list). */
+    'newsletter.csuite' => env('FEATURE_NEWSLETTER_CSUITE', 'off'),
+
+    /** Customer newsletter every 12 days via the customer-newsletter skill (always an approval). */
+    'newsletter.customer' => env('FEATURE_NEWSLETTER_CUSTOMER', 'off'),
+
+    /** `skills:eval {slug}` harness over packages/skills/<slug>/evals (CI on card changes). */
+    'skills.eval_harness' => env('FEATURE_SKILLS_EVAL_HARNESS', 'off'),
+
+    // -----------------------------------------------------------------------
+    // "Atlas, I want to start a business" (business-launch pack, plan D7 §5).
+    // Nothing the pack produces is legal or financial advice.
+    // -----------------------------------------------------------------------
+
+    /** BusinessLaunchService + /api/launch/* — interview, stage commits, approval. */
+    'launch.enabled' => env('FEATURE_LAUNCH_ENABLED', 'off'),
+
+    /** Cited market research; off = the founder's own view of the market, labelled as such. */
+    'launch.web_research' => env('FEATURE_LAUNCH_WEB_RESEARCH', 'off'),
+
+    /** Read-only company-register lookups (Companies House, CIPC) — Atlas never incorporates or files. */
+    'launch.registry_checks' => env('FEATURE_LAUNCH_REGISTRY_CHECKS', 'off'),
+
+    /** POST /docgen/render: business plan md → docx → pdf from the brain and the finance model. */
+    'launch.docgen' => env('FEATURE_LAUNCH_DOCGEN', 'off'),
+
 ];

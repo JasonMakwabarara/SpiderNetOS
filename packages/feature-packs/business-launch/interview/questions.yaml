@@ -1,0 +1,346 @@
+# "Atlas, I want to start a business" — interview backbone (plan D7 §5).
+#
+# Asked by the launch-guide identity (core character: Hannah) in her warm,
+# plain-language voice. Questions are grouped in sections; stages.yaml says
+# which section each stage draws on and which answers its artefacts need.
+#
+# Schema (per question)
+#   id             unique across the whole file (answers are keyed by it)
+#   prompt         what Hannah asks — plain words, one thing at a time
+#   followup_hint  guidance for the ONE adaptive LLM follow-up allowed per
+#                  section (null = no follow-up for this question)
+#   brain_target   {path, section[, frontmatter]} — the brain file and the
+#                  `## section` the answer fills (packages/brain/manifest.yaml
+#                  paths where the manifest declares them). `frontmatter` also
+#                  lifts the answer into that frontmatter key.
+#   mirror_to      optional extra {path, section} targets
+#   type           text (default) | money | number | percent | choice
+#   choices        for type: choice
+#
+# The variable a question defines is `<section id>.<question id>` — e.g.
+# `finance.starting_cash`. stages.yaml `requires[]` / `uses[]` refer to
+# those variables; the InterviewRunner asks whichever question defines the
+# first missing one.
+#
+# Nothing here is legal or financial advice; Hannah says so whenever an
+# answer touches tax, registration or money.
+
+sections:
+  # ----------------------------------------------------------------- identity
+  - id: identity
+    title: "You and the idea"
+    description: "Who is starting this, why, and where it is today. Feeds business/profile.md and business/alignment.md."
+    questions:
+      - id: business_name
+        prompt: "Let's start easy — what are you calling the business? A working name is perfectly fine; we can change it later."
+        followup_hint: null
+        type: text
+        brain_target: { path: business/profile.md, section: "What we do", frontmatter: name }
+
+      - id: one_liner
+        prompt: "Tell me what the business will do in one plain sentence — who it helps, and how."
+        followup_hint: "If it is abstract ('we empower people'), ask who specifically buys and what they walk away with."
+        type: text
+        brain_target: { path: business/profile.md, section: "What we do" }
+
+      - id: founder_why
+        prompt: "Why this business, and why you? What moment or frustration got you here?"
+        followup_hint: "If vague, gently ask for the specific moment they decided to do something about it."
+        type: text
+        brain_target: { path: business/alignment.md, section: "Origin" }
+
+      - id: mission
+        prompt: "What's the one thing this business must get right, every single day, for its customers?"
+        followup_hint: null
+        type: text
+        brain_target: { path: business/alignment.md, section: "Mission" }
+
+      - id: vision
+        prompt: "Picture the business three years from now. What's different — for your customers and for you?"
+        followup_hint: "If it is only about money, ask what would be different for customers by then."
+        type: text
+        brain_target: { path: business/alignment.md, section: "Vision" }
+
+      - id: stage_today
+        prompt: "Where are you today — still an idea, testing with a few people, or already making sales?"
+        followup_hint: null
+        type: text
+        brain_target: { path: business/profile.md, section: "Where we are today" }
+
+      - id: ninety_day_target
+        prompt: "What's the one result you want in the next 90 days? A number really helps — say, your first ten paying customers."
+        followup_hint: "Ask for a number, not just a direction."
+        type: text
+        brain_target: { path: business/alignment.md, section: "90-day target" }
+
+  # -------------------------------------------------------------------- offer
+  - id: offer
+    title: "What you'll sell"
+    description: "The product or service, its price and the proof it works. Feeds offer/offer.md."
+    questions:
+      - id: core_offer
+        prompt: "What exactly will you sell? Describe it the way you'd explain it to a friend over coffee."
+        followup_hint: "If it lists many things, ask which single product or service they would launch with."
+        type: text
+        brain_target: { path: offer/offer.md, section: "Products and services" }
+
+      - id: problem_solved
+        prompt: "What problem does it solve — and what does life look like for your customer once it's solved?"
+        followup_hint: null
+        type: text
+        brain_target: { path: offer/offer.md, section: "Products and services" }
+
+      - id: pricing_model
+        prompt: "How will you charge — once-off, monthly, per hour, per project? And roughly what price are you thinking?"
+        followup_hint: "If there is no number yet, ask what a customer pays today for the closest alternative."
+        type: text
+        brain_target: { path: offer/offer.md, section: "Pricing" }
+
+      - id: proof_points
+        prompt: "What proof do you have, or could you get quickly, that this works — a pilot, a testimonial, your own track record?"
+        followup_hint: "No proof yet is fine — ask what small test in the next month could produce some."
+        type: text
+        brain_target: { path: offer/offer.md, section: "Proof" }
+
+      - id: differentiator
+        prompt: "Why would someone choose you over the obvious alternative — including doing nothing at all?"
+        followup_hint: "If the answer is 'better quality' or 'good service', ask for one concrete example."
+        type: text
+        brain_target: { path: business/profile.md, section: "What makes us different" }
+        mirror_to:
+          - { path: offer/offer.md, section: "Differentiators" }
+
+  # ---------------------------------------------------------------- customers
+  - id: customers
+    title: "Your customers"
+    description: "Who buys, who doesn't, and what makes them go looking. Feeds customers/icp.md and customers/objections.md."
+    questions:
+      - id: ideal_customer
+        prompt: "Describe your ideal first customer — who they are, where they are, and what they're struggling with right now."
+        followup_hint: "If broad ('everyone', 'small businesses'), ask them to describe one real person who would buy tomorrow."
+        type: text
+        brain_target: { path: customers/icp.md, section: "Who we sell to" }
+
+      - id: disqualifiers
+        prompt: "Who is not a good fit? Knowing who to say no to saves you months."
+        followup_hint: null
+        type: text
+        brain_target: { path: customers/icp.md, section: "Who we do not sell to" }
+
+      - id: buying_trigger
+        prompt: "What usually happens in a customer's life right before they go looking for something like this?"
+        followup_hint: null
+        type: text
+        brain_target: { path: customers/icp.md, section: "Buying triggers" }
+
+      - id: where_customers_are
+        prompt: "Where do these people already spend their time — online groups, local places, events, publications?"
+        followup_hint: null
+        type: text
+        brain_target: { path: customers/icp.md, section: "Where to find them" }
+
+      - id: common_objection
+        prompt: "What's the biggest reason someone might hesitate to buy — and what would you say back?"
+        followup_hint: "If they only name the objection, ask how they'd honestly answer it."
+        type: text
+        brain_target: { path: customers/objections.md, section: "Objections and answers" }
+
+  # -------------------------------------------------------------------- brand
+  - id: brand
+    title: "How you'll sound"
+    description: "Voice, tone and the look you're after. Feeds brand/voice.md and brand/identity.md."
+    questions:
+      - id: preferred_tone
+        prompt: "How should the business sound when it talks to people? Give me two or three words — say, warm and straight-talking."
+        followup_hint: null
+        type: text
+        brain_target: { path: brand/voice.md, section: "Tone" }
+
+      - id: brand_admired
+        prompt: "Name a brand whose voice you like, and tell me what you like about it."
+        followup_hint: null
+        type: text
+        brain_target: { path: brand/voice.md, section: "Tone" }
+
+      - id: never_say
+        prompt: "What should your business never sound like? Any words, claims or promises that are off-limits?"
+        followup_hint: "If unsure, offer examples: hype, guarantees you can't keep, jargon."
+        type: text
+        brain_target: { path: brand/voice.md, section: "Do and don't" }
+
+      - id: voice_sample
+        prompt: "Write two or three sentences the way you'd actually say them to a customer. I'll keep them as your voice sample."
+        followup_hint: null
+        type: text
+        brain_target: { path: brand/voice.md, section: "Voice" }
+
+      - id: visual_identity
+        prompt: "Do you have a logo, colours or fonts yet? If not, what feeling should they give people?"
+        followup_hint: null
+        type: text
+        brain_target: { path: brand/identity.md, section: "Identity" }
+
+  # ------------------------------------------------------------------- market
+  - id: market
+    title: "Your market"
+    description: "Alternatives, where you'll sell first and how big it might be. Feeds market/comparables.md and market/tam-sam-som.md; research checks the founder's guesses with citations."
+    questions:
+      - id: competitors
+        prompt: "Who are the two or three alternatives a customer would weigh you against, and roughly what do they charge?"
+        followup_hint: "If they say 'no competitors', ask what customers do today instead."
+        type: text
+        brain_target: { path: market/comparables.md, section: "Comparables" }
+
+      - id: market_geography
+        prompt: "Where will you sell first — one town, a city, the whole country, or online everywhere?"
+        followup_hint: null
+        type: text
+        brain_target: { path: market/tam-sam-som.md, section: "Where we sell first" }
+
+      - id: market_size_guess
+        prompt: "Roughly how many potential customers are in that first market? A rough guess is fine — we'll check it together."
+        followup_hint: "Ask how they arrived at the number, so research can test the reasoning."
+        type: text
+        brain_target: { path: market/tam-sam-som.md, section: "Market size" }
+
+      - id: market_trend
+        prompt: "Is this market growing, shrinking or changing? What have you noticed lately?"
+        followup_hint: null
+        type: text
+        brain_target: { path: market/tam-sam-som.md, section: "Trends" }
+
+      - id: research_questions
+        prompt: "What would you most like me to find out about the market before you commit?"
+        followup_hint: null
+        type: text
+        brain_target: { path: market/comparables.md, section: "Open questions" }
+
+  # ------------------------------------------------------------------ finance
+  - id: finance
+    title: "Your numbers"
+    description: "The handful of assumptions the finance model needs. Feeds finance/assumptions.yaml; the model (not the LLM) produces every number in the plan."
+    questions:
+      - id: starting_cash
+        prompt: "How much money can you put in to get started — savings, a loan, an investor? One number is fine, and tell me the currency if it isn't your local one."
+        followup_hint: null
+        type: money
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: setup_costs
+        prompt: "What will it cost to get going before your first sale — equipment, website, registration, first stock? A rough total is fine."
+        followup_hint: "If they list items, help them add them up into one number."
+        type: money
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: price_per_unit
+        prompt: "What will a typical customer pay you per sale — or per month, if it's a subscription?"
+        followup_hint: null
+        type: money
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: units_month_one
+        prompt: "In your first full month of trading, how many sales do you realistically expect? Honest beats hopeful here."
+        followup_hint: null
+        type: number
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: monthly_growth
+        prompt: "By roughly what percentage do you hope sales grow each month in year one? Around 5% is steady; 20% is ambitious."
+        followup_hint: null
+        type: percent
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: cost_of_sale_pct
+        prompt: "For every sale, what share goes on direct costs — materials, delivery, payment fees? A percentage is fine."
+        followup_hint: "If they don't know, offer to work it out from one example sale."
+        type: percent
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+      - id: fixed_monthly_costs
+        prompt: "What will you spend every month no matter how many sales you make — rent, software, phone, any salaries?"
+        followup_hint: null
+        type: money
+        brain_target: { path: finance/assumptions.yaml, section: "assumptions" }
+
+  # --------------------------------------------------------------- compliance
+  - id: compliance
+    title: "Registration and rules"
+    description: "Country, structure and the obligations that follow. Feeds compliance/checklist.md from jurisdictions/<code>.yaml. Atlas maps and checks; it never registers or files for you."
+    questions:
+      - id: jurisdiction
+        prompt: "Which country will the business be registered in — the UK, South Africa or Zimbabwe?"
+        followup_hint: null
+        type: choice
+        choices: [uk, za, zw]
+        brain_target: { path: compliance/checklist.md, section: "Jurisdiction" }
+
+      - id: legal_structure
+        prompt: "Do you plan to trade as a sole trader, a partnership or a limited company? 'Not sure yet' is a perfectly good answer."
+        followup_hint: "If not sure, explain the difference in two plain sentences and suggest they confirm with an adviser."
+        type: text
+        brain_target: { path: compliance/checklist.md, section: "Structure" }
+
+      - id: already_registered
+        prompt: "Is the business already registered anywhere? If it is, what's the registration number?"
+        followup_hint: null
+        type: text
+        brain_target: { path: compliance/checklist.md, section: "Registration" }
+
+      - id: handles_personal_data
+        prompt: "Will you collect personal details from customers — names, emails, phone numbers, ID numbers?"
+        followup_hint: null
+        type: text
+        brain_target: { path: compliance/checklist.md, section: "Data protection" }
+
+      - id: employees_first_year
+        prompt: "Do you expect to take anyone on in the first year — employees or contractors?"
+        followup_hint: null
+        type: text
+        brain_target: { path: compliance/checklist.md, section: "People" }
+
+      - id: regulated_activity
+        prompt: "Does the business involve anything that usually needs a licence — food, alcohol, finance, health, transport, childcare?"
+        followup_hint: "If yes, ask which activity exactly, so the checklist can flag the right regulator."
+        type: text
+        brain_target: { path: compliance/checklist.md, section: "Licences" }
+
+  # ---------------------------------------------------------------------- gtm
+  - id: gtm
+    title: "Getting your first customers"
+    description: "Channels, launch timing and what success looks like. Feeds gtm/plan.md and people/user.md."
+    questions:
+      - id: launch_channel
+        prompt: "What's the first way you'll reach customers — word of mouth, social media, a market stall, partnerships, something else?"
+        followup_hint: null
+        type: text
+        brain_target: { path: gtm/plan.md, section: "Channels" }
+
+      - id: first_ten_customers
+        prompt: "How will you find your first ten customers? Names or places are brilliant if you have them."
+        followup_hint: "If vague, ask them to name three specific people or places this week."
+        type: text
+        brain_target: { path: gtm/plan.md, section: "First ten customers" }
+
+      - id: launch_date
+        prompt: "When would you like to open your doors? Even a rough month helps me plan backwards."
+        followup_hint: null
+        type: text
+        brain_target: { path: gtm/plan.md, section: "Launch timeline" }
+
+      - id: marketing_budget
+        prompt: "How much can you spend on marketing each month to start? Zero is a real answer."
+        followup_hint: null
+        type: money
+        brain_target: { path: gtm/plan.md, section: "Budget" }
+
+      - id: success_signal
+        prompt: "Three months after launch, what would tell you it's working?"
+        followup_hint: "Ask for something they could count."
+        type: text
+        brain_target: { path: gtm/plan.md, section: "Success measures" }
+
+      - id: help_needed
+        prompt: "Last one for now — where do you most want help: writing, numbers, marketing, paperwork, or something else?"
+        followup_hint: null
+        type: text
+        brain_target: { path: people/user.md, section: "Standing preferences" }

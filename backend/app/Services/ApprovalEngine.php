@@ -133,23 +133,36 @@ class ApprovalEngine
         // (approval.granted / approval.rejected) are unchanged.
         $newStatus = $approved ? 'approved' : 'rejected';
 
-        DB::table('approvals')
-            ->where('id', $approvalId)
-            ->update([
-                'status' => $newStatus,
+        // The check above is a fast path; this write is the decision. The
+        // expected state travels in the WHERE clause, so of two concurrent
+        // resolutions exactly one changes the row (on Postgres the other
+        // waits on the row lock, then re-reads it as resolved) — and the
+        // event commits with the decision or not at all. The same rule as
+        // ApprovalController::decide().
+        DB::transaction(function () use ($approval, $approvalId, $approverId, $approved, $newStatus, $response): void {
+            $changed = DB::table('approvals')
+                ->where('id', $approvalId)
+                ->where('status', 'pending')
+                ->whereNull('current_step')
+                ->update([
+                    'status' => $newStatus,
+                    'approver_id' => $approverId,
+                    'response' => $response,
+                    'responded_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                $status = DB::table('approvals')->where('id', $approvalId)->value('status');
+                throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$status}).");
+            }
+
+            $this->eventStore->append($approval->tenant_id, $approved ? 'approval.granted' : 'approval.rejected', [
+                'approval_id' => $approvalId,
                 'approver_id' => $approverId,
                 'response' => $response,
-                'responded_at' => now(),
-                'updated_at' => now(),
             ]);
-
-        $eventType = $approved ? 'approval.granted' : 'approval.rejected';
-
-        $this->eventStore->append($approval->tenant_id, $eventType, [
-            'approval_id' => $approvalId,
-            'approver_id' => $approverId,
-            'response' => $response,
-        ]);
+        });
 
         Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
 
@@ -542,12 +555,40 @@ class ApprovalEngine
     }
 
     /**
-     * Resource-type activation hooks. Failures propagate so the enclosing
-     * transaction rolls back — an approval must not read "approved" while
-     * its downstream effect failed to apply.
+     * Resource-type activation hooks. Driven by config/approvals.php
+     * `resource_hooks` (resource_type => [class, method]); handler classes
+     * are resolved lazily, so an entry whose stream has not shipped yet is
+     * skipped with a log line. Resource types outside the map keep their
+     * legacy inline hooks below. Public so ApprovalController's single-stage
+     * approve/reject fires exactly the hooks the chained path fires.
+     * Failures propagate so the enclosing transaction rolls back — an
+     * approval must not read "approved" while its downstream effect failed
+     * to apply.
      */
-    private function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
     {
+        $hooks = (array) config('approvals.resource_hooks', []);
+
+        if (array_key_exists($resourceType, $hooks)) {
+            $hook = (array) $hooks[$resourceType];
+            $class = $hook[0] ?? $hook['class'] ?? null;
+            $method = $hook[1] ?? $hook['method'] ?? 'onApprovalResolved';
+
+            if (! is_string($class) || $class === '' || ! (app()->bound($class) || class_exists($class))) {
+                Log::warning('Approval resource hook skipped: handler class not available', [
+                    'resource_type' => $resourceType,
+                    'class' => $class,
+                    'resource_id' => $resourceId,
+                ]);
+
+                return;
+            }
+
+            app($class)->{$method}($tenantId, $resourceId, $granted, $response);
+
+            return;
+        }
+
         switch ($resourceType) {
             case 'sales_script':
                 $service = app(FunnelSetupService::class);
@@ -569,6 +610,7 @@ class ApprovalEngine
                 break;
 
             case 'outreach_reply':
+                // Fallback when config/approvals.php is absent from a cached config.
                 app(OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
                 break;
 

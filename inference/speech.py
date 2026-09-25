@@ -1,16 +1,28 @@
 """
 SpiderNet OS — Speech-to-Text & Text-to-Speech Service
-Wraps Whisper (local), Piper (local), and cloud providers (ElevenLabs, Deepgram).
+Wraps Whisper (local) and Deepgram for STT. TTS goes through tts_providers.py (ElevenLabs primary, Fish Audio,
+Intron, Piper local floor, Azure dormant) — the same provider code the voice options page uses.
+
+TTS voice resolution (plan D7 §7): request persona (sent by Laravel's AtlasSpeechService) → request voice +
+provider / VOICE_TTS_PROVIDER → VOICE_DEFAULT_PERSONA (a voice_personas.yaml slug) → 503 "no TTS persona
+configured". There is no built-in cloud voice. Synthesis falls back persona provider → elevenlabs → piper.
 """
 
+import asyncio
+import base64
 import io
 import os
-from typing import Optional
+from pathlib import Path
+from typing import Callable, Mapping, Optional, Sequence
 
 import httpx
 from config import OLLAMA_URL
 from fastapi import HTTPException
 from pydantic import BaseModel
+
+import tts_providers
+from config import OLLAMA_URL, DEFAULT_COST_CEILING
+
 
 # ─── Request/Response Models ─────────────────────────────────────────────────
 
@@ -33,8 +45,11 @@ class STTResponse(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str
-    provider: Optional[str] = None  # "piper", "elevenlabs", "twilio"
-    voice: Optional[str] = None
+    provider: Optional[str] = None  # "elevenlabs", "fishaudio", "intron", "piper", "azure" (dormant), "twilio"
+    voice: Optional[str] = None  # provider voice id; prefer `persona`
+    # {slug, provider, voice_id | provider_voice_id, language, accent, gender, style, style_degree, rate, pitch,
+    #  output_format} — a voice_personas row as Laravel sends it. Its provider wins over `provider`.
+    persona: Optional[dict] = None
     speed: float = 1.0
     format: str = "mp3"  # mp3, wav, pcm
 
@@ -45,6 +60,9 @@ class TTSResponse(BaseModel):
     provider: str
     duration_estimate: float
     characters: int
+    voice: Optional[str] = None  # provider voice id that actually spoke
+    persona: Optional[str] = None  # persona slug that actually spoke (None for an env-configured voice)
+    fallback_from: Optional[str] = None  # set when a later provider in the chain produced the audio
 
 
 # ─── Provider Routing ────────────────────────────────────────────────────────
@@ -53,11 +71,21 @@ class TTSResponse(BaseModel):
 class SpeechService:
     """Unified STT/TTS service with provider fallback."""
 
-    def __init__(self):
-        self.whisper_url = os.getenv("WHISPER_URL", "http://localhost:9000")
-        self.elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "")
-        self.elevenlabs_voice = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
-        self.deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
+    def __init__(
+        self,
+        environ: Optional[Mapping[str, str]] = None,
+        client_factory: Optional[Callable[[], httpx.Client]] = None,
+        personas_path: Optional[Path | str] = None,
+    ):
+        # `environ` is read at call time (os.environ by default), so key rotation needs no restart.
+        self.env: Mapping[str, str] = environ if environ is not None else os.environ
+        self.client_factory = client_factory or (lambda: httpx.Client(timeout=60.0))
+        self.personas_path = personas_path or tts_providers.DEFAULT_PERSONAS_PATH
+        self.whisper_url = self.env.get("WHISPER_URL", "http://localhost:9000")
+        self.elevenlabs_key = self.env.get("ELEVENLABS_API_KEY", "")
+        # No built-in voice: the old hardcoded ElevenLabs "Rachel" default is gone (plan D7 §7).
+        self.elevenlabs_voice = self.env.get("ELEVENLABS_VOICE_ID") or None
+        self.deepgram_key = self.env.get("DEEPGRAM_API_KEY", "")
 
     async def transcribe(self, request: STTRequest) -> STTResponse:
         """Speech-to-Text with provider routing."""
@@ -80,14 +108,13 @@ class SpeechService:
             raise HTTPException(status_code=400, detail=f"Unknown STT provider: {provider}")
 
     async def synthesize(self, request: TTSRequest) -> TTSResponse:
-        """Text-to-Speech with provider routing."""
-        provider = request.provider or os.getenv("VOICE_TTS_PROVIDER", "piper")
+        """Text-to-Speech routed on persona.provider, else `provider` / VOICE_TTS_PROVIDER, with the
+        persona provider → elevenlabs → piper fallback chain."""
+        requested = (
+            (request.persona or {}).get("provider") or request.provider or self.env.get("VOICE_TTS_PROVIDER") or ""
+        ).strip().lower()
 
-        if provider == "piper":
-            return await self._tts_piper(request)
-        elif provider == "elevenlabs":
-            return await self._tts_elevenlabs(request)
-        elif provider == "twilio":
+        if requested == "twilio":
             # Twilio TTS is handled in TwiML, this is passthrough
             return TTSResponse(
                 audio_base64="",
@@ -96,8 +123,60 @@ class SpeechService:
                 duration_estimate=len(request.text) * 0.08,  # ~150 words/min
                 characters=len(request.text),
             )
-        else:
-            raise HTTPException(status_code=400, detail=f"Unknown TTS provider: {provider}")
+        if requested and requested not in tts_providers.PROVIDER_ORDER:
+            raise HTTPException(status_code=400, detail=f"Unknown TTS provider: {requested}")
+
+        return await self._synthesize(request)
+
+    async def _synthesize(self, request: TTSRequest, chain: Optional[Sequence[str]] = None) -> TTSResponse:
+        if not request.text.strip():
+            raise HTTPException(status_code=422, detail="text is empty")
+        try:
+            persona = tts_providers.resolve_persona(
+                self.env,
+                persona=request.persona,
+                provider=chain[0] if chain else request.provider,
+                voice=request.voice,
+                path=self.personas_path,
+            )
+        except tts_providers.NoPersonaConfigured as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        if chain and persona["provider"] != chain[0]:
+            raise HTTPException(status_code=400, detail=f"persona provider {persona['provider']} is not {chain[0]}")
+        if persona["provider"] == "piper" and request.speed != 1.0 and not persona.get("rate"):
+            persona["rate"] = request.speed
+
+        try:
+            result = await asyncio.to_thread(self._synthesize_sync, request.text, persona, chain)
+        except tts_providers.SynthesisFailed as exc:
+            raise HTTPException(status_code=502, detail={"message": str(exc), "attempts": exc.attempts})
+
+        speed = request.speed if result.provider == "piper" and request.speed > 0 else 1.0
+        return TTSResponse(
+            audio_base64=base64.b64encode(result.audio).decode(),
+            content_type=result.content_type,
+            provider=result.provider,
+            duration_estimate=len(request.text.split()) * 0.08 / speed,
+            characters=len(request.text),
+            voice=result.voice_id,
+            persona=result.persona_slug,
+            fallback_from=result.fallback_from,
+        )
+
+    def _synthesize_sync(
+        self, text: str, persona: dict, chain: Optional[Sequence[str]] = None
+    ) -> tts_providers.Synthesis:
+        """Runs in a worker thread: the providers are synchronous httpx calls (Intron polls)."""
+        try:
+            default = tts_providers.default_persona(self.env, self.personas_path)
+        except tts_providers.NoPersonaConfigured:
+            default = None  # a broken VOICE_DEFAULT_PERSONA must not sink a request that named its own persona
+        client = self.client_factory()
+        try:
+            renderers = tts_providers.runtime_renderers(self.env, client)
+            return tts_providers.synthesize(text, persona, renderers, env=self.env, default=default, chain=chain)
+        finally:
+            client.close()
 
     # ─── STT Implementations ──────────────────────────────────────────────────
 
@@ -213,83 +292,13 @@ class SpeechService:
     # ─── TTS Implementations ──────────────────────────────────────────────────
 
     async def _tts_piper(self, request: TTSRequest) -> TTSResponse:
-        """Local Piper TTS (free, fast)."""
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(
-                    "http://localhost:5000/synthesize",  # Piper default port
-                    json={
-                        "text": request.text,
-                        "voice": request.voice or "en_US-lessac-medium",
-                        "speed": request.speed,
-                    },
-                )
-                # If Piper not running, return mock for development
-                if resp.status_code >= 500:
-                    return self._tts_mock(request, "piper")
-
-                resp.raise_for_status()
-                audio_data = resp.content
-
-                import base64
-                return TTSResponse(
-                    audio_base64=base64.b64encode(audio_data).decode(),
-                    content_type=f"audio/{request.format}",
-                    provider="piper",
-                    duration_estimate=len(request.text.split()) * 0.08 * (1 / request.speed),
-                    characters=len(request.text),
-                )
-        except httpx.ConnectError:
-            # Piper not available, return mock for development
-            return self._tts_mock(request, "piper")
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Piper TTS failed: {e}") from e
+        """Local Piper only (PIPER_URL), no fallback. Kept for callers of the old per-provider API."""
+        return await self._synthesize(request, chain=["piper"])
 
     async def _tts_elevenlabs(self, request: TTSRequest) -> TTSResponse:
-        """ElevenLabs cloud TTS (high quality, low latency model)."""
-        if not self.elevenlabs_key:
-            raise HTTPException(status_code=500, detail="ElevenLabs API key not configured")
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(
-                    f"https://api.elevenlabs.io/v1/text-to-speech/{self.elevenlabs_voice}/stream",
-                    headers={
-                        "xi-api-key": self.elevenlabs_key,
-                        "Accept": "audio/mpeg",
-                    },
-                    json={
-                        "text": request.text,
-                        "model_id": "eleven_flash_v2_5",  # Low latency
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75,
-                        },
-                    },
-                )
-                resp.raise_for_status()
-                audio_data = resp.content
-
-                import base64
-                return TTSResponse(
-                    audio_base64=base64.b64encode(audio_data).decode(),
-                    content_type="audio/mpeg",
-                    provider="elevenlabs",
-                    duration_estimate=len(request.text.split()) * 0.08,
-                    characters=len(request.text),
-                )
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"ElevenLabs TTS failed: {e}") from e
-
-    def _tts_mock(self, request: TTSRequest, provider: str) -> TTSResponse:
-        """Mock TTS for development when services unavailable."""
-        return TTSResponse(
-            audio_base64="",  # Empty audio
-            content_type="audio/wav",
-            provider=f"{provider}-mock",
-            duration_estimate=len(request.text.split()) * 0.08,
-            characters=len(request.text),
-        )
+        """ElevenLabs only (eleven_multilingual_v2), no fallback. The voice comes from the persona, the request,
+        VOICE_DEFAULT_PERSONA or ELEVENLABS_VOICE_ID — never a built-in default (503 when none is configured)."""
+        return await self._synthesize(request, chain=["elevenlabs"])
 
 
 # ─── Singleton Instance ────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\DagExecutionService;
 use App\Services\Systemization\ProcessRunRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -199,6 +200,11 @@ class AgentStepExecutionTest extends TestCase
             'inference.model' => 'deepseek-v4-pro',
             'inference.ark_model_id' => 'ep-custom-arkendpoint-123',
         ]));
+        // FeatureFlag::value() memoises for 5s through the cache store; on a
+        // shared store (the Postgres lane ran on Redis) an earlier test's
+        // resolution of these two flags would outlive this override.
+        Cache::forget('featureflag:inference.model');
+        Cache::forget('featureflag:inference.ark_model_id');
 
         $this->publishSopAndAssignAgent();
         $this->postJson("/api/systemization/processes/{$this->process->id}/run")->assertOk();

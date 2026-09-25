@@ -35,6 +35,22 @@
       </button>
     </nav>
 
+    <!-- Batch cards: agent artifacts from the same skill + run (D8 #8) -->
+    <section v-if="batches.length" class="space-y-4 mb-5" aria-label="Batch approvals" data-testid="approval-batches">
+      <ApprovalBatchCard
+        v-for="b in batches"
+        :key="b.key"
+        :group="b"
+        :busy="batchBusy === b.key"
+        @approve="onBatchApprove"
+        @reject="onBatchReject"
+        @approve-all="onBatchApproveAll(b, $event)"
+        @edit="onBatchEdit"
+      />
+    </section>
+    <!-- Outside the v-if so "Approved 3 of 3." survives the batch emptying -->
+    <p v-if="batchNotice" class="text-xs mb-4" style="color: var(--text-muted);" role="status" data-testid="approval-batch-notice">{{ batchNotice }}</p>
+
     <!-- Split view -->
     <section class="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4 min-h-[60vh]">
       <!-- Queue -->
@@ -128,6 +144,47 @@
               <RouterLink v-if="outreach.prospect_id" :to="`/sales/partners/${outreach.prospect_id}`" class="text-xs underline mt-2 inline-block" style="color: var(--accent);">
                 Open the thread
               </RouterLink>
+            </section>
+
+            <!-- Agent artifact: preview + inline edit before approve -->
+            <section v-if="artifact" data-testid="approval-artifact">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Agent draft</h3>
+              <p class="text-xs" style="color: var(--text-muted);">
+                {{ artifactCtx.skill_name || artifactCtx.skill_slug || 'skill' }}
+                <RouterLink v-if="artifactCtx.skill_slug" :to="`/skills/${artifactCtx.skill_slug}`" class="underline ml-1" data-testid="approval-artifact-skill">card</RouterLink>
+                <span v-if="artifactCtx.run_id"> · <RouterLink :to="`/agents/runs/${artifactCtx.run_id}`" class="underline" data-testid="approval-artifact-run">{{ artifactCtx.run_id }}</RouterLink></span>
+                <span v-if="artifact.step"> · step {{ artifact.step }}<span v-if="artifact.variant"> {{ String(artifact.variant).toUpperCase() }}</span></span>
+              </p>
+              <template v-if="selected.status === 'pending'">
+                <input
+                  v-if="artifact.subject !== undefined"
+                  v-model="artifactDraft.subject"
+                  type="text"
+                  class="w-full mt-2 text-sm"
+                  aria-label="Subject"
+                  data-testid="approval-artifact-subject"
+                />
+                <textarea
+                  v-model="artifactDraft.body"
+                  rows="8"
+                  class="w-full mt-2 text-sm"
+                  aria-label="Body"
+                  data-testid="approval-artifact-body"
+                ></textarea>
+                <div class="flex items-center gap-2 mt-2">
+                  <button class="sn-btn" :disabled="artifactSaving || !artifactDirty" data-testid="approval-artifact-save" @click="saveArtifact">
+                    {{ artifactSaving ? 'Saving…' : 'Save edit' }}
+                  </button>
+                  <span class="text-xs" style="color: var(--text-muted);" data-testid="approval-artifact-notice">{{ artifactNotice }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <p v-if="artifact.subject" class="text-xs font-medium mt-2" style="color: var(--text-secondary);">{{ artifact.subject }}</p>
+                <p class="text-sm mt-1" style="color: var(--text-primary); white-space: pre-line;" data-testid="approval-artifact-preview">{{ artifact.body }}</p>
+              </template>
+              <p v-if="artifactCtx.changed_vs_last_approved" class="text-[11px] mt-2" style="color: var(--amber);" data-testid="approval-artifact-changed">
+                Changed vs last approved: {{ artifactCtx.changed_vs_last_approved }}
+              </p>
             </section>
 
             <!-- Diff -->
@@ -237,12 +294,18 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApprovalsStore } from '../stores/approvals.js'
+import { useRunsStore } from '../stores/runs.js'
 import ConfirmDialog from '../components/feedback/ConfirmDialog.vue'
 import TypedConfirmDialog from '../components/feedback/TypedConfirmDialog.vue'
+import ApprovalBatchCard from '../components/approvals/ApprovalBatchCard.vue'
+import { parseContext } from '../utils/format.js'
 import api from '../services/api.js'
 
+const route = useRoute()
 const approvalsStore = useApprovalsStore()
+const runsStore = useRunsStore()
 
 const activeFilter = ref('pending')
 
@@ -258,11 +321,6 @@ const outreach = computed(() => {
   if (typeof ctx === 'string') { try { ctx = JSON.parse(ctx) } catch { ctx = {} } }
   return ctx || {}
 })
-watch(() => selected.value?.id, () => {
-  draftBody.value = outreach.value?.draft_body || ''
-  savedDraft.value = draftBody.value
-  draftNotice.value = ''
-}, { immediate: true })
 async function saveDraft() {
   draftSaving.value = true
   draftNotice.value = ''
@@ -299,11 +357,107 @@ const selected = computed(
   () => (approvalsStore.approvals || []).find((a) => a.id === selectedId.value) || filteredApprovals.value[0] || null
 )
 
+// Sync the outreach draft editor with the selection. Declared after
+// `selected` — an immediate watcher reads its source synchronously, so
+// placing it above the computed threw a TDZ ReferenceError at setup.
+watch(() => selected.value?.id, () => {
+  draftBody.value = outreach.value?.draft_body || ''
+  savedDraft.value = draftBody.value
+  draftNotice.value = ''
+}, { immediate: true })
+
 const pendingCount = computed(
   () => (approvalsStore.approvals || []).filter((a) => a.status === 'pending').length
 )
 
 const isHigh = computed(() => (selected.value?.risk || 'low') === 'high')
+
+// Deep link: /approvals?id=apr_x selects that approval regardless of tab.
+watch(() => route.query.id, (id) => { if (id) selectedId.value = String(id) }, { immediate: true })
+
+// ── Agent artifacts (D8 #8) ───────────────────────────────────────
+const artifactCtx = computed(() =>
+  selected.value?.resource_type === 'agent_artifact' ? parseContext(selected.value.context) : null,
+)
+const artifact = computed(() => (artifactCtx.value ? artifactCtx.value.artifact || artifactCtx.value.draft || null : null))
+const artifactDraft = reactive({ subject: '', body: '' })
+const artifactSaving = ref(false)
+const artifactNotice = ref('')
+const artifactDirty = computed(() =>
+  !!artifact.value &&
+  (artifactDraft.body !== (artifact.value.body ?? '') || artifactDraft.subject !== (artifact.value.subject ?? '')),
+)
+watch(() => selected.value?.id, () => {
+  artifactDraft.subject = artifact.value?.subject ?? ''
+  artifactDraft.body = artifact.value?.body ?? ''
+  artifactNotice.value = ''
+}, { immediate: true })
+
+async function saveArtifact() {
+  const apr = selected.value
+  if (!apr || !artifact.value) return
+  artifactSaving.value = true
+  artifactNotice.value = ''
+  const content = { ...artifact.value, body: artifactDraft.body }
+  if (artifact.value.subject !== undefined) content.subject = artifactDraft.subject
+  const res = await runsStore.patchArtifact(artifactCtx.value.artifact_id || apr.resource_id, content)
+  if (res.success) {
+    approvalsStore.handleApprovalUpdated({ id: apr.id, context: { ...artifactCtx.value, artifact: content } })
+    artifactNotice.value = 'Saved; approve to send this version.'
+  } else {
+    artifactNotice.value = res.error
+  }
+  artifactSaving.value = false
+}
+
+// Pending agent artifacts from the same skill + run become one batch card.
+const batches = computed(() => {
+  const groups = new Map()
+  for (const a of approvalsStore.approvals || []) {
+    if (a.status !== 'pending' || a.resource_type !== 'agent_artifact') continue
+    const ctx = parseContext(a.context)
+    const key = `${ctx.skill_slug || 'skill'}|${ctx.run_id || a.id}`
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key: key.replace(/[^a-z0-9_-]+/gi, '-'),
+        skill_slug: ctx.skill_slug,
+        skill_name: ctx.skill_name,
+        run_id: ctx.run_id,
+        items: [],
+      })
+    }
+    groups.get(key).items.push(a)
+  }
+  return [...groups.values()].filter((g) => g.items.length > 1)
+})
+const batchBusy = ref(null)
+const batchNotice = ref('')
+
+async function onBatchApprove(item) {
+  const res = await approvalsStore.approve(item.id)
+  batchNotice.value = res.success ? `Approved ${item.title || item.id}.` : res.error
+}
+async function onBatchReject(item) {
+  const res = await approvalsStore.reject(item.id)
+  batchNotice.value = res.success ? `Rejected ${item.title || item.id}.` : res.error
+}
+async function onBatchApproveAll(group, items) {
+  batchBusy.value = group.key
+  let ok = 0
+  for (const item of items) {
+    const res = await approvalsStore.approve(item.id)
+    if (res.success) ok++
+  }
+  batchBusy.value = null
+  batchNotice.value = `Approved ${ok} of ${items.length}.`
+}
+async function onBatchEdit(item, content) {
+  const ctx = parseContext(item.context)
+  const merged = { ...(ctx.artifact || {}), ...content }
+  const res = await runsStore.patchArtifact(ctx.artifact_id || item.resource_id, merged)
+  if (res.success) approvalsStore.handleApprovalUpdated({ id: item.id, context: { ...ctx, artifact: merged } })
+  batchNotice.value = res.success ? 'Edit saved; approve to send this version.' : res.error
+}
 
 // ── Dialogs ───────────────────────────────────────────────────────
 const softDialog = reactive({

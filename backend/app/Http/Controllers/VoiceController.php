@@ -654,7 +654,7 @@ class VoiceController extends Controller
     /**
      * Trigger post-call processing.
      *
-     * Phase A: publishes to Redis pub/sub.
+     * Phase A: hands the call to the intelligence workers over Redis.
      * Phase C: also dispatches a Horizon job for structured summary.
      */
     private function triggerPostCallProcessing(string $callSid): void
@@ -662,17 +662,34 @@ class VoiceController extends Controller
         try {
             // Resolve tenant for this call (needed for the job)
             $call = VoiceCall::where('call_sid', $callSid)->select('tenant_id')->first();
-            $tenantId = $call?->tenant_id ?? '';
+            $tenantId = (string) ($call?->tenant_id ?? '');
 
-            // Phase A path: Redis event for any subscriber (nexus_agent.py picks this up)
-            Redis::publish('agent:dispatch', json_encode([
-                'intent' => 'voice.post_call_process',
-                'context' => [
-                    'call_sid' => $callSid,
+            // Phase A path: intelligence/main.py consumes agent:dispatch with
+            // BLPOP (a list) and reads tenant_id / agent_id from the top level
+            // of the envelope — the same shape MetaPlanner::dispatch() pushes.
+            // Publish alone never reached it (pub/sub and lists are disjoint
+            // keyspaces); publish is kept for passive observers only.
+            if ($tenantId !== '') {
+                $dispatchMessage = json_encode([
                     'tenant_id' => $tenantId,
-                    'target_agent' => 'nexus',
-                ],
-            ]));
+                    'agent_id' => 'nexus',
+                    'intent' => 'voice.post_call_process',
+                    'context' => [
+                        'call_sid' => $callSid,
+                        'tenant_id' => $tenantId,
+                        'target_agent' => 'nexus',
+                        'channel' => 'voice',
+                    ],
+                ]);
+
+                Redis::lpush('agent:dispatch', $dispatchMessage);
+                Redis::publish('agent:dispatch', $dispatchMessage);
+            } else {
+                Log::warning('voice.post_call_dispatch_skipped', [
+                    'call_sid' => $callSid,
+                    'reason' => 'no voice_calls row / tenant for this CallSid',
+                ]);
+            }
 
             // Phase C path: Laravel Horizon job for structured summary
             ProcessVoiceCallSummary::dispatch($callSid, $tenantId)

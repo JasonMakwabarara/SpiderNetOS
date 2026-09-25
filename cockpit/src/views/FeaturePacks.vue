@@ -199,13 +199,6 @@ onMounted(() => load({ recordViews: true }))
 </script>
 
 <style scoped>
-.sn-eyebrow {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
 .sn-card {
   background: var(--bg-card);
   border: 1px solid var(--border);

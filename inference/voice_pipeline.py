@@ -39,6 +39,8 @@ from typing import Optional
 
 import httpx
 
+from tts_providers import NoPersonaConfigured, default_persona
+
 logger = logging.getLogger(__name__)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
@@ -46,7 +48,9 @@ logger = logging.getLogger(__name__)
 OLLAMA_URL                = os.getenv("OLLAMA_URL", "http://ollama:11434")
 DEEPGRAM_KEY              = os.getenv("DEEPGRAM_API_KEY", "")
 ELEVENLABS_KEY            = os.getenv("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID       = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
+# No built-in voice (the hardcoded "Rachel" default is gone, plan D7 §7): the ElevenLabs voice is
+# ELEVENLABS_VOICE_ID or the VOICE_DEFAULT_PERSONA persona when that persona is on ElevenLabs.
+ELEVENLABS_VOICE_ID       = os.getenv("ELEVENLABS_VOICE_ID", "")
 PIPER_URL                 = os.getenv("PIPER_URL", "http://localhost:5000/synthesize")
 WHISPER_URL               = os.getenv("WHISPER_URL", "http://localhost:9000")
 
@@ -346,16 +350,32 @@ class VoicePipeline:
         if self.tts_provider == "elevenlabs" and ELEVENLABS_KEY:
             try:
                 return await self._tts_elevenlabs(text)
+            except NoPersonaConfigured as exc:
+                logger.error("voice_pipeline.no_tts_persona_configured fallback_piper detail=%s", exc)
             except Exception as exc:
                 logger.warning("voice_pipeline.elevenlabs_failed fallback_piper error=%s", exc)
 
         return await self._tts_piper(text)
 
+    @staticmethod
+    def _elevenlabs_voice_id() -> str:
+        """ELEVENLABS_VOICE_ID, else the VOICE_DEFAULT_PERSONA persona's ElevenLabs voice. Raises
+        NoPersonaConfigured ("no TTS persona configured") when neither names a voice."""
+        if ELEVENLABS_VOICE_ID:
+            return ELEVENLABS_VOICE_ID
+        persona = default_persona(os.environ)
+        if persona and persona.get("provider") == "elevenlabs" and persona.get("provider_voice_id"):
+            return str(persona["provider_voice_id"])
+        raise NoPersonaConfigured(
+            "no TTS persona configured: set ELEVENLABS_VOICE_ID or VOICE_DEFAULT_PERSONA to an ElevenLabs persona"
+        )
+
     async def _tts_elevenlabs(self, text: str) -> bytes:
         """ElevenLabs eleven_flash_v2_5 (lowest latency model)."""
+        voice_id = self._elevenlabs_voice_id()
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}/stream",
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream",
                 headers={
                     "xi-api-key": ELEVENLABS_KEY,
                     "Accept":     "audio/mpeg",

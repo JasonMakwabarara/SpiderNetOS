@@ -1,0 +1,25 @@
+{
+  "data": {
+    "date": "2026-09-16",
+    "items": [
+      { "id": "t_apr_seq_q4", "kind": "approval", "title": "Approve the q4-founders sequence", "detail": "3 steps × 2 variants from Cold Email Drafting, waiting since yesterday.", "action": { "label": "Review", "path": "/approvals?id=apr_seq_q4" }, "age": "22h", "money": null },
+      { "id": "t_run_blocked_01", "kind": "blocked_run", "title": "Cold Email Drafting is blocked on one question", "detail": "What makes you different from the obvious alternative?", "action": { "label": "Answer", "path": "/agents/runs/run_blocked_01" }, "age": "1h" },
+      { "id": "t_gap_user", "kind": "brain_gap", "title": "people/user.md is empty", "detail": "Meeting Booking cannot offer slots without your booking link.", "action": { "label": "Fill it", "path": "/brain?file=people%2Fuser.md" }, "age": "3d" },
+      { "id": "t_apr_bill_44", "kind": "approval", "title": "Pay the Vercel invoice", "detail": "Due Friday; matches last month.", "action": { "label": "Approve", "path": "/approvals?id=apr_bill_44" }, "age": "6h", "money": { "amount": 240, "currency": "USD" } },
+      { "id": "t_undo_post", "kind": "undo_window", "title": "LinkedIn post goes out in 8 minutes", "detail": "Autonomous send from Social Caption Drafting — cancel if you want it held.", "action": { "label": "Hold it", "path": "/social" }, "age": "2m" },
+      { "id": "t_stale_draft", "kind": "stale_draft", "title": "A proposal draft has sat 5 days", "detail": "Proposal for Northwind is still in Drafts.", "action": { "label": "Open", "path": "/approvals?id=apr_prop_nw" }, "age": "5d", "money": { "amount": 8500, "currency": "USD" } },
+      { "id": "t_cal_1", "kind": "calendar", "title": "11:00 — first call with Amara (Northwind)", "detail": "Prospect research report is attached.", "action": { "label": "Prep", "path": "/agents/runs/run_0915_research" }, "age": null },
+      { "id": "t_awareness_bounce", "kind": "awareness", "title": "Bounce rate is 2.1% this week", "detail": "Under the 5% pause line. No action needed.", "action": { "label": "Details", "path": "/sales/inbox" }, "age": "1d" }
+    ],
+    "overnight": [
+      { "id": "run_0916_triage", "skill_name": "Inbox Triage & Reply Classifier", "summary": "Classified 12 replies: 2 hot, 3 warm, 7 cold. Two slots offered.", "status": "running", "path": "/agents/runs/run_0916_triage" },
+      { "id": "run_0915_research", "skill_name": "Prospect Research Analysis", "summary": "Failed on the LinkedIn connector timeout; retry queued.", "status": "failed", "path": "/agents/runs/run_0915_research" },
+      { "id": "run_0916_deep", "skill_name": "Deep Research", "summary": "Filed notes/research/ai-ops-market.md with 9 sources.", "status": "succeeded", "path": "/agents/runs/run_0916_deep" }
+    ],
+    "one_more_question": {
+      "question": "What makes you different from the obvious alternative? (or say skip)",
+      "path": "offer/offer.md",
+      "section": "differentiators"
+    }
+  }
+}

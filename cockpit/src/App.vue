@@ -280,6 +280,10 @@ import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
 import { useExpensesStore } from './stores/expenses.js'
 import { useApStore } from './stores/ap.js'
+import { useSkillsStore } from './stores/skills.js'
+import { useBrainStore } from './stores/brain.js'
+import { useRunsStore } from './stores/runs.js'
+import { useMapStore } from './stores/map.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -292,6 +296,10 @@ const tracesStore = useTracesStore()
 const atlasStore = useAtlasStore()
 const expensesStore = useExpensesStore()
 const apStore = useApStore()
+const skillsStore = useSkillsStore()
+const brainStore = useBrainStore()
+const runsStore = useRunsStore()
+const mapStore = useMapStore()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -337,6 +345,12 @@ const ic = {
   storefront: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10v11h16V10M3 6l1.5-3h15L21 6a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-6 0zM9 21v-6h6v6"/></svg>',
   pie:      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.05A9 9 0 1020.95 13H11V3.05z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 3.5A9.01 9.01 0 0120.5 9H15V3.5z"/></svg>',
   ledger:   '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20V4a1 1 0 00-1-1H6.5A2.5 2.5 0 004 5.5v14z"/><path stroke-linecap="round" d="M4 19.5A2.5 2.5 0 006.5 22H20v-5M9 7h6m-6 4h6"/></svg>',
+  skills:   '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5zM19 15l.8 1.7 1.7.8-1.7.8L19 20l-.8-1.7-1.7-.8 1.7-.8L19 15z"/></svg>',
+  map:      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><circle cx="4.5" cy="6" r="1.5"/><circle cx="19.5" cy="6" r="1.5"/><circle cx="4.5" cy="18" r="1.5"/><circle cx="19.5" cy="18" r="1.5"/><path stroke-linecap="round" d="M10 10.5L6 7.2M14 10.5l4-3.3M10 13.5L6 16.8M14 13.5l4 3.3"/></svg>',
+  systems:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path stroke-linecap="round" d="M7 7h.01M7 17h.01"/></svg>',
+  brain:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16M9 4a3 3 0 00-3 3 3 3 0 00-2 3.5A3 3 0 005 15a3 3 0 003 4h4V4H9zM15 4a3 3 0 013 3 3 3 0 012 3.5A3 3 0 0119 15a3 3 0 01-3 4h-4V4h3z"/></svg>',
+  runs:     '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h10M4 12h6M4 18h8"/><path stroke-linejoin="round" d="M15 10l5 3-5 3v-6z"/></svg>',
+  godseye:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
 }
 
 // Grouped nav
@@ -344,6 +358,9 @@ const userNav = {
   label: 'Operate', items: [
     { key: 'dashboard', name: 'Dashboard', path: '/', exact: true, icon: ic.dashboard },
     { key: 'atlas', name: 'Atlas', path: '/atlas', icon: ic.atlas, badge: null },
+    { key: 'map', name: 'Business map', path: '/map', icon: ic.map },
+    { key: 'systems', name: 'Systems', path: '/operate/systems', icon: ic.systems },
+    { key: 'brain', name: 'Brain', path: '/brain', icon: ic.brain },
     { key: 'first-win', name: 'First win', path: '/operate/first-win', icon: ic.firstwin },
     { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
@@ -369,7 +386,8 @@ const spendNav = {
 }
 const buildNav = {
   label: 'Build', items: [
-    { key: 'agents', name: 'Agents', path: '/agents', icon: ic.agents },
+    { key: 'skills', name: 'Skills', path: '/skills', icon: ic.skills },
+    { key: 'agents', name: 'Agents', path: '/agents', icon: ic.agents, adminOnly: true },
     { key: 'flows', name: 'Flows', path: '/flows', icon: ic.flows },
     { key: 'memory', name: 'Memory', path: '/memory', icon: ic.memory },
     { key: 'feature-packs', name: 'Feature packs', path: '/feature-packs', icon: ic.packs },
@@ -381,6 +399,8 @@ const observeNav = {
     { key: 'outcomes', name: 'Weekly review', path: '/outcomes', icon: ic.outcomes },
     { key: 'usage', name: 'Usage', path: '/usage', icon: ic.usage },
     { key: 'intelligence', name: 'Intelligence', path: '/intelligence', icon: ic.intel },
+    { key: 'agent-runs', name: 'Agent runs', path: '/agents/runs', icon: ic.runs },
+    { key: 'gods-eye', name: "God's Eye", path: '/gods-eye', icon: ic.godseye },
   ],
 }
 const tenantNav = {
@@ -442,11 +462,15 @@ const visibleNavigation = computed(() => {
     if (currentWorkspace.value === '/admin') return adminNav
     return [userNav, packsNav, spendNav, buildNav, observeNav, enterpriseNav, tenantNav]
   })()
-  // Per-item capability filtering — items without a capability always show.
+  // Per-item filtering — items without a capability always show; items
+  // flagged adminOnly are hidden from plain users (the route itself stays
+  // reachable so deep links keep working).
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((i) => !i.capability || authStore.has(i.capability)),
+      items: group.items.filter(
+        (i) => (!i.capability || authStore.has(i.capability)) && (!i.adminOnly || authStore.isAdmin),
+      ),
     }))
     .filter((group) => group.items.length)
 })
@@ -470,7 +494,15 @@ const autoPillClass = computed(() => {
   return 'sn-pill'
 })
 
-const { isConnected: wsConnected } = useWebSocket(authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore)
+// Slice 0+ stores ride in the trailing `extras` bag:
+//   .skill.updated / .skill.run.updated → skillsStore
+//   .brain.file.updated                 → brainStore
+//   .agent_run.updated / .tool.invoked  → agentRunsStore
+//   .map.node.updated                   → mapStore
+const { isConnected: wsConnected } = useWebSocket(
+  authStore, agentsStore, flowsStore, usageStore, approvalsStore, tracesStore, atlasStore, expensesStore, apStore,
+  { skillsStore, brainStore, agentRunsStore: runsStore, mapStore },
+)
 
 function openCommandBar() {
   cmdBarRef.value?.open?.()
@@ -489,12 +521,22 @@ function switchTo(r) {
 const userMenuItems = [
   { key: 'settings', path: '/settings', label: 'Settings' },
   { key: 'automation', path: '/settings/automation-level', label: 'Automation Level' },
+  { key: 'voice', path: '/settings/voice', label: 'Atlas voice' },
   { key: 'usage', path: '/usage', label: 'Usage' },
   { key: 'billing', path: '/billing', label: 'Billing' },
 ]
 
 const BREADCRUMB_MAP = {
   '/atlas': ['Atlas'],
+  '/skills': ['Skills'],
+  '/map': ['Business map'],
+  '/operate/systems': ['Systems'],
+  '/brain': ['Brain'],
+  '/settings/voice': ['Settings', 'Atlas voice'],
+  '/agents/runs': ['Agents', 'Runs'],
+  '/gods-eye': ["God's Eye"],
+  '/board': ['Board room'],
+  '/social': ['Social posts'],
   '/agents': ['Agents'],
   '/agents/new': ['Agents', 'New'],
   '/agents/builder': ['Agents', 'Builder'],

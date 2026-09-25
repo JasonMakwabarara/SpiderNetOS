@@ -1,0 +1,529 @@
+# SpiderNetOS — Knowledge brain manifest (plan D2, ADR-0002)
+#
+# Declares the canonical layout of a tenant's Knowledge brain: every path
+# (or folder pattern) the runtime knows about, the sections a file must
+# contain to count as "ready", the question Atlas asks when a section is
+# missing or too short, which discovery-interview answer fills it
+# (`interview_question_id` → packages/feature-packs/sales-crm/interview/
+# questions.yaml), when it goes stale, and how sensitive it is.
+#
+# Read by:  App\Services\Brain\BrainManifest (paths, sections, keys)
+#           App\Services\Brain\BrainGapAnalyzer (missing / short / stale → question)
+#           App\Services\Brain\BrainSyncService (which DB context projects where)
+#           SkillRegistry (card `brain.requires` keys resolve to path#section)
+#           the cockpit BrainReadiness component (✓ / ◐ / ○ per required section)
+#
+# Rules
+#   - Prose in the file body is the agents' source of truth. Structured facts
+#     stay in their tables and are projected into frontmatter.
+#   - `<!-- managed -->` blocks are owned by BrainSyncService; human prose
+#     outside them is never overwritten.
+#   - `data_class`: public | internal | confidential | personal. EgressGuard
+#     (D8 #7) refuses to sync confidential/personal files to Hannah AI,
+#     social or ZetKai. `personal` files are visible only to the tenant's
+#     own users and never enter cross-tenant learning pools.
+#   - `min_chars` is measured on the section body (frontmatter excluded).
+#   - `stale_after_days: null` = never stale.
+
+version: 1
+
+folders:
+  business:   { title: "Business",         order: 10 }
+  offer:      { title: "Offer",            order: 20 }
+  customers:  { title: "Customers",        order: 30 }
+  brand:      { title: "Brand",            order: 40 }
+  marketing:  { title: "Marketing",        order: 45 }
+  processes:  { title: "Processes",        order: 50 }
+  programs:   { title: "Programs",         order: 60 }
+  finance:    { title: "Finance",          order: 70 }
+  market:     { title: "Market",           order: 80 }
+  people:     { title: "People",           order: 90 }
+  notes:      { title: "Notes",            order: 100 }
+  reports:    { title: "Reports",          order: 110 }
+  workspaces: { title: "Agent workspaces", order: 120, agent_private: true }
+
+# Short keys used by skill cards (`brain.requires[].key` / `brain.reads[]`)
+# resolve to `path#section`.
+keys:
+  business.profile:      business/profile.md#What we do
+  business.differentiator: business/profile.md#What makes us different
+  business.alignment:    business/alignment.md
+  offer.products:        offer/offer.md#Products and services
+  offer.pricing:         offer/offer.md#Pricing
+  offer.proof:           offer/offer.md#Proof
+  offer.approved_sequences: offer/approved-sequences.md
+  offer.changelog:       offer/changelog.md#Changes
+  customers.icp:         customers/icp.md#Who we sell to
+  customers.disqualifiers: customers/icp.md#Who we do not sell to
+  customers.objections:  customers/objections.md#Objections and answers
+  voice.tone:            brand/voice.md#Tone
+  voice.do_dont:         brand/voice.md#Do and don't
+  brand.identity:        brand/identity.md
+  marketing.social_posts: marketing/social/posts.md#Posts
+  processes.follow_ups:  processes/follow-ups.md
+  programs.affiliate:    programs/affiliate.md
+  finance.assumptions:   finance/assumptions.yaml
+  finance.summary:       finance/summary.md
+  market.comparables:    market/comparables.md
+  people.user:           people/user.md
+  people.user.calendar:  people/user.md#Calendar and meetings
+  people.user.never_say: people/user.md#Never say or offer
+  people.team:           people/team/<slug>.md
+
+paths:
+
+  # ---------------------------------------------------------------- business
+  - path: business/profile.md
+    title: "Business profile"
+    data_class: internal
+    source: projection          # BrainSyncService from tenant_business_profiles
+    stale_after_days: 180
+    frontmatter: [name, legal_operator, website, industry, employee_count_band, founded]
+    sections:
+      - name: "What we do"
+        required: true
+        min_chars: 80
+        question: "What is your company and what do you do, in one line?"
+        interview_question_id: core_offer
+      - name: "What makes us different"
+        required: true
+        min_chars: 80
+        question: "What makes you different from the obvious alternative a customer would consider?"
+        interview_question_id: null
+      - name: "Where we are today"
+        required: false
+        min_chars: 60
+        question: "Roughly how big is the business today — team, customers, revenue band?"
+        interview_question_id: team_size
+
+  - path: business/alignment.md
+    title: "Alignment — origin, mission, vision"
+    data_class: internal
+    source: projection          # tenant_alignment_profiles
+    stale_after_days: 365
+    sections:
+      - name: "Origin"
+        required: true
+        min_chars: 60
+        question: "In a sentence or two, why did you start this business?"
+        interview_question_id: origin_story
+      - name: "Mission"
+        required: true
+        min_chars: 40
+        question: "What's the one thing your business must get right, every single day, for customers?"
+        interview_question_id: mission
+      - name: "Vision"
+        required: true
+        min_chars: 40
+        question: "Where do you want this business to be in 3 years?"
+        interview_question_id: vision
+      - name: "90-day target"
+        required: true
+        min_chars: 20
+        question: "What's the single most important result you want in the next 90 days? Give me a number."
+        interview_question_id: ninety_day_target
+
+  # ------------------------------------------------------------------- offer
+  - path: offer/offer.md
+    title: "Offer"
+    data_class: internal
+    source: projection          # funnel_setups.interview_answers + sales_scripts
+    stale_after_days: 120
+    frontmatter: [pricing, proof_points, links, products]
+    sections:
+      - name: "Products and services"
+        required: true
+        min_chars: 80
+        question: "Which products or services should this sell, and to whom?"
+        interview_question_id: core_offer
+      - name: "Pricing"
+        required: true
+        min_chars: 30
+        question: "How is it priced — one-time, subscription, or custom quote? Roughly what range?"
+        interview_question_id: pricing_model
+      - name: "Proof"
+        required: true
+        min_chars: 60
+        question: "What proof can I show that it works — a result, a review, a case study?"
+        interview_question_id: proof_points
+      - name: "Differentiators"
+        required: false
+        min_chars: 60
+        question: "What does the customer get from you that they cannot get elsewhere?"
+        interview_question_id: null
+
+  - path: offer/approved-sequences.md
+    title: "Approved sequences"
+    data_class: internal
+    source: projection          # approved draft_sequence artifacts (ArtifactApplier)
+    stale_after_days: null
+    managed: true
+    sections:
+      - name: "Sequences"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
+  - path: offer/changelog.md
+    title: "What changed in the offer"
+    data_class: internal
+    source: human                 # the owner logs product changes; agents read, never write
+    stale_after_days: null
+    sections:
+      - name: "Changes"
+        required: false
+        min_chars: 0
+        question: "What has changed in what you sell recently \u2014 a new feature, a price, a policy?"
+        interview_question_id: null
+
+  # --------------------------------------------------------------- customers
+  - path: customers/icp.md
+    title: "Ideal customer profile"
+    data_class: internal
+    source: projection          # funnel_setups.interview_answers
+    stale_after_days: 180
+    frontmatter: [segments, firmographics, triggers]
+    sections:
+      - name: "Who we sell to"
+        required: true
+        min_chars: 100
+        question: "Describe your best customer — who are they, and what problem were they trying to solve?"
+        interview_question_id: ideal_customer
+      - name: "Who we do not sell to"
+        required: true
+        min_chars: 40
+        question: "Who is NOT a good fit for what you offer?"
+        interview_question_id: disqualifiers
+      - name: "Buying triggers"
+        required: false
+        min_chars: 40
+        question: "What usually happens in a customer's world right before they come looking for you?"
+        interview_question_id: null
+
+  - path: customers/objections.md
+    title: "Objections"
+    data_class: internal
+    source: projection          # funnel_setups.interview_answers + sales_scripts
+    stale_after_days: 180
+    sections:
+      - name: "Objections and answers"
+        required: true
+        min_chars: 80
+        question: "What are the three push-backs you hear most, and how do you answer each?"
+        interview_question_id: common_objection
+      - name: "Signals to stop selling"
+        required: false
+        min_chars: 40
+        question: "What does a buyer say or do that tells you they are ready — so we stop selling and book?"
+        interview_question_id: null
+
+  # ------------------------------------------------------------------- brand
+  - path: brand/voice.md
+    title: "Brand voice"
+    data_class: internal
+    source: projection          # interview preferred_tone (never used before) + human prose
+    stale_after_days: 365
+    frontmatter: [brand, legal_operator, website, tagline, one_liner, industry, tone, palette, fonts, segments, logo]
+    sections:
+      - name: "Tone"
+        required: true
+        min_chars: 60
+        question: "How should we sound — formal and professional, warm and casual, or something else? Give me two adjectives and one brand you admire."
+        interview_question_id: preferred_tone
+      - name: "Do and don't"
+        required: true
+        min_chars: 60
+        question: "What must our writing never sound like, and what words or claims are off-limits?"
+        interview_question_id: null
+      - name: "Voice"
+        required: false
+        min_chars: 80
+        question: "Paste two or three sentences you have written that sound exactly like you."
+        interview_question_id: null
+
+  - path: brand/identity.md
+    title: "Brand identity"
+    data_class: public
+    source: human
+    stale_after_days: 365
+    frontmatter: [logo, palette, fonts, tagline]
+    sections:
+      - name: "Identity"
+        required: false
+        min_chars: 40
+        question: "Do you have a logo, colours and fonts we should keep to? Paste links or hex codes."
+        interview_question_id: null
+
+  # --------------------------------------------------------------- processes
+  # --------------------------------------------------------------- marketing
+  - path: marketing/social/posts.md
+    title: "Published posts"
+    data_class: internal
+    source: projection            # approved caption artifacts + the social connector
+    stale_after_days: null
+    managed: true
+    sections:
+      - name: "Posts"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
+  - path: marketing/newsletter/subscribers.md
+    title: "Newsletter list"
+    data_class: confidential
+    source: projection            # consent_records channel `newsletter`; counts only, never addresses
+    stale_after_days: null
+    managed: true
+    sections:
+      - name: "Consent"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
+  - path: processes/<slug>.md
+    pattern: true
+    title: "Process"
+    data_class: internal
+    source: projection          # business_processes / sops (BrainSyncService)
+    stale_after_days: 180
+    frontmatter: [process_id, owner_type, owner_ref, skill_slug, automation_level]
+    sections:
+      - name: "Steps"
+        required: true
+        min_chars: 60
+        question: "Walk me through this process step by step, as you would to a new hire."
+        interview_question_id: null
+      - name: "Owner and hand-offs"
+        required: false
+        min_chars: 20
+        question: "Who owns this today, and where does it hand off to someone (or something) else?"
+        interview_question_id: null
+
+  - path: processes/follow-ups.md
+    title: "Follow-up rules"
+    data_class: internal
+    source: human
+    stale_after_days: 180
+    sections:
+      - name: "Cadence"
+        required: true
+        min_chars: 40
+        question: "After a first message with no reply, when should we follow up, how many times, and when do we stop?"
+        interview_question_id: response_ownership
+      - name: "Escalation"
+        required: false
+        min_chars: 40
+        question: "Which replies must always come straight to you, untouched — complaints, pricing, legal, refunds?"
+        interview_question_id: null
+
+  # ---------------------------------------------------------------- programs
+  - path: programs/affiliate.md
+    title: "Affiliate / partner program"
+    data_class: internal
+    source: projection          # OutreachSettings FACTS (tenants.settings.outreach.program)
+    stale_after_days: 90
+    managed: true
+    frontmatter: [join_url, commission, cookie_days, payout, postal_address, portal_subdomain]
+    sections:
+      - name: "Facts"
+        required: true
+        min_chars: 40
+        question: "What does a partner earn, how are they paid, and where do they sign up?"
+        interview_question_id: null
+      - name: "Who we want"
+        required: false
+        min_chars: 40
+        question: "Which kind of creator or partner is a great fit, and who should we never recruit?"
+        interview_question_id: null
+
+  # ----------------------------------------------------------------- finance
+  - path: finance/assumptions.yaml
+    title: "Financial assumptions"
+    data_class: confidential
+    source: human
+    format: yaml
+    stale_after_days: 90
+    sections:
+      - name: "assumptions"
+        required: true
+        min_chars: 20
+        question: "What is your bank balance today, your fixed monthly costs, and your base currency?"
+        interview_question_id: null
+
+  - path: finance/summary.md
+    title: "Finance summary"
+    data_class: confidential
+    source: projection          # ForecastService / finance_model.py (numbers only from the model)
+    stale_after_days: 14
+    managed: true
+    frontmatter: [base_currency, cash, runway_weeks, mrr, model_version]
+    sections:
+      - name: "Summary"
+        required: false
+        min_chars: 0
+        question: null
+        interview_question_id: null
+
+  # ------------------------------------------------------------------ market
+  - path: market/comparables.md
+    title: "Market comparables"
+    data_class: internal
+    source: agent               # prism / deep-research; every claim cited
+    stale_after_days: 60
+    sections:
+      - name: "Comparables"
+        required: false
+        min_chars: 80
+        question: "Who are the three alternatives a customer weighs you against, and what do they charge?"
+        interview_question_id: null
+
+  # ------------------------------------------------------------------ people
+  # The brain learns the people, especially the user. Filled three ways: the
+  # onboarding/launch interview, "remember this" in Atlas chat (auto-approved
+  # for the user's own file) and inferred proposals from behaviour that the
+  # weekly DistilCorrectionsJob files for approval.
+  - path: people/user.md
+    title: "The user"
+    data_class: personal
+    source: human               # projected seed from users + alignment; the user owns the prose
+    stale_after_days: 90
+    per_user: true              # one file per tenant user; `people/user.md` resolves to the current user's
+    frontmatter: [name, role, businesses, timezone, calendar_link, preferred_channel, quiet_hours, meeting_types]
+    sections:
+      - name: "Who I am"
+        required: true
+        min_chars: 40
+        question: "Tell me about you — your name as you like it, your role, and the businesses you run."
+        interview_question_id: null
+      - name: "Goals"
+        required: true
+        min_chars: 40
+        question: "What are you personally trying to achieve this year, beyond the business targets?"
+        interview_question_id: ninety_day_target
+      - name: "Working rhythm"
+        required: true
+        min_chars: 40
+        question: "When do you work, in which time zone, and when must I never interrupt you?"
+        interview_question_id: null
+      - name: "How to reach me"
+        required: true
+        min_chars: 20
+        question: "Which channel do you actually answer — WhatsApp, email, the cockpit — and which do you ignore?"
+        interview_question_id: response_ownership
+      - name: "How I decide"
+        required: false
+        min_chars: 40
+        question: "When I bring you a decision, what do you want first — the numbers, the options, or the recommendation?"
+        interview_question_id: null
+      - name: "Standing preferences"
+        required: false
+        min_chars: 0
+        question: "Is there anything you always want done a certain way? ('Always show me the numbers first.')"
+        interview_question_id: null
+      - name: "What I always edit"
+        required: false
+        min_chars: 0
+        question: null           # inferred from the edit ledger (D8 #1); never asked
+        interview_question_id: null
+        inferred: true
+      - name: "Never say or offer"
+        required: true
+        min_chars: 20
+        question: "What must never be said or offered in writing under your name — discounts, guarantees, comparisons, anything?"
+        interview_question_id: null
+      - name: "Calendar and meetings"
+        required: false
+        min_chars: 20
+        question: "What is your booking link, and how long is a first call?"
+        interview_question_id: null
+
+  - path: people/team/<slug>.md
+    pattern: true
+    title: "Team member"
+    data_class: personal
+    source: human
+    stale_after_days: 180
+    frontmatter: [name, role, email, phone, timezone, owns_processes, owns_pillars, delegation_ceiling_usd]
+    sections:
+      - name: "Role"
+        required: true
+        min_chars: 20
+        question: "What does this person own, and what should never land on their desk?"
+        interview_question_id: null
+      - name: "Delegation"
+        required: false
+        min_chars: 20
+        question: "What can they approve on their own, and above what amount or risk does it come to you?"
+        interview_question_id: null
+
+  # ------------------------------------------------------------------- notes
+  - path: notes/**
+    pattern: true
+    title: "Notes"
+    data_class: internal
+    source: human
+    stale_after_days: null
+    sections: []
+
+  - path: notes/research/**
+    pattern: true
+    title: "Research"
+    data_class: internal
+    source: agent               # Research toggle → deep-research files here, for approval
+    stale_after_days: 90
+    frontmatter: [sources, run_id, confidence]
+    sections: []
+
+  - path: notes/zetkai/**
+    pattern: true
+    title: "ZetKai notes"
+    data_class: personal
+    source: projection          # ZetKaiSyncJob, text only, local_only never leaves the device
+    stale_after_days: null
+    sections: []
+
+  # ----------------------------------------------------------------- reports
+  - path: reports/**
+    pattern: true
+    title: "Reports"
+    data_class: confidential
+    source: agent               # daily brief, weekly Monday letter, board sessions, newsletters
+    stale_after_days: null
+    sections: []
+
+  # -------------------------------------------------------------- workspaces
+  # Agent-private (plan D3): each identity's scratch — working memory and
+  # notes — exposed read-only in the brain tree. Never required, never asked
+  # about, never synced anywhere, excluded from Atlas's BRAIN block unless the
+  # user opens the workspace.
+  - path: workspaces/<agent>/scratch/**
+    pattern: true
+    title: "Agent scratch"
+    data_class: internal
+    source: agent
+    agent_private: true
+    stale_after_days: null
+    sections: []
+
+  - path: workspaces/<agent>/drafts/**
+    pattern: true
+    title: "Agent drafts"
+    data_class: internal
+    source: agent               # mirrors agent_artifacts for the workspace view
+    agent_private: true
+    stale_after_days: null
+    sections: []
+
+# Files (in order) whose required sections must be ready before the first
+# Sales slice can run; the launch interview and BrainGapAnalyzer ask in this
+# order. Skill cards narrow this with their own `brain.requires`.
+readiness_order:
+  - business/profile.md
+  - offer/offer.md
+  - brand/voice.md
+  - customers/icp.md
+  - customers/objections.md
+  - people/user.md

@@ -1,0 +1,255 @@
+# ICP Definition — Sales · Who we sell to (plan D5 roster: funnel_architect → Hannah)
+# An interview that writes customers/icp.md — the file scoring, research and outreach all read.
+
+id: icp-definition
+display_name: "ICP Definition"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › Who we sell to"
+core_agent: hannah
+runs_on: funnel_architect
+pack_id: sales-crm
+
+intent_keywords:
+  - ideal customer
+  - icp
+  - who we sell to
+  - target customer
+  - best customer
+  - who is a good fit
+  - who not to sell to
+  - customer profile
+  - define my customer
+
+at_a_glance: >-
+  A short interview that writes customers/icp.md — who you sell to, who you do not, and the
+  triggers that bring them to you — in your words, so lead scoring, prospect research and
+  every outreach draft aim at the same customer. Saved only after you read it back.
+
+covers: >-
+  Sales › Who we sell to — the centre of the target every sales skill aims at.
+
+breaks_into:
+  - name: "Best-customer Interview"
+    does: "Who would you clone, what problem were they solving, what did they say when they bought — one question at a time."
+  - name: "Disqualifier Extractor"
+    does: "Who is not a fit, stated plainly so research disqualifies first and outreach never writes to them."
+  - name: "Trigger Finder"
+    does: "What happens in a customer's world right before they come looking — the events that make now the moment."
+  - name: "Segment Namer"
+    does: "One to three named segments with firmographics, so campaigns and research can be scoped."
+
+builds_on:
+  - name: "Business profile"
+    ref: "brain:business/profile.md#What we do"
+    why: "The ICP follows from what the business actually does."
+  - name: "Offer"
+    ref: "brain:offer/offer.md#Products and services"
+    why: "Different products can have different best customers."
+  - name: "Discovery interview answers"
+    ref: "brain:customers/icp.md#Who we sell to"
+    why: "ideal_customer and disqualifiers from the sales-crm interview seed the first draft."
+  - name: "Quality time, quality people"
+    ref: "principle:quality-time-quality-people"
+  - name: "Fast disqualification"
+    ref: "principle:fast-disqualification"
+
+replaces:
+  - what: "A positioning workshop"
+    cost: "$3–8k"
+    kind: retainer
+  - what: "A day of the founder's time writing a persona deck nobody uses"
+    cost: "1 founder-day"
+    kind: time
+  - what: "The ICP that never got written, so every list is everyone"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted]
+  stage_copy:
+    human_led:
+      summary: "You answer; it writes the file; you read it back and save."
+      your_role: "Answer five short questions about your best customer and your worst fit. Read the draft back and save it — it is the target every sales skill aims at."
+      atlas_role: "Funnel Architect (Hannah) asks one question at a time, quotes your answers back, drafts customers/icp.md and stops until you approve."
+      default: true
+    assisted:
+      summary: "Drift proposals from won/lost data and corrected fit scores; you approve each."
+      your_role: "Approve or reject the occasional proposed edit ('three of your last five wins were two-site cafés — add that?')."
+      atlas_role: "Watches won/lost outcomes and the research reports you corrected, proposes ICP edits as brain proposals for approval."
+    autonomous:
+      summary: "Not offered: the ICP is always the owner's."
+      your_role: "Not offered. The ICP file changes only when you approve the change."
+      atlas_role: "Not offered for this skill; who we sell to is never edited without the owner reading the change."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+
+brain:
+  requires:
+    - key: business.profile
+      path: business/profile.md
+      sections: ["What we do"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+  reads:
+    - customers/icp.md
+    - customers/objections.md
+    - market/comparables.md
+    - notes/research/**
+  writes:
+    - customers/icp.md
+
+hands_off_to:
+  - type: skill
+    slug: prospect-research-analysis
+    name: "Prospect Research Analysis"
+    when: "The ICP exists — fit scores mean something now."
+  - type: skill
+    slug: cold-email-drafting
+    name: "Cold Email Drafting"
+    when: "Voice and ICP are ready — the first sequence can be drafted per segment."
+  - type: skill
+    slug: lead-scoring-routing
+    name: "Lead Scoring & Routing"
+    when: "Scoring rules are derived from the segments and disqualifiers."
+
+one_step_further:
+  summary: >-
+    Beyond the file it names the segment to start with, offers to research the first five
+    prospects in it, and proposes the objections file when yours is empty.
+  allow_dynamic: false
+  steps:
+    - id: research_first_five
+      label: "Research the first five prospects in the lead segment"
+      does: "Runs Prospect Research Analysis on five prospects in the segment named first, so the first outreach has real angles."
+      skill: prospect-research-analysis
+      inputs_from:
+        segment: outputs.segments[0].name
+      when: on_approval_applied
+      risk: read
+      cost_hint_usd: 0.40
+    - id: voice_next
+      label: "Define the brand voice next"
+      does: "Runs the Brand Voice interview so Cold Email Drafting has how to sound as well as who to write to."
+      skill: brand-voice-keeper
+      when: on_approval_applied
+      risk: write
+      cost_hint_usd: 0.05
+
+inputs:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      title: "Mode"
+      enum: [interview, refresh, drift_check]
+      default: interview
+    answers:
+      type: object
+      title: "Answers"
+      description: "Answers keyed by question id (best_customer, problem_solved, disqualifiers, buying_triggers, segments) when re-POSTing after gaps."
+    evidence:
+      type: array
+      title: "Evidence"
+      description: "drift_check: fit reasons or won/lost notes that contradict the current file."
+      items: { type: string, maxLength: 300 }
+
+outputs:
+  - kind: brain_proposal
+    primary: true
+    description: "A proposed customers/icp.md (frontmatter segments + Who we sell to, Who we do not sell to, Buying triggers), applied on approval."
+    key_pattern: "customers/icp.md"
+    count: "1"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [path, frontmatter, sections, segments, read_back]
+      properties:
+        path: { type: string, enum: ["customers/icp.md"] }
+        frontmatter:
+          type: object
+          properties:
+            segments: { type: array, items: { type: string } }
+            firmographics: { type: object }
+            triggers: { type: array, items: { type: string } }
+        sections:
+          type: object
+          additionalProperties: false
+          required: ["Who we sell to", "Who we do not sell to"]
+          properties:
+            "Who we sell to": { type: string, minLength: 100, maxLength: 1500 }
+            "Who we do not sell to": { type: string, minLength: 40, maxLength: 800 }
+            "Buying triggers": { type: string, maxLength: 800 }
+        segments:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, description]
+            properties:
+              name: { type: string, minLength: 3, maxLength: 60 }
+              description: { type: string, minLength: 10, maxLength: 300 }
+              firmographics: { type: object }
+        read_back:
+          type: string
+          minLength: 20
+          maxLength: 600
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - brain.propose_update
+
+triggers:
+  - type: manual
+
+cost_budget:
+  daily_limit_usd: 0.5
+  per_run_usd: 0.08
+
+approval:
+  resource_type: brain_proposal
+  required: always
+  policy_hint: "the owner reads the file back before it is saved; no auto-apply"
+
+model:
+  heavy: false
+  temperature: 0.4
+  max_tokens: 1800
+  json_mode: true
+
+limits:
+  max_artifacts: 1
+  timeout_seconds: 90
+
+mode: single_shot
+
+run:
+  kind: interview
+  entry_path: /brain?file=customers/icp.md
+  interview: interview/questions.yaml
+  prompt: prompts/task.md
+  post_actions:
+    - brain.propose_update
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.85
+
+tags: [sales, icp, customers, interview, hannah]

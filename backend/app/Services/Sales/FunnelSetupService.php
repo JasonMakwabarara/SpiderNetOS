@@ -9,12 +9,15 @@ use App\Models\SalesScript;
 use App\Models\Tenant;
 use App\Services\ApprovalEngine;
 use App\Services\AtlasDiscoveryService;
+use App\Services\Brain\BrainSyncService;
 use App\Services\EventStore;
+use App\Services\Interviews\ArrayAnswerStore;
+use App\Services\Interviews\InterviewRunner;
+use App\Services\Interviews\ModelAnswerStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Drives the sales-crm pack's funnel_setup pipeline:
@@ -24,10 +27,17 @@ use Symfony\Component\Yaml\Yaml;
  * `funnel_setups.status` / `sales_scripts.status` are the source of truth for
  * current state (see note in SteEventMappingSeeder — pack chains only get
  * ste_transitions Markov counts, not a live per-tenant state row).
+ *
+ * The interview half (pack files, next question, record answer) now lives in
+ * App\Services\Interviews\InterviewRunner so business-launch reuses it; this
+ * service keeps its own side effects (profile absorption, brain projection).
  */
 class FunnelSetupService
 {
     private const PACK_ID = 'sales-crm';
+
+    /** Pack-file reader with no row behind it (policies, principles). */
+    private ?InterviewRunner $packRunner = null;
 
     public function __construct(
         private readonly EventStore $eventStore,
@@ -87,27 +97,7 @@ class FunnelSetupService
      */
     public function nextQuestion(FunnelSetup $setup): array
     {
-        $questions = $this->loadInterviewQuestions();
-        $sections = $questions['sections'] ?? [];
-        $answers = $setup->interview_answers ?? [];
-
-        $totalQuestions = array_sum(array_map(fn ($s) => count($s['questions'] ?? []), $sections));
-        $answeredCount = count($answers);
-
-        foreach ($sections as $section) {
-            foreach ($section['questions'] ?? [] as $question) {
-                if (! array_key_exists($question['id'], $answers)) {
-                    return [
-                        'done' => false,
-                        'section' => ['id' => $section['id'], 'title' => $section['title'] ?? $section['id']],
-                        'question' => $question,
-                        'progress_pct' => $totalQuestions > 0 ? (int) round(100 * $answeredCount / $totalQuestions) : 0,
-                    ];
-                }
-            }
-        }
-
-        return ['done' => true, 'progress_pct' => 100];
+        return $this->runner($setup)->nextQuestion();
     }
 
     /**
@@ -115,30 +105,19 @@ class FunnelSetupService
      */
     public function recordAnswer(FunnelSetup $setup, string $questionId, string $answer): FunnelSetup
     {
-        $questions = $this->loadInterviewQuestions();
-        $questionDef = $this->findQuestion($questions, $questionId);
-
-        $answers = $setup->interview_answers ?? [];
-        $answers[$questionId] = [
-            'question' => $questionDef['prompt'] ?? $questionId,
-            'answer' => $answer,
-            'answered_at' => now()->toIso8601String(),
-        ];
-
-        $currentSection = null;
-        foreach ($questions['sections'] ?? [] as $section) {
-            foreach ($section['questions'] ?? [] as $q) {
-                if ($q['id'] === $questionId) {
-                    $currentSection = $section['id'];
-                }
-            }
-        }
-
-        $setup->update(['interview_answers' => $answers, 'current_section' => $currentSection]);
+        $this->runner($setup)->recordAnswer($questionId, $answer);
 
         // Mirror generically-useful answers into the ambient business profile
         // so PackGrowthService recommendations keep learning across packs.
         $this->discovery->absorbAnswer($setup->tenant_id, $answer);
+
+        // Knowledge brain (ADR-0002 D2): project this answer into its brain
+        // sections progressively. Best-effort — never breaks the interview.
+        try {
+            app(BrainSyncService::class)->projectInterviewAnswer($setup, $questionId);
+        } catch (\Throwable $e) {
+            Log::warning('FunnelSetupService: brain projection failed', ['question_id' => $questionId, 'error' => $e->getMessage()]);
+        }
 
         return $setup->refresh();
     }
@@ -768,7 +747,7 @@ class FunnelSetupService
      */
     private function loadInterviewQuestions(): array
     {
-        return $this->loadPackFile('interview/questions.yaml') ?: ['sections' => []];
+        return $this->packRunner()->loadInterviewQuestions();
     }
 
     /**
@@ -779,25 +758,7 @@ class FunnelSetupService
      */
     private function loadPackFile(string $relativePath): array
     {
-        $path = storage_path('app/feature-packs/'.self::PACK_ID.'/'.$relativePath);
-
-        if (! is_readable($path)) {
-            $path = dirname(base_path()).'/packages/feature-packs/'.self::PACK_ID.'/'.$relativePath;
-        }
-
-        if (! is_readable($path)) {
-            return [];
-        }
-
-        try {
-            $parsed = Yaml::parseFile($path);
-        } catch (\Throwable $e) {
-            Log::warning('FunnelSetupService: unreadable pack file', ['path' => $relativePath, 'error' => $e->getMessage()]);
-
-            return [];
-        }
-
-        return is_array($parsed) ? $parsed : [];
+        return $this->packRunner()->loadPackFile($relativePath);
     }
 
     /**
@@ -805,15 +766,19 @@ class FunnelSetupService
      */
     private function findQuestion(array $questions, string $questionId): ?array
     {
-        foreach ($questions['sections'] ?? [] as $section) {
-            foreach ($section['questions'] ?? [] as $question) {
-                if ($question['id'] === $questionId) {
-                    return $question;
-                }
-            }
-        }
+        return $this->packRunner()->findQuestion($questions, $questionId);
+    }
 
-        return null;
+    /** The interview runner bound to one funnel setup's answers. */
+    private function runner(FunnelSetup $setup): InterviewRunner
+    {
+        return new InterviewRunner(self::PACK_ID, new ModelAnswerStore($setup));
+    }
+
+    /** Runner used only as a pack-file reader (no row, no answers). */
+    private function packRunner(): InterviewRunner
+    {
+        return $this->packRunner ??= new InterviewRunner(self::PACK_ID, new ArrayAnswerStore);
     }
 
     private function funnelArchitectAgentId(string $tenantId): ?string

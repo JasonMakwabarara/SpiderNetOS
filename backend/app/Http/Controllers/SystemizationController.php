@@ -11,6 +11,7 @@ use App\Models\Sop;
 use App\Services\ApprovalEngine;
 use App\Services\DagExecutionService;
 use App\Services\EventStore;
+use App\Services\Map\BusinessMapService;
 use App\Services\Systemization\ProcessRunRecorder;
 use App\Services\Systemization\SopFlowCompiler;
 use App\Services\Systemization\SopInterviewService;
@@ -89,6 +90,8 @@ class SystemizationController extends Controller
 
     /**
      * GET /api/systemization/map — the full systems map plus founder load.
+     * Each system also lists the catalogue skills mapped onto its function
+     * (`skills[]`: slug, name, pillar, node_id, enabled, stage) for the business map.
      */
     public function map(Request $request): JsonResponse
     {
@@ -102,6 +105,15 @@ class SystemizationController extends Controller
                 ->withExists(['sops as has_published_sop' => fn ($s) => $s->where('status', 'published')])])
             ->orderBy('function')
             ->get();
+
+        // Additive: a catalogue problem must never take the systems map down with it.
+        try {
+            $skillsByFunction = app(BusinessMapService::class)->skillsByFunction($tenantId);
+        } catch (\Throwable $e) {
+            report($e);
+            $skillsByFunction = [];
+        }
+        $systems->each(fn (BusinessSystem $system) => $system->setAttribute('skills', $skillsByFunction[$system->function] ?? []));
 
         $allProcesses = $systems->flatMap->processes;
         $founderOwned = $allProcesses->where('owner_type', 'founder');
