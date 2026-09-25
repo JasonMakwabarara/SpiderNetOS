@@ -37,8 +37,17 @@ class EvalRunner
     }
 
     /**
+     * Reports what happened and leaves the verdict to the caller: the command
+     * decides the exit status, which keeps the gate testable without shelling
+     * out.
+     *
+     * Coverage and correctness are reported apart. The old summary carried a
+     * single `pass_rate` over whichever cases happened to execute, which is how
+     * `0 passed, 0 failed, 9 skipped` printed as a rate and exited 0 — a rate
+     * over an empty executed set says nothing, and it read as a result.
+     *
      * @param  array{deterministic?: bool, live?: bool, model?: ?string, prompt_version?: ?string, write_report?: bool, cases_file?: ?string}  $options
-     * @return array{slug: string, mode: string, cases_file: string, model: ?string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{total: int, passed: int, failed: int, skipped: int, pass_rate: float}, report_path: ?string}
+     * @return array{slug: string, mode: string, cases_file: string, model: ?string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{declared: int, executed: int, passed: int, failed: int, skipped: int, unavailable: int, complete: bool, incomplete_reasons: list<string>}, report_path: ?string}
      */
     public function run(string $slug, array $options = []): array
     {
@@ -52,10 +61,22 @@ class EvalRunner
             $results[] = $this->runCase($slug, $case, $live, $options);
         }
 
-        $passed = count(array_filter($results, fn (array $r): bool => $r['status'] === 'passed'));
-        $failed = count(array_filter($results, fn (array $r): bool => $r['status'] === 'failed'));
-        $skipped = count($results) - $passed - $failed;
-        $scored = $passed + $failed;
+        $count = static fn (string $status): int => count(array_filter($results, fn (array $r): bool => $r['status'] === $status));
+        $declared = count($results);
+        $skipped = $count('skipped');
+        $unavailable = $count('unavailable');
+
+        // Every way the evidence falls short, named rather than folded into a rate.
+        $incomplete = [];
+        if ($declared === 0) {
+            $incomplete[] = 'no cases declared';
+        }
+        if ($skipped > 0) {
+            $incomplete[] = "{$skipped} of {$declared} case(s) did not execute";
+        }
+        if ($unavailable > 0) {
+            $incomplete[] = "{$unavailable} case(s) lacked a schema verdict or a required dependency";
+        }
 
         $report = [
             'slug' => $slug,
@@ -66,11 +87,14 @@ class EvalRunner
             'ran_at' => now()->toIso8601String(),
             'cases' => $results,
             'summary' => [
-                'total' => count($results),
-                'passed' => $passed,
-                'failed' => $failed,
+                'declared' => $declared,
+                'executed' => $declared - $skipped,
+                'passed' => $count('passed'),
+                'failed' => $count('failed'),
                 'skipped' => $skipped,
-                'pass_rate' => $scored === 0 ? 0.0 : round($passed / $scored, 4),
+                'unavailable' => $unavailable,
+                'complete' => $incomplete === [],
+                'incomplete_reasons' => $incomplete,
             ],
             'report_path' => null,
         ];
@@ -88,7 +112,12 @@ class EvalRunner
      */
     public function runCase(string $slug, EvalCase $case, bool $live, array $options = []): array
     {
-        $base = ['id' => $case->id, 'validator' => null, 'properties' => [], 'judges' => $case->judges, 'note' => null];
+        // Judges travel with the case and are not run yet. Saying so keeps a
+        // listed judgement from reading as an evaluated one.
+        $base = [
+            'id' => $case->id, 'validator' => null, 'properties' => [], 'judges' => $case->judges,
+            'judges_status' => $case->judges === [] ? 'none' : 'not_executed', 'note' => null,
+        ];
 
         if ($live) {
             try {
@@ -110,11 +139,18 @@ class EvalRunner
         $properties = $this->checker->check($case->properties, $output, $case, $validator);
 
         $validatorOk = $validator['ok'] ?? null;
-        $evaluated = $properties['evaluated'] > 0 || $validatorOk !== null;
+        $missing = self::missingDependencies($properties['results']);
+
+        // A contradiction fails the case whatever else is true. Short of one, a
+        // case is only as good as the evidence it could gather: no schema
+        // verdict, or a property that could not run for want of its input,
+        // leaves it unavailable — never passed. Before this, a case with no
+        // verdict still read `passed` whenever its properties did, because a
+        // null validator was one of two ways to count as evaluated.
         $status = match (true) {
             $properties['failed'] > 0 || $validatorOk === false => 'failed',
-            $evaluated => 'passed',
-            default => 'skipped',
+            $validatorOk === null, $missing !== [] => 'unavailable',
+            default => 'passed',
         };
 
         return [
@@ -123,8 +159,34 @@ class EvalRunner
             'properties' => $properties['results'],
             'properties_passed' => $properties['passed'],
             'output_excerpt' => mb_substr((string) $raw, 0, 400),
-            'note' => $evaluated ? null : 'nothing to evaluate',
+            'note' => match (true) {
+                $status !== 'unavailable' => null,
+                $validatorOk === null => 'no schema verdict: '.($validator['note'] ?? 'validator unavailable'),
+                default => 'missing dependency: '.implode(', ', $missing),
+            },
         ] + $base;
+    }
+
+    /**
+     * Properties that could not run because an input they need was absent,
+     * named with the reason. Status strings are left as they are — a
+     * dependency-missing property still reports `skipped` — so the case-level
+     * outcome is where the absence becomes blocking.
+     *
+     * @param  list<array<string, mixed>>  $results
+     * @return list<string>
+     */
+    private static function missingDependencies(array $results): array
+    {
+        $missing = [];
+        foreach ($results as $row) {
+            $reason = Reason::tryFrom((string) ($row['reason'] ?? ''));
+            if ($reason !== null && $reason->isDependencyMissing() && $row['status'] !== 'passed') {
+                $missing[] = $row['type'].' ('.$reason->value.')';
+            }
+        }
+
+        return $missing;
     }
 
     /**

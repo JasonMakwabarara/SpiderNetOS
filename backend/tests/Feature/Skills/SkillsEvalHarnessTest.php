@@ -8,7 +8,9 @@ use App\Services\Skills\Eval\EvalCase;
 use App\Services\Skills\Eval\EvalRunner;
 use App\Services\Skills\Eval\PropertyChecker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Yaml\Yaml;
 use Tests\TestCase;
 
 /**
@@ -25,6 +27,9 @@ class SkillsEvalHarnessTest extends TestCase
 
     private string $synthetic;
 
+    /** @var list<string> */
+    private array $written = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,6 +41,9 @@ class SkillsEvalHarnessTest extends TestCase
     protected function tearDown(): void
     {
         @unlink($this->synthetic);
+        foreach ($this->written as $path) {
+            @unlink($path);
+        }
         parent::tearDown();
     }
 
@@ -155,11 +163,17 @@ YAML;
     public function test_deterministic_replay_of_b1_cases_skips_without_stored_outputs_and_writes_a_report(): void
     {
         $report = app(EvalRunner::class)->run(self::SLUG, ['deterministic' => true]);
+        $s = $report['summary'];
 
         $this->assertSame('deterministic', $report['mode']);
-        $this->assertSame($report['summary']['total'], $report['summary']['skipped']);
-        $this->assertSame(0, $report['summary']['failed']);
-        $this->assertSame(0.0, $report['summary']['pass_rate']);
+        $this->assertSame($s['declared'], $s['skipped']);
+        $this->assertSame(0, $s['executed']);
+        $this->assertSame(0, $s['failed']);
+        // The founding defect: zero failures over zero executed cases is not a
+        // pass, and the summary must not let it read as one.
+        $this->assertFalse($s['complete']);
+        $this->assertSame(["{$s['declared']} of {$s['declared']} case(s) did not execute"], $s['incomplete_reasons']);
+        $this->assertArrayNotHasKey('pass_rate', $s);
         $this->assertSame('no expected_raw — needs --live', $report['cases'][0]['note']);
         Storage::disk('local')->assertExists($report['report_path']);
     }
@@ -168,13 +182,18 @@ YAML;
     {
         $report = app(EvalRunner::class)->run(self::SLUG, ['deterministic' => true, 'prompt_version' => '1.0.0', 'cases_file' => $this->synthetic]);
 
-        $this->assertSame(['total' => 3, 'passed' => 1, 'failed' => 1, 'skipped' => 1, 'pass_rate' => 0.5], $report['summary']);
+        $this->assertSame([
+            'declared' => 3, 'executed' => 2, 'passed' => 1, 'failed' => 1, 'skipped' => 1, 'unavailable' => 0,
+            'complete' => false, 'incomplete_reasons' => ['1 of 3 case(s) did not execute'],
+        ], $report['summary']);
 
         $good = $report['cases'][0];
         $this->assertSame('passed', $good['status'], json_encode($good, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         $this->assertTrue($good['validator']['ok'], 'SkillOutputValidator accepts the stored output: '.implode('; ', $good['validator']['errors']));
         $this->assertSame([], array_filter($good['properties'], fn (array $p) => $p['status'] === 'failed'));
         $this->assertSame(['Step 1 opens with an observation, not a greeting.'], $good['judges']);
+        // Listed, carried, and not run — which the result has to say.
+        $this->assertSame('not_executed', $good['judges_status']);
 
         $bad = $report['cases'][1];
         $this->assertSame('failed', $bad['status']);
@@ -193,7 +212,8 @@ YAML;
         Storage::disk('local')->assertExists($report['report_path']);
         $written = json_decode(Storage::disk('local')->get($report['report_path']), true);
         $this->assertSame('1.0.0', $written['prompt_version']);
-        $this->assertSame(0.5, $written['summary']['pass_rate']);
+        $this->assertSame(2, $written['summary']['executed']);
+        $this->assertFalse($written['summary']['complete']);
     }
 
     public function test_property_checker_array_form_and_string_form(): void
@@ -233,15 +253,195 @@ YAML;
         $this->assertStringContainsString('$.angle', $withValidator['results'][0]['detail']);
     }
 
-    public function test_artisan_command_prints_the_table_and_pass_rate(): void
+    public function test_artisan_command_prints_the_table_and_coverage_before_correctness(): void
     {
-        $this->artisan('skills:eval', ['slug' => self::SLUG, '--deterministic' => true, '--cases' => $this->synthetic])
-            ->expectsOutputToContain('good_sequence')
-            ->expectsOutputToContain('Pass rate: 50% (1 passed, 1 failed, 1 skipped of 3)')
-            ->assertExitCode(1);
+        // Artisan::output() rather than expectsOutputToContain: that matcher
+        // consumes one expectation per write, and a table row carries both the
+        // case id and its judge count.
+        $code = Artisan::call('skills:eval', ['slug' => self::SLUG, '--deterministic' => true, '--cases' => $this->synthetic]);
+        $out = Artisan::output();
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString('good_sequence', $out);
+        $this->assertStringContainsString('Executed 2 of 3 declared · passed 1 · failed 1 · skipped 1 · unavailable 0', $out);
+        $this->assertStringContainsString('+1 judge (not run)', $out);
+        $this->assertStringNotContainsString('Pass rate', $out);
 
         $this->artisan('skills:eval', ['slug' => 'no-such-card'])
             ->expectsOutputToContain('No eval cases')
             ->assertExitCode(1);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Required mode: success needs complete evidence, not zero failures
+    // ------------------------------------------------------------------ //
+
+    /**
+     * The real corpus has no stored outputs, so every case skips. This exited
+     * 0 until required mode existed — nine cases, nothing run, success.
+     */
+    public function test_an_all_skipped_required_suite_fails(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG])
+            ->expectsOutputToContain('Executed 0 of 9 declared')
+            ->expectsOutputToContain('Required suite incomplete: 9 of 9 case(s) did not execute')
+            ->assertExitCode(1);
+    }
+
+    /**
+     * Two ways to be empty. `cases: []` is refused by the loader. A list of
+     * entries that are not cases loads as zero cases — `loadAll()` drops
+     * non-array entries — and that reached the runner as declared 0, failed 0,
+     * which exited 0 before required mode.
+     */
+    public function test_an_empty_required_suite_fails(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $this->casesFile([])])
+            ->expectsOutputToContain('No `cases:` found')
+            ->assertExitCode(1);
+
+        $scalars = sys_get_temp_dir().'/sn-eval-'.uniqid().'.yaml';
+        file_put_contents($scalars, "cases:\n  - not a case\n  - 42\n");
+        $this->written[] = $scalars;
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $scalars])
+            ->expectsOutputToContain('Required suite incomplete: no cases declared')
+            ->assertExitCode(1);
+    }
+
+    public function test_one_skipped_case_among_passes_fails_the_required_suite(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $this->casesFile(['good_sequence', 'needs_live'])])
+            ->expectsOutputToContain('Executed 1 of 2 declared · passed 1 · failed 0 · skipped 1')
+            ->assertExitCode(1);
+    }
+
+    public function test_a_complete_valid_suite_passes(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $this->casesFile(['good_sequence'])])
+            ->expectsOutputToContain('Executed 1 of 1 declared · passed 1 · failed 0 · skipped 0 · unavailable 0')
+            ->doesntExpectOutputToContain('incomplete')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * No schema verdict is not a pass. Before this, `$validatorOk !== null`
+     * was one of two ways a case counted as evaluated, so a case whose
+     * validator could not run still read `passed` whenever its properties did.
+     */
+    public function test_a_case_without_a_schema_verdict_is_unavailable_not_passed(): void
+    {
+        // `schema_valid` is removed on purpose. With it present, the property
+        // itself reports VALIDATOR_UNAVAILABLE as a missing dependency and the
+        // case goes unavailable by that route — which hid, on the first
+        // sabotage run, that the case-level verdict check was untested. A case
+        // that never asserts `schema_valid` (as the old blocked case did not)
+        // has only the missing verdict to stop it passing.
+        $file = $this->casesFile(['good_sequence'], static function (array $case): array {
+            $case['expect']['properties'] = array_values(array_filter(
+                $case['expect']['properties'],
+                static fn (mixed $p): bool => $p !== 'schema_valid',
+            ));
+
+            return $case;
+        });
+        config(['agents.skills_root' => sys_get_temp_dir().'/sn-no-cards-'.uniqid()]);
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['cases_file' => $file, 'write_report' => false]);
+
+        $this->assertSame('unavailable', $report['cases'][0]['status']);
+        $this->assertStringStartsWith('no schema verdict:', (string) $report['cases'][0]['note']);
+        $this->assertSame(0, $report['summary']['passed']);
+        $this->assertFalse($report['summary']['complete']);
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $file])
+            ->expectsOutputToContain('unavailable 1')
+            ->assertExitCode(1);
+    }
+
+    /**
+     * A property that could not run for want of its input leaves the case
+     * unavailable. `respects_never_say` over a fixture with no never-say rules
+     * reports `skipped` — the property status is unchanged, and the case is
+     * where the absence becomes blocking.
+     */
+    public function test_a_dependency_missing_property_makes_an_otherwise_passing_case_unavailable(): void
+    {
+        $file = $this->casesFile(['good_sequence'], static function (array $case): array {
+            unset($case['fixture_brain']['people/user.md']);
+
+            return $case;
+        });
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['cases_file' => $file, 'write_report' => false]);
+        $case = $report['cases'][0];
+
+        $this->assertTrue($case['validator']['ok'], 'the output itself is still valid');
+        $this->assertSame([], array_filter($case['properties'], fn (array $p) => $p['status'] === 'failed'));
+        $this->assertSame('unavailable', $case['status']);
+        $this->assertSame('missing dependency: respects_never_say (NO_NEVER_SAY_RULES_AVAILABLE)', $case['note']);
+    }
+
+    public function test_exploratory_mode_marks_an_incomplete_run_and_still_fails_on_a_contradiction(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--allow-incomplete' => true])
+            ->expectsOutputToContain('INCOMPLETE — not a pass: 9 of 9 case(s) did not execute')
+            ->assertExitCode(0);
+
+        // Exploratory relaxes completeness only. A contradicted case is still a failure.
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--allow-incomplete' => true, '--cases' => $this->synthetic])
+            ->expectsOutputToContain('INCOMPLETE — not a pass')
+            ->assertExitCode(1);
+    }
+
+    public function test_the_json_report_names_its_mode_policy_and_completeness(): void
+    {
+        $code = Artisan::call('skills:eval', ['slug' => self::SLUG, '--json' => true]);
+        $report = json_decode(Artisan::output(), true);
+
+        $this->assertSame(1, $code);
+        $this->assertSame('required', $report['mode_policy']);
+        $this->assertFalse($report['summary']['complete']);
+        $this->assertSame(9, $report['summary']['skipped']);
+    }
+
+    /**
+     * `subjects` is evidence coverage, not scoring weight: one property over
+     * three subjects contributes one outcome. If it counted three, an output
+     * growing from three items to thirty would silently change the denominator.
+     */
+    public function test_a_property_over_many_subjects_contributes_one_outcome(): void
+    {
+        $result = (new PropertyChecker)->check(
+            [['type' => 'not_empty', 'path' => 'items[].body']],
+            ['items' => [['body' => 'a'], ['body' => 'b'], ['body' => 'c']]],
+        );
+
+        $this->assertSame(1, $result['evaluated']);
+        $this->assertSame(3, $result['results'][0]['subjects']);
+    }
+
+    /**
+     * A cases file holding only the named synthetic cases, optionally
+     * transformed. Anchors resolve on parse, so each case carries its full
+     * fixture brain.
+     *
+     * @param  list<string>  $ids
+     * @param  (callable(array<string, mixed>): array<string, mixed>)|null  $transform
+     */
+    private function casesFile(array $ids, ?callable $transform = null): string
+    {
+        $doc = Yaml::parse(self::syntheticCases());
+        $doc['cases'] = array_values(array_map(
+            static fn (array $case): array => $transform === null ? $case : $transform($case),
+            array_filter($doc['cases'], static fn (array $case): bool => in_array($case['id'], $ids, true)),
+        ));
+        unset($doc['fixtures']);
+
+        $path = sys_get_temp_dir().'/sn-eval-'.uniqid().'.yaml';
+        file_put_contents($path, Yaml::dump($doc, 12, 2));
+        $this->written[] = $path;
+
+        return $path;
     }
 }
