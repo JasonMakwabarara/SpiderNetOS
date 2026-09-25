@@ -7,12 +7,14 @@ namespace Tests\Feature\Agents;
 use App\Jobs\ResumeAgentRunJob;
 use App\Models\AgentArtifact;
 use App\Models\AgentRun;
+use App\Models\User;
 use App\Services\Agents\AgentRunResumer;
 use App\Services\Agents\Collaborators;
 use App\Services\Skills\SkillRegistry;
 use App\Services\Tools\ToolCatalogue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\Feature\Agents\Support\FakeSkillRegistry;
 use Tests\Feature\Agents\Support\FakeTool;
 
@@ -170,5 +172,26 @@ class AgenticLoopTest extends AgentsTestCase
         $run->refresh();
         $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->status);
         $this->assertNull($run->state['pending_tool_call']['decision'], 'the parked call is still undecided (parking writes decision: null)');
+    }
+
+    /**
+     * A parked tool call is an agent_tool_call approval: deciding it releases
+     * the write. The same authority applies — a member cannot release it.
+     */
+    public function test_a_member_cannot_release_a_parked_tool_call(): void
+    {
+        $this->model(['tool_calls' => [['name' => 'crm.update_stage', 'params' => ['stage' => 'qualified']]]]);
+        $run = $this->startRun(['topic' => 'stage'], null, 'agentic-note-test');
+        $approval = $this->approvals('agent_tool_call')->sole();
+        $member = User::create([
+            'name' => 'Member', 'email' => 'member@'.Str::lower(Str::random(8)).'.test', 'password' => bcrypt('pw'),
+            'tenant_id' => $this->tenant->id, 'role' => 'member', 'onboarding_completed_at' => now(),
+        ]);
+
+        $this->actingAs($member, 'sanctum')->postJson("/api/approvals/{$approval->id}/approve")->assertStatus(403);
+
+        $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->refresh()->status);
+        $this->assertSame([], $this->writeTool->calls, 'the write was not released');
+        $this->assertNull($run->state['pending_tool_call']['decision']);
     }
 }

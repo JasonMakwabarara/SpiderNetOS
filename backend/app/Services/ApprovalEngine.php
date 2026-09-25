@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\ApprovalPolicy;
 use App\Models\ApprovalPolicyStep;
 use App\Models\ApprovalStep;
+use App\Models\Event;
 use App\Models\User;
 use App\Services\Financial\PaymentService;
 use App\Services\Notifications\NotificationService;
@@ -101,6 +102,11 @@ class ApprovalEngine
     /**
      * Resolve an existing approval (grant or reject).
      *
+     * A single-stage approval is decided by decideSingleStage(), the same
+     * operation the HTTP controller uses — so who may decide, and the rule
+     * that decides only once, live in one place. What stays here is this
+     * caller's own consequence: resuming a blocked execution after a grant.
+     *
      * @param  string  $approvalId  The approval to resolve.
      * @param  string  $approverId  The user performing the approval action.
      * @param  bool  $approved  True = granted, false = rejected.
@@ -124,47 +130,9 @@ class ApprovalEngine
             return $this->resolveStep($approvalId, $approverId, $approved, $response);
         }
 
-        if ($approval->status !== 'pending') {
-            throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$approval->status}).");
-        }
+        $this->decideSingleStage((string) $approval->tenant_id, $approvalId, User::find($approverId), $approved, $response);
 
-        // Status vocabulary is canonicalized on 'approved' (the value the
-        // cockpit UI and ApprovalController already use); domain event names
-        // (approval.granted / approval.rejected) are unchanged.
-        $newStatus = $approved ? 'approved' : 'rejected';
-
-        // The check above is a fast path; this write is the decision. The
-        // expected state travels in the WHERE clause, so of two concurrent
-        // resolutions exactly one changes the row (on Postgres the other
-        // waits on the row lock, then re-reads it as resolved) — and the
-        // event commits with the decision or not at all. The same rule as
-        // ApprovalController::decide().
-        DB::transaction(function () use ($approval, $approvalId, $approverId, $approved, $newStatus, $response): void {
-            $changed = DB::table('approvals')
-                ->where('id', $approvalId)
-                ->where('status', 'pending')
-                ->whereNull('current_step')
-                ->update([
-                    'status' => $newStatus,
-                    'approver_id' => $approverId,
-                    'response' => $response,
-                    'responded_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            if ($changed !== 1) {
-                $status = DB::table('approvals')->where('id', $approvalId)->value('status');
-                throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$status}).");
-            }
-
-            $this->eventStore->append($approval->tenant_id, $approved ? 'approval.granted' : 'approval.rejected', [
-                'approval_id' => $approvalId,
-                'approver_id' => $approverId,
-                'response' => $response,
-            ]);
-        });
-
-        Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
+        Log::info('Approval '.($approved ? 'approved' : 'rejected'), compact('approvalId', 'approverId'));
 
         // If the approval was granted, attempt to resume any blocked execution.
         if ($approved) {
@@ -174,6 +142,126 @@ class ApprovalEngine
         return $this->formatApproval(
             DB::table('approvals')->where('id', $approvalId)->first()
         );
+    }
+
+    /**
+     * Decide a single-stage approval: the one operation every caller uses.
+     *
+     *   authorise the actor → transition only if still pending → record the
+     *   decision → commit → then the resource hook
+     *
+     * Who may decide. The actor must belong to the approval's tenant and hold
+     * the `approvals.decide` capability. Admins hold it through `approvals.*`;
+     * members and viewers do not, unless granted it per user. Until this, the
+     * capability was declared in User::ROLE_CAPABILITIES and checked nowhere:
+     * any signed-in user of the tenant could approve anything single-stage,
+     * including a viewer. Chains keep their own rule — each step's approver,
+     * via ApprovalStep::actableBy() — which is why this is enforced here
+     * rather than on the route: route middleware would lock out a member who
+     * is a chain step's named approver.
+     *
+     * Deciding once. The update carries `status = pending` (and no chain) in
+     * its WHERE clause, and only the request whose update changed a row goes
+     * on; on Postgres a competing update waits on the row lock and then
+     * re-reads the committed row. The decision, its event and the DAG node
+     * record commit together or not at all.
+     *
+     * The hook runs after the commit and only for the decider. It is
+     * deliberately outside the transaction: a hook can send mail, and holding
+     * the transaction would also hold the global event-sequence lock.
+     *
+     * @throws \InvalidArgumentException no such approval in this tenant
+     * @throws \DomainException the actor may not decide it
+     * @throws ApprovalAlreadyDecided it was no longer pending
+     * @throws \LogicException it is a chained approval (resolveStep)
+     */
+    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason): Event
+    {
+        $approval = DB::table('approvals')->where('id', $approvalId)->where('tenant_id', $tenantId)->first();
+        if (! $approval) {
+            throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
+        }
+        if ($approval->current_step !== null) {
+            throw new \LogicException("Approval [{$approvalId}] is a chained approval; resolve it step by step.");
+        }
+        if ($actor === null || (string) $actor->tenant_id !== $tenantId || ! $actor->can_do('approvals.decide')) {
+            throw new \DomainException('User is not authorized to decide this approval.');
+        }
+
+        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason): Event {
+            // Columns must match the actual `approvals` schema
+            // (2024_01_01_000008_create_approvals_table.php): approver_id /
+            // responded_at — NOT resolved_by / resolved_at.
+            $changed = DB::table('approvals')
+                ->where('id', $approval->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->whereNull('current_step')
+                ->update([
+                    'status' => $granted ? 'approved' : 'rejected',
+                    'approver_id' => $actor->id,
+                    'response' => $reason,
+                    'responded_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                throw new ApprovalAlreadyDecided((string) $approval->id, DB::table('approvals')->where('id', $approval->id)->value('status'));
+            }
+
+            // Hard Rule #1: All writes go through EventStore. One shape for
+            // every caller, keyed to the approval itself.
+            $event = $this->eventStore->append(
+                tenantId: $tenantId,
+                aggregateType: 'approval',
+                aggregateId: $approval->id,
+                eventType: $granted ? 'approval.granted' : 'approval.rejected',
+                payload: [
+                    'approval_id' => $approval->id,
+                    'approver_id' => $actor->id,
+                    ($granted ? 'approved_by' : 'rejected_by') => $actor->id,
+                    'reason' => $reason,
+                    'flow_execution_id' => $approval->flow_execution_id ?? null,
+                    'dag_node_id' => $approval->dag_node_id ?? null,
+                ],
+                metadata: [
+                    'user_id' => $actor->id,
+                ]
+            );
+
+            // Resume or fail the blocked DAG node, if there is one.
+            if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
+                $this->recordDagNode($tenantId, (string) $approval->flow_execution_id, (string) $approval->dag_node_id, $event->id, $granted, (string) $reason);
+            }
+
+            return $event;
+        });
+
+        $this->fireResourceHook((string) $approval->resource_type, $tenantId, (string) $approval->resource_id, $granted, (string) $reason);
+
+        return $event;
+    }
+
+    /** The blocked DAG node's transition, recorded with the decision. */
+    private function recordDagNode(string $tenantId, string $flowExecutionId, string $dagNodeId, string $approvalEventId, bool $granted, string $reason): void
+    {
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'flow_execution',
+            aggregateId: $flowExecutionId,
+            eventType: $granted ? 'dag.node.resumed' : 'dag.node.failed',
+            payload: [
+                'dag_node_id' => $dagNodeId,
+                'approval_event_id' => $approvalEventId,
+            ] + ($granted
+                ? ['resumed_at' => now()->toIso8601String()]
+                : ['reason' => $reason, 'failed_at' => now()->toIso8601String()]),
+        );
+
+        DB::table('flow_executions')
+            ->where('id', $flowExecutionId)
+            ->where('tenant_id', $tenantId)
+            ->update(['updated_at' => now()]);
     }
 
     // ------------------------------------------------------------------ //

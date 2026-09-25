@@ -511,6 +511,11 @@ class SystemizationController extends Controller
                 approved: true,
                 response: $validated['answer'],
             );
+        } catch (\DomainException $e) {
+            // Not allowed to decide it. A DomainException is also a
+            // LogicException, so without this it would be swallowed below as
+            // "already resolved" and the answer folded in regardless.
+            return response()->json(['message' => $e->getMessage()], 403);
         } catch (\LogicException) {
             // Already resolved elsewhere — still fold the answer into the SOP.
         }

@@ -31,8 +31,10 @@ Route::prefix('skills')->name('skills.')->group(function () {
     Route::get('/{slug}', [SkillsController::class, 'show'])
         ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
         ->name('show');
+    // Enabling installs a skill and grants its first autonomy rung: admin.
     Route::post('/{slug}/enable', [SkillsController::class, 'enable'])
         ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+        ->middleware('role:admin')
         ->name('enable');
     Route::put('/{slug}/pipeline', [SkillsController::class, 'pipeline'])
         ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')

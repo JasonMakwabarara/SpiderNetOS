@@ -66,6 +66,12 @@ class ArtifactController extends AgentsController
         if (in_array($artifact->status, self::FROZEN, true)) {
             return response()->json(['error' => 'artifact_frozen', 'status' => $artifact->status, 'message' => 'Resolved artifacts cannot be edited.'], 409);
         }
+        // Editing content under review changes what the approver approves,
+        // so only someone who may approve it may edit it. Drafts stay with
+        // any member.
+        if ($artifact->status === AgentArtifact::STATUS_SUBMITTED && ! $request->user()?->can_do('approvals.decide')) {
+            return response()->json(['error' => 'forbidden', 'reason' => 'approver_capability_required', 'message' => 'Only an approver may edit an artifact under review.'], 403);
+        }
 
         $meta = (array) ($artifact->meta ?? []);
         $original = (string) ($meta['original_content'] ?? $artifact->content);

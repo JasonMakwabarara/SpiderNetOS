@@ -26,9 +26,12 @@ Route::post('/agent-runs/{id}/answers', [AgentRunController::class, 'answers']);
 
 Route::get('/artifacts', [ArtifactController::class, 'index']);
 Route::get('/artifacts/{id}', [ArtifactController::class, 'show']);
-Route::patch('/artifacts/{id}', [ArtifactController::class, 'update']);
+// Viewers read; editing needs a member, and editing content under review
+// needs an approver (ArtifactController::update).
+Route::patch('/artifacts/{id}', [ArtifactController::class, 'update'])->middleware('role:member');
 Route::post('/artifacts/{id}/submit', [ArtifactController::class, 'submit']);
-Route::post('/artifacts/{id}/apply', [ArtifactController::class, 'apply']);
+// Applying makes an approved artifact real: the approver's capability.
+Route::post('/artifacts/{id}/apply', [ArtifactController::class, 'apply'])->middleware('can.do:approvals.decide');
 
 Route::get('/agent-workspaces', [AgentWorkspaceController::class, 'index']);
 Route::get('/agent-workspaces/{slug}', [AgentWorkspaceController::class, 'show']);
