@@ -47,10 +47,18 @@ class EvalRunner
      * over an empty executed set says nothing, and it read as a result.
      *
      * @param  array{deterministic?: bool, live?: bool, model?: ?string, prompt_version?: ?string, write_report?: bool, cases_file?: ?string}  $options
-     * @return array{slug: string, mode: string, cases_file: string, model: ?string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{declared: int, executed: int, passed: int, failed: int, skipped: int, unavailable: int, complete: bool, incomplete_reasons: list<string>}, report_path: ?string}
+     * @return array{slug: string, mode: string, cases_file: string, prompt_version: ?string, ran_at: string, cases: list<array<string, mixed>>, summary: array{declared: int, executed: int, passed: int, failed: int, skipped: int, unavailable: int, complete: bool, incomplete_reasons: list<string>}, report_path: ?string}
      */
     public function run(string $slug, array $options = []): array
     {
+        // A requested model is refused rather than recorded. Generation does
+        // not route by it (step 6 of the delivery order), so a report carrying
+        // it would name a model that did not run. What did run is recorded per
+        // case, from the plane's own answer.
+        if (! empty($options['model'])) {
+            throw new \RuntimeException('A model cannot be selected yet: live generation does not route by it, so the report would name a model that did not run. Each live case records the model the plane actually used.');
+        }
+
         $live = (bool) ($options['live'] ?? false);
         $mode = $live ? 'live' : 'deterministic';
         $file = ! empty($options['cases_file']) ? (string) $options['cases_file'] : $this->casesFile($slug);
@@ -75,14 +83,13 @@ class EvalRunner
             $incomplete[] = "{$skipped} of {$declared} case(s) did not execute";
         }
         if ($unavailable > 0) {
-            $incomplete[] = "{$unavailable} case(s) lacked a schema verdict or a required dependency";
+            $incomplete[] = "{$unavailable} case(s) could not gather required evidence — a schema verdict, a dependency, a judge or the generation itself";
         }
 
         $report = [
             'slug' => $slug,
             'mode' => $mode,
             'cases_file' => $file,
-            'model' => $options['model'] ?? null,
             'prompt_version' => $options['prompt_version'] ?? null,
             'ran_at' => now()->toIso8601String(),
             'cases' => $results,
@@ -112,19 +119,35 @@ class EvalRunner
      */
     public function runCase(string $slug, EvalCase $case, bool $live, array $options = []): array
     {
-        // Judges travel with the case and are not run yet. Saying so keeps a
-        // listed judgement from reading as an evaluated one.
+        // Judges are declared live-only (see EvalCase): a replayed golden
+        // output tests the contract, and a judge scores the quality of a
+        // generation. So in deterministic mode they are excluded by the mode's
+        // declared contract, and reported as such rather than as evaluated. In
+        // live mode they are required — and nothing executes them yet, so a
+        // case that declares one cannot pass there (see below).
         $base = [
             'id' => $case->id, 'validator' => null, 'properties' => [], 'judges' => $case->judges,
-            'judges_status' => $case->judges === [] ? 'none' : 'not_executed', 'note' => null,
+            'judges_status' => match (true) {
+                $case->judges === [] => 'none',
+                $live => 'not_executed',
+                default => 'not_applicable_in_mode',
+            },
+            'missing_dependencies' => [], 'generated_by' => null, 'note' => null,
         ];
 
         if ($live) {
             try {
-                $raw = $this->generate($slug, $case, $options);
+                $generation = $this->generate($slug, $case, $options);
             } catch (\Throwable $e) {
-                return ['status' => 'failed', 'note' => 'live call failed: '.$e->getMessage()] + $base;
+                // The evaluator could not obtain an output — an absence of
+                // evidence, not a contradiction, and a different fix. It still
+                // blocks: unavailable is never a pass.
+                return ['status' => 'unavailable', 'note' => 'live call failed: '.$e->getMessage()] + $base;
             }
+            $raw = $generation['text'];
+            // What actually ran, from the plane's own answer — never the model
+            // the caller asked for.
+            $base['generated_by'] = ['model' => $generation['model'], 'provider' => $generation['provider']];
         } else {
             $raw = $case->expectedRaw;
             if ($raw === null) {
@@ -141,15 +164,19 @@ class EvalRunner
         $validatorOk = $validator['ok'] ?? null;
         $missing = self::missingDependencies($properties['results']);
 
-        // A contradiction fails the case whatever else is true. Short of one, a
-        // case is only as good as the evidence it could gather: no schema
-        // verdict, or a property that could not run for want of its input,
-        // leaves it unavailable — never passed. Before this, a case with no
-        // verdict still read `passed` whenever its properties did, because a
-        // null validator was one of two ways to count as evaluated.
+        $judgesPending = $base['judges_status'] === 'not_executed';
+
+        // A contradiction fails the case whatever else is true — including a
+        // judge that never ran beside it. Short of one, a case is only as good
+        // as the evidence it could gather: no schema verdict, a property that
+        // could not run for want of its input, or a required judge that did
+        // not execute leaves it unavailable — never passed. Before this, a
+        // case with no verdict still read `passed` whenever its properties
+        // did, because a null validator was one of two ways to count as
+        // evaluated.
         $status = match (true) {
             $properties['failed'] > 0 || $validatorOk === false => 'failed',
-            $validatorOk === null, $missing !== [] => 'unavailable',
+            $validatorOk === null, $missing !== [], $judgesPending => 'unavailable',
             default => 'passed',
         };
 
@@ -158,11 +185,16 @@ class EvalRunner
             'validator' => $validator,
             'properties' => $properties['results'],
             'properties_passed' => $properties['passed'],
+            // Kept on every case, failed ones included: a contradiction and a
+            // missing input need different fixes, and the first must not hide
+            // the second.
+            'missing_dependencies' => $missing,
             'output_excerpt' => mb_substr((string) $raw, 0, 400),
             'note' => match (true) {
                 $status !== 'unavailable' => null,
                 $validatorOk === null => 'no schema verdict: '.($validator['note'] ?? 'validator unavailable'),
-                default => 'missing dependency: '.implode(', ', $missing),
+                $missing !== [] => 'missing dependency: '.implode(', ', $missing),
+                default => 'judge not executed: '.count($case->judges).' required judge(s) declared, and no judge executor exists yet',
             },
         ] + $base;
     }
@@ -296,8 +328,9 @@ class EvalRunner
      * Live mode: task prompt + fixture brain + inputs → inference plane.
      *
      * @param  array<string, mixed>  $options
+     * @return array{text: string, model: string, provider: string}
      */
-    private function generate(string $slug, EvalCase $case, array $options): string
+    private function generate(string $slug, EvalCase $case, array $options): array
     {
         $root = $this->skillsRoot()."/{$slug}";
         $task = is_file("{$root}/prompts/task.md") ? (string) file_get_contents("{$root}/prompts/task.md") : "Run the {$slug} skill.";
@@ -313,7 +346,7 @@ class EvalRunner
         $client = app(InferencePlaneClient::class);
         $result = $client->generate($prompt, null, 'growth', 0.25, 2048, false, 0.0);
 
-        return (string) $result['text'];
+        return ['text' => (string) $result['text'], 'model' => (string) $result['model'], 'provider' => (string) $result['provider']];
     }
 
     /** @param array<string, mixed> $report */

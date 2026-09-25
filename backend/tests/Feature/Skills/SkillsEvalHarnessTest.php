@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Skills;
 
+use App\Services\Inference\InferencePlaneClient;
 use App\Services\Skills\Eval\EvalCase;
 use App\Services\Skills\Eval\EvalRunner;
 use App\Services\Skills\Eval\PropertyChecker;
@@ -192,8 +193,9 @@ YAML;
         $this->assertTrue($good['validator']['ok'], 'SkillOutputValidator accepts the stored output: '.implode('; ', $good['validator']['errors']));
         $this->assertSame([], array_filter($good['properties'], fn (array $p) => $p['status'] === 'failed'));
         $this->assertSame(['Step 1 opens with an observation, not a greeting.'], $good['judges']);
-        // Listed, carried, and not run — which the result has to say.
-        $this->assertSame('not_executed', $good['judges_status']);
+        // Listed and carried, and excluded by the mode: judges are declared
+        // live-only, so a replay says so rather than reading as judged.
+        $this->assertSame('not_applicable_in_mode', $good['judges_status']);
 
         $bad = $report['cases'][1];
         $this->assertSame('failed', $bad['status']);
@@ -264,7 +266,7 @@ YAML;
         $this->assertSame(1, $code);
         $this->assertStringContainsString('good_sequence', $out);
         $this->assertStringContainsString('Executed 2 of 3 declared · passed 1 · failed 1 · skipped 1 · unavailable 0', $out);
-        $this->assertStringContainsString('+1 judge (not run)', $out);
+        $this->assertStringContainsString('+1 judge (live only)', $out);
         $this->assertStringNotContainsString('Pass rate', $out);
 
         $this->artisan('skills:eval', ['slug' => 'no-such-card'])
@@ -290,9 +292,11 @@ YAML;
 
     /**
      * Two ways to be empty. `cases: []` is refused by the loader. A list of
-     * entries that are not cases loads as zero cases — `loadAll()` drops
-     * non-array entries — and that reached the runner as declared 0, failed 0,
-     * which exited 0 before required mode.
+     * entries that are not cases used to load as zero cases — `loadAll()`
+     * dropped non-array entries — and reached the runner as declared 0. The
+     * loader now refuses those entries by index, so both shapes stop before
+     * the runner; its own `no cases declared` guard stays as the separate
+     * empty-result defence.
      */
     public function test_an_empty_required_suite_fails(): void
     {
@@ -300,12 +304,160 @@ YAML;
             ->expectsOutputToContain('No `cases:` found')
             ->assertExitCode(1);
 
-        $scalars = sys_get_temp_dir().'/sn-eval-'.uniqid().'.yaml';
-        file_put_contents($scalars, "cases:\n  - not a case\n  - 42\n");
-        $this->written[] = $scalars;
+        $scalars = $this->rawCasesFile("cases:\n  - not a case\n  - 42\n");
 
         $this->artisan('skills:eval', ['slug' => self::SLUG, '--cases' => $scalars])
-            ->expectsOutputToContain('Required suite incomplete: no cases declared')
+            ->expectsOutputToContain('cases[0]: not a case mapping (got string); cases[1]: not a case mapping (got int)')
+            ->assertExitCode(1);
+    }
+
+    /**
+     * The shape the empty-suite guard cannot see: one valid case and one
+     * malformed entry. Dropping the entry made this a complete one-case suite
+     * — the denominator shrank before the completeness check ran.
+     */
+    public function test_a_malformed_entry_beside_a_valid_case_is_a_definition_error_not_a_smaller_suite(): void
+    {
+        $doc = Yaml::parse((string) file_get_contents($this->casesFile(['good_sequence'])));
+        $doc['cases'][] = 'oops';
+        $file = $this->rawCasesFile(Yaml::dump($doc, 8, 2));
+
+        $code = Artisan::call('skills:eval', ['slug' => self::SLUG, '--cases' => $file]);
+        $out = Artisan::output();
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString("Malformed suite definition in {$file}: cases[1]: not a case mapping (got string)", $out);
+        $this->assertStringNotContainsString('Executed', $out, 'nothing ran, so nothing is reported as run');
+    }
+
+    /**
+     * Inside a case the same rule holds: a property or judge the loader cannot
+     * read would vanish from what the case claims to check. Every problem is
+     * named, with its index, in one error.
+     */
+    public function test_malformed_parts_of_a_case_are_named_not_dropped(): void
+    {
+        $file = $this->rawCasesFile(Yaml::dump(['cases' => [
+            ['id' => 'a', 'expect' => ['properties' => ['valid_json', 42], 'judge' => [['rubric' => 'x']]]],
+            ['id' => 'a', 'expect' => ['properties' => ['valid_json']]],
+            ['expect' => ['properties' => ['valid_json']]],
+            ['id' => 'b', 'fixture_brain' => ['offer/offer.md'], 'expect' => ['properties' => ['valid_json']]],
+            ['id' => 'c', 'expect' => ['properties' => ['x' => 'valid_json']]],
+            ['id' => 'd', 'expect' => 'valid_json'],
+        ]], 8, 2));
+
+        try {
+            EvalCase::loadAll($file);
+            $this->fail('a malformed suite loaded');
+        } catch (\RuntimeException $e) {
+            $message = $e->getMessage();
+        }
+
+        foreach ([
+            'cases[0]: expect.properties[1] is neither a string nor a mapping (got int)',
+            'cases[0]: expect.judge[0] must be a non-empty string',
+            'cases[1]: duplicate id "a" (first at cases[0])',
+            'cases[2]: missing a string `id`',
+            'cases[3]: fixture_brain has a key that is not a path (0)',
+            'cases[4]: `expect.properties` must be a list',
+            'cases[5]: `expect` must be a mapping (got string)',
+        ] as $expected) {
+            $this->assertStringContainsString($expected, $message);
+        }
+    }
+
+    /**
+     * A known failure stays a failure when other evidence is also missing:
+     * a contradicted case with a dependency-missing property is `failed`, and
+     * the missing input is still reported beside it. Exploratory mode relaxes
+     * completeness, never correctness.
+     */
+    public function test_a_contradiction_beside_missing_evidence_still_fails_exploratory_mode(): void
+    {
+        $file = $this->casesFile(['bad_sequence'], static function (array $case): array {
+            unset($case['fixture_brain']['people/user.md']);
+
+            return $case;
+        });
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['cases_file' => $file, 'write_report' => false]);
+        $this->assertSame('failed', $report['cases'][0]['status']);
+        $this->assertSame(['respects_never_say (NO_NEVER_SAY_RULES_AVAILABLE)'], $report['cases'][0]['missing_dependencies']);
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--allow-incomplete' => true, '--cases' => $file])
+            ->assertExitCode(1);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Judges: excluded by the deterministic contract, required when live
+    // ------------------------------------------------------------------ //
+
+    /**
+     * Live mode requires the judges a case declares, and nothing executes
+     * them yet. So a case whose properties and schema all pass is still
+     * unavailable — the listed judgement must not read as a judged one.
+     */
+    public function test_an_unexecuted_judge_leaves_a_live_case_unavailable(): void
+    {
+        $this->fakeGeneration(self::storedOutput('good_sequence'));
+        $file = $this->casesFile(['good_sequence']);
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['live' => true, 'cases_file' => $file, 'write_report' => false]);
+        $case = $report['cases'][0];
+
+        $this->assertTrue($case['validator']['ok']);
+        $this->assertSame([], array_filter($case['properties'], fn (array $p) => $p['status'] !== 'passed'));
+        $this->assertSame('not_executed', $case['judges_status']);
+        $this->assertSame('unavailable', $case['status']);
+        $this->assertStringStartsWith('judge not executed: 1 required judge(s)', (string) $case['note']);
+        $this->assertSame(['model' => 'fake-model-that-ran', 'provider' => 'fake'], $case['generated_by']);
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--live' => true, '--cases' => $file])->assertExitCode(1);
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--live' => true, '--allow-incomplete' => true, '--cases' => $file])
+            ->expectsOutputToContain('INCOMPLETE — not a pass')
+            ->assertExitCode(0);
+    }
+
+    /** The reviewer's example: a banned phrase beside a judge that never ran. */
+    public function test_a_contradiction_beside_an_unexecuted_judge_still_fails(): void
+    {
+        $this->fakeGeneration(self::storedOutput('bad_sequence'));
+        $file = $this->casesFile(['bad_sequence'], static function (array $case): array {
+            $case['expect']['judge'] = ['The close is not pushy.'];
+
+            return $case;
+        });
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['live' => true, 'cases_file' => $file, 'write_report' => false]);
+        $this->assertSame('failed', $report['cases'][0]['status']);
+        $this->assertSame('not_executed', $report['cases'][0]['judges_status']);
+
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--live' => true, '--allow-incomplete' => true, '--cases' => $file])
+            ->assertExitCode(1);
+    }
+
+    /** No output to judge is missing evidence, not a contradiction — and still blocks. */
+    public function test_a_failed_live_call_is_unavailable_not_failed(): void
+    {
+        $this->mock(InferencePlaneClient::class, function ($mock): void {
+            $mock->shouldReceive('generate')->andThrow(new \RuntimeException('plane unreachable'));
+        });
+
+        $report = app(EvalRunner::class)->run(self::SLUG, ['live' => true, 'cases_file' => $this->casesFile(['good_sequence']), 'write_report' => false]);
+
+        $this->assertSame('unavailable', $report['cases'][0]['status']);
+        $this->assertSame('live call failed: plane unreachable', $report['cases'][0]['note']);
+        $this->assertFalse($report['summary']['complete']);
+    }
+
+    /**
+     * A requested model is refused rather than recorded. Generation does not
+     * route by it, so a report naming it would name a model that did not run.
+     */
+    public function test_a_requested_model_is_refused_rather_than_recorded(): void
+    {
+        $this->artisan('skills:eval', ['slug' => self::SLUG, '--model' => 'gpt-something'])
+            ->expectsOutputToContain('A model cannot be selected yet')
             ->assertExitCode(1);
     }
 
@@ -419,6 +571,34 @@ YAML;
 
         $this->assertSame(1, $result['evaluated']);
         $this->assertSame(3, $result['results'][0]['subjects']);
+    }
+
+    private function rawCasesFile(string $yaml): string
+    {
+        $file = sys_get_temp_dir().'/sn-eval-'.uniqid().'.yaml';
+        file_put_contents($file, $yaml);
+        $this->written[] = $file;
+
+        return $file;
+    }
+
+    private static function storedOutput(string $id): string
+    {
+        foreach (Yaml::parse(self::syntheticCases())['cases'] as $case) {
+            if ($case['id'] === $id) {
+                return (string) $case['expected_raw'];
+            }
+        }
+        throw new \LogicException("no synthetic case {$id}");
+    }
+
+    private function fakeGeneration(string $text): void
+    {
+        $this->mock(InferencePlaneClient::class, function ($mock) use ($text): void {
+            $mock->shouldReceive('generate')->andReturn([
+                'text' => $text, 'model' => 'fake-model-that-ran', 'tokens_used' => 0, 'cost' => 0.0, 'provider' => 'fake',
+            ]);
+        });
     }
 
     /**

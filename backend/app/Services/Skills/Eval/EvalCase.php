@@ -75,6 +75,17 @@ final class EvalCase
     }
 
     /**
+     * Loads every case or none. A malformed entry is a suite-definition error
+     * naming the file and the entry's index — it is never dropped.
+     *
+     * Dropping was the old behaviour, and it shrank the denominator before the
+     * completeness check could see it: `[valid_case, "oops"]` loaded as a
+     * complete one-case suite, and `["oops"]` as an empty one. The empty
+     * result stays a separate guard in the runner; this one keeps a partly
+     * broken file from passing as a smaller whole one. The same holds inside a
+     * case, where a property or judge that is neither a string nor a mapping
+     * would otherwise vanish from what the case claims to check.
+     *
      * @return list<self>
      */
     public static function loadAll(string $file): array
@@ -89,14 +100,89 @@ final class EvalCase
             throw new \RuntimeException("No `cases:` found in {$file}.");
         }
 
+        $problems = [];
+        $seen = [];
         $out = [];
         foreach (array_values($cases) as $i => $case) {
-            if (is_array($case)) {
+            $entry = self::definitionProblems($case);
+            // Checked whatever else is wrong with either entry: a duplicate is
+            // its own problem, and the report keys cases by id.
+            if (is_array($case) && is_string($case['id'] ?? null) && trim($case['id']) !== '') {
+                $id = $case['id'];
+                if (isset($seen[$id])) {
+                    $entry[] = "duplicate id \"{$id}\" (first at cases[{$seen[$id]}])";
+                }
+                $seen[$id] ??= $i;
+            }
+            foreach ($entry as $problem) {
+                $problems[] = "cases[{$i}]: {$problem}";
+            }
+            if ($entry === [] && is_array($case)) {
                 $out[] = self::fromArray($case, $i);
             }
         }
 
+        if ($problems !== []) {
+            throw new \RuntimeException("Malformed suite definition in {$file}: ".implode('; ', $problems));
+        }
+
         return $out;
+    }
+
+    /**
+     * What makes one entry unloadable. Deliberately narrow: the shapes the
+     * loader would otherwise have discarded, and an id the report can key on.
+     * Property names and arguments are `skills:validate`'s business.
+     *
+     * @return list<string>
+     */
+    private static function definitionProblems(mixed $case): array
+    {
+        if (! is_array($case)) {
+            return ['not a case mapping (got '.get_debug_type($case).')'];
+        }
+
+        $problems = [];
+        if (! is_string($case['id'] ?? null) || trim($case['id']) === '') {
+            $problems[] = 'missing a string `id`';
+        }
+
+        $expect = $case['expect'] ?? [];
+        if (! is_array($expect)) {
+            $problems[] = '`expect` must be a mapping (got '.get_debug_type($expect).')';
+            $expect = [];
+        }
+
+        $properties = $expect['properties'] ?? ($case['properties'] ?? []);
+        if (! is_array($properties) || ! array_is_list($properties)) {
+            $problems[] = '`expect.properties` must be a list';
+        } else {
+            foreach ($properties as $j => $property) {
+                if (! is_string($property) && ! is_array($property)) {
+                    $problems[] = "expect.properties[{$j}] is neither a string nor a mapping (got ".get_debug_type($property).')';
+                }
+            }
+        }
+
+        $judges = $expect['judge'] ?? ($case['judge'] ?? []);
+        foreach (is_array($judges) ? $judges : [$judges] as $j => $judge) {
+            if (! is_string($judge) || trim($judge) === '') {
+                $problems[] = "expect.judge[{$j}] must be a non-empty string";
+            }
+        }
+
+        $brain = $case['fixture_brain'] ?? [];
+        if (! is_array($brain)) {
+            $problems[] = '`fixture_brain` must map a path to its content';
+        } else {
+            foreach (array_keys($brain) as $path) {
+                if (! is_string($path) || trim($path) === '') {
+                    $problems[] = "fixture_brain has a key that is not a path ({$path})";
+                }
+            }
+        }
+
+        return $problems;
     }
 
     /** The stored output parsed as JSON when it is JSON, else the raw string. */

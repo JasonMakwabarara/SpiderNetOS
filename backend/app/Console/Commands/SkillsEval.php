@@ -19,7 +19,9 @@ use Illuminate\Support\Str;
  *
  * Required mode is the default. It succeeds only when at least one case is
  * declared, every case executed, every case gathered its evidence — a schema
- * verdict and every dependency its properties need — and none failed. Until
+ * verdict, every dependency its properties need and, in live mode, every judge
+ * it declares — and none failed. A malformed entry in the cases file is a
+ * definition error, never a smaller suite. Until
  * this, the command returned success on `failed === 0`, so a suite of nine
  * cases that all skipped printed `Pass rate: 0%` and exited 0: a check that
  * ran nothing reporting the same status as one that passed everything.
@@ -35,7 +37,7 @@ class SkillsEval extends Command
         {--deterministic : Replay stored expected_raw outputs (default)}
         {--live : Call the inference plane for every case}
         {--allow-incomplete : Exploratory mode: succeed on an incomplete run with no failures, marked INCOMPLETE}
-        {--model= : Model routing key, recorded in the report (live generation does not yet route by it)}
+        {--model= : Refused until live generation routes by model; each live case records the model that actually ran}
         {--prompt-version= : Prompt version under test (recorded in the report)}
         {--cases= : Path to an alternative cases.yaml (default packages/skills/<slug>/evals/cases.yaml)}
         {--json : Print the report as JSON}';
@@ -74,7 +76,6 @@ class SkillsEval extends Command
         }
 
         $this->info("skills:eval {$slug} — {$report['mode']} mode, ".($exploratory ? 'exploratory' : 'required')
-            .($report['model'] ? " · requested model {$report['model']}" : '')
             .($report['prompt_version'] ? " · prompt {$report['prompt_version']}" : ''));
 
         $this->table(
@@ -91,7 +92,11 @@ class SkillsEval extends Command
                     $c['id'],
                     strtoupper($c['status']),
                     $validator === null ? 'n/a' : ($validator ? 'ok' : 'reject'),
-                    ($props === [] ? '-' : $passedProps.'/'.count($props)).($judges > 0 ? " +{$judges} judge (not run)" : ''),
+                    ($props === [] ? '-' : $passedProps.'/'.count($props)).match (true) {
+                        $judges === 0 => '',
+                        ($c['judges_status'] ?? null) === 'not_applicable_in_mode' => " +{$judges} judge (live only)",
+                        default => " +{$judges} judge (not run)",
+                    },
                     Str::limit((string) $detail, 80),
                 ];
             }, $report['cases']),
