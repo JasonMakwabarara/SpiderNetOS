@@ -48,16 +48,20 @@ class EventStore
             $resolvedMetadata,
             $resolvedExpectedVersion
         ) {
+            // The sequence lock serialises every append, so it is taken before
+            // anything the append derives from what is already stored. Read
+            // first, two appends to one aggregate both saw version N, both wrote
+            // N+1, and the unique index failed one of them as a database error
+            // (tests/Feature/Events/EventAppendRaceTest). The index stays, as
+            // the backstop.
+            $sequenceNum = $this->getNextSequenceNum();
             $currentVersion = $this->getCurrentVersion($resolvedAggregateType, $resolvedAggregateId);
 
             if ($resolvedExpectedVersion !== null && $currentVersion !== $resolvedExpectedVersion) {
-                throw new \RuntimeException(
-                    "Concurrency conflict: expected version {$resolvedExpectedVersion}, found {$currentVersion}"
-                );
+                throw new EventVersionConflict($resolvedAggregateType, $resolvedAggregateId, $resolvedExpectedVersion, $currentVersion);
             }
 
             $version = $currentVersion + 1;
-            $sequenceNum = $this->getNextSequenceNum();
 
             $metadataWithRequest = array_merge($resolvedMetadata, [
                 'ip' => request()->ip(),

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * One competitor in an approval race (tests/Feature/Agents/ApprovalRaceTest).
+ * One competitor in a race (tests/Concurrency/SeparateProcessRaces).
  *
  * A separate PHP process with its own database session, so its transaction is
  * genuinely independent of the test's and of the other competitor's — which
@@ -12,10 +12,14 @@ declare(strict_types=1);
  * under (read from stdin, with the job), makes exactly one call, and prints
  * the outcome after a sentinel so stray output cannot corrupt it.
  *
- *   mode http  call a route (POST unless `method` says otherwise) as a given
- *              user, through the full middleware stack
- *   mode hook  deliver an approval resource hook directly, as a second
- *              resolution path (the chain and the controller) would
+ *   mode http    call a route (POST unless `method` says otherwise) as a given
+ *                user, through the full middleware stack
+ *   mode hook    deliver an approval resource hook directly, as a second
+ *                resolution path (the chain and the controller) would
+ *   mode append  append one event through EventStore, optionally with an
+ *                expected version, and optionally inside a transaction that
+ *                first writes a business row (`effect`), so the test can see
+ *                whether a losing append leaves that row behind
  *
  *   fail_event (http only)  this competitor's decision reaches the event it
  *              names and fails there — but only after it has seen the other
@@ -103,6 +107,20 @@ try {
         $response = $app->make(HttpKernel::class)->handle($request);
 
         $out = ['status' => $response->getStatusCode(), 'body' => json_decode((string) $response->getContent(), true)];
+    } elseif ($job['mode'] === 'append') {
+        $append = fn (): Event => $app->make(EventStore::class)->append(
+            $job['tenant_id'], $job['aggregate_type'], $job['aggregate_id'], $job['event_type'],
+            (array) ($job['payload'] ?? []), [], isset($job['expected_version']) ? (int) $job['expected_version'] : null,
+        );
+        $event = isset($job['effect'])
+            ? DB::transaction(function () use ($append, $job): Event {
+                DB::table($job['effect']['table'])->insert(['label' => $job['effect']['label']]);
+
+                return $append();
+            })
+            : $append();
+        $out = ['status' => 'appended', 'version' => (int) $event->version, 'sequence_num' => (int) $event->sequence_num,
+            'hash' => $event->hash, 'previous_hash' => $event->previous_hash];
     } else {
         $app->make(ApprovalEngine::class)->fireResourceHook(
             $job['resource_type'], $job['tenant_id'], $job['resource_id'], (bool) $job['granted'], (string) ($job['response'] ?? ''), (array) ($job['decision'] ?? []),
