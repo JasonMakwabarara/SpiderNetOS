@@ -206,8 +206,9 @@ class ApprovalController extends Controller
             'action' => ['id' => $decision->actionId, 'status' => $decision->actionStatus],
             'message' => ($granted ? 'Approval granted.' : 'Approval rejected.').match ($decision->actionStatus) {
                 ApprovalActions::DONE => '',
-                ApprovalActions::PENDING => ' Its effect did not complete and will be retried.',
-                default => ' Its effect did not complete and needs checking.',
+                ApprovalActions::PENDING => ' Its effect has not completed and is waiting to be retried.',
+                ApprovalActions::FAILED => ' Its effect could not be applied and needs attention.',
+                default => ' Whether its effect happened is not known; it needs checking.',
             },
         ], $decision->settled() ? 200 : 202);
     }

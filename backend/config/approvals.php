@@ -72,8 +72,15 @@ return [
     */
     'action_delivery' => [
         'agent_artifact' => 'transactional',   // ArtifactApplier: templates, assets, events
-        'agent_tool_call' => 'transactional',  // AgentRunResumer: run state; the resume job is dispatched after commit
         'business_plan' => 'transactional',    // BusinessLaunchService: launch status and events
+        // agent_tool_call is deliberately absent, so external. AgentRunResumer
+        // writes the run's decision here, but ResumeAgentRunJob is
+        // ShouldBeUnique: its lock is taken in the cache store (Redis) at
+        // dispatch, inside the transaction, and the push goes to the Redis
+        // queue after commit. Neither is covered by this database's
+        // transaction, so a crash or a failed push could leave the action
+        // "done" and the run parked. As external, those cases end `uncertain`
+        // instead. The durable continuation itself is still open (awareness list).
     ],
 
     // A transactional action still failing after this many attempts is failed.

@@ -36,9 +36,18 @@ use Illuminate\Support\Str;
  *                  reconcile, and is never re-run blind. A record never claimed
  *                  is safe to run: nothing was attempted.
  *
- * `failed` is terminal: an integrity failure (the bundle does not hold
- * together, or the version moved), or a transactional hook still failing
- * after `action_max_attempts`.
+ * `failed` is terminal: a hook that is registered but does not exist, an
+ * integrity failure (the bundle does not hold together, or the version
+ * moved), or a transactional hook still failing after `action_max_attempts`.
+ * A missing hook is never read as "nothing was required".
+ *
+ * A transactional record can also end `uncertain`: its hook's writes and
+ * "done" committed, and then something the hook deferred until after the
+ * commit (a job push, say) failed. The record is not re-run — the commit
+ * happened — and a person has to see it.
+ *
+ * Every record that did not end `done` carries a machine-readable `reason`
+ * (the REASON_* constants) beside the human `last_error`.
  *
  * run() for an external record must not be called inside a transaction: the
  * claim has to be committed before the hook runs, or a crash rolls it back to
@@ -59,6 +68,20 @@ class ApprovalActions
     public const TRANSACTIONAL = 'transactional';
 
     public const EXTERNAL = 'external';
+
+    public const REASON_HOOK_MISSING = 'hook_missing';
+
+    public const REASON_HOOK_FAILED = 'hook_failed';
+
+    public const REASON_INTEGRITY = 'integrity';
+
+    public const REASON_ATTEMPTS_EXHAUSTED = 'attempts_exhausted';
+
+    public const REASON_AFTER_COMMIT_FAILED = 'after_commit_failed';
+
+    public const REASON_EXTERNAL_FAILED = 'external_failed';
+
+    public const REASON_CLAIM_LAPSED = 'claim_lapsed';
 
     /** Failures that retrying cannot fix. */
     private const PERMANENT = [BundleIntegrityException::class, ApprovalVersionConflict::class];
@@ -105,6 +128,21 @@ class ApprovalActions
             throw new \InvalidArgumentException("Approval action [{$actionId}] not found.");
         }
 
+        // A hook that cannot run is a configuration error, not an effect that
+        // happened. Fail the record where it stands, before any claim.
+        $problem = $action->status === self::PENDING ? app(ApprovalEngine::class)->resourceHookProblem((string) $action->resource_type) : null;
+        if ($problem !== null) {
+            DB::table('approval_actions')->where('id', $actionId)->where('status', self::PENDING)->update([
+                'status' => self::FAILED,
+                'reason' => self::REASON_HOOK_MISSING,
+                'last_error' => $problem,
+                'updated_at' => now(),
+            ]);
+            Log::error('Approval action cannot run: its hook is missing', ['action_id' => $actionId, 'problem' => $problem]);
+
+            return (string) DB::table('approval_actions')->where('id', $actionId)->value('status');
+        }
+
         return $action->delivery === self::TRANSACTIONAL
             ? $this->runTransactional($actionId)
             : $this->runExternal($action);
@@ -149,6 +187,7 @@ class ApprovalActions
             ->where('claimed_at', '<=', now()->subSeconds($lease))
             ->update([
                 'status' => self::UNCERTAIN,
+                'reason' => self::REASON_CLAIM_LAPSED,
                 'last_error' => "Claimed and never reported back within {$lease}s; whether its effect happened is unknown.",
                 'updated_at' => now(),
             ]);
@@ -180,8 +219,13 @@ class ApprovalActions
 
     private function runTransactional(string $actionId): string
     {
+        // Set once this run has fired the hook and written "done" inside its
+        // transaction. An exception after that point came from the COMMIT or
+        // from what the hook deferred until after it — not from the hook.
+        $marked = false;
+
         try {
-            return DB::transaction(function () use ($actionId): string {
+            return DB::transaction(function () use ($actionId, &$marked): string {
                 $action = DB::table('approval_actions')->where('id', $actionId)->lockForUpdate()->first();
                 if ($action === null || $action->status !== self::PENDING) {
                     return (string) ($action->status ?? self::PENDING);
@@ -192,26 +236,62 @@ class ApprovalActions
                 DB::table('approval_actions')->where('id', $actionId)->update([
                     'status' => self::DONE,
                     'attempts' => (int) $action->attempts + 1,
+                    'reason' => null,
                     'last_error' => null,
                     'completed_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $marked = true;
 
                 return self::DONE;
             });
         } catch (\Throwable $e) {
+            $status = DB::table('approval_actions')->where('id', $actionId)->value('status');
+
+            // An exception can leave DB::transaction after its COMMIT: the
+            // callbacks the hook deferred until after commit run there. Then
+            // the hook's writes and "done" are committed and must not be
+            // retried, but what the hook deferred did not happen. Ask the
+            // database which it was rather than assume a rollback.
+            if ($marked && $status === self::DONE) {
+                DB::table('approval_actions')->where('id', $actionId)->where('status', self::DONE)->update([
+                    'status' => self::UNCERTAIN,
+                    'reason' => self::REASON_AFTER_COMMIT_FAILED,
+                    'last_error' => 'Committed, then a step deferred until after the commit failed: '.self::describe($e),
+                    'updated_at' => now(),
+                ]);
+                Log::error('Approval action committed, then its after-commit step failed', ['action_id' => $actionId, 'error' => $e->getMessage()]);
+
+                return self::UNCERTAIN;
+            }
+
+            // Not this run's record to change: another run finished or failed
+            // it (a replay that hit a lock error on a done record, say).
+            if ($status !== self::PENDING) {
+                Log::warning('Approval action run failed on a record that was not pending', ['action_id' => $actionId, 'status' => $status, 'error' => $e->getMessage()]);
+
+                return (string) $status;
+            }
+
             // The hook's writes rolled back with the transaction: nothing of
             // this attempt survived, so the record can be tried again unless
             // the failure is one no retry can fix.
+            $permanent = self::isPermanent($e);
             DB::table('approval_actions')->where('id', $actionId)->where('status', self::PENDING)->update([
                 'attempts' => DB::raw('attempts + 1'),
+                'reason' => $permanent ? self::REASON_INTEGRITY : self::REASON_HOOK_FAILED,
                 'last_error' => self::describe($e),
                 'updated_at' => now(),
             ]);
             $attempts = (int) DB::table('approval_actions')->where('id', $actionId)->value('attempts');
-            $terminal = self::isPermanent($e) || $attempts >= (int) config('approvals.action_max_attempts', 5);
+            $exhausted = ! $permanent && $attempts >= (int) config('approvals.action_max_attempts', 5);
+            $terminal = $permanent || $exhausted;
             if ($terminal) {
-                DB::table('approval_actions')->where('id', $actionId)->where('status', self::PENDING)->update(['status' => self::FAILED, 'updated_at' => now()]);
+                DB::table('approval_actions')->where('id', $actionId)->where('status', self::PENDING)->update([
+                    'status' => self::FAILED,
+                    'reason' => $permanent ? self::REASON_INTEGRITY : self::REASON_ATTEMPTS_EXHAUSTED,
+                    'updated_at' => now(),
+                ]);
             }
             Log::warning('Approval action failed', ['action_id' => $actionId, 'attempts' => $attempts, 'terminal' => $terminal, 'error' => $e->getMessage()]);
 
@@ -241,6 +321,7 @@ class ApprovalActions
             // What the hook did outside before it failed is unknown.
             DB::table('approval_actions')->where('id', $action->id)->where('status', self::RUNNING)->update([
                 'status' => self::UNCERTAIN,
+                'reason' => self::REASON_EXTERNAL_FAILED,
                 'last_error' => self::describe($e),
                 'updated_at' => now(),
             ]);
@@ -251,6 +332,7 @@ class ApprovalActions
 
         DB::table('approval_actions')->where('id', $action->id)->where('status', self::RUNNING)->update([
             'status' => self::DONE,
+            'reason' => null,
             'last_error' => null,
             'completed_at' => now(),
             'updated_at' => now(),
