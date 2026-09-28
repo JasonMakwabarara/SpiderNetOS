@@ -9,6 +9,7 @@ use App\Models\ApprovalPolicyStep;
 use App\Models\ApprovalStep;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\Financial\PaymentService;
 use App\Services\Notifications\NotificationService;
 use App\Services\Outreach\Bot\OutreachReplyService;
@@ -118,6 +119,7 @@ class ApprovalEngine
         string $approverId,
         bool $approved,
         string $response = '',
+        ?string $presentedVersion = null,
     ): array {
         $approval = DB::table('approvals')->where('id', $approvalId)->first();
 
@@ -127,10 +129,10 @@ class ApprovalEngine
 
         // Chained approvals resolve one step at a time.
         if ($approval->current_step !== null) {
-            return $this->resolveStep($approvalId, $approverId, $approved, $response);
+            return $this->resolveStep($approvalId, $approverId, $approved, $response, $presentedVersion);
         }
 
-        $this->decideSingleStage((string) $approval->tenant_id, $approvalId, User::find($approverId), $approved, $response);
+        $this->decideSingleStage((string) $approval->tenant_id, $approvalId, User::find($approverId), $approved, $response, $presentedVersion);
 
         Log::info('Approval '.($approved ? 'approved' : 'rejected'), compact('approvalId', 'approverId'));
 
@@ -166,16 +168,27 @@ class ApprovalEngine
      * re-reads the committed row. The decision, its event and the DAG node
      * record commit together or not at all.
      *
-     * The hook runs after the commit and only for the decider. It is
-     * deliberately outside the transaction: a hook can send mail, and holding
-     * the transaction would also hold the global event-sequence lock.
+     * Deciding the version that was seen. For a resource type with a version
+     * binding (config/approvals.php `version_bindings`), a grant must present
+     * the version hash the approver was shown; it is compared, under the
+     * resource's own locks, with what approving would apply now, and the
+     * version is bound to the decision (`approved_version_hash`) — the applier
+     * checks the payload against it before writing anything. A rejection
+     * needs no version: refusing something authorises nothing.
+     *
+     * The hook runs after the commit and only for the decider, told which
+     * approval decided and which version it bound. It is deliberately outside
+     * the transaction: a hook can send mail, and holding the transaction would
+     * also hold the global event-sequence lock.
      *
      * @throws \InvalidArgumentException no such approval in this tenant
      * @throws \DomainException the actor may not decide it
      * @throws ApprovalAlreadyDecided it was no longer pending
+     * @throws ApprovalVersionConflict the version presented is not the version that exists
+     * @throws BundleIntegrityException the resource does not hold together
      * @throws \LogicException it is a chained approval (resolveStep)
      */
-    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason): Event
+    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason, ?string $presentedVersion = null): Event
     {
         $approval = DB::table('approvals')->where('id', $approvalId)->where('tenant_id', $tenantId)->first();
         if (! $approval) {
@@ -188,7 +201,10 @@ class ApprovalEngine
             throw new \DomainException('User is not authorized to decide this approval.');
         }
 
-        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason): Event {
+        $bound = null;
+        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason, $presentedVersion, &$bound): Event {
+            $bound = $granted ? $this->verifyVersion($tenantId, $approval, $presentedVersion) : null;
+
             // Columns must match the actual `approvals` schema
             // (2024_01_01_000008_create_approvals_table.php): approver_id /
             // responded_at — NOT resolved_by / resolved_at.
@@ -197,16 +213,22 @@ class ApprovalEngine
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'pending')
                 ->whereNull('current_step')
+                ->when($bound !== null, fn ($q) => $q->where('version_hash', $bound))
                 ->update([
                     'status' => $granted ? 'approved' : 'rejected',
                     'approver_id' => $actor->id,
                     'response' => $reason,
                     'responded_at' => now(),
+                    'approved_version_hash' => $bound,
                     'updated_at' => now(),
                 ]);
 
             if ($changed !== 1) {
-                throw new ApprovalAlreadyDecided((string) $approval->id, DB::table('approvals')->where('id', $approval->id)->value('status'));
+                $status = DB::table('approvals')->where('id', $approval->id)->value('status');
+                if ($status === 'pending') {
+                    throw new ApprovalVersionConflict('stale', "Approval [{$approval->id}] was bound to a newer version while this decision was being made.");
+                }
+                throw new ApprovalAlreadyDecided((string) $approval->id, $status);
             }
 
             // Hard Rule #1: All writes go through EventStore. One shape for
@@ -221,6 +243,7 @@ class ApprovalEngine
                     'approver_id' => $actor->id,
                     ($granted ? 'approved_by' : 'rejected_by') => $actor->id,
                     'reason' => $reason,
+                    'approved_version_hash' => $bound,
                     'flow_execution_id' => $approval->flow_execution_id ?? null,
                     'dag_node_id' => $approval->dag_node_id ?? null,
                 ],
@@ -237,9 +260,48 @@ class ApprovalEngine
             return $event;
         });
 
-        $this->fireResourceHook((string) $approval->resource_type, $tenantId, (string) $approval->resource_id, $granted, (string) $reason);
+        $this->fireResourceHook((string) $approval->resource_type, $tenantId, (string) $approval->resource_id, $granted, (string) $reason, [
+            'approval_id' => (string) $approval->id,
+            'approved_version_hash' => $bound,
+        ]);
 
         return $event;
+    }
+
+    /**
+     * For a resource type with a version binding: lock the resource and hash
+     * what approving it would apply now, then require that the approver was
+     * shown exactly that. Returns the version to bind, or null for a type
+     * with no binding. Called inside the decision's transaction, before the
+     * approval row is written, so the resource is locked first — the order
+     * every writer of a bundle uses.
+     *
+     * @throws ApprovalVersionConflict
+     */
+    private function verifyVersion(string $tenantId, object $approval, ?string $presented): ?string
+    {
+        $binding = config('approvals.version_bindings.'.$approval->resource_type);
+        if (! is_array($binding) || count($binding) < 2) {
+            return null;
+        }
+        [$class, $method] = $binding;
+
+        $current = (string) app($class)->{$method}($tenantId, $approval);
+        // Re-read under the resource's lock: an edit that committed after the
+        // approval was first read has already moved the bound version.
+        $boundNow = DB::table('approvals')->where('id', $approval->id)->value('version_hash');
+
+        if ($boundNow === null) {
+            throw new ApprovalVersionConflict('unbound', "Approval [{$approval->id}] was never bound to a version, so what was seen cannot be checked. Reject it and submit again.");
+        }
+        if ($presented === null || $presented === '') {
+            throw new ApprovalVersionConflict('missing', "Approving [{$approval->id}] needs the version you were shown (version_hash).");
+        }
+        if (! hash_equals((string) $boundNow, $presented) || ! hash_equals($current, $presented)) {
+            throw new ApprovalVersionConflict('stale', "Approval [{$approval->id}] changed after it was shown to you. Review the current version and decide on that.");
+        }
+
+        return $current;
     }
 
     /** The blocked DAG node's transition, recorded with the decision. */
@@ -387,8 +449,16 @@ class ApprovalEngine
         string $approverId,
         bool $approved,
         string $response = '',
+        ?string $presentedVersion = null,
     ): array {
-        return DB::transaction(function () use ($approvalId, $approverId, $approved, $response) {
+        return DB::transaction(function () use ($approvalId, $approverId, $approved, $response, $presentedVersion) {
+            // A bound resource is locked before the approval row, the order
+            // every writer uses; each approving step decides the version it saw.
+            $unlocked = DB::table('approvals')->where('id', $approvalId)->first();
+            $bound = $unlocked && $approved && $unlocked->current_step !== null && $unlocked->status === 'pending'
+                ? $this->verifyVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion)
+                : null;
+
             $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
 
             if (! $approval) {
@@ -446,7 +516,7 @@ class ApprovalEngine
                 ->first();
 
             if ($next === null) {
-                $this->finalizeChain($approval, $approverId, true, $response);
+                $this->finalizeChain($approval, $approverId, true, $response, $bound);
 
                 return $this->formatApproval(DB::table('approvals')->where('id', $approvalId)->first());
             }
@@ -606,7 +676,10 @@ class ApprovalEngine
                         'resource_id' => $approval->resource_id,
                     ]);
 
-                    $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, false, 'expired');
+                    $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, false, 'expired', [
+                        'approval_id' => (string) $approval->id,
+                        'approved_version_hash' => null,
+                    ]);
                 }
 
                 $count++;
@@ -619,13 +692,14 @@ class ApprovalEngine
     /**
      * Terminal transition shared by grant-on-last-step and reject-anywhere.
      */
-    private function finalizeChain(object $approval, string $approverId, bool $granted, string $response): void
+    private function finalizeChain(object $approval, string $approverId, bool $granted, string $response, ?string $approvedVersion = null): void
     {
         DB::table('approvals')->where('id', $approval->id)->update([
             'status' => $granted ? 'approved' : 'rejected',
             'approver_id' => $approverId,
             'response' => $response,
             'responded_at' => now(),
+            'approved_version_hash' => $approvedVersion,
             'updated_at' => now(),
         ]);
 
@@ -639,7 +713,10 @@ class ApprovalEngine
             $this->resumeBlockedExecution($approval->id);
         }
 
-        $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, $granted, $response);
+        $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, $granted, $response, [
+            'approval_id' => (string) $approval->id,
+            'approved_version_hash' => $approvedVersion,
+        ]);
     }
 
     /**
@@ -653,7 +730,10 @@ class ApprovalEngine
      * approval must not read "approved" while its downstream effect failed
      * to apply.
      */
-    public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    /**
+     * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision  which approval decided and the version it bound; handlers that do not declare it ignore it
+     */
+    public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = '', array $decision = []): void
     {
         $hooks = (array) config('approvals.resource_hooks', []);
 
@@ -672,7 +752,14 @@ class ApprovalEngine
                 return;
             }
 
-            app($class)->{$method}($tenantId, $resourceId, $granted, $response);
+            // The decision goes only to a handler that declares a fifth
+            // parameter for it; the others keep their four-argument contract.
+            $handler = app($class);
+            $args = [$tenantId, $resourceId, $granted, $response];
+            if (method_exists($handler, $method) && (new \ReflectionMethod($handler, $method))->getNumberOfParameters() >= 5) {
+                $args[] = $decision;
+            }
+            $handler->{$method}(...$args);
 
             return;
         }

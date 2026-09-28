@@ -138,8 +138,9 @@ class AgenticLoopTest extends AgentsTestCase
 
         Queue::fake();
         $resumer = app(AgentRunResumer::class);
-        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'first');
-        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'second');
+        $decision = ['approval_id' => $run->state['pending_tool_call']['approval_id']];
+        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'first', $decision);
+        $resumer->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, 'second', $decision);
 
         // The job count alone cannot show a second decision: the job is
         // ShouldBeUnique, so its cache lock drops a second dispatch while the
@@ -162,7 +163,9 @@ class AgenticLoopTest extends AgentsTestCase
 
         try {
             DB::transaction(function () use ($run): void {
-                app(AgentRunResumer::class)->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true);
+                app(AgentRunResumer::class)->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, '', [
+                    'approval_id' => $run->state['pending_tool_call']['approval_id'],
+                ]);
                 throw new \RuntimeException('the enclosing decision rolled back');
             });
         } catch (\RuntimeException) {
@@ -193,5 +196,24 @@ class AgenticLoopTest extends AgentsTestCase
         $this->assertSame(AgentRun::STATUS_WAITING_APPROVAL, $run->refresh()->status);
         $this->assertSame([], $this->writeTool->calls, 'the write was not released');
         $this->assertNull($run->state['pending_tool_call']['decision']);
+    }
+
+    /**
+     * The resource is the run, which can park more than one call over its
+     * life. An approval that is not the one this call waits on — an earlier
+     * one for the same run, say — must not release it.
+     */
+    public function test_only_the_approval_a_parked_call_waits_on_can_release_it(): void
+    {
+        $this->model(['tool_calls' => [['name' => 'crm.update_stage', 'params' => ['stage' => 'qualified']]]]);
+        $run = $this->startRun(['topic' => 'stage'], null, 'agentic-note-test');
+        Queue::fake();
+
+        app(AgentRunResumer::class)->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, '', ['approval_id' => (string) Str::uuid()]);
+        app(AgentRunResumer::class)->onApprovalResolved((string) $this->tenant->id, (string) $run->id, true, '', []);
+
+        Queue::assertNothingPushed();
+        $this->assertNull($run->refresh()->state['pending_tool_call']['decision']);
+        $this->assertCount(0, $this->events('agent.run.approval_resolved'));
     }
 }

@@ -402,7 +402,12 @@ async function saveArtifact() {
   if (artifact.value.subject !== undefined) content.subject = artifactDraft.subject
   const res = await runsStore.patchArtifact(artifactCtx.value.artifact_id || apr.resource_id, content)
   if (res.success) {
-    approvalsStore.handleApprovalUpdated({ id: apr.id, context: { ...artifactCtx.value, artifact: content } })
+    // The edit is now the version the approval covers; approving sends it.
+    approvalsStore.handleApprovalUpdated({
+      id: apr.id,
+      context: { ...artifactCtx.value, artifact: content },
+      ...(res.artifact?.approval_version_hash ? { version_hash: res.artifact.approval_version_hash } : {}),
+    })
     artifactNotice.value = 'Saved; approve to send this version.'
   } else {
     artifactNotice.value = res.error
@@ -455,7 +460,13 @@ async function onBatchEdit(item, content) {
   const ctx = parseContext(item.context)
   const merged = { ...(ctx.artifact || {}), ...content }
   const res = await runsStore.patchArtifact(ctx.artifact_id || item.resource_id, merged)
-  if (res.success) approvalsStore.handleApprovalUpdated({ id: item.id, context: { ...ctx, artifact: merged } })
+  if (res.success) {
+    approvalsStore.handleApprovalUpdated({
+      id: item.id,
+      context: { ...ctx, artifact: merged },
+      ...(res.artifact?.approval_version_hash ? { version_hash: res.artifact.approval_version_hash } : {}),
+    })
+  }
   batchNotice.value = res.success ? 'Edit saved; approve to send this version.' : res.error
 }
 

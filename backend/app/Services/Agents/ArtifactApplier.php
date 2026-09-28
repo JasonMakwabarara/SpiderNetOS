@@ -7,10 +7,10 @@ namespace App\Services\Agents;
 use App\Models\AgentArtifact;
 use App\Models\BusinessAsset;
 use App\Models\MessageTemplate;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 /**
  * Turns an approved artifact into the real thing (plan D3). PR 1 applies
@@ -22,40 +22,63 @@ use Illuminate\Support\Str;
  * approved frame. Other kinds only record an `applied_ref` for now
  * (draft_reply → MessageDispatchService, meeting_proposal → calendar.book
  * and note → brain arrive with their tools in PR 2).
+ *
+ * It applies only the version that was approved. The payload is built from
+ * the database (ApplicationPayload), hashed, and compared with the approval's
+ * `approved_version_hash` before anything is written; a difference means the
+ * content changed after the decision, and nothing is applied. What is
+ * applied is that same payload — the approval view, the hash and the
+ * application no longer read three different sources.
  */
 final class ArtifactApplier
 {
     public function __construct(private readonly EventStore $events) {}
 
-    public function apply(AgentArtifact $artifact): void
+    /**
+     * Apply the bundle whose primary artifact is $primary, provided it is
+     * still exactly the version that was approved.
+     *
+     * @throws BundleIntegrityException the content no longer matches, or the bundle does not hold together
+     */
+    public function applyApproved(AgentArtifact $primary, string $approvedHash): void
     {
-        if ($artifact->isApplied()) {
+        if ($primary->isApplied()) {
             return;
         }
 
-        $ref = match ($artifact->kind) {
-            AgentArtifact::KIND_DRAFT_SEQUENCE => $this->applySequence($artifact),
-            default => 'noop:'.$artifact->kind,
-        };
+        $payload = ApplicationPayload::for($primary);
+        if (! hash_equals($approvedHash, ApplicationPayload::hash($payload))) {
+            throw new BundleIntegrityException("The content of {$primary->id} changed after it was approved; nothing was applied.");
+        }
 
         $now = now();
+        if ($payload['kind'] === AgentArtifact::KIND_DRAFT_SEQUENCE) {
+            $ref = $this->applySequence($primary, $payload);
+            $members = array_column($payload['steps'], 'artifact_id');
+            AgentArtifact::forTenant((string) $primary->tenant_id)->whereIn('id', $members)->update([
+                'status' => AgentArtifact::STATUS_APPLIED,
+                'applied_ref' => mb_substr('sequence:'.$primary->id, 0, 190),
+                'applied_at' => $now,
+                'updated_at' => $now,
+            ]);
+            $this->markApplied($primary, $ref, $now);
+
+            return;
+        }
+
+        foreach ($payload['items'] as $item) {
+            $artifact = AgentArtifact::forTenant((string) $primary->tenant_id)->findOrFail($item['id']);
+            $this->markApplied($artifact, 'noop:'.$artifact->kind, $now);
+        }
+    }
+
+    private function markApplied(AgentArtifact $artifact, string $ref, \DateTimeInterface $now): void
+    {
         $artifact->forceFill([
             'status' => AgentArtifact::STATUS_APPLIED,
             'applied_ref' => mb_substr($ref, 0, 190),
             'applied_at' => $now,
         ])->save();
-
-        if ($artifact->kind === AgentArtifact::KIND_DRAFT_SEQUENCE) {
-            $childIds = array_values(array_map('strval', (array) (((array) $artifact->meta)['artifact_ids'] ?? [])));
-            if ($childIds !== []) {
-                AgentArtifact::forTenant((string) $artifact->tenant_id)->whereIn('id', $childIds)->update([
-                    'status' => AgentArtifact::STATUS_APPLIED,
-                    'applied_ref' => mb_substr('sequence:'.$artifact->id, 0, 190),
-                    'applied_at' => $now,
-                    'updated_at' => $now,
-                ]);
-            }
-        }
 
         $this->events->append((string) $artifact->tenant_id, 'agent_artifact', (string) $artifact->id, 'agent.artifact.applied', [
             'artifact_id' => $artifact->id,
@@ -66,15 +89,12 @@ final class ArtifactApplier
         ], ['runtime' => 'php_skill']);
     }
 
-    private function applySequence(AgentArtifact $artifact): string
+    /** @param array<string, mixed> $payload */
+    private function applySequence(AgentArtifact $artifact, array $payload): string
     {
         $tenantId = (string) $artifact->tenant_id;
-        $meta = (array) $artifact->meta;
-        $campaign = (string) ($meta['campaign'] ?? $artifact->title ?? 'sequence');
-        $campaignKey = Str::slug((string) ($meta['campaign_key'] ?? $campaign), '-') ?: 'sequence';
-        $channel = in_array($meta['channel'] ?? 'email', ['email', 'whatsapp', 'linkedin'], true) ? (string) $meta['channel'] : 'email';
-        $packId = (string) ($meta['pack_id'] ?? 'sales-crm');
-        $steps = $this->stepsWithEdits($artifact, (array) ($meta['steps'] ?? []));
+        ['campaign' => $campaign, 'campaign_key' => $campaignKey, 'channel' => $channel, 'pack_id' => $packId] = $payload['destination'];
+        $steps = $payload['steps'];
 
         $keys = [];
         if (Schema::hasTable('message_templates')) {
@@ -123,58 +143,6 @@ final class ArtifactApplier
 
         return sprintf('message_templates:%d;business_asset:%s', count($keys), $assetId ?? 'none')
             .($projected === false ? ';brain_projection:failed' : '');
-    }
-
-    /**
-     * Step content as approved: when the approver edited a step email
-     * (PATCH /artifacts/{id}) the edited artifact content wins over the
-     * model's original in the sequence meta.
-     *
-     * @param  list<array<string, mixed>>  $steps
-     * @return list<array{n: int, subject: string, body: string, variants: list<array{key: string, subject: string, body: string}>}>
-     */
-    private function stepsWithEdits(AgentArtifact $sequence, array $steps): array
-    {
-        $tenantId = (string) $sequence->tenant_id;
-        $out = [];
-
-        foreach (array_values($steps) as $i => $step) {
-            $n = max(1, (int) ($step['n'] ?? $i + 1));
-            $subject = trim((string) ($step['subject'] ?? ''));
-            $body = trim((string) ($step['body'] ?? ''));
-            $variants = [];
-            foreach ((array) ($step['variants'] ?? []) as $variant) {
-                if (! is_array($variant)) {
-                    continue;
-                }
-                $variants[] = [
-                    'key' => (string) ($variant['key'] ?? 'a'),
-                    'subject' => trim((string) ($variant['subject'] ?? $subject)),
-                    'body' => trim((string) ($variant['body'] ?? $body)),
-                ];
-            }
-            if ($variants === []) {
-                $variants[] = ['key' => 'a', 'subject' => $subject, 'body' => $body];
-            }
-
-            $childId = (string) ($step['artifact_id'] ?? '');
-            $child = Str::isUuid($childId) ? AgentArtifact::forTenant($tenantId)->find($childId) : null;
-            if ($child !== null) {
-                $childMeta = (array) $child->meta;
-                $original = (string) ($childMeta['original_content'] ?? '');
-                if ($original !== '' && $original !== (string) $child->content) {
-                    [$editedSubject, $editedBody] = self::splitDraftEmail((string) $child->content);
-                    $variants[0]['subject'] = $editedSubject !== '' ? $editedSubject : $variants[0]['subject'];
-                    $variants[0]['body'] = $editedBody !== '' ? $editedBody : $variants[0]['body'];
-                    $subject = $variants[0]['subject'];
-                    $body = $variants[0]['body'];
-                }
-            }
-
-            $out[] = ['n' => $n, 'subject' => $subject, 'body' => $body, 'variants' => $variants];
-        }
-
-        return $out;
     }
 
     /** "Subject: X\n\nbody" → [X, body]. */

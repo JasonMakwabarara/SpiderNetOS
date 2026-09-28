@@ -23,7 +23,10 @@ final class AgentRunResumer
 {
     public function __construct(private readonly EventStore $events) {}
 
-    public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    /**
+     * @param  array{approval_id?: string}  $decision  which approval decided; it must be the one the parked call is waiting on
+     */
+    public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = '', array $decision = []): void
     {
         if (! Str::isUuid($resourceId)) {
             Log::debug('agent_tool_call approval resolved for a non-run resource', ['run_id' => $resourceId]);
@@ -34,7 +37,7 @@ final class AgentRunResumer
         // Decided under a lock on the run, and at most once: a decision
         // already recorded on the pending call means another resolution got
         // here first, and resuming twice would execute the call twice.
-        DB::transaction(function () use ($tenantId, $resourceId, $granted, $response): void {
+        DB::transaction(function () use ($tenantId, $resourceId, $granted, $response, $decision): void {
             $run = AgentRun::forTenant($tenantId)->whereKey($resourceId)->lockForUpdate()->first();
             if ($run === null || $run->status !== AgentRun::STATUS_WAITING_APPROVAL) {
                 Log::debug('agent_tool_call approval resolved for a run that is not waiting', ['run_id' => $resourceId, 'status' => $run?->status]);
@@ -46,6 +49,17 @@ final class AgentRunResumer
             $pending = (array) ($state['pending_tool_call'] ?? []);
             // isset, not array_key_exists: parking writes `decision: null`.
             if ($pending === [] || isset($pending['decision'])) {
+                return;
+            }
+            // The resource is the run, which can park more than one call over
+            // its life. Only the approval this call is waiting on may release
+            // it — never an earlier one for the same run.
+            $approvalId = (string) ($decision['approval_id'] ?? '');
+            if ($approvalId === '' || $approvalId !== (string) ($pending['approval_id'] ?? '')) {
+                Log::warning('agent_tool_call decision ignored: not the approval the parked call waits on', [
+                    'run_id' => $run->id, 'decided_by_approval' => $approvalId, 'waiting_on' => $pending['approval_id'] ?? null,
+                ]);
+
                 return;
             }
 

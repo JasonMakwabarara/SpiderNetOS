@@ -48,7 +48,8 @@ describe('Approvals view · agent artifacts', () => {
   })
 
   it('saves an inline edit through PATCH /api/artifacts/{id} then approves the new version', async () => {
-    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_social_17', version: 2 } } })
+    // The server answers an edit with the version the approval now covers.
+    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_social_17', approval_version_hash: 'sha256:after-edit' } } })
     api.post.mockResolvedValueOnce({ data: { data: { id: 'apr_social_17', status: 'approved' } } })
     ;({ wrapper } = await mountView(Approvals, { path: '/approvals?id=apr_social_17', attachTo: document.body }))
     await settle()
@@ -66,7 +67,28 @@ describe('Approvals view · agent artifacts', () => {
     expect(dialog).not.toBeNull()
     Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Approve').click()
     await settle()
-    expect(api.post).toHaveBeenCalledWith('/api/approvals/apr_social_17/approve', {})
+    // Approving sends the version the edit produced — the one this page shows.
+    expect(api.post).toHaveBeenCalledWith('/api/approvals/apr_social_17/approve', { version_hash: 'sha256:after-edit' })
+  })
+
+  it('approves the version the page is showing, and reloads when that version is stale', async () => {
+    const data = JSON.parse(JSON.stringify(fixture.data))
+    data.find((a) => a.id === 'apr_social_17').version_hash = 'sha256:as-shown'
+    api.get.mockResolvedValue({ data: { data } })
+    api.post.mockRejectedValueOnce({ response: { status: 409, data: { error: 'Approval changed after it was shown to you.', reason: 'version_stale' } } })
+    ;({ wrapper } = await mountView(Approvals, { path: '/approvals?id=apr_social_17', attachTo: document.body }))
+    await settle()
+    const loadsBefore = api.get.mock.calls.length
+
+    await wrapper.find('[data-testid="approval-approve-apr_social_17"]').trigger('click')
+    await settle()
+    const dialog = document.body.querySelector('[data-testid="approval-soft-dialog"]') || document.body.querySelector('[role="dialog"]')
+    Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Approve').click()
+    await settle()
+
+    expect(api.post).toHaveBeenCalledWith('/api/approvals/apr_social_17/approve', { version_hash: 'sha256:as-shown' })
+    // Stale: the list is fetched again so the current version is what is shown.
+    expect(api.get.mock.calls.length).toBeGreaterThan(loadsBefore)
   })
 
   it('batch approve-all approves each pending draft in turn and reports the count', async () => {

@@ -11,14 +11,16 @@ use App\Services\Outreach\Bot\OutreachReplyService;
  *
  * When an approval resolves (granted, rejected or expired) ApprovalEngine::
  * fireResourceHook() looks the approval's resource_type up here and calls
- * `app($class)->$method($tenantId, $resourceId, $granted, $response)`.
- * Classes are resolved lazily: an entry whose class has not shipped yet is
- * skipped with a log line instead of an exception. Resource types that are
- * not listed keep their legacy inline hooks inside the engine
- * (sales_script, expense_report, bill, payment).
+ * `app($class)->$method($tenantId, $resourceId, $granted, $response, $decision)`,
+ * where `$decision` names the deciding approval (`approval_id`) and the
+ * version it bound (`approved_version_hash`). A handler that does not
+ * declare the fifth parameter never sees it. Classes are resolved lazily: an
+ * entry whose class has not shipped yet is skipped with a log line instead of
+ * an exception. Resource types that are not listed keep their legacy inline
+ * hooks inside the engine (sales_script, expense_report, bill, payment).
  *
- * Fired from every resolution path — ApprovalController::approve/reject
- * (single-stage), ApprovalEngine::resolveStep (chains) and
+ * Fired from every resolution path — ApprovalEngine::decideSingleStage (the
+ * controller and resolveApproval), ApprovalEngine::resolveStep (chains) and
  * expireOverdueSteps — so a hook never depends on how the approval was
  * answered.
  */
@@ -43,6 +45,19 @@ return [
         // approved -> the launch goes live, rejected -> back to `drafted`
         // so the founder can revise and resubmit.
         'business_plan' => [BusinessLaunchService::class, 'onApprovalResolved'],
+    ],
+
+    /*
+     * Resource types whose approval binds the exact version the approver
+     * saw. `[$class, $method]` is called as `$method($tenantId, $approval)`
+     * inside the decision's transaction; it must lock the resource and return
+     * the canonical hash of what approving it would apply now. A grant must
+     * then present that hash (ApprovalEngine::decideSingleStage), and the hook
+     * applies only that version. An approval of such a type that was never
+     * bound is refused, not applied unbound.
+     */
+    'version_bindings' => [
+        'agent_artifact' => [AgentArtifactApprovals::class, 'currentVersion'],
     ],
 
 ];

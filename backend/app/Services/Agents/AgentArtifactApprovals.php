@@ -9,9 +9,8 @@ use App\Models\AgentArtifact;
 use App\Models\AgentRun;
 use App\Models\AgentWorkspace;
 use App\Models\TenantSkill;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\EventStore;
-use App\Services\Tools\Drafts\DraftsSubmitForReviewTool;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -55,6 +54,13 @@ use Illuminate\Support\Str;
  *
  * Best-effort writes run in savepoints (BestEffort), so a failed one cannot
  * abort the enclosing transaction on Postgres.
+ *
+ * A grant applies exactly the version that was approved, and only for the
+ * approval that covers the bundle now. The hook receives the deciding
+ * approval's identity and the version it bound; an approval that no longer
+ * covers these artifacts, or a grant that bound no version, applies nothing
+ * and rolls back. The applier then compares the version with the payload it
+ * is about to write.
  */
 final class AgentArtifactApprovals
 {
@@ -67,7 +73,10 @@ final class AgentArtifactApprovals
         private readonly AgentCircuitBreaker $breaker,
     ) {}
 
-    public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    /**
+     * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision  which approval decided, and the version it bound
+     */
+    public function onApprovalResolved(string $tenantId, string $resourceId, bool $granted, string $response = '', array $decision = []): void
     {
         // id and approval_id are uuid columns; a non-uuid resource id can only be "unknown".
         $found = Str::isUuid($resourceId)
@@ -84,7 +93,7 @@ final class AgentArtifactApprovals
             return; // fast path; the decision below is re-made under the lock
         }
 
-        $decided = DB::transaction(fn (): ?AgentArtifact => $this->decide($tenantId, $found, $granted, $response));
+        $decided = DB::transaction(fn (): ?AgentArtifact => $this->decide($tenantId, $found, $granted, $response, $decision));
 
         if ($decided !== null) {
             // Runs now when there is no enclosing transaction, or when the
@@ -93,14 +102,49 @@ final class AgentArtifactApprovals
         }
     }
 
-    /** The bundle's transition, under its lock. Null when it was already decided. */
-    private function decide(string $tenantId, AgentArtifact $found, bool $granted, string $response): ?AgentArtifact
+    /**
+     * The version binding for `agent_artifact` approvals (config/approvals.php
+     * `version_bindings`): lock the bundle — before the approval row, the
+     * order every writer uses — and hash what approving it would apply now.
+     *
+     * @throws BundleIntegrityException
+     */
+    public function currentVersion(string $tenantId, object $approval): string
     {
-        $bundle = $this->lockBundle($tenantId, $found);
+        $primary = AgentArtifact::forTenant($tenantId)->find((string) $approval->resource_id);
+        if ($primary === null) {
+            throw new BundleIntegrityException("Approval {$approval->id} covers an artifact that no longer exists.");
+        }
+        ReviewBundle::lock($primary);
+
+        return ApplicationPayload::hash(ApplicationPayload::for($primary));
+    }
+
+    /**
+     * The bundle's transition, under its lock. Null when it was already decided.
+     *
+     * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision
+     */
+    private function decide(string $tenantId, AgentArtifact $found, bool $granted, string $response, array $decision): ?AgentArtifact
+    {
+        $bundle = ReviewBundle::lock(ReviewBundle::primaryOf($found));
         $artifact = $bundle->firstWhere('id', $found->id);
 
         if ($artifact === null || in_array($artifact->status, self::DECIDED, true)) {
             return null; // idempotent: the chain and the controller may both report
+        }
+
+        // Only the approval that covers these artifacts now may decide them.
+        $approvalId = (string) ($decision['approval_id'] ?? '');
+        if ($approvalId === '' || $approvalId !== (string) $artifact->approval_id) {
+            throw new BundleIntegrityException(sprintf(
+                'Approval %s does not cover artifact %s (its approval is %s); nothing was decided.',
+                $approvalId === '' ? '(none named)' : $approvalId, $artifact->id, $artifact->approval_id ?? 'none',
+            ));
+        }
+        $approvedHash = $decision['approved_version_hash'] ?? null;
+        if ($granted && ! is_string($approvedHash)) {
+            throw new BundleIntegrityException("The grant for {$artifact->id} bound no version, so there is no approved content to apply.");
         }
 
         $edited = false;
@@ -145,14 +189,9 @@ final class AgentArtifactApprovals
         ]);
         $artifact->refresh();
 
-        // Apply: a sequence applies its children; standalone drafts apply one by one.
-        if ($artifact->kind === AgentArtifact::KIND_DRAFT_SEQUENCE) {
-            $this->applier->apply($artifact);
-        } else {
-            foreach ($bundle as $item) {
-                $this->applier->apply($item->refresh());
-            }
-        }
+        // Apply exactly the approved version: a sequence applies its steps,
+        // standalone drafts each record their application.
+        $this->applier->applyApproved($artifact, (string) $approvedHash);
 
         $this->bumpCleanDrafts($tenantId, (string) $artifact->skill_slug, reset: $edited);
         $this->events->append($tenantId, 'agent_artifact', (string) $artifact->id, 'agent.artifact.approved', [
@@ -162,28 +201,6 @@ final class AgentArtifactApprovals
         $this->idleWorkspace($artifact);
 
         return $artifact;
-    }
-
-    /**
-     * Every artifact the decision covers, locked in id order — one order for
-     * every resolver, so two resolutions of overlapping bundles queue rather
-     * than deadlock. The ids come from an unlocked read; the rows returned,
-     * and the statuses decided on, come from the lock.
-     *
-     * @return Collection<int, AgentArtifact>
-     */
-    private function lockBundle(string $tenantId, AgentArtifact $artifact): Collection
-    {
-        $ids = DraftsSubmitForReviewTool::bundle($artifact)->pluck('id');
-        if ($artifact->approval_id !== null) {
-            $ids = $ids->merge(AgentArtifact::forTenant($tenantId)->where('approval_id', $artifact->approval_id)->pluck('id'));
-        }
-
-        return AgentArtifact::forTenant($tenantId)
-            ->whereIn('id', $ids->unique()->values()->all())
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
     }
 
     /** Whether the revision was recorded. */

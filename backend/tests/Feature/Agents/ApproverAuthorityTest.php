@@ -52,7 +52,7 @@ class ApproverAuthorityTest extends AgentsTestCase
         [$run, $approval] = $this->pendingSequence();
         $member = $this->user('member', ['approvals.decide']);
 
-        $this->actingAs($member, 'sanctum')->postJson("/api/approvals/{$approval->id}/approve")->assertOk();
+        $this->actingAs($member, 'sanctum')->postJson("/api/approvals/{$approval->id}/approve", ['version_hash' => $this->shownVersion($approval->id)])->assertOk();
 
         $this->assertSame(4, AgentArtifact::where('run_id', $run->id)->where('status', AgentArtifact::STATUS_APPLIED)->count());
         $this->assertSame((string) $member->id, (string) DB::table('approvals')->where('id', $approval->id)->value('approver_id'));
@@ -96,7 +96,7 @@ class ApproverAuthorityTest extends AgentsTestCase
     {
         [$run, $approval] = $this->pendingSequence();
 
-        app(ApprovalEngine::class)->resolveApproval($approval->id, (string) $this->admin->id, true, 'ok');
+        app(ApprovalEngine::class)->resolveApproval($approval->id, (string) $this->admin->id, true, 'ok', $this->shownVersion($approval->id));
 
         $this->assertSame(1, Event::forTenant((string) $this->tenant->id)->where('event_type', 'approval.granted')->where('aggregate_id', $approval->id)->count());
         $this->assertSame(4, AgentArtifact::where('run_id', $run->id)->where('status', AgentArtifact::STATUS_APPLIED)->count(), 'the hook fired');
@@ -126,7 +126,8 @@ class ApproverAuthorityTest extends AgentsTestCase
      */
     public function test_applying_needs_an_approver(): void
     {
-        [$run] = $this->pendingSequence();
+        [$run, $approval] = $this->pendingSequence();
+        DB::table('approvals')->where('id', $approval->id)->update(['status' => 'approved', 'approved_version_hash' => $this->shownVersion($approval->id)]);
         AgentArtifact::where('run_id', $run->id)->update(['status' => AgentArtifact::STATUS_APPROVED]);
         $sequence = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_SEQUENCE)->sole();
 

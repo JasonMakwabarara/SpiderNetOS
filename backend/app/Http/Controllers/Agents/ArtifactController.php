@@ -6,8 +6,11 @@ namespace App\Http\Controllers\Agents;
 
 use App\Models\AgentArtifact;
 use App\Models\AgentRun;
+use App\Services\Agents\ApplicationPayload;
 use App\Services\Agents\ArtifactApplier;
 use App\Services\Agents\Exceptions\AgentRuntimeException;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
+use App\Services\Agents\ReviewBundle;
 use App\Services\Agents\RunContextFactory;
 use App\Services\Tools\Drafts\DraftsSubmitForReviewTool;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +26,9 @@ use Illuminate\Support\Facades\DB;
 class ArtifactController extends AgentsController
 {
     private const FROZEN = [AgentArtifact::STATUS_APPROVED, AgentArtifact::STATUS_APPLIED, AgentArtifact::STATUS_REJECTED];
+
+    /** Meta that defines a bundle and its destination (what ApplicationPayload reads), never content. */
+    private const STRUCTURAL_META = ['steps', 'artifact_ids', 'sequence_id', 'original_content', 'campaign', 'campaign_key', 'channel', 'pack_id'];
 
     public function index(Request $request): JsonResponse
     {
@@ -72,43 +78,73 @@ class ArtifactController extends AgentsController
         if ($artifact->status === AgentArtifact::STATUS_SUBMITTED && ! $request->user()?->can_do('approvals.decide')) {
             return response()->json(['error' => 'forbidden', 'reason' => 'approver_capability_required', 'message' => 'Only an approver may edit an artifact under review.'], 403);
         }
+        // Where the bundle goes and what it is made of are not edits to its
+        // content. They were silently stripped for three keys and accepted for
+        // the rest, so a PATCH could re-point a step at another artifact.
+        $structural = array_values(array_intersect(array_keys((array) ($validated['meta'] ?? [])), self::STRUCTURAL_META));
+        if ($structural !== []) {
+            return response()->json(['error' => 'structural_meta', 'keys' => $structural, 'message' => 'These fields define the bundle and its destination; they cannot be edited.'], 422);
+        }
 
-        $meta = (array) ($artifact->meta ?? []);
-        $original = (string) ($meta['original_content'] ?? $artifact->content);
         $userId = $request->user()?->id ? (string) $request->user()->id : null;
-        $changed = false;
 
-        if (array_key_exists('content', $validated) && $validated['content'] !== null && $validated['content'] !== (string) $artifact->content) {
-            if (! isset($meta['original_content'])) {
-                $meta['original_content'] = (string) $artifact->content;
+        // One transaction over the locked bundle — the same lock, in the same
+        // order, that the decision takes — so an edit and a decision cannot
+        // interleave: whichever commits second sees the other.
+        return DB::transaction(function () use ($artifact, $validated, $userId): JsonResponse {
+            $artifact = ReviewBundle::lock(ReviewBundle::primaryOf($artifact))->firstWhere('id', $artifact->id) ?? $artifact->refresh();
+            if (in_array($artifact->status, self::FROZEN, true)) {
+                return response()->json(['error' => 'artifact_frozen', 'status' => $artifact->status, 'message' => 'Resolved artifacts cannot be edited.'], 409);
             }
-            $meta['edited_at'] = now()->toIso8601String();
-            $meta['edited_by'] = $userId;
-            $meta['edit_count'] = (int) ($meta['edit_count'] ?? 0) + 1;
-            $artifact->content = (string) $validated['content'];
-            $changed = true;
-        }
-        if (! empty($validated['meta'])) {
-            $incoming = (array) $validated['meta'];
-            unset($incoming['original_content'], $incoming['artifact_ids'], $incoming['sequence_id']);
-            $meta = array_replace($meta, $incoming);
-            $changed = true;
-        }
-        if (! empty($validated['title'])) {
-            $artifact->title = (string) $validated['title'];
-            $changed = true;
-        }
-
-        if ($changed) {
-            $artifact->meta = $meta;
-            $artifact->save();
-
             if ($artifact->approval_id !== null) {
-                $this->refreshApprovalContext($artifact);
+                $decided = DB::table('approvals')->where('id', $artifact->approval_id)->value('status');
+                if ($decided !== 'pending') {
+                    // Decided, and not yet applied: the version it approved is
+                    // the one that must be applied.
+                    return response()->json(['error' => 'approval_decided', 'status' => $decided, 'message' => 'This review has been decided; its content can no longer change.'], 409);
+                }
             }
-        }
 
-        return response()->json(['data' => $this->artifactPayload($artifact) + ['original_content' => $original]]);
+            $meta = (array) ($artifact->meta ?? []);
+            $original = (string) ($meta['original_content'] ?? $artifact->content);
+            $changed = false;
+
+            if (array_key_exists('content', $validated) && $validated['content'] !== null && $validated['content'] !== (string) $artifact->content) {
+                if (! isset($meta['original_content'])) {
+                    $meta['original_content'] = (string) $artifact->content;
+                }
+                $meta['edited_at'] = now()->toIso8601String();
+                $meta['edited_by'] = $userId;
+                $meta['edit_count'] = (int) ($meta['edit_count'] ?? 0) + 1;
+                $artifact->content = (string) $validated['content'];
+                $changed = true;
+            }
+            if (! empty($validated['meta'])) {
+                $meta = array_replace($meta, (array) $validated['meta']);
+                $changed = true;
+            }
+            if (! empty($validated['title'])) {
+                $artifact->title = (string) $validated['title'];
+                $changed = true;
+            }
+
+            $version = null;
+            if ($changed) {
+                $artifact->meta = $meta;
+                $artifact->save();
+
+                if ($artifact->approval_id !== null) {
+                    $version = $this->rebindApproval($artifact);
+                }
+            }
+
+            return response()->json(['data' => $this->artifactPayload($artifact) + [
+                'original_content' => $original,
+                // The version the approval now covers. The previous one is
+                // superseded: an approval presenting it is refused as stale.
+                'approval_version_hash' => $version ?? ($artifact->approval_id !== null ? DB::table('approvals')->where('id', $artifact->approval_id)->value('version_hash') : null),
+            ]]);
+        });
     }
 
     public function submit(Request $request, string $id, RunContextFactory $contexts, DraftsSubmitForReviewTool $tool): JsonResponse
@@ -156,18 +192,42 @@ class ArtifactController extends AgentsController
             return response()->json(['error' => 'artifact_not_approved', 'status' => $artifact->status, 'message' => 'Approve the artifact before applying it.'], 409);
         }
 
-        $applier->apply($artifact);
+        // Apply only the version the decision bound, and apply the whole
+        // bundle the approval covers — never a member on its own.
+        $approval = DB::table('approvals')->where('id', $artifact->approval_id)->where('tenant_id', $this->tenantId($request))->first(['resource_id', 'status', 'approved_version_hash']);
+        if ($approval === null || $approval->status !== 'approved' || $approval->approved_version_hash === null) {
+            return response()->json(['error' => 'approval_not_bound', 'message' => 'No approval bound a version of this artifact, so there is no approved content to apply.'], 409);
+        }
+        $primary = AgentArtifact::forTenant($this->tenantId($request))->find($approval->resource_id);
+        if ($primary === null) {
+            return response()->json(['error' => 'artifact_not_found'], 404);
+        }
+
+        try {
+            DB::transaction(function () use ($applier, $primary, $approval): void {
+                $locked = ReviewBundle::lock($primary)->firstWhere('id', $primary->id) ?? $primary;
+                $applier->applyApproved($locked, (string) $approval->approved_version_hash);
+            });
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => 'bundle_integrity', 'message' => $e->getMessage()], 409);
+        }
 
         return response()->json(['data' => $this->artifactPayload($artifact->refresh())]);
     }
 
-    /** Keep the pending approval's preview in step with the edited draft (RecruiterBot PATCH pattern). */
-    private function refreshApprovalContext(AgentArtifact $artifact): void
+    /**
+     * An edit while pending supersedes the version the approval covered.
+     * Re-hash what approving would now apply, bind the approval to it, and
+     * show that payload — the one the hash covers and the applier writes.
+     * Called under the bundle's lock.
+     */
+    private function rebindApproval(AgentArtifact $artifact): string
     {
-        $row = DB::table('approvals')->where('id', $artifact->approval_id)->where('status', 'pending')->first(['id', 'context']);
-        if ($row === null) {
-            return;
-        }
+        $row = DB::table('approvals')->where('id', $artifact->approval_id)->first(['id', 'context', 'resource_id']);
+        $primary = AgentArtifact::forTenant((string) $artifact->tenant_id)->findOrFail($row->resource_id);
+        $payload = ApplicationPayload::for($primary);
+        $version = ApplicationPayload::hash($payload);
+
         $context = json_decode((string) $row->context, true);
         $context = is_array($context) ? $context : [];
         if (($context['artifact_id'] ?? null) === $artifact->id) {
@@ -176,6 +236,10 @@ class ArtifactController extends AgentsController
         }
         $context['edited'] = true;
         $context['edited_artifact_ids'] = array_values(array_unique(array_merge((array) ($context['edited_artifact_ids'] ?? []), [$artifact->id])));
-        DB::table('approvals')->where('id', $row->id)->update(['context' => json_encode($context), 'updated_at' => now()]);
+        $context['payload'] = $payload;
+
+        DB::table('approvals')->where('id', $row->id)->update(['context' => json_encode($context), 'version_hash' => $version, 'updated_at' => now()]);
+
+        return $version;
     }
 }

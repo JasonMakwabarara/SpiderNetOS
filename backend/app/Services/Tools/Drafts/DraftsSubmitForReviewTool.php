@@ -6,12 +6,15 @@ namespace App\Services\Tools\Drafts;
 
 use App\Models\AgentArtifact;
 use App\Models\AgentWorkspace;
+use App\Services\Agents\ApplicationPayload;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\Agents\RunContext;
 use App\Services\Agents\WorkspaceProvisioner;
 use App\Services\ApprovalEngine;
 use App\Services\Tools\ToolContract;
 use App\Services\Tools\ToolResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -76,6 +79,14 @@ final class DraftsSubmitForReviewTool implements ToolContract
             return ToolResult::fail('artifact_not_draft', ['status' => $artifact->status]);
         }
 
+        // What approving would apply, checked before any approval exists: a
+        // bundle that does not hold together is never put in front of a person.
+        try {
+            $payload = ApplicationPayload::for($artifact);
+        } catch (BundleIntegrityException $e) {
+            return ToolResult::fail('bundle_integrity', ['message' => $e->getMessage()]);
+        }
+
         $bundle = self::bundle($artifact);
         $meta = (array) $artifact->meta;
         $reason = trim((string) ($params['reason'] ?? ''));
@@ -111,10 +122,17 @@ final class DraftsSubmitForReviewTool implements ToolContract
                 'channel' => $meta['channel'] ?? null,
                 'title' => $artifact->title,
                 'preview' => mb_substr((string) $artifact->content, 0, 1200),
+                // Exactly what approving applies — the same payload the hash
+                // covers and the applier writes.
+                'payload' => $payload,
                 'risk' => 'draft',
             ],
         );
         $approvalId = (string) ($approval['id'] ?? '');
+
+        // The version this approval covers. An approver must present it to
+        // grant, and an edit while pending replaces it.
+        DB::table('approvals')->where('id', $approvalId)->update(['version_hash' => ApplicationPayload::hash($payload)]);
 
         AgentArtifact::whereIn('id', $bundle->pluck('id')->all())->update([
             'status' => AgentArtifact::STATUS_SUBMITTED,

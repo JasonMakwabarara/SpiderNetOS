@@ -40,7 +40,7 @@ class SingleStageDecisionTest extends AgentsTestCase
             });
         }));
 
-        $this->api()->postJson("/api/approvals/{$approval->id}/approve")->assertStatus(500);
+        $this->api()->postJson("/api/approvals/{$approval->id}/approve", ['version_hash' => $this->shownVersion($approval->id)])->assertStatus(500);
 
         $row = DB::table('approvals')->where('id', $approval->id)->first();
         $this->assertSame('pending', $row->status, 'the decision rolled back with its event');
@@ -55,8 +55,9 @@ class SingleStageDecisionTest extends AgentsTestCase
     {
         [$run, $approval] = $this->pendingSequence();
 
-        $this->api()->postJson("/api/approvals/{$approval->id}/approve")->assertOk();
-        $this->api()->postJson("/api/approvals/{$approval->id}/approve")
+        $shown = ['version_hash' => $this->shownVersion($approval->id)];
+        $this->api()->postJson("/api/approvals/{$approval->id}/approve", $shown)->assertOk();
+        $this->api()->postJson("/api/approvals/{$approval->id}/approve", $shown)
             ->assertStatus(409)
             ->assertJson(['error' => 'Approval has already been approved.']);
         $this->api()->postJson("/api/approvals/{$approval->id}/reject", ['reason' => 'too late'])->assertStatus(409);

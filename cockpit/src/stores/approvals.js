@@ -56,6 +56,12 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
   /**
    * Approve an approval request.
+   *
+   * Sends the version of the approval this page is showing. The server
+   * refuses a grant whose version is not the one that exists now (an edit
+   * landed after this page loaded), so the approver decides on what they
+   * actually saw; on that refusal the list is reloaded to show the current
+   * version.
    * @param {string} id - The approval ID.
    * @param {string} [comment] - Optional approval comment.
    * @returns {Promise<object>} Result with success flag.
@@ -65,6 +71,10 @@ export const useApprovalsStore = defineStore('approvals', () => {
       const payload = {}
       if (comment) {
         payload.comment = comment
+      }
+      const shown = approvals.value.find((a) => a.id === id)
+      if (shown?.version_hash) {
+        payload.version_hash = shown.version_hash
       }
       const response = await api.post(`/api/approvals/${id}/approve`, payload)
 
@@ -81,8 +91,13 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
       return { success: true, data: response.data }
     } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to approve'
-      return { success: false, error: error.value }
+      const body = err.response?.data || {}
+      error.value = body.message || body.error || 'Failed to approve'
+      if (String(body.reason || '').startsWith('version_')) {
+        // What was shown is no longer what exists: show the current version.
+        await fetchApprovals()
+      }
+      return { success: false, error: error.value, reason: body.reason }
     }
   }
 

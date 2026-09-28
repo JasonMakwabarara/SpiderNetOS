@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Approval;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\ApprovalAlreadyDecided;
 use App\Services\ApprovalEngine;
+use App\Services\ApprovalVersionConflict;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +99,9 @@ class ApprovalController extends Controller
     {
         $request->validate([
             'reason' => 'nullable|string|max:2000',
+            // The version the approver was shown; required for resource types
+            // with a version binding (ApprovalEngine::decideSingleStage).
+            'version_hash' => 'nullable|string|max:80',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -120,7 +125,7 @@ class ApprovalController extends Controller
         // Multi-stage chains resolve through the engine (per-step auth,
         // step advancement, terminal hooks, events).
         if ($approval->current_step !== null) {
-            return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''));
+            return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''), $request->input('version_hash'));
         }
 
         return $this->decide($request, $tenantId, $id, granted: true);
@@ -173,7 +178,7 @@ class ApprovalController extends Controller
     {
         try {
             $event = app(ApprovalEngine::class)->decideSingleStage(
-                $tenantId, $id, $request->user(), $granted, $request->input('reason'),
+                $tenantId, $id, $request->user(), $granted, $request->input('reason'), $request->input('version_hash'),
             );
         } catch (\InvalidArgumentException) {
             return response()->json(['error' => 'Approval not found.'], 404);
@@ -182,6 +187,12 @@ class ApprovalController extends Controller
         } catch (ApprovalAlreadyDecided $e) {
             // The loser of a race, or a replay: the answer already given.
             return response()->json(['error' => "Approval has already been {$e->status}."], 409);
+        } catch (ApprovalVersionConflict $e) {
+            // Deliberately without the current version: a client must show it
+            // to the approver again, not resend it unseen.
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'version_'.$e->reason], 409);
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'bundle_integrity'], 409);
         }
 
         return response()->json([
@@ -196,7 +207,7 @@ class ApprovalController extends Controller
      * Route a chained approval through ApprovalEngine::resolveStep with
      * HTTP error mapping.
      */
-    private function resolveChainStep(Request $request, string $id, bool $approved, string $response): JsonResponse
+    private function resolveChainStep(Request $request, string $id, bool $approved, string $response, ?string $presentedVersion = null): JsonResponse
     {
         try {
             $result = app(ApprovalEngine::class)->resolveStep(
@@ -204,7 +215,12 @@ class ApprovalController extends Controller
                 (string) $request->user()?->id,
                 $approved,
                 $response,
+                $presentedVersion,
             );
+        } catch (ApprovalVersionConflict $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'version_'.$e->reason], 409);
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'bundle_integrity'], 409);
         } catch (\DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 403);
         } catch (\LogicException $e) {

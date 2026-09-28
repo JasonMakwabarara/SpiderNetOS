@@ -8,7 +8,9 @@ use App\Models\AgentArtifact;
 use App\Models\AgentRun;
 use App\Models\BusinessAsset;
 use App\Models\Event;
+use App\Models\MessageTemplate;
 use App\Models\TenantSkill;
+use App\Services\Agents\ApplicationPayload;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Process\Process;
@@ -129,9 +131,12 @@ class ApprovalRaceTest extends AgentsTestCase
         [$run, $approval] = $this->pendingSequence();
         $ids = AgentArtifact::where('run_id', $run->id)->orderBy('id')->pluck('id')->all();
 
+        // Delivered as the engine delivers it: naming the deciding approval
+        // and the version it bound.
         $hook = [
             'mode' => 'hook', 'resource_type' => 'agent_artifact', 'tenant_id' => (string) $this->tenant->id,
             'resource_id' => (string) $approval->resource_id, 'granted' => true,
+            'decision' => ['approval_id' => (string) $approval->id, 'approved_version_hash' => $this->shownVersion($approval->id)],
         ];
         $outcomes = $this->race(
             'select id from agent_artifacts where id in ('.implode(',', array_fill(0, count($ids), '?')).') order by id for update', $ids,
@@ -177,9 +182,87 @@ class ApprovalRaceTest extends AgentsTestCase
         $this->assertSame(200, $outcomes[1]['status'], json_encode($outcomes[1]));
     }
 
+    /**
+     * An approval and an edit of the same bundle, the edit first. The edit
+     * rebinds the approval to a new version; the approval presenting the old
+     * one is then refused as stale, and nothing is applied. Whatever order
+     * they land in, nothing is applied that was not approved.
+     */
+    public function test_an_edit_that_lands_first_makes_the_concurrent_approval_stale(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        $seen = $this->shownVersion($approval->id);
+
+        $outcomes = $this->race($this->bundleLock($run), $this->bundleIds($run), [
+            $this->editJob($run),
+            $this->approveJob($approval->id),
+        ]);
+
+        $this->assertSame([200, 409], array_column($outcomes, 'status'), json_encode($outcomes));
+        $this->assertSame('version_stale', $outcomes[1]['body']['reason'] ?? null, json_encode($outcomes[1]));
+        $row = DB::table('approvals')->where('id', $approval->id)->first();
+        $this->assertSame('pending', $row->status);
+        $this->assertNotSame($seen, $row->version_hash, 'the edit rebound the approval');
+        $this->assertSame($row->version_hash, ApplicationPayload::hash(ApplicationPayload::for($this->sequenceOf($run))));
+        $this->assertSame(0, BusinessAsset::forTenant((string) $this->tenant->id)->count(), 'nothing applied');
+    }
+
+    /**
+     * The same race, the approval first. It binds the version it saw and
+     * commits; the edit then finds the review decided and is refused; the
+     * hook applies exactly the approved payload.
+     */
+    public function test_an_approval_that_lands_first_freezes_the_concurrent_edit(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        $seen = $this->shownVersion($approval->id);
+
+        $outcomes = $this->race($this->bundleLock($run), $this->bundleIds($run), [
+            $this->approveJob($approval->id),
+            $this->editJob($run),
+        ]);
+
+        $this->assertSame([200, 409], array_column($outcomes, 'status'), json_encode($outcomes));
+        $this->assertSame('approval_decided', $outcomes[1]['body']['error'] ?? null, json_encode($outcomes[1]));
+        $this->assertSame(self::APPROVED_ONCE, $this->effects($run, $approval->id));
+        // What was applied is what was approved: the bound version is the
+        // payload as it stands, and the edit never reached it.
+        $this->assertSame($seen, DB::table('approvals')->where('id', $approval->id)->value('approved_version_hash'));
+        $this->assertSame($seen, ApplicationPayload::hash(ApplicationPayload::for($this->sequenceOf($run))));
+        $this->assertStringNotContainsString('racing edit', (string) MessageTemplate::forTenant((string) $this->tenant->id)->where('key', 'outreach.spring-launch.step1.a')->value('body'));
+    }
+
     // ------------------------------------------------------------------ //
     //  helpers
     // ------------------------------------------------------------------ //
+
+    private function sequenceOf(AgentRun $run): AgentArtifact
+    {
+        return AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_SEQUENCE)->sole();
+    }
+
+    /** @return list<string> */
+    private function bundleIds(AgentRun $run): array
+    {
+        return AgentArtifact::where('run_id', $run->id)->orderBy('id')->pluck('id')->all();
+    }
+
+    private function bundleLock(AgentRun $run): string
+    {
+        return 'select id from agent_artifacts where id in ('.implode(',', array_fill(0, count($this->bundleIds($run)), '?')).') order by id for update';
+    }
+
+    /** @return array<string, mixed> an admin editing step 1 of the run's sequence */
+    private function editJob(AgentRun $run): array
+    {
+        $step = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
+
+        return [
+            'mode' => 'http', 'method' => 'PATCH', 'user_id' => (string) $this->admin->id,
+            'uri' => '/api/artifacts/'.$step->id,
+            'body' => ['content' => "Subject: A racing edit\n\n{{first_line}} A racing edit of the opener."],
+        ];
+    }
 
     /** A per-test prefix for the competitors' session names. */
     private function tag(): string
@@ -209,7 +292,7 @@ class ApprovalRaceTest extends AgentsTestCase
         return [
             'mode' => 'http', 'user_id' => (string) $this->admin->id,
             'uri' => '/api/approvals/'.$approvalId.($grant ? '/approve' : '/reject'),
-            'body' => $grant ? [] : ['reason' => 'Not our voice.'],
+            'body' => $grant ? ['version_hash' => $this->shownVersion($approvalId)] : ['reason' => 'Not our voice.'],
         ];
     }
 

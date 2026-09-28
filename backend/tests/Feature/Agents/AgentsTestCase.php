@@ -278,7 +278,17 @@ abstract class AgentsTestCase extends TestCase
     protected function approve(string $approvalId, bool $grant = true, ?string $reason = null): void
     {
         $this->api()
-            ->postJson('/api/approvals/'.$approvalId.($grant ? '/approve' : '/reject'), array_filter(['reason' => $reason ?? ($grant ? null : 'Not our voice.')]))
+            ->postJson('/api/approvals/'.$approvalId.($grant ? '/approve' : '/reject'), array_filter([
+                'reason' => $reason ?? ($grant ? null : 'Not our voice.'),
+                // What the cockpit sends: the version the approval showed.
+                'version_hash' => $grant ? $this->shownVersion($approvalId) : null,
+            ]))
             ->assertOk();
+    }
+
+    /** The version an approval currently covers — what an approver's page shows. */
+    protected function shownVersion(string $approvalId): ?string
+    {
+        return DB::table('approvals')->where('id', $approvalId)->value('version_hash');
     }
 }
