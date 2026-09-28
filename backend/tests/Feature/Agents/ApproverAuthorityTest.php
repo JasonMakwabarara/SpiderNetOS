@@ -105,9 +105,9 @@ class ApproverAuthorityTest extends AgentsTestCase
     /** Editing content under review changes what the approver approves. */
     public function test_editing_content_under_review_needs_an_approver(): void
     {
-        [$run] = $this->pendingSequence();
+        [$run, $approval] = $this->pendingSequence();
         $email = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->firstOrFail();
-        $edit = ['content' => "Subject: Something else\n\nA body the approver never saw."];
+        $edit = ['content' => "Subject: Something else\n\nA body the approver never saw.", 'expected_version' => $this->shownVersion($approval->id)];
 
         $this->actingAs($this->user('viewer'), 'sanctum')->patchJson("/api/artifacts/{$email->id}", $edit)
             ->assertStatus(403)->assertJsonPath('reason', 'insufficient_role');

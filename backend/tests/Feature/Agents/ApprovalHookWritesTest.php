@@ -67,6 +67,7 @@ class ApprovalHookWritesTest extends AgentsTestCase
         $stepOne = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
         $this->api()->patchJson("/api/artifacts/{$stepOne->id}", [
             'content' => "Subject: Leads are going cold in your inbox\n\n{{first_line}} A shorter opener, in our own words.",
+            'expected_version' => $this->shownVersion($approval->id),
         ])->assertOk();
         DB::statement('ALTER TABLE artifact_revisions RENAME TO artifact_revisions_unavailable');
 

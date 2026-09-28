@@ -13,7 +13,7 @@ class ApprovalStep extends Model
     protected $fillable = [
         'approval_id', 'tenant_id', 'step_order', 'approver_type',
         'approver_role', 'approver_id', 'delegated_to', 'status',
-        'acted_by', 'response', 'expires_at', 'responded_at',
+        'acted_by', 'response', 'expires_at', 'responded_at', 'version_hash',
     ];
 
     protected $casts = [

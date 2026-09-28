@@ -213,7 +213,7 @@ class ColdEmailDraftingRunTest extends AgentsTestCase
         $stepOne = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
 
         $edited = "Subject: Leads are going cold in your inbox\n\n{{first_line}} A shorter opener, in our own words, about the follow-ups that slip.";
-        $this->api()->patchJson("/api/artifacts/{$stepOne->id}", ['content' => $edited])->assertOk()
+        $this->api()->patchJson("/api/artifacts/{$stepOne->id}", ['content' => $edited, 'expected_version' => $this->shownVersion($approval->id)])->assertOk()
             ->assertJsonPath('data.edited', true);
         $this->assertSame($stepOne->content, AgentArtifact::findOrFail($stepOne->id)->meta['original_content']);
         $this->assertTrue((bool) $this->approvalContext(DB::table('approvals')->where('id', $approval->id)->first())['edited']);

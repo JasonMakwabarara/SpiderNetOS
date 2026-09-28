@@ -63,6 +63,9 @@ class ArtifactController extends AgentsController
             'content' => 'nullable|string|max:200000',
             'meta' => 'nullable|array',
             'title' => 'nullable|string|max:255',
+            // The version of the review this edit started from; required while
+            // the artifact is under review (see below).
+            'expected_version' => 'nullable|string|max:80',
         ]);
 
         $artifact = $this->findArtifact($request, $id);
@@ -97,11 +100,28 @@ class ArtifactController extends AgentsController
                 return response()->json(['error' => 'artifact_frozen', 'status' => $artifact->status, 'message' => 'Resolved artifacts cannot be edited.'], 409);
             }
             if ($artifact->approval_id !== null) {
-                $decided = DB::table('approvals')->where('id', $artifact->approval_id)->value('status');
-                if ($decided !== 'pending') {
+                $review = DB::table('approvals')->where('id', $artifact->approval_id)->first(['status', 'current_step', 'version_hash']);
+                if ($review?->status !== 'pending') {
                     // Decided, and not yet applied: the version it approved is
                     // the one that must be applied.
-                    return response()->json(['error' => 'approval_decided', 'status' => $decided, 'message' => 'This review has been decided; its content can no longer change.'], 409);
+                    return response()->json(['error' => 'approval_decided', 'status' => $review?->status, 'message' => 'This review has been decided; its content can no longer change.'], 409);
+                }
+                // Once any step of a chain has approved, the content is what
+                // that reviewer approved. An edit would leave the chain's
+                // remaining steps approving something the earlier ones never
+                // saw, so the only way to change it is to reject and resubmit.
+                if ($review->current_step !== null && DB::table('approval_steps')->where('approval_id', $artifact->approval_id)->where('status', 'approved')->exists()) {
+                    return response()->json(['error' => 'review_in_progress', 'message' => 'A reviewer has already approved this version. Reject it and submit again to change it.'], 409);
+                }
+                // Two editors who loaded the same version must not overwrite
+                // each other: the lock orders their saves, and this makes the
+                // second one notice that it started from content that is gone.
+                $expected = (string) ($validated['expected_version'] ?? '');
+                if ($expected === '') {
+                    return response()->json(['error' => 'edit_version_missing', 'message' => 'An edit under review needs the version it started from (expected_version).'], 409);
+                }
+                if ($review->version_hash === null || ! hash_equals((string) $review->version_hash, $expected)) {
+                    return response()->json(['error' => 'edit_stale', 'message' => 'This review changed after you loaded it. Reload it and edit the current version.'], 409);
                 }
             }
 

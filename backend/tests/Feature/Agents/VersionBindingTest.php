@@ -62,6 +62,7 @@ class VersionBindingTest extends AgentsTestCase
 
         $seenAfter = $this->api()->patchJson("/api/artifacts/{$this->stepEmail($run, 1)->id}", [
             'content' => "Subject: A shorter opener\n\n{{first_line}} Slow follow-up costs agencies good work.",
+            'expected_version' => $seenBefore,
         ])->assertOk()->json('data.approval_version_hash');
 
         $this->assertNotSame($seenBefore, $seenAfter);
@@ -87,6 +88,7 @@ class VersionBindingTest extends AgentsTestCase
         [$run, $approval] = $this->pendingSequence();
         $this->api()->patchJson("/api/artifacts/{$this->stepEmail($run, 1)->id}", [
             'content' => "Subject: A shorter opener\n\n{{first_line}} Slow follow-up costs agencies good work.",
+            'expected_version' => $this->shownVersion($approval->id),
         ])->assertOk();
 
         $this->approve($approval->id);

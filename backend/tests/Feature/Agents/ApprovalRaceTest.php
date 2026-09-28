@@ -232,6 +232,29 @@ class ApprovalRaceTest extends AgentsTestCase
         $this->assertStringNotContainsString('racing edit', (string) MessageTemplate::forTenant((string) $this->tenant->id)->where('key', 'outreach.spring-launch.step1.a')->value('body'));
     }
 
+    /**
+     * Two editors who loaded the same version save at once. The bundle lock
+     * orders them; the version check makes the second notice that it started
+     * from content that is gone. Exactly one save lands, and it is not
+     * silently overwritten.
+     */
+    public function test_two_concurrent_editors_cannot_overwrite_each_other(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        $loaded = $this->shownVersion($approval->id);
+
+        $outcomes = $this->race($this->bundleLock($run), $this->bundleIds($run), [
+            $this->editJob($run, 'The first editor wrote this.'),
+            $this->editJob($run, 'The second editor wrote this.'),
+        ]);
+
+        $this->assertSame([200, 409], array_column($outcomes, 'status'), json_encode($outcomes));
+        $this->assertSame('edit_stale', $outcomes[1]['body']['error'] ?? null, json_encode($outcomes[1]));
+        $step = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
+        $this->assertStringContainsString('The first editor wrote this.', (string) $step->content);
+        $this->assertNotSame($loaded, $this->shownVersion($approval->id), 'the landed save rebound the approval');
+    }
+
     // ------------------------------------------------------------------ //
     //  helpers
     // ------------------------------------------------------------------ //
@@ -252,15 +275,18 @@ class ApprovalRaceTest extends AgentsTestCase
         return 'select id from agent_artifacts where id in ('.implode(',', array_fill(0, count($this->bundleIds($run)), '?')).') order by id for update';
     }
 
-    /** @return array<string, mixed> an admin editing step 1 of the run's sequence */
-    private function editJob(AgentRun $run): array
+    /** @return array<string, mixed> an admin editing step 1 of the run's sequence, from the version its page loaded */
+    private function editJob(AgentRun $run, string $content = 'A racing edit of the opener.'): array
     {
         $step = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
 
         return [
             'mode' => 'http', 'method' => 'PATCH', 'user_id' => (string) $this->admin->id,
             'uri' => '/api/artifacts/'.$step->id,
-            'body' => ['content' => "Subject: A racing edit\n\n{{first_line}} A racing edit of the opener."],
+            'body' => [
+                'content' => "Subject: A racing edit\n\n{{first_line}} {$content}",
+                'expected_version' => $this->shownVersion((string) $step->approval_id),
+            ],
         ];
     }
 

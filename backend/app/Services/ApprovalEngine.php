@@ -173,8 +173,13 @@ class ApprovalEngine
      * the version hash the approver was shown; it is compared, under the
      * resource's own locks, with what approving would apply now, and the
      * version is bound to the decision (`approved_version_hash`) — the applier
-     * checks the payload against it before writing anything. A rejection
-     * needs no version: refusing something authorises nothing.
+     * checks the payload against it before writing anything.
+     *
+     * A rejection normally carries the version it judged too, and is refused
+     * as stale if the content changed since — rejecting something the reviewer
+     * never saw would be attributed to content they did not examine. Without
+     * a version it is a cancellation of the pending request, whatever its
+     * content, and the decision's event records that no version was observed.
      *
      * The hook runs after the commit and only for the decider, told which
      * approval decided and which version it bound. It is deliberately outside
@@ -204,6 +209,7 @@ class ApprovalEngine
         $bound = null;
         $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason, $presentedVersion, &$bound): Event {
             $bound = $granted ? $this->verifyVersion($tenantId, $approval, $presentedVersion) : null;
+            $observed = $granted ? $bound : $this->observedVersion($tenantId, $approval, $presentedVersion);
 
             // Columns must match the actual `approvals` schema
             // (2024_01_01_000008_create_approvals_table.php): approver_id /
@@ -244,6 +250,10 @@ class ApprovalEngine
                     ($granted ? 'approved_by' : 'rejected_by') => $actor->id,
                     'reason' => $reason,
                     'approved_version_hash' => $bound,
+                    // What the decider was looking at: the bound version for a
+                    // grant, the judged version for a rejection, null for a
+                    // cancellation made without one.
+                    'observed_version_hash' => $observed,
                     'flow_execution_id' => $approval->flow_execution_id ?? null,
                     'dag_node_id' => $approval->dag_node_id ?? null,
                 ],
@@ -278,6 +288,15 @@ class ApprovalEngine
      *
      * @throws ApprovalVersionConflict
      */
+    /**
+     * The version a rejection judged: verified like a grant's when one is
+     * presented, null when the rejection is a cancellation made without one.
+     */
+    private function observedVersion(string $tenantId, object $approval, ?string $presented): ?string
+    {
+        return $presented === null || $presented === '' ? null : $this->verifyVersion($tenantId, $approval, $presented);
+    }
+
     private function verifyVersion(string $tenantId, object $approval, ?string $presented): ?string
     {
         $binding = config('approvals.version_bindings.'.$approval->resource_type);
@@ -455,9 +474,9 @@ class ApprovalEngine
             // A bound resource is locked before the approval row, the order
             // every writer uses; each approving step decides the version it saw.
             $unlocked = DB::table('approvals')->where('id', $approvalId)->first();
-            $bound = $unlocked && $approved && $unlocked->current_step !== null && $unlocked->status === 'pending'
-                ? $this->verifyVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion)
-                : null;
+            $open = $unlocked && $unlocked->current_step !== null && $unlocked->status === 'pending';
+            $bound = $open && $approved ? $this->verifyVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion) : null;
+            $observed = $open && ! $approved ? $this->observedVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion) : $bound;
 
             $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
 
@@ -491,6 +510,9 @@ class ApprovalEngine
                 'acted_by' => $approverId,
                 'response' => $response,
                 'responded_at' => now(),
+                // The version this step decided, so completion can require
+                // that every approving step decided the same one.
+                'version_hash' => $observed,
             ]);
 
             $this->eventStore->append($approval->tenant_id, $approved ? 'approval.step_granted' : 'approval.step_rejected', [
@@ -498,6 +520,7 @@ class ApprovalEngine
                 'step_order' => $step->step_order,
                 'acted_by' => $approverId,
                 'response' => $response,
+                'version_hash' => $observed,
             ]);
 
             if (! $approved) {
@@ -694,6 +717,27 @@ class ApprovalEngine
      */
     private function finalizeChain(object $approval, string $approverId, bool $granted, string $response, ?string $approvedVersion = null): void
     {
+        // Every approval the chain needed must be an approval of the version
+        // it now binds. An earlier step that approved different content does
+        // not carry forward: the chain cannot complete on it, and the whole
+        // final step rolls back. (Edits are refused once a step has approved,
+        // so through the API this cannot arise; this is the invariant, held
+        // where completion happens.)
+        if ($granted && $approvedVersion !== null) {
+            $divergent = ApprovalStep::where('approval_id', $approval->id)
+                ->where('status', 'approved')
+                ->where(fn ($q) => $q->whereNull('version_hash')->orWhere('version_hash', '!=', $approvedVersion))
+                ->orderBy('step_order')
+                ->pluck('step_order')
+                ->all();
+            if ($divergent !== []) {
+                throw new ApprovalVersionConflict('stale', sprintf(
+                    'Approval [%s] cannot complete: step(s) %s approved a different version than the one now being approved.',
+                    $approval->id, implode(', ', $divergent),
+                ));
+            }
+        }
+
         DB::table('approvals')->where('id', $approval->id)->update([
             'status' => $granted ? 'approved' : 'rejected',
             'approver_id' => $approverId,
@@ -707,6 +751,7 @@ class ApprovalEngine
             'approval_id' => $approval->id,
             'approver_id' => $approverId,
             'response' => $response,
+            'approved_version_hash' => $approvedVersion,
         ]);
 
         if ($granted) {
