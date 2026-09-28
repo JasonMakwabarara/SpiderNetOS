@@ -139,7 +139,12 @@ class TelephonyService
     }
 
     /**
-     * Dispatch voice intent to MetaPlanner via Redis.
+     * Dispatch voice intent to the intelligence workers via Redis.
+     *
+     * intelligence/main.py consumes agent:dispatch with BLPOP (a list), so
+     * LPUSH is the delivery mechanism — publish alone was silently dropped
+     * (pub/sub and lists are disjoint keyspaces). Publish is kept for
+     * passive observers. Same envelope shape as MetaPlanner::dispatch().
      */
     public function dispatchVoiceIntent(
         string $tenantId,
@@ -148,7 +153,7 @@ class TelephonyService
         string $callerInput,
         array $context = []
     ): void {
-        Redis::publish('agent:dispatch', json_encode([
+        $dispatchMessage = json_encode([
             'tenant_id' => $tenantId,
             'agent_id' => $agentId,
             'intent' => 'voice.interaction',
@@ -158,7 +163,10 @@ class TelephonyService
                 'channel' => 'voice',
                 'response_format' => 'voice_chunk',
             ]),
-        ]));
+        ]);
+
+        Redis::lpush('agent:dispatch', $dispatchMessage);
+        Redis::publish('agent:dispatch', $dispatchMessage);
     }
 
     /**

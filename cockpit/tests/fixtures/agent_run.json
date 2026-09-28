@@ -1,0 +1,111 @@
+{
+  "blocked": {
+    "data": {
+      "id": "run_blocked_01",
+      "skill_slug": "cold-email-drafting",
+      "skill_name": "Cold Email Drafting",
+      "agent": { "slug": "growth", "name": "Growth", "core_agent": "nexus" },
+      "workspace_id": "ws_growth",
+      "status": "blocked",
+      "trigger_type": "manual",
+      "inputs": { "campaign": "q4-founders", "segment": "founders", "steps": 3, "variants": 2, "channel": "email" },
+      "outputs": { "next_steps": [] },
+      "questions": [
+        { "path": "offer/offer.md", "section": "differentiators", "question": "What makes you different from the obvious alternative?" },
+        { "path": "sales/proof.md", "section": "proof", "question": "What proof can I show — numbers, names, before/after?" }
+      ],
+      "steps": [
+        { "seq": 1, "type": "read", "name": "Read brain files", "status": "succeeded", "duration_ms": 120, "cost_usd": 0 },
+        { "seq": 2, "type": "check", "name": "Check required sections", "status": "blocked", "duration_ms": 8, "cost_usd": 0 }
+      ],
+      "artifacts": [],
+      "cost_usd": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "started_at": "2026-09-16T06:00:00Z",
+      "finished_at": null,
+      "error": null
+    }
+  },
+  "succeeded": {
+    "data": {
+      "id": "run_0915_cold",
+      "skill_slug": "cold-email-drafting",
+      "skill_name": "Cold Email Drafting",
+      "agent": { "slug": "growth", "name": "Growth", "core_agent": "nexus" },
+      "workspace_id": "ws_growth",
+      "status": "succeeded",
+      "trigger_type": "manual",
+      "inputs": { "campaign": "q4-founders", "segment": "founders", "steps": 3, "variants": 2, "channel": "email" },
+      "outputs": {
+        "sequence_id": "seq_q4_founders",
+        "approval_id": "apr_seq_q4",
+        "summary": "Drafted a 3-step sequence with 2 variants per step for the founders segment.",
+        "next_steps": [
+          { "id": "queue-follow-up", "origin": "card", "label": "Queue the day-3 follow-up", "does": "Drafts the no-reply nudge for every step in this sequence.", "skill": "follow-up-drafting", "inputs": { "campaign": "q4-founders", "segment": "founders", "sequence_id": "seq_q4_founders" }, "state": "proposed" },
+          { "id": "watch-inbox", "origin": "card", "label": "Watch the inbox for replies", "does": "Starts Inbox Triage on this campaign's thread.", "skill": "inbox-triage-reply-classifier", "inputs": { "campaign": "q4-founders" }, "state": "done", "run_id": "run_0916_triage" },
+          { "id": "tighten-subjects", "origin": "model", "label": "Tighten the step-2 subject lines", "does": "Three of five were over 60 characters.", "skill": "cold-email-drafting", "inputs": { "campaign": "q4-founders", "segment": "founders", "steps": 1, "variants": 2, "channel": "email" }, "state": "skipped" }
+        ]
+      },
+      "questions": [],
+      "steps": [
+        { "seq": 1, "type": "read", "name": "Read brain files", "status": "succeeded", "duration_ms": 140, "cost_usd": 0 },
+        { "seq": 2, "type": "llm", "name": "Draft sequence", "status": "succeeded", "duration_ms": 61200, "cost_usd": 0.31 },
+        { "seq": 3, "type": "llm", "name": "Subject lines ×5 per step", "status": "succeeded", "duration_ms": 18400, "cost_usd": 0.09 },
+        { "seq": 4, "type": "validate", "name": "Validate against the frame", "status": "succeeded", "duration_ms": 600, "cost_usd": 0.02 },
+        { "seq": 5, "type": "tool", "name": "File drafts + open approval", "status": "succeeded", "duration_ms": 900, "cost_usd": 0 }
+      ],
+      "artifacts": [
+        { "id": "art_seq_q4_s1a", "kind": "message_template", "title": "outreach.q4-founders.step1.a", "path": "message_templates/outreach.q4-founders.step1.a", "status": "pending_approval", "approval_id": "apr_seq_q4" },
+        { "id": "art_seq_q4_s1b", "kind": "message_template", "title": "outreach.q4-founders.step1.b", "path": "message_templates/outreach.q4-founders.step1.b", "status": "pending_approval", "approval_id": "apr_seq_q4" },
+        { "id": "art_seq_q4_s2a", "kind": "message_template", "title": "outreach.q4-founders.step2.a", "path": "message_templates/outreach.q4-founders.step2.a", "status": "pending_approval", "approval_id": "apr_seq_q4" }
+      ],
+      "cost_usd": 0.42,
+      "tokens_in": 18400,
+      "tokens_out": 6100,
+      "started_at": "2026-09-15T08:12:00Z",
+      "finished_at": "2026-09-15T08:13:40Z",
+      "error": null
+    }
+  },
+  "list": {
+    "data": [
+      { "id": "run_blocked_01", "skill_slug": "cold-email-drafting", "skill_name": "Cold Email Drafting", "agent": { "slug": "growth", "name": "Growth", "core_agent": "nexus" }, "status": "blocked", "trigger_type": "manual", "cost_usd": 0, "started_at": "2026-09-16T06:00:00Z", "finished_at": null },
+      { "id": "run_0916_triage", "skill_slug": "inbox-triage-reply-classifier", "skill_name": "Inbox Triage & Reply Classifier", "agent": { "slug": "crm", "name": "Pipeline", "core_agent": "sentinel" }, "status": "running", "trigger_type": "schedule", "cost_usd": 0.04, "started_at": "2026-09-16T05:40:00Z", "finished_at": null },
+      { "id": "run_0915_cold", "skill_slug": "cold-email-drafting", "skill_name": "Cold Email Drafting", "agent": { "slug": "growth", "name": "Growth", "core_agent": "nexus" }, "status": "succeeded", "trigger_type": "manual", "cost_usd": 0.42, "started_at": "2026-09-15T08:12:00Z", "finished_at": "2026-09-15T08:13:40Z" },
+      { "id": "run_0915_research", "skill_slug": "prospect-research-analysis", "skill_name": "Prospect Research Analysis", "agent": { "slug": "prism", "name": "Prism", "core_agent": "prism" }, "status": "failed", "trigger_type": "next_step", "cost_usd": 0.11, "started_at": "2026-09-15T23:10:00Z", "finished_at": "2026-09-15T23:11:05Z", "error": "Connector timeout: linkedin" }
+    ],
+    "meta": { "statuses": ["queued", "running", "blocked", "waiting_approval", "succeeded", "failed", "cancelled"] }
+  },
+  "artifact": {
+    "data": {
+      "id": "art_seq_q4_s1a",
+      "kind": "message_template",
+      "title": "outreach.q4-founders.step1.a",
+      "path": "message_templates/outreach.q4-founders.step1.a",
+      "status": "pending_approval",
+      "approval_id": "apr_seq_q4",
+      "content": { "subject": "Quick one about {{company}}'s pipeline", "body": "Hi {{first_name}},\n\nMost founders I talk to send the same three emails to everyone and wonder why nobody answers.\n\nWe fixed that for 14 founders this year — 11 shipped a sequence that got replies in week one.\n\nWorth 20 minutes to see if it fits {{company}}?\n\n— {{sender_name}}" },
+      "version": 1,
+      "updated_at": "2026-09-15T08:13:40Z"
+    }
+  },
+  "workspace": {
+    "data": {
+      "slug": "growth",
+      "agent": { "slug": "growth", "name": "Growth", "core_agent": "nexus" },
+      "status": "running",
+      "budget_daily_usd": 12,
+      "spent_today_usd": 3.85,
+      "scratch": "# Scratch\n\n- q4-founders sequence approved 15 Sep; follow-up queued\n- Next: refresh the ops-leads segment once ICP v4 lands\n\n## Open questions\n\n1. Is the LinkedIn channel live yet? (waiting on Richard)",
+      "recent_runs": [
+        { "id": "run_blocked_01", "skill_slug": "cold-email-drafting", "skill_name": "Cold Email Drafting", "status": "blocked", "started_at": "2026-09-16T06:00:00Z", "cost_usd": 0 },
+        { "id": "run_0915_cold", "skill_slug": "cold-email-drafting", "skill_name": "Cold Email Drafting", "status": "succeeded", "started_at": "2026-09-15T08:12:00Z", "cost_usd": 0.42 }
+      ],
+      "drafts": [
+        { "id": "art_seq_q4_s1a", "kind": "message_template", "title": "outreach.q4-founders.step1.a", "status": "pending_approval", "approval_id": "apr_seq_q4", "updated_at": "2026-09-15T08:13:40Z" },
+        { "id": "art_seq_q4_s2a", "kind": "message_template", "title": "outreach.q4-founders.step2.a", "status": "pending_approval", "approval_id": "apr_seq_q4", "updated_at": "2026-09-15T08:13:40Z" }
+      ]
+    }
+  }
+}

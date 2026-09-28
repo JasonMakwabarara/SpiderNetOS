@@ -1,0 +1,90 @@
+{
+  "data": {
+    "id": "8f1c2b4a-9d3e-4f21-8a77-1c9d0e5b6a34",
+    "pack_id": "business-launch",
+    "started": true,
+    "status": "modelling",
+    "stage": "finance",
+    "stage_title": "Finance",
+    "jurisdiction": "uk",
+    "jurisdictions": ["uk", "za", "zw"],
+    "progress_pct": 62,
+    "progress": {
+      "pct": 62,
+      "answered": 28,
+      "total": 46,
+      "stages_committed": 5,
+      "stages_total": 9
+    },
+    "next_question": {
+      "id": "starting_cash",
+      "variable": "finance.starting_cash",
+      "prompt": "How much money can you put in to get started — savings, a loan, an investor? One number is fine, and tell me the currency if it isn't your local one.",
+      "type": "money",
+      "choices": [],
+      "required": true,
+      "section": "finance",
+      "stage": "finance",
+      "stage_title": "Finance",
+      "now_filling": "finance/assumptions.yaml",
+      "brain_section": "assumptions"
+    },
+    "now_filling": "finance/assumptions.yaml",
+    "stages": [
+      { "id": "profile", "title": "Business profile", "status": "interviewing", "agent": "launch-guide", "writes": ["business/profile.md", "business/alignment.md"], "committed": true, "committed_at": "2026-09-18T09:10:00Z", "missing_required": [], "complete": true, "current": false },
+      { "id": "offer", "title": "Offer", "status": "interviewing", "agent": "launch-guide", "writes": ["offer/offer.md"], "committed": true, "committed_at": "2026-09-18T09:22:00Z", "missing_required": [], "complete": true, "current": false },
+      { "id": "customers", "title": "Ideal customer", "status": "interviewing", "agent": "launch-guide", "writes": ["customers/icp.md"], "committed": true, "committed_at": "2026-09-18T09:40:00Z", "missing_required": [], "complete": true, "current": false },
+      { "id": "brand", "title": "Brand voice", "status": "interviewing", "agent": "launch-guide", "writes": ["brand/voice.md"], "committed": true, "committed_at": "2026-09-18T10:02:00Z", "missing_required": [], "complete": true, "current": false },
+      { "id": "market", "title": "Market", "status": "researching", "agent": "market-researcher", "writes": ["market/comparables.md"], "committed": true, "committed_at": "2026-09-18T10:20:00Z", "missing_required": [], "complete": true, "current": false },
+      { "id": "finance", "title": "Finance", "status": "modelling", "agent": "finance-modeler", "writes": ["finance/assumptions.yaml", "finance/model.xlsx", "finance/summary.md"], "committed": false, "committed_at": null, "missing_required": ["finance.starting_cash"], "complete": false, "current": true },
+      { "id": "compliance", "title": "Compliance", "status": "modelling", "agent": "compliance-mapper", "writes": ["compliance/checklist.md"], "committed": false, "committed_at": null, "missing_required": ["compliance.jurisdiction"], "complete": false, "current": false },
+      { "id": "gtm", "title": "Go-to-market", "status": "modelling", "agent": "plan-writer", "writes": ["gtm/plan.md"], "committed": false, "committed_at": null, "missing_required": ["gtm.launch_channel"], "complete": false, "current": false },
+      { "id": "plan", "title": "Business plan", "status": "modelling", "agent": "plan-writer", "writes": ["plan/business-plan.md"], "committed": false, "committed_at": null, "missing_required": ["finance.starting_cash"], "complete": false, "current": false }
+    ],
+    "deliverables": [
+      { "path": "market/comparables.md", "title": "Market comparables", "stage": "market", "generated_by": null, "kind": "brain", "format": "md", "available": true, "version": 2, "research_status": "founder_guess", "generated_at": "2026-09-18T10:21:00Z", "disclaimer": "Not legal or financial advice." }
+    ],
+    "approval_id": null,
+    "went_live_at": null,
+    "disclaimer": "Not legal or financial advice."
+  },
+  "readiness": {
+    "pct": 55,
+    "files": [
+      { "path": "business/profile.md", "title": "Business profile", "status": "filled", "required": true, "ask_prompt": null, "ask_section": null, "version": 3 },
+      { "path": "offer/offer.md", "title": "Offer", "status": "partial", "required": true, "ask_prompt": "What makes you different from the obvious alternative?", "ask_section": "What makes us different", "version": 1 },
+      { "path": "brand/voice.md", "title": "Brand voice", "status": "filled", "required": true, "ask_prompt": null, "ask_section": null, "version": 2 },
+      { "path": "customers/icp.md", "title": "Ideal customer", "status": "filled", "required": true, "ask_prompt": null, "ask_section": null, "version": 2 },
+      { "path": "finance/assumptions.yaml", "title": "Financial assumptions", "status": "missing", "required": true, "ask_prompt": "What can you put in to get started, and what will it cost you before the first sale?", "ask_section": "assumptions", "version": 0 },
+      { "path": "people/user.md", "title": "You", "status": "missing", "required": false, "ask_prompt": "How do you like Atlas to work with you?", "ask_section": "Standing preferences", "version": 0 }
+    ]
+  },
+  "generate": {
+    "data": {
+      "results": {
+        "finance": {
+          "ok": true,
+          "summary": {
+            "year1_revenue": 31000,
+            "year1_ebitda": 2400,
+            "cash_low_point": 4200,
+            "cash_low_month": 4,
+            "runway_months": 18,
+            "breakeven_month": 9
+          },
+          "formulas_verified": true,
+          "workbook": { "available": true, "stored_path": "launch/t/l/model.xlsx" },
+          "disclaimer": "Not legal or financial advice."
+        }
+      },
+      "state": {
+        "status": "modelling",
+        "progress_pct": 78,
+        "deliverables": [
+          { "path": "finance/summary.md", "title": "Finance summary", "stage": "finance", "generated_by": "finance_model", "kind": "brain", "format": "md", "available": true, "version": 1, "generated_at": "2026-09-18T11:00:00Z", "disclaimer": "Not legal or financial advice." },
+          { "path": "finance/model.xlsx", "title": "Finance model (spreadsheet)", "stage": "finance", "generated_by": "finance_model", "kind": "file", "format": "xlsx", "available": true, "stored_path": "launch/t/l/model.xlsx", "generated_at": "2026-09-18T11:00:00Z", "disclaimer": "Not legal or financial advice." }
+        ]
+      }
+    }
+  }
+}

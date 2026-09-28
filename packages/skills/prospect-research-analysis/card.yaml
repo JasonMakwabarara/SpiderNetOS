@@ -1,0 +1,317 @@
+# Prospect Research Analysis — Sales · Prospect research (plan D5 roster: prism → Prism)
+# Evidence first, always cited. The report feeds the outreach skills' personalisation.
+
+id: prospect-research-analysis
+display_name: "Prospect Research Analysis"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › Prospect research"
+core_agent: prism
+runs_on: prism
+pack_id: null
+
+intent_keywords:
+  - research this prospect
+  - research a prospect
+  - prospect research
+  - look up this company
+  - who is this lead
+  - research lead
+  - fit score
+  - qualify this lead
+  - background on
+
+at_a_glance: >-
+  Researches one prospect or company against your ICP and returns a cited report: fit score
+  with reasons, two or three angles a peer would respect, buying triggers, risks, and two
+  personalisation lines the outreach skills can drop straight into a first line.
+
+covers: >-
+  Sales › Prospect research — knowing who you are writing to before you write.
+
+breaks_into:
+  - name: "Fit Scorer"
+    does: "Scores the prospect 0–100 against customers/icp.md, with the reasons and the disqualifiers checked first."
+  - name: "Angle Finder"
+    does: "Two or three angles with the evidence and the source for each; no angle without a citation."
+  - name: "Trigger Spotter"
+    does: "What changed in their world recently that makes now a reason to talk."
+  - name: "Personalisation Line Writer"
+    does: "Two first lines in the brand voice, each tied to one cited fact."
+  - name: "Source Ledger"
+    does: "Every claim carries its source; uncertain claims are marked uncertain, not dropped."
+
+builds_on:
+  - name: "ICP Definition"
+    slug: icp-definition
+    why: "The fit score is meaningless without a written ICP."
+  - name: "Offer"
+    ref: "brain:offer/offer.md#Products and services"
+    why: "Angles are only useful if they connect to what we actually sell."
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+    why: "The personalisation lines must sound like the owner."
+  - name: "Qualify before you invest"
+    ref: "principle:fast-disqualification"
+  - name: "Never prejudge"
+    ref: "principle:never-prejudge"
+
+replaces:
+  - what: "An SDR's research hours"
+    cost: "$25–40k/yr"
+    kind: salary
+    note: "The reading and the note-taking, not the judgement."
+  - what: "A data-enrichment tool that returns firmographics and no angle"
+    cost: "$0.50–2 per lead"
+    kind: tool
+  - what: "Outreach written blind because nobody looked first"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted, autonomous]
+  stage_copy:
+    human_led:
+      summary: "One prospect, one cited report, you read it."
+      your_role: "Paste a name, a company or a LinkedIn URL. Read the report; say which angle is right — that trains the next one."
+      atlas_role: "Prism researches from the brain, the CRM record and the web-research provider when enabled, and files a cited report for your review."
+      default: true
+    assisted:
+      summary: "Reports run for every new lead; filed under notes/research after one approval."
+      your_role: "Skim the daily batch; approve the ones worth keeping in the brain."
+      atlas_role: "Researches new leads as they arrive, batches the reports into one approval, files approved ones under notes/research for the outreach skills."
+    autonomous:
+      summary: "Every prospect the outreach skills touch has a report first."
+      your_role: "Correct a wrong fit score when you see one; adjust the ICP file when the pattern changes."
+      atlas_role: "Runs before every outreach draft, files reports automatically, flags low-confidence findings for you rather than guessing."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "a report cited a source that did not say that"
+      - "fit scores corrected by the owner 3 times in a week"
+
+brain:
+  requires:
+    - key: customers.icp
+      path: customers/icp.md
+      sections: ["Who we sell to"]
+    - key: customers.disqualifiers
+      path: customers/icp.md
+      sections: ["Who we do not sell to"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+  reads:
+    - business/profile.md
+    - brand/voice.md#Tone
+    - customers/icp.md#Buying triggers
+    - market/comparables.md
+    - notes/research/**
+  writes:
+    - notes/research/**
+
+hands_off_to:
+  - type: skill
+    slug: cold-email-drafting
+    name: "Cold Email Drafting"
+    when: "Fit is good and the channel is email — the report fills the personalisation slots."
+  - type: skill
+    slug: linkedin-outreach-specialist
+    name: "LinkedIn Outreach Specialist"
+    when: "Fit is good and the channel is LinkedIn — the angle becomes the connection note."
+  - type: skill
+    slug: lead-scoring-routing
+    name: "Lead Scoring & Routing"
+    when: "The fit score updates the lead's score and stage."
+  - type: character
+    ref: prism
+    name: "Prism (deep research)"
+    when: "The prospect is a large account and the owner toggles Research for a deeper pass."
+
+one_step_further:
+  summary: >-
+    Beyond the report it drafts the first touch on the chosen channel, and when three reports
+    in a row disagree with the ICP file it proposes the ICP edit rather than scoring around it.
+  allow_dynamic: true
+  steps:
+    - id: draft_cold_email
+      label: "Draft the cold email sequence from this report"
+      does: "Runs Cold Email Drafting with the report's angle and personalisation lines."
+      skill: cold-email-drafting
+      inputs_from:
+        research_report_id: outputs.artifact_id
+        segment: inputs.segment
+      when: on_success
+      requires_brain:
+        - brand/voice.md#Tone
+      risk: write
+      cost_hint_usd: 0.15
+    - id: draft_linkedin_note
+      label: "Draft the LinkedIn note and DMs from this report"
+      does: "Runs LinkedIn Outreach Specialist with the report's angle."
+      skill: linkedin-outreach-specialist
+      inputs_from:
+        research_report_id: outputs.artifact_id
+        segment: inputs.segment
+      when: on_success
+      requires_brain:
+        - people/user.md#Who I am
+      risk: write
+      cost_hint_usd: 0.12
+    - id: propose_icp_edit
+      label: "Propose an ICP edit"
+      does: "When the fit reasons keep contradicting the ICP file, proposes the edit to customers/icp.md for approval."
+      skill: icp-definition
+      inputs_from:
+        evidence: outputs.fit_reasons
+      when: on_outcome:icp_drift
+      risk: write
+      cost_hint_usd: 0.03
+
+inputs:
+  type: object
+  additionalProperties: false
+  required: [prospect]
+  properties:
+    prospect:
+      type: string
+      title: "Prospect"
+      minLength: 2
+      maxLength: 300
+      description: "A name, a company, a LinkedIn or website URL, or a lead id."
+    segment:
+      type: string
+      title: "Segment"
+      maxLength: 120
+    channel:
+      type: string
+      title: "Intended channel"
+      enum: [email, linkedin, whatsapp, any]
+      default: any
+    depth:
+      type: string
+      title: "Depth"
+      enum: [quick, standard, deep]
+      default: standard
+      description: "deep uses the web-research provider when the tenant has enabled Research."
+    questions:
+      type: string
+      title: "Anything specific to find out"
+      maxLength: 400
+
+outputs:
+  - kind: report
+    primary: true
+    description: "A cited research report filed under notes/research/<slug>.md on approval."
+    key_pattern: "notes/research/prospect-<slug>.md"
+    count: "1"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [prospect, fit_score, fit_reasons, angles, personalisation_lines, sources, confidence]
+      properties:
+        prospect: { type: string, minLength: 1 }
+        company: { type: string }
+        role: { type: string }
+        fit_score: { type: integer, minimum: 0, maximum: 100 }
+        disqualified: { type: boolean }
+        fit_reasons:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items: { type: string, minLength: 5, maxLength: 240 }
+        angles:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [angle, evidence, source]
+            properties:
+              angle: { type: string, minLength: 5, maxLength: 160 }
+              evidence: { type: string, minLength: 5, maxLength: 300 }
+              source: { type: string, minLength: 3 }
+              confidence: { type: number, minimum: 0, maximum: 1 }
+        triggers:
+          type: array
+          maxItems: 5
+          items: { type: string, maxLength: 200 }
+        risks:
+          type: array
+          maxItems: 5
+          items: { type: string, maxLength: 200 }
+        personalisation_lines:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: { type: string, minLength: 10, maxLength: 200 }
+        sources:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 3 }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - brain.search
+  - sources.scan
+  - sources.dedupe
+  - sources.file_note
+  - crm.list_replies
+
+triggers:
+  - type: manual
+  - type: event
+    event: lead.imported
+
+cost_budget:
+  daily_limit_usd: 2.0
+  per_run_usd: 0.20
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=report; filing under notes/research is a brain write (proposal); tool:web sources taint the run"
+
+model:
+  heavy: false
+  temperature: 0.2
+  max_tokens: 2400
+  json_mode: true
+
+limits:
+  max_iterations: 10
+  max_tool_calls: 16
+  max_artifacts: 1
+  timeout_seconds: 180
+
+mode: agentic
+
+run:
+  kind: agent
+  entry_path: /skills/prospect-research-analysis
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save
+    - sources.file_note
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.85
+
+tags: [sales, research, prism, icp]

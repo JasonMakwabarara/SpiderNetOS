@@ -1,0 +1,1281 @@
+{
+  "data": {
+    "core": {
+      "name": "Apex Synchronia",
+      "three_brains": {
+        "knowledge": {
+          "pct": 55,
+          "files_filled": 4,
+          "files_total": 9
+        },
+        "operating": {
+          "workspaces_active": 6,
+          "runs_today": 23
+        },
+        "learning": {
+          "outcomes_30d": 41,
+          "experiments_open": 2
+        }
+      },
+      "owner": {
+        "name": "Jason"
+      }
+    },
+    "pillars": [
+      {
+        "key": "deals",
+        "label": "Deals",
+        "order": 2,
+        "status": "assisted",
+        "nodes": [
+          {
+            "id": "deals.lead_scoring",
+            "label": "Lead scoring & routing",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "lead-scoring-routing",
+                "name": "Lead Scoring & Routing",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.icp"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T07:02:00Z",
+              "last_status": "succeeded",
+              "count_7d": 64
+            },
+            "process_count": 2
+          },
+          {
+            "id": "deals.meetings",
+            "label": "Meeting booking",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "meeting-booking",
+                "name": "Meeting Booking",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "sales.reply_handling"
+            ],
+            "runs": {
+              "last_at": "2026-09-15T13:30:00Z",
+              "last_status": "succeeded",
+              "count_7d": 7
+            },
+            "process_count": 2
+          },
+          {
+            "id": "deals.pipeline",
+            "label": "Deal pipeline",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "deal-pipeline-tracker",
+                "name": "Deal Pipeline Tracker",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "offer/pricing.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "deals.lead_scoring"
+            ],
+            "runs": {
+              "last_at": "2026-09-14T10:00:00Z",
+              "last_status": "failed",
+              "count_7d": 3
+            },
+            "process_count": 3
+          },
+          {
+            "id": "deals.proposals",
+            "label": "Proposals & quotes",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "proposal-quote-drafting",
+                "name": "Proposal & Quote Drafting",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "offer/pricing.md",
+                "status": "missing"
+              },
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              }
+            ],
+            "builds_on": [
+              "deals.pipeline"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 1
+          },
+          {
+            "id": "deals.nurture",
+            "label": "Nurture sequences",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "nurture-sequence-runner",
+                "name": "Nurture Sequence Runner",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.outreach_writing"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T04:00:00Z",
+              "last_status": "running",
+              "count_7d": 12
+            },
+            "process_count": 2
+          }
+        ]
+      },
+      {
+        "key": "sales",
+        "label": "Sales",
+        "order": 1,
+        "status": "assisted",
+        "nodes": [
+          {
+            "id": "sales.outreach_writing",
+            "label": "Outreach writing",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "cold-email-drafting",
+                "name": "Cold Email Drafting",
+                "enabled": true,
+                "stage": "assisted"
+              },
+              {
+                "slug": "linkedin-outreach-specialist",
+                "name": "LinkedIn Outreach Specialist",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              },
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              },
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              },
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.icp",
+              "marketing.brand_voice",
+              "sales.prospect_research"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T06:00:00Z",
+              "last_status": "blocked",
+              "count_7d": 9
+            },
+            "process_count": 3
+          },
+          {
+            "id": "sales.linkedin_campaigns",
+            "label": "LinkedIn campaigns",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "linkedin-campaign-runner",
+                "name": "LinkedIn Campaign Runner",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              },
+              {
+                "path": "sales/script.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.outreach_writing"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "sales.reply_handling",
+            "label": "Reply handling",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "inbox-triage-reply-classifier",
+                "name": "Inbox Triage & Reply Classifier",
+                "enabled": true,
+                "stage": "autonomous"
+              },
+              {
+                "slug": "follow-up-drafting",
+                "name": "Follow-up Drafting",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/objections.md",
+                "status": "partial"
+              },
+              {
+                "path": "sales/script.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.outreach_writing"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T07:40:00Z",
+              "last_status": "succeeded",
+              "count_7d": 42
+            },
+            "process_count": 4
+          },
+          {
+            "id": "sales.icp",
+            "label": "Ideal customer profile",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "icp-definition",
+                "name": "ICP Definition",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-10T09:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 1
+            },
+            "process_count": 1
+          },
+          {
+            "id": "sales.prospect_research",
+            "label": "Prospect research",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "prospect-research-analysis",
+                "name": "Prospect Research Analysis",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              },
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "sales.icp"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T05:15:00Z",
+              "last_status": "succeeded",
+              "count_7d": 18
+            },
+            "process_count": 2
+          },
+          {
+            "id": "sales.partner_recruitment",
+            "label": "Partner & affiliate recruitment",
+            "status": "assisted",
+            "owner_type": "team",
+            "skills": [
+              {
+                "slug": "partner-affiliate-recruiter",
+                "name": "Partner Affiliate Recruiter",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "sales/proof.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-15T16:20:00Z",
+              "last_status": "succeeded",
+              "count_7d": 27
+            },
+            "process_count": 3
+          }
+        ]
+      },
+      {
+        "key": "marketing",
+        "label": "Marketing",
+        "order": 3,
+        "status": "human",
+        "nodes": [
+          {
+            "id": "marketing.brand_voice",
+            "label": "Brand voice",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "brand-voice-keeper",
+                "name": "Brand Voice Keeper",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-12T11:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 2
+            },
+            "process_count": 1
+          },
+          {
+            "id": "marketing.social",
+            "label": "Social captions",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "social-caption-drafting",
+                "name": "Social Caption Drafting",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              },
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              }
+            ],
+            "builds_on": [
+              "marketing.brand_voice"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T06:45:00Z",
+              "last_status": "succeeded",
+              "count_7d": 21
+            },
+            "process_count": 2
+          },
+          {
+            "id": "marketing.demo_video",
+            "label": "Demo videos",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "demo-video-producer",
+                "name": "Demo Video Producer",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              }
+            ],
+            "builds_on": [
+              "marketing.brand_voice"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "marketing.campaign_handoff",
+            "label": "Campaign hand-off to Hannah AI",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "campaign-brief-handoff",
+                "name": "Campaign Brief Hand-off",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              },
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "marketing.brand_voice"
+            ],
+            "runs": {
+              "last_at": "2026-09-11T15:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 1
+            },
+            "process_count": 1
+          },
+          {
+            "id": "marketing.newsletter",
+            "label": "Customer newsletter",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "customer-newsletter",
+                "name": "Customer Newsletter",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "marketing.brand_voice"
+            ],
+            "runs": {
+              "last_at": "2026-09-08T08:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 1
+            },
+            "process_count": 1
+          },
+          {
+            "id": "marketing.landing_pages",
+            "label": "Landing pages",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "landing-page-builder",
+                "name": "Landing Page Builder",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              },
+              {
+                "path": "sales/proof.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "marketing.brand_voice"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "marketing.ads",
+            "label": "Ad campaigns",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "ad-campaign-manager",
+                "name": "Ad Campaign Manager",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "finance/assumptions.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "marketing.landing_pages"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          }
+        ]
+      },
+      {
+        "key": "operations",
+        "label": "Operations",
+        "order": 4,
+        "status": "live",
+        "nodes": [
+          {
+            "id": "operations.systems",
+            "label": "Systems mapping",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "systems-mapper",
+                "name": "Systems Mapper",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-15T09:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 3
+            },
+            "process_count": 6
+          },
+          {
+            "id": "operations.sops",
+            "label": "SOP coaching",
+            "status": "human",
+            "owner_type": "team",
+            "skills": [
+              {
+                "slug": "sop-coach",
+                "name": "SOP Coach",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "operations.systems"
+            ],
+            "runs": {
+              "last_at": "2026-09-13T14:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 2
+            },
+            "process_count": 5
+          },
+          {
+            "id": "operations.delegation",
+            "label": "Delegation planning",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "delegation-planner",
+                "name": "Delegation Planner",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "operations.systems"
+            ],
+            "runs": {
+              "last_at": "2026-09-15T17:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 4
+            },
+            "process_count": 4
+          },
+          {
+            "id": "operations.runbooks",
+            "label": "Runbook automation",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "runbook-automator",
+                "name": "Runbook Automator",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [],
+            "builds_on": [
+              "operations.sops"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T07:30:00Z",
+              "last_status": "succeeded",
+              "count_7d": 55
+            },
+            "process_count": 7
+          },
+          {
+            "id": "operations.weekly_report",
+            "label": "Weekly ops report",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "weekly-ops-report",
+                "name": "Weekly Ops Report",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "operations.runbooks"
+            ],
+            "runs": {
+              "last_at": "2026-09-14T18:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 1
+            },
+            "process_count": 1
+          },
+          {
+            "id": "operations.screenshot_to_code",
+            "label": "Screenshot to code",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "screenshot-to-code",
+                "name": "Screenshot to Code",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [],
+            "builds_on": [],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          }
+        ]
+      },
+      {
+        "key": "intelligence",
+        "label": "Intelligence",
+        "order": 5,
+        "status": "assisted",
+        "nodes": [
+          {
+            "id": "intelligence.source_scanning",
+            "label": "Source scanning & notes",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "source-scanner-note-filer",
+                "name": "Source Scanner & Note Filer",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-16T05:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 14
+            },
+            "process_count": 1
+          },
+          {
+            "id": "intelligence.deep_research",
+            "label": "Deep research",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "deep-research",
+                "name": "Deep Research",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "intelligence.source_scanning"
+            ],
+            "runs": {
+              "last_at": "2026-09-09T12:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "intelligence.kpis",
+            "label": "KPI scoreboard",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "kpi-scoreboard-analyst",
+                "name": "KPI Scoreboard Analyst",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "finance/assumptions.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "operations.weekly_report"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T06:30:00Z",
+              "last_status": "succeeded",
+              "count_7d": 7
+            },
+            "process_count": 2
+          }
+        ]
+      },
+      {
+        "key": "customer",
+        "label": "Customer",
+        "order": 6,
+        "status": "assisted",
+        "nodes": [
+          {
+            "id": "customer.onboarding",
+            "label": "Onboarding delight",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "onboarding-delight",
+                "name": "Onboarding Delight",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-15T10:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 6
+            },
+            "process_count": 3
+          },
+          {
+            "id": "customer.churn",
+            "label": "Churn radar",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "churn-radar",
+                "name": "Churn Radar",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/icp.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [
+              "customer.onboarding"
+            ],
+            "runs": {
+              "last_at": "2026-09-16T03:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 7
+            },
+            "process_count": 1
+          },
+          {
+            "id": "customer.win_back",
+            "label": "Win-back campaigns",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "win-back-campaigner",
+                "name": "Win-back Campaigner",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "brand/voice.md",
+                "status": "filled"
+              },
+              {
+                "path": "offer/pricing.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "customer.churn"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "customer.support",
+            "label": "Support replies",
+            "status": "human",
+            "owner_type": "team",
+            "skills": [
+              {
+                "slug": "support-reply-drafting",
+                "name": "Support Reply Drafting",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "customers/objections.md",
+                "status": "partial"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-16T07:10:00Z",
+              "last_status": "failed",
+              "count_7d": 19
+            },
+            "process_count": 2
+          }
+        ]
+      },
+      {
+        "key": "back_office",
+        "label": "Back office",
+        "order": 7,
+        "status": "human",
+        "nodes": [
+          {
+            "id": "back_office.invoices",
+            "label": "Invoices & bills",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "invoice-bills-clerk",
+                "name": "Invoice & Bills Clerk",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-16T02:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 22
+            },
+            "process_count": 4
+          },
+          {
+            "id": "back_office.cashflow",
+            "label": "Cash-flow forecast",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "cashflow-analyst",
+                "name": "Cash-flow Analyst",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "finance/assumptions.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "back_office.invoices"
+            ],
+            "runs": {
+              "last_at": "2026-09-12T09:00:00Z",
+              "last_status": "blocked",
+              "count_7d": 1
+            },
+            "process_count": 1
+          },
+          {
+            "id": "back_office.compliance",
+            "label": "Compliance radar",
+            "status": "live",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "compliance-radar",
+                "name": "Compliance Radar",
+                "enabled": true,
+                "stage": "autonomous"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-15T06:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 1
+            },
+            "process_count": 2
+          },
+          {
+            "id": "back_office.portfolio",
+            "label": "Portfolio",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "portfolio-manager",
+                "name": "Portfolio Manager",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "finance/assumptions.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "back_office.cashflow"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          }
+        ]
+      },
+      {
+        "key": "people",
+        "label": "People",
+        "order": 8,
+        "status": "human",
+        "nodes": [
+          {
+            "id": "people.recruitment",
+            "label": "Recruitment pipeline",
+            "status": "human",
+            "owner_type": "team",
+            "skills": [
+              {
+                "slug": "recruitment-pipeline",
+                "name": "Recruitment Pipeline",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-10T11:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 0
+            },
+            "process_count": 3
+          },
+          {
+            "id": "people.retraining",
+            "label": "Retraining coach",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "retraining-coach",
+                "name": "Retraining Coach",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "people.recruitment"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          }
+        ]
+      },
+      {
+        "key": "founder",
+        "label": "Founder",
+        "order": 9,
+        "status": "assisted",
+        "nodes": [
+          {
+            "id": "founder.launch",
+            "label": "Business launch interview",
+            "status": "human",
+            "owner_type": "founder",
+            "skills": [
+              {
+                "slug": "business-launch-interviewer",
+                "name": "Business Launch Interviewer",
+                "enabled": true,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "business/profile.md",
+                "status": "filled"
+              },
+              {
+                "path": "offer/offer.md",
+                "status": "partial"
+              },
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [],
+            "runs": {
+              "last_at": "2026-09-05T10:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 0
+            },
+            "process_count": 1
+          },
+          {
+            "id": "founder.board",
+            "label": "Board of advisors",
+            "status": "missing",
+            "owner_type": null,
+            "skills": [
+              {
+                "slug": "board-of-advisors",
+                "name": "Board of Advisors",
+                "enabled": false,
+                "stage": "human_led"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "intelligence.kpis"
+            ],
+            "runs": {
+              "last_at": null,
+              "last_status": null,
+              "count_7d": 0
+            },
+            "process_count": 0
+          },
+          {
+            "id": "founder.rhythm",
+            "label": "Operating rhythm",
+            "status": "assisted",
+            "owner_type": "agent",
+            "skills": [
+              {
+                "slug": "founder-operating-rhythm",
+                "name": "Founder Operating Rhythm",
+                "enabled": true,
+                "stage": "assisted"
+              }
+            ],
+            "brain_files": [
+              {
+                "path": "people/user.md",
+                "status": "missing"
+              }
+            ],
+            "builds_on": [
+              "operations.weekly_report"
+            ],
+            "runs": {
+              "last_at": "2026-09-15T07:00:00Z",
+              "last_status": "succeeded",
+              "count_7d": 5
+            },
+            "process_count": 2
+          }
+        ]
+      }
+    ]
+  }
+}

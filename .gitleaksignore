@@ -33,3 +33,16 @@
 #
 c005799e9a4c0bb6d91505e5ad4106b0eaa99c34:.github/workflows/ci.yml:inline-db-password-literal:183
 69176eb1b662767aad7df8899c065e4d94b3e2f6:.github/workflows/backend-ci.yml:inline-db-password-literal:78
+#
+# ---------------------------------------------------------------------------
+# 3-4. The same two lines, in the commits that wrote them first.
+#
+#   Both workflows were authored on feature/brain-workspaces and ported to
+#   chore/ci-green, so the identical literal exists in two pairs of commits -
+#   40173be/8257d5b here, 69176eb/c005799 there. Same two lines, same
+#   throwaway service containers, same remediation in 04af565, which this
+#   branch took during the merge. Listed separately because a fingerprint is
+#   per commit, which is exactly the property that makes it safe.
+#
+40173beda2258eb51503c90c570a7f275f1ff5e7:.github/workflows/backend-ci.yml:inline-db-password-literal:65
+8257d5b3dc982a26ffcf4e75c0a839583b8eff0b:.github/workflows/ci.yml:inline-db-password-literal:182

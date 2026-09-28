@@ -1,0 +1,72 @@
+{
+  "seats": {
+    "data": [
+      {
+        "slug": "offer-architect", "display_name": "The Offer Architect", "seat": "offer_architect",
+        "archetype": "offer", "likeness_mode": "inspired_by",
+        "inspired_by": "Alex Hormozi's published frameworks (the value equation, grand-slam offers, volume)",
+        "voice_persona": "elevenlabs-design-nigerian-man",
+        "brain_scopes": ["offer/offer.md", "customers/icp.md"],
+        "asks_first": ["What exactly does the buyer get, and by when?", "How many people heard the offer last week?"]
+      },
+      {
+        "slug": "producer", "display_name": "The Producer", "seat": "producer",
+        "archetype": "taste", "likeness_mode": "inspired_by",
+        "inspired_by": "Rick Rubin's published approach (subtraction, essence, taste)",
+        "voice_persona": "fishaudio-south-african-narrator",
+        "brain_scopes": ["brand/voice.md", "business/profile.md"],
+        "asks_first": ["What is this actually for?", "What could be removed without losing it?"]
+      },
+      {
+        "slug": "leverage-philosopher", "display_name": "The Leverage Philosopher", "seat": "leverage_philosopher",
+        "archetype": "leverage", "likeness_mode": "inspired_by",
+        "inspired_by": "Naval Ravikant's published ideas (leverage, specific knowledge, long games)",
+        "voice_persona": "fishaudio-zimbabwe-male",
+        "brain_scopes": ["business/alignment.md", "finance/summary.md"],
+        "asks_first": ["Which part of this scales without you in the room?"]
+      },
+      {
+        "slug": "compounder", "display_name": "The Compounder", "seat": "compounder",
+        "archetype": "learning", "likeness_mode": "inspired_by",
+        "inspired_by": "Patrick O'Shaughnessy's published frameworks (growth without goals, decision journals)",
+        "voice_persona": "elevenlabs-design-kenyan-man",
+        "brain_scopes": ["business/alignment.md", "notes/research.md"],
+        "asks_first": ["What is the best thing you have learned this week?"]
+      },
+      {
+        "slug": "greenlight", "display_name": "The Greenlight", "seat": "greenlight",
+        "archetype": "judgement", "likeness_mode": "inspired_by",
+        "inspired_by": "Matthew McConaughey's published framing (turning red lights green, knowing when to say no)",
+        "voice_persona": "elevenlabs-design-south-african-woman",
+        "brain_scopes": ["people/user.md", "business/alignment.md"],
+        "asks_first": ["What are you actually saying no to by saying yes to this?"]
+      }
+    ],
+    "meta": {
+      "chair": { "slug": "chairman", "display_name": "The Chairman" },
+      "disclaimer": "Not legal, financial or professional advice.",
+      "private_roster": false
+    }
+  },
+  "sessions": {
+    "data": [
+      {
+        "id": "bs_0919_price",
+        "slug": "should-we-raise-the-price-of-the-monthly-plan",
+        "question": "Should we raise the price of the monthly plan by 20 percent?",
+        "status": "complete",
+        "round": 2,
+        "cost_usd": 0.0412,
+        "brain_path": "reports/board/2026-09-19-should-we-raise-the-price-of-the-monthly-plan.md",
+        "completed_at": "2026-09-19T09:20:00+00:00",
+        "created_at": "2026-09-19T09:17:00+00:00",
+        "verdict": {
+          "consensus": "Four seats say raise it, one says not yet on the cash timing.",
+          "recommended_action": "Put the new price to ten existing customers this week before changing anything public.",
+          "next_check_date": "2026-10-05",
+          "minority_seat": "greenlight"
+        }
+      }
+    ]
+  }
+}

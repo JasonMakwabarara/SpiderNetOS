@@ -13,6 +13,8 @@ from config import (
     DEEPSEEK_BASE_URL,
     MODEL_COST_TABLE,
     MODELARK_MODEL_MAP,
+    PROVIDER_PRIORITY,
+    PROVIDER_PRIORITY_DEFAULT,
     OLLAMA_ENABLED,
     OLLAMA_URL,
     OPENAI_API_KEY,
@@ -57,10 +59,15 @@ def rank_models(cost_ceiling: float, latency_max: float | None, tenant_tier: str
 
         candidates.append((model_name, info))
 
+    def _priority(info: dict) -> int:
+        return PROVIDER_PRIORITY.get(info["provider"], PROVIDER_PRIORITY_DEFAULT)
+
+    # Provider preference first (local Ollama → ModelArk DeepSeek → OpenAI),
+    # then the tier's cost/latency policy within each provider tier.
     if tenant_tier == "enterprise":
-        candidates.sort(key=lambda x: (-x[1]["latency_avg_ms"], x[1]["cost_per_1k_tokens"]))
+        candidates.sort(key=lambda x: (_priority(x[1]), -x[1]["latency_avg_ms"], x[1]["cost_per_1k_tokens"]))
     else:
-        candidates.sort(key=lambda x: (x[1]["cost_per_1k_tokens"], x[1]["latency_avg_ms"]))
+        candidates.sort(key=lambda x: (_priority(x[1]), x[1]["cost_per_1k_tokens"], x[1]["latency_avg_ms"]))
 
     return [c[0] for c in candidates]
 

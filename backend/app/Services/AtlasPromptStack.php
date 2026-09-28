@@ -12,7 +12,93 @@ namespace App\Services;
  */
 class AtlasPromptStack
 {
-    public function systemPrompt(): string
+    /** The question Atlas asks when no next step can be established (plan D0 f). */
+    public const USER_STEP_QUESTION = 'What is one more step we could take here? (or say skip)';
+
+    public const ONE_STEP_RULE = <<<'RULE'
+Standing rule — go one step further (dig deeper, ask one more question):
+After the answer — never before or inside it — add at most two short lines:
+NEXT: one concrete step the user did not ask for, taken verbatim from the <NEXT_STEP> block. Omit this line when the block is empty. Never invent a step.
+ASK: exactly one question, taken verbatim from the <ONE_MORE_QUESTION> block, ending with "(or say skip)". Never ask a second question anywhere in the reply.
+Omit both lines when the user said skip, later or stop; when the message is a slash command or a simple acknowledgement; when you are already asking a clarifying or confirming question; or when the reply is an error, a refusal or a hold.
+NEXT and ASK never change a number, a fact or a decision in the answer.
+RULE;
+
+    /**
+     * Base identity prompt, optionally extended with a BRAIN block (the
+     * tenant's Knowledge brain, plan D2) and the "one step further" blocks
+     * (plan D8): <NEXT_STEP>, <ONE_MORE_QUESTION> and the standing rule.
+     * Both extras are appended only when passed, so existing callers keep
+     * the plain prompt.
+     *
+     * @param  array<string, mixed>|null  $brain  {block: string} or key => value/array pairs
+     * @param  array<string, mixed>|null  $oneStep  {question?: string, next_step?: {label, does, skill?}}
+     */
+    public function systemPrompt(?array $brain = null, ?array $oneStep = null): string
+    {
+        $prompt = $this->basePrompt();
+
+        if ($brain !== null && $brain !== []) {
+            $prompt .= "\n\n".$this->brainBlock($brain);
+        }
+
+        if ($oneStep !== null) {
+            $prompt .= "\n\n".$this->oneStepBlocks($oneStep);
+        }
+
+        return $prompt;
+    }
+
+    /**
+     * The <NEXT_STEP> and <ONE_MORE_QUESTION> blocks plus the standing rule.
+     * An empty next step leaves the block empty; an empty question falls
+     * back to asking the user for one more step (plan D0 f).
+     *
+     * @param  array<string, mixed>  $oneStep
+     */
+    public function oneStepBlocks(array $oneStep): string
+    {
+        $next = $oneStep['next_step'] ?? null;
+        $nextLine = '';
+        if (is_array($next)) {
+            $label = trim((string) ($next['label'] ?? ''));
+            $does = trim((string) ($next['does'] ?? ''));
+            $nextLine = $label !== '' ? $label.($does !== '' && $does !== $label ? ' — '.$does : '') : $does;
+        } elseif (is_string($next)) {
+            $nextLine = trim($next);
+        }
+
+        $question = trim((string) ($oneStep['question'] ?? ''));
+        if ($question === '') {
+            $question = self::USER_STEP_QUESTION;
+        } elseif (! str_contains(strtolower($question), 'or say skip')) {
+            $question .= ' (or say skip)';
+        }
+
+        return "<NEXT_STEP>\n{$nextLine}\n</NEXT_STEP>\n<ONE_MORE_QUESTION>\n{$question}\n</ONE_MORE_QUESTION>\n\n".self::ONE_STEP_RULE;
+    }
+
+    /**
+     * @param  array<string, mixed>  $brain
+     */
+    private function brainBlock(array $brain): string
+    {
+        if (isset($brain['block']) && is_string($brain['block'])) {
+            $body = trim($brain['block']);
+        } else {
+            $lines = [];
+            foreach ($brain as $key => $value) {
+                $lines[] = is_scalar($value) || $value === null
+                    ? "{$key}: ".(string) $value
+                    : "{$key}: ".json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            $body = implode("\n", $lines);
+        }
+
+        return "<BRAIN>\n{$body}\n</BRAIN>";
+    }
+
+    private function basePrompt(): string
     {
         return <<<'PROMPT'
 You are Atlas, an executive AI system that transforms user intent into improved future states.

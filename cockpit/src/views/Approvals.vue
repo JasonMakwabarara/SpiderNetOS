@@ -35,6 +35,22 @@
       </button>
     </nav>
 
+    <!-- Batch cards: agent artifacts from the same skill + run (D8 #8) -->
+    <section v-if="batches.length" class="space-y-4 mb-5" aria-label="Batch approvals" data-testid="approval-batches">
+      <ApprovalBatchCard
+        v-for="b in batches"
+        :key="b.key"
+        :group="b"
+        :busy="batchBusy === b.key"
+        @approve="onBatchApprove"
+        @reject="onBatchReject"
+        @approve-all="onBatchApproveAll(b, $event)"
+        @edit="onBatchEdit"
+      />
+    </section>
+    <!-- Outside the v-if so "Approved 3 of 3." survives the batch emptying -->
+    <p v-if="batchNotice" class="text-xs mb-4" style="color: var(--text-muted);" role="status" data-testid="approval-batch-notice">{{ batchNotice }}</p>
+
     <!-- Split view -->
     <section class="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4 min-h-[60vh]">
       <!-- Queue -->
@@ -62,7 +78,7 @@
               <span class="ml-auto sn-pill text-[10px]" :class="statusPill(apr.status)">{{ apr.status }}</span>
             </div>
             <div class="text-sm truncate" style="color: var(--text-primary);">
-              {{ apr.title || apr.resource_name }}
+              {{ approvalLabel(apr) }}
             </div>
             <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
               {{ apr.requested_by || 'Atlas' }} · {{ timeAgo(apr.created_at) }}
@@ -83,7 +99,7 @@
                   <span class="sn-pill text-[10px]" :class="statusPill(selected.status)">{{ selected.status }}</span>
                 </div>
                 <h2 class="font-heading font-semibold text-[18px]" style="color: var(--text-primary);">
-                  {{ selected.title || selected.resource_name }}
+                  {{ approvalLabel(selected) }}
                 </h2>
                 <p class="text-xs mt-1 mono" style="color: var(--text-muted);">
                   {{ selected.id }} · {{ selected.requested_by || 'Atlas' }} · {{ timeAgo(selected.created_at) }}
@@ -128,6 +144,64 @@
               <RouterLink v-if="outreach.prospect_id" :to="`/sales/partners/${outreach.prospect_id}`" class="text-xs underline mt-2 inline-block" style="color: var(--accent);">
                 Open the thread
               </RouterLink>
+            </section>
+
+            <!-- Agent draft: exactly the payload this approval binds (context.payload),
+                 editable while pending. What is shown here is what is hashed and applied. -->
+            <section v-if="review" data-testid="approval-artifact">
+              <h3 class="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style="color: var(--text-muted);">Agent draft</h3>
+              <p class="text-xs" style="color: var(--text-muted);">
+                {{ artifactCtx.skill_name || artifactCtx.skill_slug || 'skill' }}
+                <RouterLink v-if="artifactCtx.skill_slug" :to="`/skills/${artifactCtx.skill_slug}`" class="underline ml-1" data-testid="approval-artifact-skill">card</RouterLink>
+                <span v-if="artifactCtx.run_id"> · <RouterLink :to="`/agents/runs/${artifactCtx.run_id}`" class="underline" data-testid="approval-artifact-run">{{ artifactCtx.run_id }}</RouterLink></span>
+              </p>
+              <p v-if="review.destination" class="text-[11px] mt-1" style="color: var(--text-secondary);" data-testid="approval-artifact-destination">
+                {{ review.destination.campaign }} · {{ review.destination.channel }} · <span class="mono">{{ review.destination.campaign_key }}</span>
+              </p>
+              <article
+                v-for="(item, i) in review.items"
+                :key="item.artifactId"
+                class="mt-3"
+                :data-testid="`approval-artifact-item-${i}`"
+              >
+                <p class="text-[11px] font-semibold" style="color: var(--text-secondary);">{{ item.label }}</p>
+                <template v-if="selected.status === 'pending'">
+                  <input
+                    v-if="item.hasSubject"
+                    v-model="drafts[item.artifactId].subject"
+                    type="text"
+                    class="w-full mt-1 text-sm"
+                    :aria-label="`${item.label} subject`"
+                    :data-testid="`approval-artifact-subject-${i}`"
+                  />
+                  <textarea
+                    v-model="drafts[item.artifactId].body"
+                    rows="6"
+                    class="w-full mt-1 text-sm"
+                    :aria-label="`${item.label} body`"
+                    :data-testid="`approval-artifact-body-${i}`"
+                  ></textarea>
+                  <button
+                    class="sn-btn mt-1"
+                    :disabled="savingItem !== null || !isDirty(item)"
+                    :data-testid="`approval-artifact-save-${i}`"
+                    @click="saveItem(item)"
+                  >{{ savingItem === item.artifactId ? 'Saving…' : 'Save edit' }}</button>
+                </template>
+                <template v-else>
+                  <p v-if="item.subject" class="text-xs font-medium mt-1" style="color: var(--text-secondary);">{{ item.subject }}</p>
+                  <p class="text-sm mt-1" style="color: var(--text-primary); white-space: pre-line;" :data-testid="`approval-artifact-preview-${i}`">{{ item.body }}</p>
+                </template>
+                <ul v-if="item.variants.length > 1" class="text-[11px] mt-1" style="color: var(--text-muted);" :data-testid="`approval-artifact-variants-${i}`">
+                  <li v-for="v in item.variants" :key="v.key">
+                    {{ String(v.key).toUpperCase() }} · {{ v.subject }}<span v-if="v.body !== item.body"> — {{ v.body }}</span>
+                  </li>
+                </ul>
+              </article>
+              <p class="text-xs mt-2" style="color: var(--text-muted);" data-testid="approval-artifact-notice">{{ artifactNotice }}</p>
+              <p v-if="artifactCtx.changed_vs_last_approved" class="text-[11px] mt-2" style="color: var(--amber);" data-testid="approval-artifact-changed">
+                Changed vs last approved: {{ artifactCtx.changed_vs_last_approved }}
+              </p>
             </section>
 
             <!-- Diff -->
@@ -237,12 +311,19 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApprovalsStore } from '../stores/approvals.js'
+import { useRunsStore } from '../stores/runs.js'
 import ConfirmDialog from '../components/feedback/ConfirmDialog.vue'
 import TypedConfirmDialog from '../components/feedback/TypedConfirmDialog.vue'
+import ApprovalBatchCard from '../components/approvals/ApprovalBatchCard.vue'
+import { parseContext } from '../utils/format.js'
+import { reviewSnapshot } from '../utils/reviewSnapshot.js'
 import api from '../services/api.js'
 
+const route = useRoute()
 const approvalsStore = useApprovalsStore()
+const runsStore = useRunsStore()
 
 const activeFilter = ref('pending')
 
@@ -258,11 +339,6 @@ const outreach = computed(() => {
   if (typeof ctx === 'string') { try { ctx = JSON.parse(ctx) } catch { ctx = {} } }
   return ctx || {}
 })
-watch(() => selected.value?.id, () => {
-  draftBody.value = outreach.value?.draft_body || ''
-  savedDraft.value = draftBody.value
-  draftNotice.value = ''
-}, { immediate: true })
 async function saveDraft() {
   draftSaving.value = true
   draftNotice.value = ''
@@ -299,11 +375,166 @@ const selected = computed(
   () => (approvalsStore.approvals || []).find((a) => a.id === selectedId.value) || filteredApprovals.value[0] || null
 )
 
+// Sync the outreach draft editor with the selection. Declared after
+// `selected` — an immediate watcher reads its source synchronously, so
+// placing it above the computed threw a TDZ ReferenceError at setup.
+watch(() => selected.value?.id, () => {
+  draftBody.value = outreach.value?.draft_body || ''
+  savedDraft.value = draftBody.value
+  draftNotice.value = ''
+}, { immediate: true })
+
 const pendingCount = computed(
   () => (approvalsStore.approvals || []).filter((a) => a.status === 'pending').length
 )
 
 const isHigh = computed(() => (selected.value?.risk || 'low') === 'high')
+
+// Deep link: /approvals?id=apr_x selects that approval regardless of tab.
+watch(() => route.query.id, (id) => { if (id) selectedId.value = String(id) }, { immediate: true })
+
+/**
+ * What to call an approval. The approvals API returns the table's columns —
+ * no `title` or `resource_name` — so a real row labelled by those alone
+ * showed a blank list entry and "Approve · undefined". `reason` is what the
+ * requester wrote about it.
+ */
+function approvalLabel(apr) {
+  return apr?.title || apr?.resource_name || apr?.reason || apr?.id || ''
+}
+
+// ── Agent artifacts (D8 #8) ───────────────────────────────────────
+// The review on screen is one snapshot — the payload shown and its version —
+// taken from the approval (reviewSnapshot). It is replaced when another
+// approval is selected, and on a refresh only while nothing is being edited
+// or decided: a decision always sends the version of what is on screen.
+const artifactCtx = computed(() =>
+  selected.value?.resource_type === 'agent_artifact' ? parseContext(selected.value.context) : null,
+)
+const review = ref(null)
+const drafts = reactive({})
+const savingItem = ref(null)
+const artifactNotice = ref('')
+const dialogOpen = computed(() => softDialog.open || typedDialog.open)
+
+function showReview(apr) {
+  review.value = apr?.resource_type === 'agent_artifact' ? reviewSnapshot(apr) : null
+  for (const key of Object.keys(drafts)) delete drafts[key]
+  for (const item of review.value?.items || []) drafts[item.artifactId] = { subject: item.subject, body: item.body }
+}
+function isDirty(item) {
+  const d = drafts[item.artifactId]
+  return !!d && (d.subject !== item.subject || d.body !== item.body)
+}
+const anyDirty = computed(() => (review.value?.items || []).some(isDirty))
+
+watch(() => selected.value?.id, () => {
+  artifactNotice.value = ''
+  showReview(selected.value)
+}, { immediate: true })
+watch(() => [selected.value?.version_hash, selected.value?.status], () => {
+  if (dialogOpen.value || anyDirty.value) return
+  showReview(selected.value)
+})
+
+async function saveItem(item) {
+  const shown = review.value
+  if (!shown) return
+  savingItem.value = item.artifactId
+  artifactNotice.value = ''
+  const d = drafts[item.artifactId]
+  const res = await runsStore.patchArtifact(
+    item.artifactId,
+    item.hasSubject ? { subject: d.subject, body: d.body } : d.body,
+    { expected_version: shown.version },
+  )
+  savingItem.value = null
+  if (!res.success) {
+    artifactNotice.value = res.error
+    return
+  }
+  // Show what the server now holds — its payload and its version — rather
+  // than a local copy of the edit.
+  await approvalsStore.fetchApprovals?.()
+  showReview((approvalsStore.approvals || []).find((a) => a.id === shown.approvalId))
+  artifactNotice.value = 'Saved. The updated version is shown — review it, then decide.'
+}
+
+/** The version of what the approver is looking at, for a decision on `apr`. */
+function shownVersion(apr) {
+  return review.value?.approvalId === apr.id ? review.value.version : apr.version_hash ?? null
+}
+function afterDecision(apr, res) {
+  if (res?.stale) {
+    showReview((approvalsStore.approvals || []).find((a) => a.id === apr.id))
+    artifactNotice.value = 'This changed after you opened it. The current version is shown — review it and decide again.'
+    return
+  }
+  const unfinished = actionNotice(apr, res)
+  if (unfinished) batchNotice.value = unfinished
+}
+
+/**
+ * A decision is final once the API accepts it, but the effect it owes may not
+ * have happened yet (202: `action.status` is not `done`). Say so, rather than
+ * let "Approved" read as "applied".
+ */
+function actionNotice(apr, res) {
+  const status = res?.success ? res.data?.action?.status : null
+  if (!status || status === 'done') return ''
+  return status === 'pending'
+    ? `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish; it will be retried automatically.`
+    : `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish and needs checking.`
+}
+
+// Pending agent artifacts from the same skill + run become one batch card.
+const batches = computed(() => {
+  const groups = new Map()
+  for (const a of approvalsStore.approvals || []) {
+    if (a.status !== 'pending' || a.resource_type !== 'agent_artifact') continue
+    const ctx = parseContext(a.context)
+    const key = `${ctx.skill_slug || 'skill'}|${ctx.run_id || a.id}`
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key: key.replace(/[^a-z0-9_-]+/gi, '-'),
+        skill_slug: ctx.skill_slug,
+        skill_name: ctx.skill_name,
+        run_id: ctx.run_id,
+        items: [],
+      })
+    }
+    groups.get(key).items.push(a)
+  }
+  return [...groups.values()].filter((g) => g.items.length > 1)
+})
+const batchBusy = ref(null)
+const batchNotice = ref('')
+
+async function onBatchApprove(item) {
+  const res = await approvalsStore.approve(item.id, undefined, item.version_hash)
+  batchNotice.value = res.success ? actionNotice(item, res) || `Approved ${approvalLabel(item)}.` : res.error
+}
+async function onBatchReject(item) {
+  const res = await approvalsStore.reject(item.id, undefined, item.version_hash)
+  batchNotice.value = res.success ? actionNotice(item, res) || `Rejected ${approvalLabel(item)}.` : res.error
+}
+async function onBatchApproveAll(group, items) {
+  batchBusy.value = group.key
+  let ok = 0
+  let unfinished = 0
+  for (const item of items) {
+    const res = await approvalsStore.approve(item.id, undefined, item.version_hash)
+    if (res.success) ok++
+    if (actionNotice(item, res)) unfinished++
+  }
+  batchBusy.value = null
+  batchNotice.value = `Approved ${ok} of ${items.length}.` + (unfinished ? ` Applying ${unfinished} of them did not finish yet.` : '')
+}
+async function onBatchEdit(item, content) {
+  const res = await runsStore.patchArtifact(item.resource_id, content, { expected_version: item.version_hash })
+  if (res.success) await approvalsStore.fetchApprovals?.()
+  batchNotice.value = res.success ? 'Edit saved; the updated version is shown — approve it to send it.' : res.error
+}
 
 // ── Dialogs ───────────────────────────────────────────────────────
 const softDialog = reactive({
@@ -348,34 +579,38 @@ function openTyped({ title, body, diff, phrase, run }) {
 async function onApprove() {
   const apr = selected.value
   if (!apr) return
+  // Captured now, with what is on screen — a refresh while the dialog is open
+  // must not change which version this decision names.
+  const shown = shownVersion(apr)
   if ((apr.risk || 'low') === 'high') {
     openTyped({
-      title: `Approve · ${apr.title}`,
+      title: `Approve · ${approvalLabel(apr)}`,
       body: 'This change is high-risk. Type the phrase below and provide an audit reason to continue.',
       diff: apr.diff ? `${apr.diff.field}: ${formatDiff(apr.diff.before)} → ${formatDiff(apr.diff.after)}` : '',
       phrase: 'I UNDERSTAND',
-      run: async (reason) => approvalsStore.approve?.(apr.id, reason),
+      run: async (reason) => afterDecision(apr, await approvalsStore.approve?.(apr.id, reason, shown)),
     })
     return
   }
   openSoft({
-    title: `Approve · ${apr.title}`,
+    title: `Approve · ${approvalLabel(apr)}`,
     body: 'This change will be applied immediately.',
     confirmLabel: 'Approve',
     placeholder: 'Optional comment for the audit log…',
-    run: async (reason) => approvalsStore.approve?.(apr.id, reason),
+    run: async (reason) => afterDecision(apr, await approvalsStore.approve?.(apr.id, reason, shown)),
   })
 }
 
 function onReject() {
   const apr = selected.value
   if (!apr) return
+  const shown = shownVersion(apr)
   openSoft({
-    title: `Reject · ${apr.title}`,
+    title: `Reject · ${approvalLabel(apr)}`,
     body: 'The request will be archived as rejected. Atlas may resubmit a different proposal.',
     confirmLabel: 'Reject',
     placeholder: 'Reason for rejection (visible in audit log)…',
-    run: async (reason) => approvalsStore.reject?.(apr.id, reason),
+    run: async (reason) => afterDecision(apr, await approvalsStore.reject?.(apr.id, reason, shown)),
   })
 }
 

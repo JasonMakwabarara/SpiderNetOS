@@ -1,0 +1,246 @@
+# Business-launch stage map (plan D7 §5) — docassemble-style.
+#
+# A stage groups one interview section and the brain files it writes. Each
+# artefact declares the interview variables it `requires` (must be answered;
+# cannot be skipped) and the ones it `uses` when present. Variables are
+# `<section id>.<question id>` from interview/questions.yaml.
+#
+# The InterviewRunner walks the stages in order and asks whichever question
+# defines the first missing required variable, then the stage's remaining
+# (optional) questions. When nothing is missing, StageCommitter writes every
+# file the stage owns in ONE BrainStore version write per file, and the
+# launch moves to the next stage.
+#
+# Artefact kinds
+#   brain  — markdown/yaml written into the Knowledge brain at `path`
+#   file   — a binary deliverable (xlsx/docx/pdf) stored on the launch disk;
+#            `path` is its logical brain-tree location
+# `generated_by` marks artefacts produced by POST /api/launch/generate
+# (finance_model | docgen) rather than by a stage commit — numbers only ever
+# come from the deterministic finance model, never from an LLM.
+#
+# `status` is the business_launches.status the launch enters with the stage;
+# statuses never move backwards except when a plan approval is rejected.
+
+version: 1
+disclaimer: "Not legal or financial advice."
+
+stages:
+  - id: profile
+    title: "Business profile"
+    section: identity
+    agent: launch-guide
+    status: interviewing
+    writes:
+      - business/profile.md
+      - business/alignment.md
+    artefacts:
+      - id: business_profile
+        kind: brain
+        title: "Business profile"
+        path: business/profile.md
+        requires: [identity.business_name, identity.one_liner]
+        uses: [identity.stage_today]
+      - id: alignment
+        kind: brain
+        title: "Origin, mission and vision"
+        path: business/alignment.md
+        requires: [identity.founder_why, identity.mission, identity.vision, identity.ninety_day_target]
+
+  - id: offer
+    title: "Offer"
+    section: offer
+    agent: launch-guide
+    status: interviewing
+    writes:
+      - offer/offer.md
+      - business/profile.md
+    artefacts:
+      - id: offer
+        kind: brain
+        title: "Offer"
+        path: offer/offer.md
+        requires: [offer.core_offer, offer.pricing_model]
+        uses: [offer.problem_solved, offer.proof_points, offer.differentiator]
+
+  - id: customers
+    title: "Ideal customer"
+    section: customers
+    agent: launch-guide
+    status: interviewing
+    writes:
+      - customers/icp.md
+      - customers/objections.md
+    artefacts:
+      - id: icp
+        kind: brain
+        title: "Ideal customer profile"
+        path: customers/icp.md
+        requires: [customers.ideal_customer]
+        uses: [customers.disqualifiers, customers.buying_trigger, customers.where_customers_are]
+      - id: objections
+        kind: brain
+        title: "Objections"
+        path: customers/objections.md
+        requires: []
+        uses: [customers.common_objection]
+
+  - id: brand
+    title: "Brand voice"
+    section: brand
+    agent: launch-guide
+    status: interviewing
+    writes:
+      - brand/voice.md
+      - brand/identity.md
+    artefacts:
+      - id: voice
+        kind: brain
+        title: "Brand voice"
+        path: brand/voice.md
+        requires: [brand.preferred_tone]
+        uses: [brand.brand_admired, brand.never_say, brand.voice_sample]
+      - id: identity
+        kind: brain
+        title: "Brand identity"
+        path: brand/identity.md
+        requires: []
+        uses: [brand.visual_identity]
+
+  - id: market
+    title: "Market"
+    section: market
+    agent: market-researcher
+    status: researching
+    writes:
+      - market/comparables.md
+      - market/tam-sam-som.md
+    artefacts:
+      - id: comparables
+        kind: brain
+        title: "Market comparables"
+        path: market/comparables.md
+        requires: [market.competitors]
+        uses: [market.research_questions]
+      - id: tam_sam_som
+        kind: brain
+        title: "Market size (TAM / SAM / SOM)"
+        path: market/tam-sam-som.md
+        requires: [market.market_geography]
+        uses: [market.market_size_guess, market.market_trend]
+
+  - id: finance
+    title: "Finance"
+    section: finance
+    agent: finance-modeler
+    status: modelling
+    writes:
+      - finance/assumptions.yaml
+      - finance/model.xlsx
+      - finance/summary.md
+    artefacts:
+      - id: assumptions
+        kind: brain
+        format: yaml
+        title: "Financial assumptions"
+        path: finance/assumptions.yaml
+        requires: &finance_vars
+          - finance.starting_cash
+          - finance.setup_costs
+          - finance.price_per_unit
+          - finance.units_month_one
+          - finance.monthly_growth
+          - finance.cost_of_sale_pct
+          - finance.fixed_monthly_costs
+        uses: [gtm.marketing_budget, compliance.jurisdiction]
+      - id: finance_model
+        kind: file
+        format: xlsx
+        title: "Finance model (spreadsheet)"
+        path: finance/model.xlsx
+        generated_by: finance_model
+        requires: *finance_vars
+      - id: finance_summary
+        kind: brain
+        title: "Finance summary"
+        path: finance/summary.md
+        generated_by: finance_model
+        requires: *finance_vars
+
+  - id: compliance
+    title: "Compliance"
+    section: compliance
+    agent: compliance-mapper
+    status: modelling
+    writes:
+      - compliance/checklist.md
+    artefacts:
+      - id: compliance_checklist
+        kind: brain
+        title: "Compliance checklist"
+        path: compliance/checklist.md
+        requires: [compliance.jurisdiction]
+        uses: [compliance.legal_structure, compliance.already_registered, compliance.handles_personal_data, compliance.employees_first_year, compliance.regulated_activity]
+
+  - id: gtm
+    title: "Go-to-market"
+    section: gtm
+    agent: plan-writer
+    status: modelling
+    writes:
+      - gtm/plan.md
+      - people/user.md
+    artefacts:
+      - id: gtm_plan
+        kind: brain
+        title: "Go-to-market plan"
+        path: gtm/plan.md
+        requires: [gtm.launch_channel, gtm.first_ten_customers]
+        uses: [gtm.launch_date, gtm.marketing_budget, gtm.success_signal]
+      - id: user_preferences
+        kind: brain
+        title: "You — standing preferences"
+        path: people/user.md
+        requires: []
+        uses: [gtm.help_needed]
+
+  - id: plan
+    title: "Business plan"
+    section: null
+    agent: plan-writer
+    status: modelling
+    requires_stages: [profile, offer, customers, brand, market, finance, compliance, gtm]
+    writes:
+      - plan/business-plan.md
+      - plan/business-plan.docx
+      - plan/business-plan.pdf
+    artefacts:
+      - id: business_plan
+        kind: brain
+        title: "Business plan"
+        path: plan/business-plan.md
+        generated_by: docgen
+        sets_status: drafted
+        requires:
+          - identity.business_name
+          - identity.one_liner
+          - offer.core_offer
+          - customers.ideal_customer
+          - market.competitors
+          - finance.starting_cash
+          - compliance.jurisdiction
+          - gtm.launch_channel
+      - id: business_plan_docx
+        kind: file
+        format: docx
+        title: "Business plan (Word)"
+        path: plan/business-plan.docx
+        generated_by: docgen
+        requires: []
+      - id: business_plan_pdf
+        kind: file
+        format: pdf
+        title: "Business plan (PDF)"
+        path: plan/business-plan.pdf
+        generated_by: docgen
+        requires: []

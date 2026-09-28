@@ -37,6 +37,20 @@ const PartnerThread   = () => import('../views/sales/PartnerThread.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 const Operating       = () => import('../views/operating/Operating.vue')
 
+// Lazy slice-0 surfaces (skills, map, brain, voice, runs, board, social)
+const Skills          = () => import('../views/skills/Skills.vue')
+const SkillCard       = () => import('../views/skills/SkillCard.vue')
+const BusinessMap     = () => import('../views/map/BusinessMap.vue')
+const SystemsMap      = () => import('../views/operate/SystemsMap.vue')
+const VoiceSettings   = () => import('../views/settings/VoiceSettings.vue')
+const Brain           = () => import('../views/brain/Brain.vue')
+const AgentRuns       = () => import('../views/agents/AgentRuns.vue')
+const AgentRunDetail  = () => import('../views/agents/AgentRunDetail.vue')
+const AgentWorkspace  = () => import('../views/agents/AgentWorkspace.vue')
+const GodsEye         = () => import('../views/godseye/GodsEye.vue')
+const BoardRoom       = () => import('../views/board/BoardRoom.vue')
+const SocialPosts     = () => import('../views/social/SocialPosts.vue')
+
 // Lazy financial views
 const FinancialDashboard = () => import('../views/financial/FinancialDashboard.vue')
 const FinancialLedger    = () => import('../views/financial/FinancialLedger.vue')
@@ -102,6 +116,20 @@ const routes = [
   { path: '/feature-packs', name: 'FeaturePacks',  component: FeaturePacks,  meta: { requiresAuth: true } },
   { path: '/connectors',    name: 'Connectors',    component: Connectors,    meta: { requiresAuth: true } },
   { path: '/operate/first-win', name: 'OpsFirstWin', component: OpsFirstWin, meta: { requiresAuth: true } },
+  { path: '/operate/systems',   name: 'SystemsMap',  component: SystemsMap,  meta: { requiresAuth: true } },
+  // Skills / brain / map (slice 0 — placeholder pages until their slices land)
+  { path: '/skills',            name: 'Skills',        component: Skills,        meta: { requiresAuth: true } },
+  { path: '/skills/:slug',      name: 'SkillCard',     component: SkillCard,     meta: { requiresAuth: true } },
+  { path: '/map',               name: 'BusinessMap',   component: BusinessMap,   meta: { requiresAuth: true } },
+  { path: '/brain',             name: 'Brain',         component: Brain,         meta: { requiresAuth: true } },
+  { path: '/settings/voice',    name: 'VoiceSettings', component: VoiceSettings, meta: { requiresAuth: true } },
+  // NOTE: /agents/runs must precede /agents/:slug/workspace so the literal segment wins.
+  { path: '/agents/runs',            name: 'AgentRuns',      component: AgentRuns,      meta: { requiresAuth: true } },
+  { path: '/agents/runs/:id',        name: 'AgentRunDetail', component: AgentRunDetail, meta: { requiresAuth: true } },
+  { path: '/agents/:slug/workspace', name: 'AgentWorkspace', component: AgentWorkspace, meta: { requiresAuth: true } },
+  { path: '/gods-eye',          name: 'GodsEye',       component: GodsEye,       meta: { requiresAuth: true } },
+  { path: '/board',             name: 'BoardRoom',     component: BoardRoom,     meta: { requiresAuth: true } },
+  { path: '/social',            name: 'SocialPosts',   component: SocialPosts,   meta: { requiresAuth: true } },
   { path: '/sales', name: 'SalesHome', component: SalesHome, meta: { requiresAuth: true } },
   { path: '/sales/leads', name: 'SalesLeads', component: SalesLeads, meta: { requiresAuth: true } },
   { path: '/sales/funnel-setup', name: 'FunnelSetup', component: FunnelSetup, meta: { requiresAuth: true } },

@@ -1,0 +1,253 @@
+# Customer Newsletter — Marketing · Newsletter (plan D5 roster: studio → Nexus executes)
+# Every 12 days, in your voice, to the people who asked for it. Always an approval: it is public.
+
+id: customer-newsletter
+display_name: "Customer Newsletter"
+version: 1.0.0
+pillar: marketing
+map_node: "Marketing › Newsletter"
+core_agent: nexus
+runs_on: studio
+pack_id: sales-crm
+
+intent_keywords:
+  - newsletter
+  - customer newsletter
+  - email list
+  - send an update to customers
+  - monthly update
+  - mailing list
+  - keep customers warm
+  - what should we send our customers
+
+at_a_glance: >-
+  Every 12 days it drafts the issue your customers actually read — one story, one proof, one
+  useful tip, one soft ask — in your brand voice, from what really happened in the business.
+  You approve it before a single copy goes out; nothing is ever sent on your behalf unread.
+
+covers: >-
+  Marketing › Newsletter — the recurring letter to customers and subscribers, written from the
+  business's own week rather than from a template.
+
+breaks_into:
+  - name: "Issue Planner"
+    does: "Picks the one story worth telling from the last 12 days — a shipped change, a result, a question customers keep asking."
+  - name: "Story Writer"
+    does: "Writes the lead block in brand voice: what happened, who it helps, what it means for the reader."
+  - name: "Proof Picker"
+    does: "Pulls one concrete result or number from offer/offer.md and the outcome ledger — never an invented claim."
+  - name: "Useful Tip"
+    does: "One thing the reader can use even if they never buy again. This is what keeps the list subscribed."
+  - name: "Subject Line A/B"
+    does: "Two subject lines and a preheader, registered as an experiment so the next issue knows which style won."
+  - name: "Consent Check"
+    does: "Counts who may actually receive it — newsletter consent only — and refuses to build a list from contacts who never opted in."
+
+builds_on:
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+    why: "The newsletter is the most-read thing the business writes; it has to sound like the business."
+  - name: "What we sell"
+    ref: "brain:offer/offer.md#Products and services"
+    why: "The soft ask has to point at something real, at the real price."
+  - name: "Who we sell to"
+    ref: "brain:customers/icp.md#Who we sell to"
+    why: "A tip that helps everybody helps nobody."
+  - name: "Proof"
+    ref: "brain:offer/offer.md#Proof"
+    why: "One proof point per issue, quoted from the file, never generated."
+  - name: "Keep it simple"
+    ref: "principle:keep-it-simple"
+
+replaces:
+  - what: "A marketing agency's monthly email retainer"
+    cost: "$1.5–4k/mo"
+    kind: retainer
+    note: "The same template with your logo on it, sent to everyone."
+  - what: "A freelance copywriter per issue"
+    cost: "$200–600"
+    kind: time
+  - what: "A part-time marketing coordinator's newsletter time"
+    cost: "$1–2k/mo"
+    kind: salary
+  - what: "The newsletter you meant to start and never did, so the list went cold"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted]
+  stage_copy:
+    human_led:
+      summary: "It drafts the whole issue every 12 days; you read it and approve before anything sends."
+      your_role: "Read the issue, change any line, approve or reject. Own the offer and the ask."
+      atlas_role: "Nexus drafts the issue from the brain and the last 12 days, files it, and stops."
+      default: true
+    assisted:
+      summary: "It drafts and schedules the send for you to confirm; the approval is still yours."
+      your_role: "Approve the issue and the send slot. You still see every issue before it goes."
+      atlas_role: "Nexus drafts, picks the slot, prepares the send and waits on your approval."
+    autonomous:
+      summary: "Not offered: a public send is never automatic."
+      your_role: "Not offered. Anything that reaches customers under your name is approved by you."
+      atlas_role: "Not offered for this skill. A newsletter cannot be unsent."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+
+brain:
+  requires:
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+  reads:
+    - brand/voice.md
+    - offer/offer.md
+    - offer/changelog.md
+    - customers/icp.md
+    - marketing/social/posts.md
+    - notes/research.md
+    - people/user.md#Never say or offer
+  writes:
+    - reports/newsletter/**
+
+hands_off_to:
+  - type: skill
+    slug: social-caption-drafting
+    name: "Social Caption Drafting"
+    when: "The issue is approved — the same story makes this week's posts."
+  - type: product
+    ref: hannah_ai
+    name: "Hannah AI"
+    when: "The issue needs a hero image or a longer campaign around it (PR 6 hand-off)."
+
+one_step_further:
+  summary: >-
+    Beyond the issue it names what the list is missing — a welcome note for new subscribers, or
+    the brand-voice file when the draft had to guess at tone.
+  allow_dynamic: false
+  steps:
+    - id: fill_voice_first
+      label: "Write the brand voice file first"
+      does: "Runs the voice interview so the next issue sounds like you instead of like a newsletter."
+      skill: brand-voice-keeper
+      when: on_success
+      risk: write
+      cost_hint_usd: 0.05
+    - id: repurpose_as_posts
+      label: "Turn this issue into this week's posts"
+      does: "Runs caption drafting on the approved story so the same work reaches the people not on the list."
+      skill: social-caption-drafting
+      when: on_approval_applied
+      risk: write
+      cost_hint_usd: 0.08
+
+inputs:
+  type: object
+  additionalProperties: false
+  properties:
+    theme:
+      type: string
+      title: "Theme"
+      maxLength: 200
+      description: "Optional: what this issue should be about. Left empty, the planner picks from the last 12 days."
+    since:
+      type: string
+      title: "Cover changes since"
+      format: date
+      description: "Defaults to the previous issue's send date, or 12 days ago for the first issue."
+    include_offer:
+      type: boolean
+      title: "Include a soft ask"
+      default: true
+      description: "Off for a pure value issue — useful when the last two issues both asked for something."
+
+outputs:
+  - kind: draft_email
+    primary: true
+    description: "One newsletter issue: two subject lines, a preheader and 3–5 blocks."
+    key_pattern: "newsletter/{period}"
+    count: "1"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [subject_a, subject_b, preheader, blocks]
+      properties:
+        subject_a: { type: string, minLength: 12, maxLength: 80 }
+        subject_b: { type: string, minLength: 12, maxLength: 80 }
+        preheader: { type: string, minLength: 20, maxLength: 140 }
+        blocks:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [role, heading, body]
+            properties:
+              role: { type: string, enum: [story, proof, tip, cta, sign_off] }
+              heading: { type: string, minLength: 4, maxLength: 90 }
+              body: { type: string, minLength: 80, maxLength: 1400 }
+              link: { type: string, maxLength: 300 }
+              source:
+                type: string
+                maxLength: 200
+                description: "Where a proof or a number came from — a brain path or a record id. Required for role=proof."
+        plain_text:
+          type: string
+          maxLength: 6000
+          description: "The whole issue as plain text, for the text/plain part and for anyone reading in a client that blocks HTML."
+
+tools:
+  - brain.read
+  - brain.search
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+  - type: scheduled
+    # Every 12 days, not "monthly": a 12-day slot walks through the week, so the
+    # list is not always mailed on the same weekday. The cadence is computed by
+    # CustomerNewsletterCadence; this cron is the daily tick that asks whether
+    # today is the slot.
+    cron: "0 9 * * *"
+    quiet_day_shift: true
+
+cost_budget:
+  daily_limit_usd: 0.6
+  per_run_usd: 0.25
+
+approval:
+  resource_type: agent_artifact
+  required: always
+  policy_hint: "a public send is never automatic, at any autonomy level"
+
+model:
+  heavy: true
+  temperature: 0.6
+  max_tokens: 2600
+  json_mode: true
+
+limits:
+  max_artifacts: 1
+  timeout_seconds: 150
+
+mode: single_shot
+
+run:
+  kind: agent
+  entry_path: /skills/customer-newsletter
+  prompt: prompts/task.md
+  post_actions:
+    - save_drafts
+    - submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.85
+
+tags: [marketing, newsletter, email, retention, nexus, studio]

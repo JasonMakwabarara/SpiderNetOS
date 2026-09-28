@@ -36,6 +36,13 @@ spec:
         displayName: "Funnel Architect"
         capabilities: [discovery_interview, script_drafting, funnel_configuration]
 
+      # Richard writes LinkedIn, peer to peer. No send capability anywhere:
+      # draft-only is the only mode that does not touch LinkedIn's User
+      # Agreement, and it is the default.
+      - id: richard
+        displayName: "Richard"
+        capabilities: [connection_notes, follow_up_dms, reply_drafting]
+
     flows:
       - id: lead-capture
         description: "Capture and qualify incoming leads"

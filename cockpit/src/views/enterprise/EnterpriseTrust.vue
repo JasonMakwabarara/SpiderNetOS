@@ -193,7 +193,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.sn-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); opacity: 0.85; }
 .sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
 .sn-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 18px 16px; }
 .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }

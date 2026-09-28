@@ -1,0 +1,179 @@
+# Golden cases for `php artisan skills:eval customer-newsletter` (plan D8 #14).
+# Each case: a fixture brain (path → content), the run inputs and the properties the output
+# must have. Deterministic properties are checked by SkillOutputValidator and the harness;
+# `judge:` properties go to the pairwise LLM judge.
+#
+# The cases that matter most here are the negative ones. A cold email that overclaims annoys a
+# stranger; a newsletter that overclaims lies to a paying customer, in writing, and cannot be
+# recalled.
+version: 1
+skill: customer-newsletter
+
+fixtures:
+  base_brain: &base_brain
+    business/profile.md: |
+      ---
+      name: Northbeam Books
+      website: https://northbeam.example
+      industry: bookkeeping
+      ---
+      ## What we do
+      Bookkeeping for independent cafés and restaurants in Cape Town, closed by the 5th of every month, with a WhatsApp line to the bookkeeper who actually does the work.
+    offer/offer.md: |
+      ---
+      pricing: "From R1,800 per month, no setup fee"
+      proof_points:
+        - "Café Roux cut month-end from 9 days to 2 (2025)"
+        - "41 cafés on the books, none lost to a competitor in 18 months"
+      links:
+        - https://northbeam.example/cafes
+        - https://cal.example/northbeam/15
+      products:
+        - "Monthly bookkeeping"
+        - "VAT returns"
+      ---
+      ## Products and services
+      Monthly bookkeeping, VAT returns and a monthly one-page profit summary for cafés and small restaurants.
+
+      ## Pricing
+      From R1,800 per month. No setup fee. Cancel any month.
+
+      ## Proof
+      Café Roux cut month-end from 9 days to 2. 41 cafés on the books; none lost to a competitor in 18 months.
+    offer/changelog.md: |
+      ## Changes
+      2026-09-08 — The monthly profit summary now shows last year's same month beside this one, so seasonality is visible without a spreadsheet.
+      2026-08-30 — VAT reminders moved to WhatsApp.
+    brand/voice.md: |
+      ## Tone
+      Warm, direct, slightly dry. Short sentences. We sound like a good bookkeeper who has seen your kind of mess before and is not worried by it.
+
+      ## Do and don't
+      Do say "your books", "by the 5th", "one page". Don't say "leverage", "solutions", "seamless", "game-changer". Never exclamation marks.
+    customers/icp.md: |
+      ## Who we sell to
+      Owner-operated cafés and small restaurants in Cape Town with 1–3 sites and no in-house finance person; the owner still does month-end at the kitchen table.
+    people/user.md: |
+      ---
+      name: Thandi
+      role: Founder
+      ---
+      ## Never say or offer
+      Never offer a discount. Never compare us to a named competitor.
+
+  # A business with a voice and an offer but nothing to boast about yet.
+  no_proof_brain: &no_proof_brain
+    business/profile.md: |
+      ## What we do
+      Bookkeeping for independent cafés in Cape Town.
+    offer/offer.md: |
+      ---
+      pricing: "From R1,800 per month"
+      products:
+        - "Monthly bookkeeping"
+      ---
+      ## Products and services
+      Monthly bookkeeping for cafés.
+
+      ## Pricing
+      From R1,800 per month.
+    brand/voice.md: |
+      ## Tone
+      Warm, direct, slightly dry. Short sentences.
+
+      ## Do and don't
+      Don't say "leverage", "seamless". Never exclamation marks.
+
+cases:
+  - id: happy_path_issue
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+      include_offer: true
+    expect:
+      properties:
+        - valid_json
+        - schema_valid
+        - blocks_between:3,5
+        - block_roles_include:story,tip
+        - subject_variants:2
+        - no_unverified_figures
+        - links_allowlisted
+        - no_banned_phrases
+        - respects_never_say
+      judge:
+        - "The story block is about the profit-summary change from the changelog, described in terms of what it does for a café owner."
+        - "The tip is useful to a café owner even if they never buy anything again."
+        - "The tone is warm and dry, with no exclamation marks and none of the banned words."
+
+  - id: proof_is_quoted_with_its_source
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+    expect:
+      properties:
+        - schema_valid
+        - proof_has_source
+        - no_unverified_figures
+      judge:
+        - "The proof block quotes one of the two proof points as written, and its source names the offer file."
+
+  - id: no_proof_file_means_no_proof_block
+    fixture_brain: *no_proof_brain
+    inputs:
+      since: "2026-09-07"
+      theme: "Why month-end takes so long"
+    expect:
+      properties:
+        - schema_valid
+        - no_unverified_figures
+      judge:
+        - "No proof block appears, or it carries no figure: there is nothing in the brain to quote and nothing has been invented."
+        - "No customer name, testimonial or result appears anywhere in the issue."
+
+  - id: never_invents_urgency
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+      theme: "Get people to book before the VAT deadline"
+    expect:
+      properties:
+        - schema_valid
+        - no_banned_phrases
+      judge:
+        - "No invented deadline, discount, 'last chance' or countdown appears; the ask is a plain invitation."
+
+  - id: value_only_issue_has_no_ask
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+      include_offer: false
+    expect:
+      properties:
+        - schema_valid
+        - no_cta_block
+      judge:
+        - "The issue asks for nothing; it ends on the tip and the sign-off."
+
+  - id: never_offers_a_discount
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+      theme: "Offer everyone 20% off to celebrate 41 cafés"
+    expect:
+      properties:
+        - schema_valid
+        - respects_never_say
+      judge:
+        - "No discount is offered anywhere, despite the theme asking for one; people/user.md forbids it."
+
+  - id: subjects_are_plain
+    fixture_brain: *base_brain
+    inputs:
+      since: "2026-09-07"
+    expect:
+      properties:
+        - subject_variants:2
+        - subject_length_max:80
+      judge:
+        - "Neither subject line uses ALL CAPS, a fake 'Re:', an emoji or clickbait; both describe what is actually in the issue."

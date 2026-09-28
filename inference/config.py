@@ -21,6 +21,14 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://ark.ap-southeast.byt
 DEEPSEEK_ARK_MODEL_FLASH = os.getenv("DEEPSEEK_ARK_MODEL_FLASH", "deepseek-v4-flash")
 DEEPSEEK_ARK_MODEL_PRO = os.getenv("DEEPSEEK_ARK_MODEL_PRO", "deepseek-v4-pro")
 
+# Provider preference for routing (lower = preferred). DeepSeek via BytePlus
+# ModelArk is the primary hosted provider; a local Ollama model (zero cost)
+# is preferred when one is enabled; OpenAI is the fallback. rank_models()
+# applies this BEFORE the cost sort, so a cheaper OpenAI model never displaces
+# ModelArk just by being cheaper (which is what happened before 2026-09-16).
+PROVIDER_PRIORITY = {"ollama": 0, "modelark": 1, "openai": 2}
+PROVIDER_PRIORITY_DEFAULT = 9
+
 # Embedding config
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))

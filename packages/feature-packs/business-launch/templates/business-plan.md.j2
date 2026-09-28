@@ -1,0 +1,138 @@
+{#-
+  Business plan — rendered by intelligence/services/business_launch/docgen.py
+  from the committed brain files (context assembled by
+  App\Services\Launch\LaunchArtefacts::planContext()).
+
+  Rules: every number comes from `finance.summary` / `finance.years`, which
+  the deterministic finance model produced. Missing prose renders as
+  "[to confirm]" — never a guess.
+-#}
+{%- set tc = '[to confirm]' -%}
+{%- set cur = finance.currency | default('', true) -%}
+# {{ business.name | default('Business plan', true) }} — Business plan
+
+> **Not legal or financial advice.** {{ disclaimer | default('Prepared by SpiderNetOS from your own answers and a simple finance model. Check registrations, tax and figures with a qualified adviser before you rely on them.', true) }}
+
+*Prepared {{ generated_on | default(tc, true) }} · Jurisdiction: {{ jurisdiction.name | default(tc, true) }} · Status: draft for owner approval*
+
+## 1. Summary
+
+**{{ business.name | default(tc, true) }}** — {{ business.one_liner | default(tc, true) }}
+
+- **Why we exist:** {{ alignment.origin | default(tc, true) }}
+- **What we must get right every day:** {{ alignment.mission | default(tc, true) }}
+- **Where we are today:** {{ business.stage_today | default(tc, true) }}
+- **Next 90 days:** {{ alignment.ninety_day_target | default(tc, true) }}
+- **In three years:** {{ alignment.vision | default(tc, true) }}
+
+## 2. The offer
+
+{{ offer.core_offer | default(tc, true) }}
+
+**The problem it solves.** {{ offer.problem_solved | default(tc, true) }}
+
+**Pricing.** {{ offer.pricing_model | default(tc, true) }}
+
+**Proof.** {{ offer.proof_points | default(tc, true) }}
+
+**Why us.** {{ business.differentiator | default(tc, true) }}
+
+## 3. Customers
+
+**Who we sell to.** {{ customers.ideal_customer | default(tc, true) }}
+
+**Who we don't sell to.** {{ customers.disqualifiers | default(tc, true) }}
+
+**What sends them looking.** {{ customers.buying_trigger | default(tc, true) }}
+
+**Where to find them.** {{ customers.where_customers_are | default(tc, true) }}
+
+**The main hesitation, and our answer.** {{ customers.common_objection | default(tc, true) }}
+
+## 4. Market
+
+**Alternatives customers weigh us against.** {{ market.competitors | default(tc, true) }}
+
+**Where we sell first.** {{ market.market_geography | default(tc, true) }}
+
+**Market size.** {{ market.market_size_guess | default(tc, true) }}{% if market.research_status %} *({{ market.research_status }})*{% endif %}
+
+**Trends.** {{ market.market_trend | default(tc, true) }}
+
+## 5. Go-to-market
+
+| | |
+|---|---|
+| First channel | {{ gtm.launch_channel | default(tc, true) }} |
+| First ten customers | {{ gtm.first_ten_customers | default(tc, true) }} |
+| Launch timing | {{ gtm.launch_date | default(tc, true) }} |
+| Marketing budget | {{ gtm.marketing_budget | default(tc, true) }} |
+| Signs it's working | {{ gtm.success_signal | default(tc, true) }} |
+
+**Voice.** We sound {{ brand.preferred_tone | default(tc, true) }}. We never: {{ brand.never_say | default(tc, true) }}
+
+## 6. The numbers
+
+*From the finance model (finance/model.xlsx) — a pre-tax, cash-basis projection over {{ finance.summary.months | default(tc, true) }} months built only from the assumptions below. Not financial advice.*
+
+{% if finance.summary %}
+| Measure | Value |
+|---|---|
+| Revenue, year 1 | {{ finance.summary.year1_revenue | money(cur) }} |
+| Gross margin, year 1 | {{ finance.summary.year1_gross_margin_pct | pct }} |
+| EBITDA, year 1 | {{ finance.summary.year1_ebitda | money(cur) }} |
+| Lowest cash balance | {{ finance.summary.cash_low_point | money(cur) }} (month {{ finance.summary.cash_low_month }}) |
+| Runway | {% if finance.summary.runs_out %}cash runs out after month {{ finance.summary.runway_months }}{% else %}cash lasts the full {{ finance.summary.runway_months }} months modelled{% endif %} |
+| Break-even month | {% if finance.summary.breakeven_month %}month {{ finance.summary.breakeven_month }}{% else %}not within the modelled period{% endif %} |
+
+{% if finance.years %}
+| Year | Revenue | Gross profit | Gross margin | EBITDA | Closing cash |
+|---|---|---|---|---|---|
+{% for y in finance.years -%}
+| {{ y.year }} | {{ y.revenue | money(cur) }} | {{ y.gross_profit | money(cur) }} | {{ y.gross_margin_pct | pct }} | {{ y.ebitda | money(cur) }} | {{ y.closing_cash | money(cur) }} |
+{% endfor %}
+{% endif %}
+{% if finance.assumptions %}
+**Assumptions.** Starting cash {{ finance.assumptions.starting_cash | money(cur) }}; set-up costs {{ finance.assumptions.setup_costs | money(cur) }}; price per sale {{ finance.assumptions.price_per_unit | money(cur) }}; {{ finance.assumptions.units_month_one }} sales in month 1 growing {{ finance.assumptions.monthly_growth_pct | pct }} a month; cost of each sale {{ finance.assumptions.cost_of_sale_pct | pct }} of price; fixed costs {{ finance.assumptions.fixed_monthly_costs | money(cur) }} and marketing {{ finance.assumptions.marketing_monthly | money(cur) }} a month.
+{% endif %}
+{% else %}
+{{ tc }} — run the finance model to fill this section.
+{% endif %}
+
+## 7. SWOT
+
+{% set swot = narrative.swot if narrative and narrative.swot else {} -%}
+| Strengths | Weaknesses |
+|---|---|
+| {{ (swot.strengths or [tc]) | join('<br>') }} | {{ (swot.weaknesses or [tc]) | join('<br>') }} |
+
+| Opportunities | Threats |
+|---|---|
+| {{ (swot.opportunities or [tc]) | join('<br>') }} | {{ (swot.threats or [tc]) | join('<br>') }} |
+
+## 8. First-quarter objectives
+
+{% set okrs = narrative.okrs if narrative and narrative.okrs else {} -%}
+**Objective:** {{ okrs.objective | default(alignment.ninety_day_target, true) | default(tc, true) }}
+
+{% for kr in (okrs.key_results or [gtm.success_signal or tc]) -%}
+- {{ kr }}
+{% endfor %}
+
+## 9. Registration and compliance ({{ jurisdiction.name | default(tc, true) }})
+
+*Not legal advice. Structure: {{ compliance.structure | default(tc, true) }}.*
+
+{% if compliance['items'] %}
+| Step | Who | When |
+|---|---|---|
+{% for item in compliance['items'] -%}
+| {{ item.title }} | {{ item.owner }} | {{ item.due_on or item.rule or '—' }} |
+{% endfor %}
+{% else %}
+{{ tc }} — complete the compliance stage to fill this section.
+{% endif %}
+
+---
+
+*Not legal or financial advice. Generated by SpiderNetOS from your business brain. Review and approve before sharing.*

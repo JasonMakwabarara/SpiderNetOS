@@ -58,7 +58,7 @@ class NotificationController extends Controller
     {
         $user = $request->user();
         $v = $request->validate([
-            'event_type' => 'required|in:approval_pending,budget_alert',
+            'event_type' => 'required|in:'.implode(',', NotificationPreference::EVENT_TYPES),
             'channel' => 'required|in:push,in_app',
             'enabled' => 'required|boolean',
         ]);

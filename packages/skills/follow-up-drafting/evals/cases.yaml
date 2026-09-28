@@ -1,0 +1,187 @@
+# Golden cases for `php artisan skills:eval follow-up-drafting` (plan D8 #14).
+version: 1
+skill: follow-up-drafting
+
+fixtures:
+  base_brain: &base_brain
+    processes/follow-ups.md: |
+      ## Cadence
+      Follow up on day 3, day 7 and day 14 after the first email with no reply. Three follow-ups, then stop. Never on weekends.
+
+      ## Escalation
+      Any reply mentioning a complaint or pricing goes to Thandi untouched.
+    offer/offer.md: |
+      ---
+      proof_points:
+        - "Café Roux cut month-end from 9 days to 2 (2025)"
+        - "41 cafés on the books, none lost to a competitor in 18 months"
+      links:
+        - https://northbeam.example/cafes
+        - https://cal.example/northbeam/15
+      ---
+      ## Products and services
+      Monthly bookkeeping, VAT returns and a one-page monthly profit summary for cafés.
+
+      ## Pricing
+      From R1,800 per month. No setup fee.
+
+      ## Proof
+      Café Roux cut month-end from 9 days to 2. 41 cafés on the books; none lost in 18 months.
+    brand/voice.md: |
+      ## Tone
+      Warm, direct, slightly dry. Short sentences.
+
+      ## Do and don't
+      Never "just following up". Never "circling back". Never exclamation marks.
+    people/user.md: |
+      ## Never say or offer
+      Never offer a discount.
+
+      ## Working rhythm
+      Sends only 08:00–17:00 SAST, Monday to Friday.
+
+cases:
+  - id: touch_two_is_case_example
+    fixture_brain: *base_brain
+    threads:
+      - thread_id: t1
+        contact: "Lerato Dube"
+        last_outbound_days_ago: 3
+        replies: []
+    inputs:
+      thread_id: t1
+      touch: 2
+    expect:
+      properties:
+        - valid_json
+        - schema_valid
+        - items_count:1
+        - angle:t1=case_example
+        - subject_max:80
+        - body_max:700
+        - single_cta
+        - no_banned_phrases
+        - no_unverified_figures
+        - links_allowlisted
+        - mentions_proof_point
+      judge:
+        - "The follow-up tells the Café Roux example in one sentence and asks one small step."
+
+  - id: touch_four_is_close_out
+    fixture_brain: *base_brain
+    threads:
+      - thread_id: t2
+        last_outbound_days_ago: 7
+        replies: []
+        touches_sent: 3
+    inputs:
+      thread_id: t2
+      touch: 4
+    expect:
+      properties:
+        - schema_valid
+        - is_close_out:t2=true
+        - angle:t2=close_out
+      judge:
+        - "The close-out is courteous, says it is the last note, and leaves the door open."
+
+  - id: no_bumping_language
+    fixture_brain: *base_brain
+    threads:
+      - thread_id: t3
+        last_outbound_days_ago: 4
+        replies: []
+    inputs:
+      thread_id: t3
+    expect:
+      properties:
+        - schema_valid
+        - no_banned_phrases
+        - body_not_contains:"just following up"
+        - body_not_contains:"circling back"
+        - body_not_contains:"bumping"
+
+  - id: batch_skips_cold_and_opt_out
+    fixture_brain: *base_brain
+    threads:
+      - { thread_id: t4, last_outbound_days_ago: 5, replies: [], classification: null }
+      - { thread_id: t5, last_outbound_days_ago: 5, replies: [], classification: cold }
+      - { thread_id: t6, last_outbound_days_ago: 5, replies: [], classification: opt_out }
+      - { thread_id: t7, last_outbound_days_ago: 1, replies: [] }
+    inputs:
+      campaign: cafes-q4
+      max_drafts: 20
+    expect:
+      properties:
+        - schema_valid
+        - items_count:1
+        - items_thread_ids:t4
+
+  - id: cadence_cap_is_respected
+    fixture_brain: *base_brain
+    threads:
+      - thread_id: t8
+        last_outbound_days_ago: 20
+        replies: []
+        touches_sent: 4
+    inputs:
+      thread_id: t8
+    expect:
+      properties:
+        - schema_valid
+        - items_count:0
+      judge:
+        - "No draft is produced for a thread that already had its three follow-ups and close-out."
+
+  - id: never_offer_discount_to_revive
+    fixture_brain: *base_brain
+    threads:
+      - thread_id: t9
+        last_outbound_days_ago: 7
+        replies: []
+    inputs:
+      thread_id: t9
+      touch: 3
+    expect:
+      properties:
+        - schema_valid
+        - no_unverified_figures
+        - respects_never_say
+
+  - id: change_in_their_world_only_if_proven
+    fixture_brain:
+      <<: *base_brain
+      notes/research/prospect-sunbird.md: |
+        ---
+        prospect: Lerato Dube
+        ---
+        ## Angles
+        - Opened a second site in July 2026 (LinkedIn post, 14 July).
+    threads:
+      - thread_id: t10
+        contact: "Lerato Dube"
+        last_outbound_days_ago: 7
+        replies: []
+    inputs:
+      thread_id: t10
+      touch: 3
+    expect:
+      properties:
+        - schema_valid
+        - angle_in:t10=change_in_their_world,insight
+      judge:
+        - "If the second site is mentioned it is the one from the research note; nothing else about their world is asserted."
+
+  - id: blocks_without_cadence
+    fixture_brain:
+      offer/offer.md: |
+        ## Proof
+        Café Roux cut month-end from 9 days to 2.
+      brand/voice.md: |
+        ## Tone
+        Warm and dry.
+    inputs:
+      thread_id: t11
+    expect:
+      properties:
+        - blocked_missing_brain:processes/follow-ups.md#Cadence

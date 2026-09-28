@@ -53,3 +53,11 @@ backend/storage/framework/cache/data/
 backend/storage/framework/sessions/
 backend/storage/app/feature-packs/
 backend/.env
+
+# Private keys / partner signing material (never commit; use the vault service)
+*.pem
+*.pem.txt
+*.private-key*
+
+# phpunit scratch (sqlite disks, skill-eval reports)
+backend/storage/framework/testing/
