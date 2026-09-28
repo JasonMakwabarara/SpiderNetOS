@@ -1,7 +1,9 @@
-// Approvals view — smoke test for the agent_artifact wiring:
-// pending artifacts from one skill+run become a batch card, a lone
-// artifact renders the preview + inline edit in the detail pane, ?id=
-// deep-links the selection, and edit → PATCH /api/artifacts → approve.
+// Approvals view — batch grouping and version handling over the hand-written
+// fixture. The agent draft editor itself is tested in approvals.contract.test.js
+// against the approval the backend really returns: this fixture's
+// `context.artifact` is a shape the backend never produced, and the two tests
+// that exercised the editor through it passed while the page could not work.
+// They were removed when the editor moved to `context.payload`.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 vi.mock('../src/services/api.js', () => ({
@@ -34,41 +36,6 @@ describe('Approvals view · agent artifacts', () => {
     expect(batches[0].findAll('[data-testid^="batch-item-"]')).toHaveLength(3)
     // The social post (single item) stays in the queue and detail pane, not a batch.
     expect(wrapper.find('[data-testid="approval-item-apr_social_17"]').exists()).toBe(true)
-  })
-
-  it('deep-links the selection from ?id= and renders the artifact editor', async () => {
-    ;({ wrapper } = await mountView(Approvals, { path: '/approvals?id=apr_social_17' }))
-    await settle()
-    const detail = wrapper.find('[data-testid="approval-artifact"]')
-    expect(detail.exists()).toBe(true)
-    expect(wrapper.find('[data-testid="approval-artifact-body"]').element.value).toContain('Eleven of fourteen founders')
-    expect(wrapper.find('[data-testid="approval-artifact-subject"]').exists()).toBe(false) // social posts have no subject
-    expect(wrapper.find('[data-testid="approval-artifact-run"]').attributes('href')).toContain('/agents/runs/run_0916_social')
-    expect(wrapper.find('[data-testid="approval-artifact-save"]').attributes('disabled')).toBeDefined()
-  })
-
-  it('saves an inline edit through PATCH /api/artifacts/{id} then approves the new version', async () => {
-    // The server answers an edit with the version the approval now covers.
-    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_social_17', approval_version_hash: 'sha256:after-edit' } } })
-    api.post.mockResolvedValueOnce({ data: { data: { id: 'apr_social_17', status: 'approved' } } })
-    ;({ wrapper } = await mountView(Approvals, { path: '/approvals?id=apr_social_17', attachTo: document.body }))
-    await settle()
-    await wrapper.find('[data-testid="approval-artifact-body"]').setValue('One ask per message. That was the difference.')
-    await wrapper.find('[data-testid="approval-artifact-save"]').trigger('click')
-    await settle()
-    expect(api.patch).toHaveBeenCalledWith('/api/artifacts/art_social_17', {
-      content: expect.objectContaining({ body: 'One ask per message. That was the difference.' }),
-    })
-    expect(wrapper.find('[data-testid="approval-artifact-notice"]').text()).toContain('Saved')
-
-    await wrapper.find('[data-testid="approval-approve-apr_social_17"]').trigger('click')
-    await settle()
-    const dialog = document.body.querySelector('[data-testid="approval-soft-dialog"]') || document.body.querySelector('[role="dialog"]')
-    expect(dialog).not.toBeNull()
-    Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Approve').click()
-    await settle()
-    // Approving sends the version the edit produced — the one this page shows.
-    expect(api.post).toHaveBeenCalledWith('/api/approvals/apr_social_17/approve', { version_hash: 'sha256:after-edit' })
   })
 
   it('approves the version the page is showing, and reloads when that version is stale', async () => {

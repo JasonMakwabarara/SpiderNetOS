@@ -85,8 +85,26 @@ describe('AgentRunDetail view', () => {
     expect(wrapper.find('[data-testid="run-detail-agent"]').attributes('href')).toContain('/agents/growth/workspace')
   })
 
-  it('previews and edits an artifact through PATCH /api/artifacts/{id}', async () => {
-    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_seq_q4_s1a', version: 2 } } })
+  it('sends an artifact under review to its approval to be edited there', async () => {
+    ;({ wrapper } = await mountView(AgentRunDetail, { path: '/agents/runs/run_0915_cold' }))
+    await settle()
+    await wrapper.find('[data-testid="run-artifact-preview-art_seq_q4_s1a"]').trigger('click')
+    await settle()
+    expect(wrapper.find('[data-testid="run-artifact-edit-art_seq_q4_s1a"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="run-artifact-under-review-art_seq_q4_s1a"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="run-artifact-approval-art_seq_q4_s1a"]').attributes('href')).toContain('/approvals')
+  })
+
+  it('previews and edits a draft through PATCH /api/artifacts/{id}, as text', async () => {
+    // The same artifact as a draft, not yet submitted for review.
+    const run = JSON.parse(JSON.stringify(runFixture.succeeded))
+    run.data.artifacts = run.data.artifacts.map((a) => (a.id === 'art_seq_q4_s1a' ? { ...a, status: 'draft', approval_id: null } : a))
+    api.get.mockImplementation((url) => {
+      if (url === '/api/agent-runs/run_0915_cold') return Promise.resolve({ data: run })
+      if (url === '/api/artifacts/art_seq_q4_s1a') return Promise.resolve({ data: runFixture.artifact })
+      return Promise.reject(httpError(404))
+    })
+    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_seq_q4_s1a', content: 'Subject: Shorter subject\n\nShorter body.' } } })
     ;({ wrapper } = await mountView(AgentRunDetail, { path: '/agents/runs/run_0915_cold' }))
     await settle()
     await wrapper.find('[data-testid="run-artifact-preview-art_seq_q4_s1a"]').trigger('click')
@@ -100,8 +118,8 @@ describe('AgentRunDetail view', () => {
     await settle()
     const [url, body] = api.patch.mock.calls[0]
     expect(url).toBe('/api/artifacts/art_seq_q4_s1a')
-    expect(body.content).toMatchObject({ subject: 'Shorter subject', body: 'Shorter body.' })
-    expect(wrapper.find('[data-testid="run-artifact-preview-body-art_seq_q4_s1a"]').text()).toBe('Shorter body.')
+    // The API takes text: "Subject: X\n\nbody". It used to be sent an object, which it rejects.
+    expect(body).toEqual({ content: 'Subject: Shorter subject\n\nShorter body.' })
   })
 
   it('renders next_steps as chips and runs a proposed one with one click', async () => {

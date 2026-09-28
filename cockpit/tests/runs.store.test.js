@@ -112,11 +112,19 @@ describe('runs store', () => {
     expect(store.artifacts.art_seq_q4_s1a.content.subject).toContain('pipeline')
 
     api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_seq_q4_s1a', version: 2 } } })
-    const content = { subject: 'New subject', body: 'New body' }
-    const res = await store.patchArtifact('art_seq_q4_s1a', content)
+    const res = await store.patchArtifact('art_seq_q4_s1a', { subject: 'New subject', body: 'New body' }, { expected_version: 'sha256:v1' })
     expect(res.success).toBe(true)
-    expect(api.patch).toHaveBeenCalledWith('/api/artifacts/art_seq_q4_s1a', { content })
-    expect(store.artifacts.art_seq_q4_s1a).toMatchObject({ version: 2, content })
+    // The API takes text; a {subject, body} pair is serialised here, once.
+    expect(api.patch).toHaveBeenCalledWith('/api/artifacts/art_seq_q4_s1a', {
+      content: 'Subject: New subject\n\nNew body',
+      expected_version: 'sha256:v1',
+    })
+    expect(store.artifacts.art_seq_q4_s1a).toMatchObject({ version: 2 })
+
+    // Text is sent as it is.
+    api.patch.mockResolvedValueOnce({ data: { data: { id: 'art_note' } } })
+    await store.patchArtifact('art_note', 'A plain note.')
+    expect(api.patch).toHaveBeenLastCalledWith('/api/artifacts/art_note', { content: 'A plain note.' })
   })
 
   it('fetchWorkspace unwraps and falls back per slug', async () => {

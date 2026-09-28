@@ -8,13 +8,14 @@
  *   POST  /api/agent-runs/{id}/answers {answers:[{path,section,text}]}
  *   POST  /api/agent-runs/{id}/cancel | /retry
  *   GET   /api/artifacts/{id}                  → { data: Artifact }
- *   PATCH /api/artifacts/{id} {content}
+ *   PATCH /api/artifacts/{id} {content: text, expected_version?}
  *   GET   /api/agent-workspaces/{slug}         → { data: Workspace }
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api.js'
 import { describeError, fallbackNotice, clone, cleanParams } from '../utils/apiFallback.js'
+import { draftEmailContent } from '../utils/reviewSnapshot.js'
 import runFixture from '../../tests/fixtures/agent_run.json'
 
 export const RUN_STATUSES = ['queued', 'running', 'blocked', 'waiting_approval', 'succeeded', 'failed', 'cancelled']
@@ -191,10 +192,22 @@ export const useRunsStore = defineStore('runs', () => {
     }
   }
 
-  async function patchArtifact(id, content) {
+  /**
+   * Save an edit to an artifact.
+   *
+   * The API takes `content` as text — a draft email is "Subject: X\n\nbody".
+   * Callers that hold a {subject, body} pair have it serialised here, in one
+   * place; this used to send the object, which the API rejects (422).
+   * `extra` carries protocol fields such as `expected_version`, required
+   * while the artifact is under review.
+   */
+  async function patchArtifact(id, content, extra = {}) {
     busy.value = true
     try {
-      const { data } = await api.patch(`/api/artifacts/${encodeURIComponent(id)}`, { content })
+      const text = typeof content === 'string'
+        ? content
+        : draftEmailContent(content?.subject, content?.body ?? content?.text ?? content?.markdown ?? '')
+      const { data } = await api.patch(`/api/artifacts/${encodeURIComponent(id)}`, { content: text, ...extra })
       const art = { ...(artifacts.value[id] || {}), ...(data?.data || {}), id, content: data?.data?.content ?? content }
       artifacts.value = { ...artifacts.value, [id]: art }
       return { success: true, artifact: art }

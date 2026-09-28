@@ -1,0 +1,26 @@
+{
+    "data": [
+        {
+            "approval_type": "agent_artifact",
+            "approved_version_hash": null,
+            "approver_id": null,
+            "context": "{\"action\":\"submit\",\"artifact_id\":\"uuid-1\",\"artifact_ids\":[\"uuid-1\",\"uuid-2\",\"uuid-3\",\"uuid-4\"],\"attributes\":{\"autonomy_level\":\"human_led\",\"kind\":\"draft_sequence\",\"risk\":\"draft\",\"skill_slug\":\"cold-email-drafting\",\"steps\":3},\"campaign\":\"Spring Launch\",\"channel\":\"email\",\"kind\":\"draft_sequence\",\"payload\":{\"artifact_id\":\"uuid-1\",\"destination\":{\"campaign\":\"Spring Launch\",\"campaign_key\":\"spring-launch\",\"channel\":\"email\",\"pack_id\":\"sales-crm\"},\"kind\":\"draft_sequence\",\"run_id\":\"uuid-5\",\"steps\":[{\"artifact_id\":\"uuid-2\",\"body\":\"{{first_line}} Most agency ops leads we talk to lose good enquiries to slow follow-up, not to competitors. The Follow-up Engine drafts every reply in your voice so nothing slips while you run the work. Worth a quick look?\",\"delay_days\":0,\"n\":1,\"subject\":\"Leads are going cold in your inbox\",\"variants\":[{\"body\":\"{{first_line}} Most agency ops leads we talk to lose good enquiries to slow follow-up, not to competitors. The Follow-up Engine drafts every reply in your voice so nothing slips while you run the work. Worth a quick look?\",\"key\":\"a\",\"subject\":\"Leads are going cold in your inbox\"},{\"body\":\"{{first_line}} Most agency ops leads we talk to lose good enquiries to slow follow-up, not to competitors. The Follow-up Engine drafts every reply in your voice so nothing slips while you run the work. Worth a quick look?\",\"key\":\"b\",\"subject\":\"The reply that never went out\"}]},{\"artifact_id\":\"uuid-3\",\"body\":\"A design agency about your size doubled its booked calls within a quarter of switching to our sequences, and their operator still answers the phone. Happy to walk you through what changed for them.\",\"delay_days\":3,\"n\":2,\"subject\":\"How a design agency doubled its booked calls\",\"variants\":[{\"body\":\"A design agency about your size doubled its booked calls within a quarter of switching to our sequences, and their operator still answers the phone. Happy to walk you through what changed for them.\",\"key\":\"a\",\"subject\":\"How a design agency doubled its booked calls\"},{\"body\":\"A design agency about your size doubled its booked calls within a quarter of switching to our sequences, and their operator still answers the phone. Happy to walk you through what changed for them.\",\"key\":\"b\",\"subject\":\"One quarter, twice the calls\"}]},{\"artifact_id\":\"uuid-4\",\"body\":\"I will stop here unless you tell me otherwise. If slow replies are costing you work this quarter, a short call is the fastest way to see whether the Follow-up Engine fits. If not, no hard feelings.\",\"delay_days\":7,\"n\":3,\"subject\":\"Closing the loop on follow-ups\",\"variants\":[{\"body\":\"I will stop here unless you tell me otherwise. If slow replies are costing you work this quarter, a short call is the fastest way to see whether the Follow-up Engine fits. If not, no hard feelings.\",\"key\":\"a\",\"subject\":\"Closing the loop on follow-ups\"},{\"body\":\"I will stop here unless you tell me otherwise. If slow replies are costing you work this quarter, a short call is the fastest way to see whether the Follow-up Engine fits. If not, no hard feelings.\",\"key\":\"b\",\"subject\":\"Last note from me\"}]}],\"tenant_id\":\"uuid-6\",\"v\":1},\"preview\":\"# Spring Launch\\n\\nChannel: email · Segment: Ops leads at growing agencies\\n\\n## Step 1 — Leads are going cold in your inbox\\n\\n{{first_line}} Most agency ops leads we talk to lose good enquiries to slow follow-up, not to competitors. The Follow-up Engine drafts every reply in your voice so nothing slips while you run the work. Worth a quick look?\\n\\n## Step 2 — How a design agency doubled its booked calls\\n\\nA design agency about your size doubled its booked calls within a quarter of switching to our sequences, and their operator still answers the phone. Happy to walk you through what changed for them.\\n\\n## Step 3 — Closing the loop on follow-ups\\n\\nI will stop here unless you tell me otherwise. If slow replies are costing you work this quarter, a short call is the fastest way to see whether the Follow-up Engine fits. If not, no hard feelings.\\n\",\"risk\":\"draft\",\"run_id\":\"uuid-5\",\"skill_slug\":\"cold-email-drafting\",\"title\":\"Spring Launch — 3-step email sequence\",\"workspace_id\":\"uuid-7\"}",
+            "created_at": "<timestamp>",
+            "current_step": null,
+            "expires_at": null,
+            "id": "uuid-8",
+            "policy_id": null,
+            "reason": "Cold Email Drafting drafted a 3-step email sequence for \"Spring Launch\"",
+            "requested_at": "<timestamp>",
+            "requester_id": "uuid-9",
+            "resource_id": "uuid-1",
+            "resource_type": "agent_artifact",
+            "responded_at": null,
+            "response": null,
+            "status": "pending",
+            "tenant_id": "uuid-6",
+            "updated_at": "<timestamp>",
+            "version_hash": "sha256:version-1"
+        }
+    ]
+}

@@ -161,7 +161,10 @@
                   <template v-else>
                     <p v-if="contentOf(a).subject" class="text-xs font-medium" style="color: var(--text-secondary);">{{ contentOf(a).subject }}</p>
                     <p class="text-sm mt-1 whitespace-pre-line" style="color: var(--text-primary);" :data-testid="`run-artifact-preview-body-${a.id}`">{{ bodyOf(a) }}</p>
-                    <button type="button" class="sn-chip mt-2" :data-testid="`run-artifact-edit-${a.id}`" @click="startEdit(a)">Edit</button>
+                    <button v-if="!underReview(a)" type="button" class="sn-chip mt-2" :data-testid="`run-artifact-edit-${a.id}`" @click="startEdit(a)">Edit</button>
+                    <p v-else class="text-[11px] mt-2" style="color: var(--text-muted);" :data-testid="`run-artifact-under-review-${a.id}`">
+                      Under review — edit it on its approval, where the version you change is the one the approver decides.
+                    </p>
                   </template>
                 </div>
               </li>
@@ -335,6 +338,10 @@ async function togglePreview(a) {
   if (previewOpen[a.id]) { previewOpen[a.id] = false; return }
   previewOpen[a.id] = true
   if (!store.artifacts[a.id]) await store.fetchArtifact(a.id)
+}
+/** Under review, an edit belongs to the approval: it must name the version it changes. */
+function underReview(a) {
+  return !!a.approval_id && ['submitted', 'pending_approval'].includes(a.status)
 }
 function startEdit(a) {
   const c = contentOf(a)
