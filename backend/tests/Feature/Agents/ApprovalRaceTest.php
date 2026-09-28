@@ -265,6 +265,84 @@ class ApprovalRaceTest extends AgentsTestCase
     }
 
     // ------------------------------------------------------------------ //
+    //  Seen from another session
+    // ------------------------------------------------------------------ //
+
+    /**
+     * A best-effort write that fails leaves the required writes committed,
+     * as seen by a session other than the one that made them.
+     *
+     * On Postgres a failed statement aborts the transaction around it, so a
+     * best-effort write that is only caught, not rolled back to its own
+     * savepoint, poisons everything after it. Here the streak increment's
+     * table is renamed away (committed DDL, restored in finally), a separate
+     * process approves, and this session reads what that process committed.
+     *
+     * What each assertion establishes, kept apart:
+     *  - the reply (200, done) is what fails first if the savepoint goes:
+     *    the action's transaction aborts and the reply is 202, pending;
+     *  - the committed effects, read here, are what another session actually
+     *    sees, which the reply alone cannot show;
+     *  - the action row, read here too, is the committed record, not the
+     *    worker's account of it;
+     *  - `clean_drafts => 0` shows nothing: the table is absent for the
+     *    worker's whole life, so it reads 0 under any implementation.
+     *
+     * The rename is schema-wide. These tests need a database no other session
+     * is using at the time (the CI container, or a dedicated local database).
+     */
+    public function test_a_failed_best_effort_write_leaves_the_required_writes_committed_for_other_sessions(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+
+        DB::statement('ALTER TABLE tenant_skills RENAME TO tenant_skills_unavailable');
+        try {
+            $approver = $this->worker($this->approveJob($approval->id), $this->tag().'-approver');
+            $approver->run();
+        } finally {
+            DB::statement('ALTER TABLE tenant_skills_unavailable RENAME TO tenant_skills');
+        }
+
+        $outcome = $this->outcome($approver);
+        $this->assertSame([200, ApprovalActions::DONE], [$outcome['status'] ?? null, $outcome['body']['action']['status'] ?? null], json_encode($outcome));
+        // Everything committed except the increment, which under-counts: the safe direction.
+        $this->assertSame(array_replace(self::APPROVED_ONCE, ['clean_drafts' => 0]), $this->effects($run, $approval->id));
+        $action = DB::table('approval_actions')->where('approval_id', $approval->id)->sole();
+        $this->assertSame([ApprovalActions::DONE, 1], [$action->status, (int) $action->attempts], 'the committed record agrees with the reply');
+    }
+
+    /**
+     * The other side: a required write that fails rolls the hook back, and
+     * what is left committed is exactly the decision and the action it still
+     * owes, as seen by another session. The attempt limit is pinned so that
+     * one failure leaves the action pending rather than failed.
+     */
+    public function test_a_failed_required_write_leaves_the_decision_and_its_owed_action_committed_for_other_sessions(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        config()->set('approvals.action_max_attempts', 5);
+
+        DB::statement('ALTER TABLE tenant_skills RENAME TO tenant_skills_unavailable');
+        try {
+            $rejecter = $this->worker($this->approveJob($approval->id, grant: false), $this->tag().'-rejecter');
+            $rejecter->run();
+        } finally {
+            DB::statement('ALTER TABLE tenant_skills_unavailable RENAME TO tenant_skills');
+        }
+
+        $outcome = $this->outcome($rejecter);
+        $this->assertSame([202, ApprovalActions::PENDING], [$outcome['status'] ?? null, $outcome['body']['action']['status'] ?? null], json_encode($outcome));
+        $this->assertSame(
+            array_replace(self::REJECTED_ONCE, ['agent.artifact.rejected' => 0, 'artifacts' => ['submitted' => 4]]),
+            $this->effects($run, $approval->id),
+            'the decision committed; the hook rolled back whole',
+        );
+        $action = DB::table('approval_actions')->where('approval_id', $approval->id)->sole();
+        $this->assertSame([ApprovalActions::PENDING, 1], [$action->status, (int) $action->attempts]);
+        $this->assertStringContainsString('tenant_skills', (string) $action->last_error);
+    }
+
+    // ------------------------------------------------------------------ //
     //  helpers
     // ------------------------------------------------------------------ //
 

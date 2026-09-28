@@ -138,6 +138,7 @@ trait SeparateProcessRaces
             'database.connections.'.$default => ['application_name' => $applicationName] + (array) config('database.connections.'.$default),
             'features' => config('features'),
             'agents' => config('agents'),
+            'approvals' => config('approvals'),
             'broadcasting.default' => 'null',
             'cache.default' => 'array',
             'queue.default' => 'sync',
