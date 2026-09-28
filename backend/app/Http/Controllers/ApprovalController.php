@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Approval;
 use App\Services\Agents\Exceptions\BundleIntegrityException;
+use App\Services\ApprovalActions;
 use App\Services\ApprovalAlreadyDecided;
 use App\Services\ApprovalEngine;
 use App\Services\ApprovalVersionConflict;
@@ -177,7 +178,7 @@ class ApprovalController extends Controller
     private function decide(Request $request, string $tenantId, string $id, bool $granted): JsonResponse
     {
         try {
-            $event = app(ApprovalEngine::class)->decideSingleStage(
+            $decision = app(ApprovalEngine::class)->decideSingleStage(
                 $tenantId, $id, $request->user(), $granted, $request->input('reason'), $request->input('version_hash'),
             );
         } catch (\InvalidArgumentException) {
@@ -195,12 +196,20 @@ class ApprovalController extends Controller
             return response()->json(['error' => $e->getMessage(), 'reason' => 'bundle_integrity'], 409);
         }
 
+        // The decision is final either way. 202 says its effect is not done
+        // yet: retried by recovery (pending), or waiting on a person (failed,
+        // uncertain). The reason stays in the action record and the log.
         return response()->json([
             'id' => $id,
-            'event_id' => $event->id,
+            'event_id' => $decision->event->id,
             'status' => $granted ? 'approved' : 'rejected',
-            'message' => $granted ? 'Approval granted.' : 'Approval rejected.',
-        ]);
+            'action' => ['id' => $decision->actionId, 'status' => $decision->actionStatus],
+            'message' => ($granted ? 'Approval granted.' : 'Approval rejected.').match ($decision->actionStatus) {
+                ApprovalActions::DONE => '',
+                ApprovalActions::PENDING => ' Its effect did not complete and will be retried.',
+                default => ' Its effect did not complete and needs checking.',
+            },
+        ], $decision->settled() ? 200 : 202);
     }
 
     /**

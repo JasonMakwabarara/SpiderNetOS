@@ -20,6 +20,12 @@ declare(strict_types=1);
  *                expected version, and optionally inside a transaction that
  *                first writes a business row (`effect`), so the test can see
  *                whether a losing append leaves that row behind
+ *   mode action  run one approval action record (ApprovalActions::run), as
+ *                the decision or a recovery would
+ *
+ *   die_after_commit (http only)  the process exits, for real, at the point
+ *              where a committed decision would run the action it owes — the
+ *              crash that durable action records exist for.
  *
  *   fail_event (http only)  this competitor's decision reaches the event it
  *              names and fails there — but only after it has seen the other
@@ -31,6 +37,7 @@ declare(strict_types=1);
 
 use App\Models\Event;
 use App\Models\User;
+use App\Services\ApprovalActions;
 use App\Services\ApprovalEngine;
 use App\Services\EventStore;
 use App\Services\TenantKeyManager;
@@ -95,6 +102,17 @@ if (isset($job['fail_event'])) {
     $app->instance(EventStore::class, $failing);
 }
 
+if (! empty($job['die_after_commit'])) {
+    $app->instance(ApprovalActions::class, new class extends ApprovalActions
+    {
+        public function runLogged(string $actionId): string
+        {
+            fwrite(STDOUT, "\n@@RESULT@@".json_encode(['status' => 'died_after_commit', 'action_id' => $actionId]));
+            exit(3);
+        }
+    });
+}
+
 try {
     if ($job['mode'] === 'http') {
         $app['auth']->guard('sanctum')->setUser(User::findOrFail($job['user_id']));
@@ -107,6 +125,8 @@ try {
         $response = $app->make(HttpKernel::class)->handle($request);
 
         $out = ['status' => $response->getStatusCode(), 'body' => json_decode((string) $response->getContent(), true)];
+    } elseif ($job['mode'] === 'action') {
+        $out = ['status' => $app->make(ApprovalActions::class)->run((string) $job['action_id'])];
     } elseif ($job['mode'] === 'append') {
         $append = fn (): Event => $app->make(EventStore::class)->append(
             $job['tenant_id'], $job['aggregate_type'], $job['aggregate_id'], $job['event_type'],

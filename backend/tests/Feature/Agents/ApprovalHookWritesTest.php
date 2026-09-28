@@ -6,6 +6,7 @@ namespace Tests\Feature\Agents;
 
 use App\Models\AgentArtifact;
 use App\Models\AgentRun;
+use App\Services\ApprovalActions;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,20 +28,34 @@ class ApprovalHookWritesTest extends AgentsTestCase
      * the hook back and leaves the bundle submitted — re-deliverable, not
      * silently credited.
      *
-     * The approval itself stays `rejected`: the decision commits before the
-     * hook runs. That is the committed-but-unexecuted gap in the awareness
-     * list, and it is what durable action records are for.
+     * The rejection itself stands: the decision commits before its action
+     * runs. What changed with durable action records is that the action is
+     * still owed, visibly (202, `pending`), and recovery completes it once the
+     * write can succeed — where before the request failed with a 500 and
+     * nothing would ever apply it.
      */
-    public function test_a_failed_streak_reset_rolls_the_hook_back(): void
+    public function test_a_failed_streak_reset_rolls_the_hook_back_and_leaves_the_action_owed(): void
     {
         [$run, $approval] = $this->pendingSequence();
         DB::statement('ALTER TABLE tenant_skills RENAME TO tenant_skills_unavailable');
 
-        $this->api()->postJson("/api/approvals/{$approval->id}/reject", ['reason' => 'Not our voice.'])->assertStatus(500);
+        $this->api()->postJson("/api/approvals/{$approval->id}/reject", ['reason' => 'Not our voice.'])
+            ->assertStatus(202)
+            ->assertJsonPath('action.status', ApprovalActions::PENDING);
 
         $this->assertSame(4, AgentArtifact::where('run_id', $run->id)->where('status', AgentArtifact::STATUS_SUBMITTED)->count());
         $this->assertCount(0, $this->events('agent.artifact.rejected'));
         $this->assertSame('rejected', DB::table('approvals')->where('id', $approval->id)->value('status'));
+        $action = DB::table('approval_actions')->where('approval_id', $approval->id)->sole();
+        $this->assertSame([ApprovalActions::PENDING, 1], [$action->status, (int) $action->attempts]);
+        $this->assertStringContainsString('tenant_skills', (string) $action->last_error);
+
+        DB::statement('ALTER TABLE tenant_skills_unavailable RENAME TO tenant_skills');
+        $this->artisan('approvals:recover-actions', ['--older-than' => 0])->assertExitCode(0);
+        $this->artisan('approvals:recover-actions', ['--older-than' => 0])->assertExitCode(0);
+
+        $this->assertSame(4, AgentArtifact::where('run_id', $run->id)->where('status', AgentArtifact::STATUS_REJECTED)->count());
+        $this->assertCount(1, $this->events('agent.artifact.rejected'), 'completed once, however often recovery runs');
     }
 
     /** A lost increment under-counts, the safe direction: the approval completes. */

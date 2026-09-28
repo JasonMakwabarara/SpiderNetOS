@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\MessageTemplate;
 use App\Models\TenantSkill;
 use App\Services\Agents\ApplicationPayload;
+use App\Services\ApprovalActions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Concurrency\SeparateProcessRaces;
@@ -227,6 +228,40 @@ class ApprovalRaceTest extends AgentsTestCase
         $step = AgentArtifact::where('run_id', $run->id)->where('kind', AgentArtifact::KIND_DRAFT_EMAIL)->get()->first(fn ($a) => (int) $a->meta['n'] === 1);
         $this->assertStringContainsString('The first editor wrote this.', (string) $step->content);
         $this->assertNotSame($loaded, $this->shownVersion($approval->id), 'the landed save rebound the approval');
+    }
+
+    /**
+     * The acceptance path for durable approval actions, with a real crash.
+     * The deciding process commits its decision and dies, for real, where it
+     * would run the action it owes: the approval reads approved, nothing is
+     * applied, and the action record says it is owed. Two recoveries then race
+     * for that record. Exactly one applies it, and what it applies is the
+     * version the approver saw.
+     */
+    public function test_a_decision_whose_process_dies_after_commit_is_applied_once_by_racing_recoveries(): void
+    {
+        [$run, $approval] = $this->pendingSequence();
+        $seen = $this->shownVersion($approval->id);
+
+        // Not a competitor: it runs to its death before the race is set.
+        $dying = $this->worker($this->approveJob($approval->id) + ['die_after_commit' => true], $this->tag().'-dies');
+        $dying->run();
+        $this->assertSame(['died_after_commit', 3], [$this->outcome($dying)['status'] ?? null, $dying->getExitCode()], json_encode($this->outcome($dying)));
+
+        $action = DB::table('approval_actions')->where('approval_id', $approval->id)->sole();
+        $this->assertSame('approved', DB::table('approvals')->where('id', $approval->id)->value('status'));
+        $this->assertSame([ApprovalActions::PENDING, 0], [$action->status, (int) $action->attempts]);
+        $this->assertSame(0, BusinessAsset::forTenant((string) $this->tenant->id)->count(), 'nothing applied before recovery');
+
+        $recover = ['mode' => 'action', 'action_id' => (string) $action->id];
+        $outcomes = $this->race('select id from approval_actions where id = ? for update', [$action->id], [$recover, $recover]);
+
+        // The second found it done under the lock and did nothing.
+        $this->assertSame([ApprovalActions::DONE, ApprovalActions::DONE], array_column($outcomes, 'status'), json_encode($outcomes));
+        $this->assertSame(self::APPROVED_ONCE, $this->effects($run, $approval->id));
+        $this->assertSame(1, (int) DB::table('approval_actions')->where('id', $action->id)->value('attempts'));
+        $this->assertSame($seen, DB::table('approvals')->where('id', $approval->id)->value('approved_version_hash'));
+        $this->assertSame($seen, ApplicationPayload::hash(ApplicationPayload::for($this->sequenceOf($run))));
     }
 
     // ------------------------------------------------------------------ //

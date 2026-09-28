@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Agents;
 
+use App\Services\ApprovalActions;
 use App\Support\CanonicalJson;
 
 /**
@@ -26,6 +27,8 @@ class ApprovalApiContractTest extends AgentsTestCase
 {
     private const FIXTURE = '../cockpit/tests/fixtures/contract/approvals_pending_agent_artifact.json';
 
+    private const UNFINISHED = '../cockpit/tests/fixtures/contract/approvals_decide_unfinished_action.json';
+
     public function test_the_cockpit_fixture_is_the_real_pending_approval_response(): void
     {
         $this->seedBrain();
@@ -33,9 +36,42 @@ class ApprovalApiContractTest extends AgentsTestCase
         $this->startRun();
 
         $response = $this->api()->getJson('/api/approvals?status=pending')->assertOk()->json();
-        $actual = (new ContractNormaliser)->normalise(['data' => $response['data']]);
 
-        $path = base_path(self::FIXTURE);
+        $this->assertMatchesFixture(self::FIXTURE, (new ContractNormaliser)->normalise(['data' => $response['data']]));
+    }
+
+    /**
+     * A decision accepted while the action it owes did not finish: what the
+     * approve endpoint returns then, so the cockpit is tested against the
+     * real 202 and not a guess at it.
+     */
+    public function test_the_cockpit_fixture_is_the_real_response_to_a_decision_whose_action_did_not_finish(): void
+    {
+        $this->seedBrain();
+        $this->model($this->validSequenceCompletion());
+        $this->startRun();
+        $approval = $this->approvals('agent_artifact', 'pending')->sole();
+
+        // The process stops where the decision would run its action.
+        $this->app->instance(ApprovalActions::class, new class extends ApprovalActions
+        {
+            public function runLogged(string $actionId): string
+            {
+                return self::PENDING;
+            }
+        });
+        $response = $this->api()->postJson("/api/approvals/{$approval->id}/approve", ['version_hash' => $this->shownVersion($approval->id)]);
+
+        $this->assertMatchesFixture(self::UNFINISHED, (new ContractNormaliser)->normalise([
+            'status' => $response->getStatusCode(),
+            'data' => $response->json(),
+        ]));
+    }
+
+    /** @param array<string, mixed> $actual */
+    private function assertMatchesFixture(string $fixture, array $actual): void
+    {
+        $path = base_path($fixture);
         if (getenv('UPDATE_CONTRACT_FIXTURES')) {
             @mkdir(dirname($path), 0777, true);
             file_put_contents($path, json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");

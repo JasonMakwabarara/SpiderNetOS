@@ -181,10 +181,15 @@ class ApprovalEngine
      * a version it is a cancellation of the pending request, whatever its
      * content, and the decision's event records that no version was observed.
      *
-     * The hook runs after the commit and only for the decider, told which
-     * approval decided and which version it bound. It is deliberately outside
-     * the transaction: a hook can send mail, and holding the transaction would
-     * also hold the global event-sequence lock.
+     * The action the decision owes is recorded in the same transaction
+     * (approval_actions), then run after the commit, for the decider only,
+     * with the approval that decided and the version it bound. The hook stays
+     * outside the decision's transaction — it can send mail, and holding the
+     * transaction would also hold the global event-sequence lock — but it is
+     * no longer owed only in memory: a process that dies after the commit, or
+     * a hook that fails, leaves the record for approvals:recover-actions
+     * rather than a decided approval whose effect nothing will ever apply.
+     * How it is run, and what a failure means, is ApprovalActions'.
      *
      * @throws \InvalidArgumentException no such approval in this tenant
      * @throws \DomainException the actor may not decide it
@@ -193,7 +198,7 @@ class ApprovalEngine
      * @throws BundleIntegrityException the resource does not hold together
      * @throws \LogicException it is a chained approval (resolveStep)
      */
-    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason, ?string $presentedVersion = null): Event
+    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason, ?string $presentedVersion = null): ApprovalDecision
     {
         $approval = DB::table('approvals')->where('id', $approvalId)->where('tenant_id', $tenantId)->first();
         if (! $approval) {
@@ -207,7 +212,9 @@ class ApprovalEngine
         }
 
         $bound = null;
-        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason, $presentedVersion, &$bound): Event {
+        $actionId = null;
+        $actions = app(ApprovalActions::class);
+        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason, $presentedVersion, $actions, &$bound, &$actionId): Event {
             $bound = $granted ? $this->verifyVersion($tenantId, $approval, $presentedVersion) : null;
             $observed = $granted ? $bound : $this->observedVersion($tenantId, $approval, $presentedVersion);
 
@@ -267,15 +274,17 @@ class ApprovalEngine
                 $this->recordDagNode($tenantId, (string) $approval->flow_execution_id, (string) $approval->dag_node_id, $event->id, $granted, (string) $reason);
             }
 
+            // What the decision owes, committed with it.
+            $actionId = $actions->record($approval, $granted, $reason, [
+                'approval_id' => (string) $approval->id,
+                'approved_version_hash' => $bound,
+            ]);
+
             return $event;
         });
 
-        $this->fireResourceHook((string) $approval->resource_type, $tenantId, (string) $approval->resource_id, $granted, (string) $reason, [
-            'approval_id' => (string) $approval->id,
-            'approved_version_hash' => $bound,
-        ]);
-
-        return $event;
+        // The decision is committed; nothing here may undo or fail it.
+        return new ApprovalDecision($event, (string) $actionId, $actions->runLogged((string) $actionId));
     }
 
     /**
@@ -769,11 +778,12 @@ class ApprovalEngine
      * `resource_hooks` (resource_type => [class, method]); handler classes
      * are resolved lazily, so an entry whose stream has not shipped yet is
      * skipped with a log line. Resource types outside the map keep their
-     * legacy inline hooks below. Public so ApprovalController's single-stage
-     * approve/reject fires exactly the hooks the chained path fires.
-     * Failures propagate so the enclosing transaction rolls back — an
-     * approval must not read "approved" while its downstream effect failed
-     * to apply.
+     * legacy inline hooks below. The single-stage path and the chained path
+     * fire exactly the same hooks.
+     * Failures propagate. The chain and expiry paths call this inside their
+     * own transaction, so a failure rolls their decision back. The
+     * single-stage path calls it through ApprovalActions, which records the
+     * failure against the action the committed decision owes.
      */
     /**
      * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision  which approval decided and the version it bound; handlers that do not declare it ignore it

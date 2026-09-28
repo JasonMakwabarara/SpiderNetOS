@@ -468,7 +468,23 @@ function afterDecision(apr, res) {
   if (res?.stale) {
     showReview((approvalsStore.approvals || []).find((a) => a.id === apr.id))
     artifactNotice.value = 'This changed after you opened it. The current version is shown — review it and decide again.'
+    return
   }
+  const unfinished = actionNotice(apr, res)
+  if (unfinished) batchNotice.value = unfinished
+}
+
+/**
+ * A decision is final once the API accepts it, but the effect it owes may not
+ * have happened yet (202: `action.status` is not `done`). Say so, rather than
+ * let "Approved" read as "applied".
+ */
+function actionNotice(apr, res) {
+  const status = res?.success ? res.data?.action?.status : null
+  if (!status || status === 'done') return ''
+  return status === 'pending'
+    ? `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish; it will be retried automatically.`
+    : `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish and needs checking.`
 }
 
 // Pending agent artifacts from the same skill + run become one batch card.
@@ -496,21 +512,23 @@ const batchNotice = ref('')
 
 async function onBatchApprove(item) {
   const res = await approvalsStore.approve(item.id, undefined, item.version_hash)
-  batchNotice.value = res.success ? `Approved ${approvalLabel(item)}.` : res.error
+  batchNotice.value = res.success ? actionNotice(item, res) || `Approved ${approvalLabel(item)}.` : res.error
 }
 async function onBatchReject(item) {
   const res = await approvalsStore.reject(item.id, undefined, item.version_hash)
-  batchNotice.value = res.success ? `Rejected ${approvalLabel(item)}.` : res.error
+  batchNotice.value = res.success ? actionNotice(item, res) || `Rejected ${approvalLabel(item)}.` : res.error
 }
 async function onBatchApproveAll(group, items) {
   batchBusy.value = group.key
   let ok = 0
+  let unfinished = 0
   for (const item of items) {
     const res = await approvalsStore.approve(item.id, undefined, item.version_hash)
     if (res.success) ok++
+    if (actionNotice(item, res)) unfinished++
   }
   batchBusy.value = null
-  batchNotice.value = `Approved ${ok} of ${items.length}.`
+  batchNotice.value = `Approved ${ok} of ${items.length}.` + (unfinished ? ` Applying ${unfinished} of them did not finish yet.` : '')
 }
 async function onBatchEdit(item, content) {
   const res = await runsStore.patchArtifact(item.resource_id, content, { expected_version: item.version_hash })

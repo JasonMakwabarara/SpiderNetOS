@@ -10,7 +10,10 @@
 // What these tests hold the page to: it shows the payload the approval binds
 // (context.payload), saves an edit as the text the API takes with the version
 // it started from, and decides on the version of what is on screen — never a
-// version that arrived afterwards, and never by retrying on its own.
+// version that arrived afterwards, and never by retrying on its own. And when
+// the API accepts a decision whose effect has not finished (202, generated the
+// same way into approvals_decide_unfinished_action.json), the page says so
+// rather than letting "approved" read as "applied".
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 vi.mock('../src/services/api.js', () => ({
@@ -21,6 +24,7 @@ import api from '../src/services/api.js'
 import Approvals from '../src/views/Approvals.vue'
 import { useApprovalsStore } from '../src/stores/approvals.js'
 import contract from './fixtures/contract/approvals_pending_agent_artifact.json'
+import unfinished from './fixtures/contract/approvals_decide_unfinished_action.json'
 import { mountView, settle } from './helpers/harness.js'
 
 const approval = contract.data[0]
@@ -116,6 +120,21 @@ describe('Approvals view · the real agent_artifact approval', () => {
     expect(api.post).toHaveBeenCalledTimes(1)
     expect(api.get).toHaveBeenCalledTimes(2)
     expect(wrapper.find('[data-testid="approval-artifact-notice"]').text()).toContain('changed after you opened it')
+  })
+
+  it('says when a decision is recorded but applying it has not finished', async () => {
+    ;({ wrapper } = await mountView(Approvals, { path: `/approvals?id=${approval.id}`, attachTo: document.body }))
+    await settle()
+    expect(unfinished.status).toBe(202)
+    api.post.mockResolvedValueOnce({ status: unfinished.status, data: unfinished.data })
+
+    await wrapper.find(`[data-testid="approval-approve-${approval.id}"]`).trigger('click')
+    await confirmDialog('Approve')
+
+    const notice = wrapper.find('[data-testid="approval-batch-notice"]').text()
+    expect(notice).toContain('Decision recorded')
+    expect(notice).toContain('did not finish')
+    expect(notice).toContain('retried automatically')
   })
 
   it('rejects on the version shown', async () => {

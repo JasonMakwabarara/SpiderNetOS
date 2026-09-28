@@ -48,6 +48,7 @@ class SingleStageDecisionTest extends AgentsTestCase
         $this->assertCount(0, $this->events('approval.granted'));
         $this->assertSame(4, AgentArtifact::where('run_id', $run->id)->where('status', AgentArtifact::STATUS_SUBMITTED)->count(), 'the hook never fired');
         $this->assertSame(0, BusinessAsset::forTenant((string) $this->tenant->id)->count());
+        $this->assertSame(0, DB::table('approval_actions')->where('approval_id', $approval->id)->count(), 'a decision that did not commit owes no action');
     }
 
     /** A retried request gets the answer already given, and repeats nothing. */

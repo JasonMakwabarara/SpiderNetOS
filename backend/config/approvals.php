@@ -60,4 +60,26 @@ return [
         'agent_artifact' => [AgentArtifactApprovals::class, 'currentVersion'],
     ],
 
+    /*
+    | How the action a single-stage decision owes is run (ApprovalActions).
+    | `transactional` is a claim about the hook: it writes only to this
+    | database, jobs it dispatches go after commit, and it can run inside one
+    | transaction with its action record. Each entry below was checked against
+    | its hook. Anything not listed is `external` — claimed before it runs,
+    | and never re-run blind if it dies part-way — which is the safe default
+    | for a hook nobody has checked (outreach_reply sends a message; the legacy
+    | sales_script / expense_report / bill / payment hooks are unchecked).
+    */
+    'action_delivery' => [
+        'agent_artifact' => 'transactional',   // ArtifactApplier: templates, assets, events
+        'agent_tool_call' => 'transactional',  // AgentRunResumer: run state; the resume job is dispatched after commit
+        'business_plan' => 'transactional',    // BusinessLaunchService: launch status and events
+    ],
+
+    // A transactional action still failing after this many attempts is failed.
+    'action_max_attempts' => (int) env('APPROVAL_ACTION_MAX_ATTEMPTS', 5),
+
+    // An external action claimed this long ago without reporting back is uncertain.
+    'action_lease_seconds' => (int) env('APPROVAL_ACTION_LEASE_SECONDS', 900),
+
 ];

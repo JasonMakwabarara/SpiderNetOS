@@ -114,6 +114,11 @@ Schedule::job(new SystemizationRunSweepJob)->everyFiveMinutes()->withoutOverlapp
 // Approval chains: escalate/expire overdue steps (every 10 minutes)
 Schedule::job(new ExpireApprovalStepsJob)->everyTenMinutes()->withoutOverlapping();
 
+// Approval actions a committed decision owes and nothing completed: run what is
+// pending, mark lapsed external claims uncertain (every 5 minutes). Exits
+// non-zero while any action needs a person.
+Schedule::command('approvals:recover-actions')->everyFiveMinutes()->withoutOverlapping();
+
 // Bill pay (Stage 2): scheduled-payment sweep — record-only, notifies admins (every 15 minutes)
 Schedule::job(new SweepScheduledBillPaymentsJob)->everyFifteenMinutes()->withoutOverlapping();
 
