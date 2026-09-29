@@ -6,7 +6,7 @@
         },
         "event_id": "uuid-2",
         "id": "uuid-3",
-        "message": "Approval granted. Its effect did not complete and will be retried.",
+        "message": "Approval granted. Its effect has not completed and is waiting to be retried.",
         "status": "approved"
     },
     "status": 202

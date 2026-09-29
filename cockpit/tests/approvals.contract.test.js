@@ -132,9 +132,12 @@ describe('Approvals view · the real agent_artifact approval', () => {
     await confirmDialog('Approve')
 
     const notice = wrapper.find('[data-testid="approval-batch-notice"]').text()
+    expect(unfinished.data.action.status).toBe('pending')
     expect(notice).toContain('Decision recorded')
-    expect(notice).toContain('did not finish')
-    expect(notice).toContain('retried automatically')
+    expect(notice).toContain('has not finished')
+    expect(notice).toContain('waiting to be retried')
+    // Nothing here promises the retry will happen by itself.
+    expect(notice).not.toContain('automatically')
   })
 
   it('rejects on the version shown', async () => {

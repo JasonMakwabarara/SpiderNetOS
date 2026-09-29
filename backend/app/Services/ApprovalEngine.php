@@ -786,6 +786,38 @@ class ApprovalEngine
      * failure against the action the committed decision owes.
      */
     /**
+     * Why a resource type's hook cannot run, or null when it can (or when the
+     * type has no hook at all). A hook that is registered but whose class is
+     * not there is skipped by fireResourceHook() with a log line; a caller
+     * that records completion must ask first, or it records an effect that
+     * never happened as done.
+     */
+    public function resourceHookProblem(string $resourceType): ?string
+    {
+        $hooks = (array) config('approvals.resource_hooks', []);
+        if (array_key_exists($resourceType, $hooks)) {
+            $hook = (array) $hooks[$resourceType];
+            $class = $hook[0] ?? $hook['class'] ?? null;
+            $method = $hook[1] ?? $hook['method'] ?? 'onApprovalResolved';
+            if (! is_string($class) || $class === '' || ! (app()->bound($class) || class_exists($class))) {
+                return "The hook registered for [{$resourceType}] names a class that does not exist: ".var_export($class, true).'.';
+            }
+            if (! method_exists(app($class), $method)) {
+                return "The hook registered for [{$resourceType}] names a method that does not exist: {$class}::{$method}.";
+            }
+
+            return null;
+        }
+
+        $legacy = ['expense_report' => ExpenseService::class, 'bill' => BillService::class];
+        if (isset($legacy[$resourceType]) && ! class_exists($legacy[$resourceType])) {
+            return "The hook for [{$resourceType}] needs {$legacy[$resourceType]}, which does not exist.";
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision  which approval decided and the version it bound; handlers that do not declare it ignore it
      */
     public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = '', array $decision = []): void

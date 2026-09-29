@@ -476,15 +476,18 @@ function afterDecision(apr, res) {
 
 /**
  * A decision is final once the API accepts it, but the effect it owes may not
- * have happened yet (202: `action.status` is not `done`). Say so, rather than
- * let "Approved" read as "applied".
+ * have happened (202: `action.status` is not `done`). Say which, rather than
+ * let "Approved" read as "applied" — and do not promise a retry the server has
+ * not promised: `pending` waits for recovery, `uncertain` needs someone to
+ * check what happened, `failed` needs someone to act.
  */
 function actionNotice(apr, res) {
   const status = res?.success ? res.data?.action?.status : null
   if (!status || status === 'done') return ''
-  return status === 'pending'
-    ? `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish; it will be retried automatically.`
-    : `Decision recorded for ${approvalLabel(apr)}. Applying it did not finish and needs checking.`
+  const label = approvalLabel(apr)
+  if (status === 'pending') return `Decision recorded for ${label}. Applying it has not finished and is waiting to be retried.`
+  if (status === 'failed') return `Decision recorded for ${label}. Applying it failed and needs attention.`
+  return `Decision recorded for ${label}. Whether applying it happened is not known; it needs checking.`
 }
 
 // Pending agent artifacts from the same skill + run become one batch card.
@@ -528,7 +531,7 @@ async function onBatchApproveAll(group, items) {
     if (actionNotice(item, res)) unfinished++
   }
   batchBusy.value = null
-  batchNotice.value = `Approved ${ok} of ${items.length}.` + (unfinished ? ` Applying ${unfinished} of them did not finish yet.` : '')
+  batchNotice.value = `Approved ${ok} of ${items.length}.` + (unfinished ? ` Applying ${unfinished} of them has not finished.` : '')
 }
 async function onBatchEdit(item, content) {
   const res = await runsStore.patchArtifact(item.resource_id, content, { expected_version: item.version_hash })

@@ -109,14 +109,21 @@ class ApprovalHookRegistryTest extends TestCase
             ->assertJsonPath('status', 'approved');
     }
 
-    public function test_a_hook_whose_class_is_missing_is_skipped_without_failing_the_approval(): void
+    /**
+     * The decision stands; the action it owes fails, with a code, rather than
+     * being recorded as done when nothing ran (ApprovalActions).
+     */
+    public function test_a_hook_whose_class_is_missing_leaves_the_approval_decided_and_its_action_failed(): void
     {
         config()->set('approvals.resource_hooks.ghost_thing', ['App\\Nope\\GhostService', 'onApprovalResolved']);
         $id = $this->approval('ghost_thing', (string) Str::uuid());
 
-        $this->actingAs($this->admin, 'sanctum')->postJson("/api/approvals/{$id}/approve", ['reason' => 'ok'])->assertOk();
+        $this->actingAs($this->admin, 'sanctum')->postJson("/api/approvals/{$id}/approve", ['reason' => 'ok'])
+            ->assertStatus(202)
+            ->assertJsonPath('action.status', 'failed');
 
         $this->assertSame('approved', DB::table('approvals')->where('id', $id)->value('status'));
+        $this->assertSame('hook_missing', DB::table('approval_actions')->where('approval_id', $id)->value('reason'));
     }
 
     public function test_engine_hook_is_public_and_config_driven(): void

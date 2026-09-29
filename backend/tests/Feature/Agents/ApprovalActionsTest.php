@@ -126,14 +126,14 @@ class ApprovalActionsTest extends AgentsTestCase
         $this->assertSame(ApprovalActions::PENDING, $decision->actionStatus);
         $this->assertCount(0, $this->events('probe.hook_ran'), 'the attempt rolled back, the hook\'s event with it');
         $action = $this->action($decision->event->payload['approval_id']);
-        $this->assertSame(1, (int) $action->attempts);
+        $this->assertSame([1, ApprovalActions::REASON_HOOK_FAILED], [(int) $action->attempts, $action->reason]);
         $this->assertStringContainsString('downstream table locked', (string) $action->last_error);
 
         $this->assertSame(1, $this->recover()['pending'], 'still failing: still owed');
         ProbeHook::$throw = null;
         $this->assertSame(1, $this->recover()['completed']);
 
-        $this->assertSame([ApprovalActions::DONE, 3], [$this->action($decision->event->payload['approval_id'])->status, (int) $this->action($decision->event->payload['approval_id'])->attempts]);
+        $this->assertSame([ApprovalActions::DONE, 3, null], [$this->action($decision->event->payload['approval_id'])->status, (int) $this->action($decision->event->payload['approval_id'])->attempts, $this->action($decision->event->payload['approval_id'])->reason]);
         $this->assertCount(3, ProbeHook::$calls);
         $this->assertCount(1, $this->events('probe.hook_ran'), 'only the attempt that committed left anything');
     }
@@ -147,7 +147,7 @@ class ApprovalActionsTest extends AgentsTestCase
 
         $this->assertSame(0, $this->recover()['failed'] + $this->recover()['pending'], 'a failed action is not picked up again');
         $this->assertCount(3, ProbeHook::$calls);
-        $this->assertSame(ApprovalActions::FAILED, $this->action($decision->event->payload['approval_id'])->status);
+        $this->assertSame([ApprovalActions::FAILED, ApprovalActions::REASON_ATTEMPTS_EXHAUSTED], [$this->action($decision->event->payload['approval_id'])->status, $this->action($decision->event->payload['approval_id'])->reason]);
         $this->artisan('approvals:recover-actions', ['--older-than' => 0])->assertExitCode(1);
     }
 
@@ -156,7 +156,7 @@ class ApprovalActionsTest extends AgentsTestCase
         ProbeHook::$throw = new BundleIntegrityException('a child belongs to another run');
         $decision = $this->decideProbe('probe_tx');
 
-        $this->assertSame(ApprovalActions::FAILED, $decision->actionStatus);
+        $this->assertSame([ApprovalActions::FAILED, ApprovalActions::REASON_INTEGRITY], [$decision->actionStatus, $this->action($decision->event->payload['approval_id'])->reason]);
         $this->recover();
         $this->assertCount(1, ProbeHook::$calls, 'retrying cannot fix integrity, so it is not retried');
     }
@@ -171,7 +171,10 @@ class ApprovalActionsTest extends AgentsTestCase
         ProbeHook::$throw = new \RuntimeException('provider timed out');
         $decision = $this->decideProbe('probe_ext');
 
-        $this->assertSame([ApprovalActions::UNCERTAIN, ApprovalActions::EXTERNAL], [$decision->actionStatus, $this->action($decision->event->payload['approval_id'])->delivery]);
+        $this->assertSame(
+            [ApprovalActions::UNCERTAIN, ApprovalActions::EXTERNAL, ApprovalActions::REASON_EXTERNAL_FAILED],
+            [$decision->actionStatus, $this->action($decision->event->payload['approval_id'])->delivery, $this->action($decision->event->payload['approval_id'])->reason],
+        );
         ProbeHook::$throw = null;
         $this->recover();
 
@@ -207,8 +210,83 @@ class ApprovalActionsTest extends AgentsTestCase
         $counts = $this->recover(lease: 900);
 
         $this->assertSame(1, $counts['lapsed']);
-        $this->assertSame(ApprovalActions::UNCERTAIN, $this->action($decision->event->payload['approval_id'])->status);
+        $this->assertSame([ApprovalActions::UNCERTAIN, ApprovalActions::REASON_CLAIM_LAPSED], [$this->action($decision->event->payload['approval_id'])->status, $this->action($decision->event->payload['approval_id'])->reason]);
         $this->assertCount(0, ProbeHook::$calls, 'not re-run');
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Never "done" for something that did not happen
+    // ------------------------------------------------------------------ //
+
+    /**
+     * A hook registered under a class that does not exist is a configuration
+     * error. It used to be skipped with a log line and the action recorded
+     * done; the decision stands, but the action fails, visibly, with a code.
+     */
+    public function test_a_registered_hook_that_does_not_exist_fails_the_action_with_a_reason(): void
+    {
+        config()->set('approvals.resource_hooks.probe_missing', ['App\\Nope\\MissingHandler', 'onApprovalResolved']);
+        config()->set('approvals.action_delivery.probe_missing', ApprovalActions::TRANSACTIONAL);
+        $engine = app(ApprovalEngine::class);
+        $approval = $engine->createApproval((string) $this->tenant->id, (string) $this->admin->id, 'manual', 'probe_missing', (string) Str::uuid(), 'probe');
+
+        $this->api()->postJson("/api/approvals/{$approval['id']}/approve", [])
+            ->assertStatus(202)
+            ->assertJsonPath('status', 'approved')
+            ->assertJsonPath('action.status', ApprovalActions::FAILED);
+
+        $action = $this->action($approval['id']);
+        $this->assertSame([ApprovalActions::FAILED, ApprovalActions::REASON_HOOK_MISSING, null], [$action->status, $action->reason, $action->completed_at]);
+        $this->assertStringContainsString('MissingHandler', (string) $action->last_error);
+        $this->recover();
+        $this->assertSame(ApprovalActions::FAILED, $this->action($approval['id'])->status, 'recovery does not turn it into anything else');
+    }
+
+    /**
+     * The hook's writes and "done" committed; then something it deferred until
+     * after the commit failed — a queue push, say. That is not a hook failure
+     * to retry (the commit happened) and not a success to report: it is
+     * uncertain, and says why.
+     */
+    public function test_a_failure_after_the_commit_is_uncertain_not_pending(): void
+    {
+        ProbeHook::$failAfterCommit = true;
+        $decision = $this->decideProbe('probe_tx');
+
+        $this->assertSame(ApprovalActions::UNCERTAIN, $decision->actionStatus);
+        $action = $this->action($decision->event->payload['approval_id']);
+        $this->assertSame([ApprovalActions::UNCERTAIN, ApprovalActions::REASON_AFTER_COMMIT_FAILED], [$action->status, $action->reason]);
+        $this->assertStringContainsString('queue push failed', (string) $action->last_error);
+        $this->assertCount(1, $this->events('probe.hook_ran'), 'the hook\'s writes committed');
+
+        ProbeHook::$failAfterCommit = false;
+        $this->recover();
+        $this->assertCount(1, ProbeHook::$calls, 'a committed action is not run again');
+    }
+
+    /**
+     * A retry that fails on a record another run already finished — a lock
+     * error, say — reports what the record says and changes nothing. It must
+     * not read the failure as its own (pending) or as a failure after its own
+     * commit (uncertain): it never ran the hook.
+     */
+    public function test_a_replay_that_fails_on_a_finished_record_reports_it_and_changes_nothing(): void
+    {
+        $decision = $this->decideProbe('probe_tx');
+        $this->assertSame(ApprovalActions::DONE, $decision->actionStatus);
+
+        // The runner's locking read, inside its own transaction, fails.
+        $base = DB::transactionLevel();
+        DB::beforeExecuting(function (string $query) use ($base): void {
+            if (DB::transactionLevel() > $base && str_starts_with(strtolower(ltrim($query)), 'select') && str_contains($query, 'approval_actions')) {
+                throw new \RuntimeException('lock timeout');
+            }
+        });
+
+        $this->assertSame(ApprovalActions::DONE, app(ApprovalActions::class)->run($decision->actionId));
+        $action = $this->action($decision->event->payload['approval_id']);
+        $this->assertSame([ApprovalActions::DONE, null, 1], [$action->status, $action->reason, (int) $action->attempts]);
+        $this->assertCount(1, ProbeHook::$calls);
     }
 
     // ------------------------------------------------------------------ //
@@ -225,6 +303,8 @@ class ApprovalActionsTest extends AgentsTestCase
         $this->assertSame(ApprovalActions::EXTERNAL, ApprovalActions::deliveryFor('outreach_reply'));
         $this->assertSame(ApprovalActions::EXTERNAL, ApprovalActions::deliveryFor('payment'));
         $this->assertSame(ApprovalActions::TRANSACTIONAL, ApprovalActions::deliveryFor('agent_artifact'));
+        // Its resume job's unique lock and push go to Redis, outside the transaction.
+        $this->assertSame(ApprovalActions::EXTERNAL, ApprovalActions::deliveryFor('agent_tool_call'));
 
         $declared = require base_path('config/approvals.php');
         foreach ($declared['action_delivery'] as $type => $delivery) {
@@ -296,10 +376,13 @@ final class ProbeHook
 
     public static ?\Throwable $throw = null;
 
+    public static bool $failAfterCommit = false;
+
     public static function reset(): void
     {
         self::$calls = [];
         self::$throw = null;
+        self::$failAfterCommit = false;
     }
 
     /** @param array<string, mixed> $decision */
@@ -307,6 +390,11 @@ final class ProbeHook
     {
         self::$calls[] = ['resource_id' => $resourceId, 'granted' => $granted, 'decision' => $decision];
         app(EventStore::class)->append($tenantId, 'probe', $resourceId, 'probe.hook_ran', ['approval_id' => $decision['approval_id'] ?? null]);
+        if (self::$failAfterCommit) {
+            DB::afterCommit(static function (): void {
+                throw new \RuntimeException('queue push failed');
+            });
+        }
         if (self::$throw !== null) {
             throw self::$throw;
         }
