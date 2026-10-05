@@ -5,8 +5,8 @@
       <header class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
           <div class="w-7 h-7 rounded-md flex items-center justify-center"
-               style="background: linear-gradient(135deg,#00E5C8,#087D6E); box-shadow: 0 0 0 1px rgba(0,229,200,0.35);">
-            <svg class="w-4 h-4" style="color:#05070A;" viewBox="0 0 24 24" fill="currentColor">
+               style="background: var(--color-accent-fill); color: var(--color-on-accent); box-shadow: 0 0 0 1px var(--color-border-strong);">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3 7.2 17l.9-5.4-3.9-3.8 5.4-.8L12 2z"/>
             </svg>
           </div>

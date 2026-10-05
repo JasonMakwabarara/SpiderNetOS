@@ -30,15 +30,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+function redirectToLogin() {
+  const hash = window.location.hash || '#/'
+  if (hash.startsWith('#/login')) return
+  const base = import.meta.env.BASE_URL || '/'
+  const returnTo = hash.replace(/^#/, '') || '/'
+  window.location.assign(`${base}#/login?return_to=${encodeURIComponent(returnTo)}`)
+}
+
 api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
-      const here = window.location.pathname + window.location.search
-      if (!here.startsWith('/login')) {
-        window.location.href = `/login?return_to=${encodeURIComponent(here)}`
-      }
+      redirectToLogin()
     }
     if (err.response?.status === 429) {
       const retry = err.response.headers?.['retry-after'] || 15
@@ -65,10 +70,7 @@ axios.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
-      const here = window.location.pathname + window.location.search
-      if (!here.startsWith('/login')) {
-        window.location.href = `/login?return_to=${encodeURIComponent(here)}`
-      }
+      redirectToLogin()
     }
     return Promise.reject(err)
   }

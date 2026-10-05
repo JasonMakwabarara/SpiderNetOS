@@ -19,7 +19,7 @@
 
       <div class="dct-card p-5" :style="{ background: 'var(--surface-low)' }">
         <p class="text-xs font-medium uppercase tracking-wider" :style="{ color: 'var(--text-muted)' }">Outstanding Invoices</p>
-        <p class="text-2xl font-bold mt-1" :style="{ color: '#FFAA00' }">${{ formatNumber(dashboard.outstanding_invoices) }}</p>
+        <p class="text-2xl font-bold mt-1" :style="{ color: 'var(--warn)' }">${{ formatNumber(dashboard.outstanding_invoices) }}</p>
         <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">{{ dashboard.invoices_this_month }} created this month</p>
       </div>
 
@@ -51,6 +51,9 @@
         </router-link>
         <router-link to="/financial/reports" class="py-3 rounded-xl font-semibold text-sm border text-center transition-colors" :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
           Generate Report
+        </router-link>
+        <router-link to="/operations" class="py-3 rounded-xl font-semibold text-sm border text-center transition-colors" :style="{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface-low)' }">
+          Operations
         </router-link>
       </div>
     </div>
@@ -107,8 +110,8 @@
     <!-- Alerts -->
     <div v-if="alerts.length > 0" class="dct-card p-6 space-y-4">
       <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Financial Alerts</h2>
-      <div v-for="alert in alerts.slice(0, 3)" :key="alert.id" class="flex items-start gap-3 px-4 py-3 rounded-xl" :style="{ background: alert.severity === 'critical' ? 'color-mix(in srgb, var(--dusk-vivid) 10%, transparent)' : 'color-mix(in srgb, #FFAA00 10%, transparent)' }">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" :style="{ color: alert.severity === 'critical' ? 'var(--dusk-vivid)' : '#FFAA00' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-for="alert in alerts.slice(0, 3)" :key="alert.id" class="flex items-start gap-3 px-4 py-3 rounded-xl" :style="{ background: alert.severity === 'critical' ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : 'color-mix(in srgb, var(--warn) 12%, transparent)' }">
+        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" :style="{ color: alert.severity === 'critical' ? 'var(--danger)' : 'var(--warn)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.834-1.964-.834-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
         <div class="flex-1">

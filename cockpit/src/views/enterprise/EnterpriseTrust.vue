@@ -107,7 +107,7 @@
         </div>
         <div class="col-span-12 md:col-span-4 flex items-center gap-2">
           <div class="flex-1 h-1.5 rounded-full" style="background: var(--bg-elevated);">
-            <div class="h-full rounded-full" :style="{ width: c.progress + '%', background: 'linear-gradient(90deg,#FF6B2C,#00D6C9)' }"></div>
+            <div class="h-full rounded-full" :style="{ width: c.progress + '%', background: 'var(--color-meter-fill)' }"></div>
           </div>
           <span class="mono text-xs w-10 text-right" style="color: var(--text-secondary);">{{ c.progress }}%</span>
         </div>
@@ -194,8 +194,8 @@ onMounted(async () => {
 
 <style scoped>
 .sn-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); opacity: 0.85; }
-.sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
-.sn-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 18px 16px; }
+.sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.sn-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 18px 18px 16px; }
 .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }
 .value { font-family: 'JetBrains Mono', monospace; font-size: 28px; letter-spacing: -0.02em; color: var(--text-primary); margin-top: 6px; }
 .mono { font-family: 'JetBrains Mono', monospace; }
@@ -203,15 +203,15 @@ onMounted(async () => {
 .dot-info { background: var(--accent); }
 .dot-warn { background: var(--warn); }
 .dot-high { background: var(--danger); }
-.sn-input-inline { background: var(--bg-elevated); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; color: var(--text-primary); font-size: 12px; outline: none; min-width: 220px; }
+.sn-input-inline { background: var(--bg-elevated); border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius-control); color: var(--text-primary); font-size: 12px; outline: none; min-width: 220px; }
 .sn-input-inline:focus { border-color: var(--accent); }
-.sn-btn-ghost { padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(0,214,201,0.3); color: var(--accent); font-size: 12px; transition: background 0.15s; }
-.sn-btn-ghost:hover { background: rgba(0,214,201,0.08); }
+.sn-btn-ghost { padding: 6px 14px; border-radius: var(--radius-button); border: 1px solid var(--color-border-strong); color: var(--accent); font-size: 12px; transition: background var(--motion-hover-duration); }
+.sn-btn-ghost:hover { background: var(--color-nav-active); }
 .sn-btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 .sn-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid var(--border); color: var(--text-secondary); }
-.sn-pill-success { color: var(--success); border-color: rgba(49,214,123,0.4); background: rgba(49,214,123,0.06); }
-.sn-pill-cyan { color: var(--accent); border-color: rgba(0,214,201,0.4); background: rgba(0,214,201,0.06); }
-.sn-pill-warn { color: var(--warn); border-color: rgba(245,184,75,0.4); background: rgba(245,184,75,0.06); }
+.sn-pill-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 10%, transparent); }
+.sn-pill-cyan { color: var(--accent); border-color: var(--color-border-strong); background: var(--color-nav-active); }
+.sn-pill-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .kv-row { display: flex; gap: 12px; align-items: center; }
 .kv-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); width: 90px; flex-shrink: 0; }
 .kv-value { font-size: 12px; color: var(--text-primary); }

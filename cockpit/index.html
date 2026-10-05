@@ -4,8 +4,34 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='none' stroke='%2300E5C8' stroke-width='2'/><circle cx='16' cy='16' r='2' fill='%2300E5C8'/><path d='M2 16h28M16 2v28M5 5l22 22M27 5L5 27' stroke='%2300E5C8' stroke-width='0.6' opacity='0.5'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05070A" />
+    <meta name="theme-color" content="#07151a" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>SpiderNetOS — Cockpit</title>
+    <script>
+      (function () {
+        var themes = { 'midnight-harbour': 1, 'copper-ledger': 1, solarpunk: 1 }
+        var modes = {
+          'midnight-harbour': { light: 1, dark: 1 },
+          'copper-ledger': { light: 1, dark: 1 },
+          solarpunk: { sunlit: 1 }
+        }
+        var theme = 'midnight-harbour'
+        var mode = 'dark'
+        try {
+          var raw = JSON.parse(localStorage.getItem('spidernet.appearance') || 'null')
+          if (raw && themes[raw.theme]) theme = raw.theme
+          if (theme === 'solarpunk') mode = 'sunlit'
+          else if (raw && modes[theme][raw.mode]) mode = raw.mode
+          else if (raw && raw.modes && modes[theme][raw.modes[theme]]) mode = raw.modes[theme]
+        } catch (e) {}
+        var root = document.documentElement
+        root.dataset.theme = theme
+        root.dataset.mode = mode
+        root.style.colorScheme = mode === 'dark' ? 'dark' : 'light'
+        root.classList.toggle('dark', mode === 'dark')
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

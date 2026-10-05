@@ -56,9 +56,9 @@
       </div>
     </div>
 
-    <!-- ═══ Usage Overview ═══ -->
+    <!-- ═══ Spend Overview ═══ -->
     <div class="dct-card p-6 space-y-5">
-      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Usage Overview</h2>
+      <h2 class="text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">Spend Overview</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Daily Spend -->
@@ -67,14 +67,8 @@
           <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
             ${{ usageStore.currentSpend.daily.toFixed(2) }}
           </p>
-          <div class="mt-2 h-1.5 rounded-full overflow-hidden" :style="{ background: 'var(--border)' }">
-            <div
-              class="h-full rounded-full transition-all"
-              :style="{
-                width: `${Math.min(usageStore.dailyPercentUsed, 100)}%`,
-                background: dailyBarColor
-              }"
-            />
+          <div class="sn-meter mt-2" :class="meterState(usageStore.dailyPercentUsed)">
+            <span :style="{ width: `${Math.min(usageStore.dailyPercentUsed, 100)}%` }"></span>
           </div>
           <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
             of ${{ usageStore.budget?.daily_limit?.toFixed(2) || '10.00' }} limit
@@ -87,14 +81,8 @@
           <p class="text-xl font-bold" :style="{ color: 'var(--text-primary)' }">
             ${{ usageStore.currentSpend.monthly.toFixed(2) }}
           </p>
-          <div class="mt-2 h-1.5 rounded-full overflow-hidden" :style="{ background: 'var(--border)' }">
-            <div
-              class="h-full rounded-full transition-all"
-              :style="{
-                width: `${Math.min(usageStore.monthlyPercentUsed, 100)}%`,
-                background: monthlyBarColor
-              }"
-            />
+          <div class="sn-meter mt-2" :class="meterState(usageStore.monthlyPercentUsed)">
+            <span :style="{ width: `${Math.min(usageStore.monthlyPercentUsed, 100)}%` }"></span>
           </div>
           <p class="mt-1 text-xs" :style="{ color: 'var(--text-muted)' }">
             of ${{ usageStore.budget?.monthly_limit?.toFixed(2) || '100.00' }} limit
@@ -444,19 +432,11 @@ const currentPlanIcon = computed(() => {
   return icons[activePlanId.value] || icons.starter
 })
 
-const dailyBarColor = computed(() => {
-  const pct = usageStore.dailyPercentUsed
-  if (pct >= 90) return 'var(--dusk-vivid)'
-  if (pct >= 70) return '#FFAA00'
-  return 'var(--charge-vivid)'
-})
-
-const monthlyBarColor = computed(() => {
-  const pct = usageStore.monthlyPercentUsed
-  if (pct >= 90) return 'var(--dusk-vivid)'
-  if (pct >= 70) return '#FFAA00'
-  return 'var(--charge-vivid)'
-})
+function meterState(pct) {
+  if (pct >= 90) return 'is-danger'
+  if (pct >= 70) return 'is-warn'
+  return ''
+}
 
 // ─── Lifecycle ──────────────────────────────────────────────
 onMounted(() => {

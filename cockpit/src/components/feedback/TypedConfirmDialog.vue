@@ -4,7 +4,7 @@
       <div
         v-if="modelValue"
         class="fixed inset-0 z-[9998] flex items-center justify-center px-4"
-        style="background: rgba(5,7,10,0.65); backdrop-filter: blur(6px);"
+        style="background: color-mix(in srgb, var(--color-bg-shell) 78%, transparent); backdrop-filter: blur(6px);"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
@@ -28,7 +28,7 @@
             <p class="mt-4">
               Type
               <code class="px-1.5 py-0.5 rounded mono select-all"
-                    style="background: var(--bg-elevated); color: var(--danger); border: 1px solid rgba(255,90,122,0.30);">
+                    style="background: var(--bg-elevated); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);">
                 {{ phrase }}
               </code>
               to confirm.
@@ -39,7 +39,7 @@
               autocomplete="off"
               class="mt-3 mono"
               :style="matches
-                ? 'border-color: rgba(34,211,155,0.6); box-shadow: 0 0 0 3px rgba(34,211,155,0.10);'
+                ? 'border-color: color-mix(in srgb, var(--success) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent);'
                 : ''"
               :aria-label="`Type ${phrase} to confirm`"
               :aria-invalid="!matches && input.length > 0"
@@ -66,7 +66,7 @@
               class="sn-btn"
               :disabled="!canConfirm"
               :style="canConfirm
-                ? 'background: rgba(255,90,122,0.16); color: var(--danger); border-color: rgba(255,90,122,0.40);'
+                ? 'background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent);'
                 : 'opacity: 0.4; cursor: not-allowed;'"
               data-testid="typed-confirm-submit"
               @click="confirm"

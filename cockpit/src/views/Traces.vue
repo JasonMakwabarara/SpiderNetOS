@@ -139,7 +139,7 @@
         <div
           v-if="shareDialog.open"
           class="fixed inset-0 z-[9998] flex items-center justify-center px-4"
-          style="background: rgba(5,7,10,0.65); backdrop-filter: blur(6px);"
+          style="background: color-mix(in srgb, var(--color-bg-shell) 78%, transparent); backdrop-filter: blur(6px);"
           role="dialog" aria-modal="true"
           data-testid="trace-share-dialog"
           @click.self="closeShare"
@@ -240,9 +240,9 @@ function detailFor(t) {
 }
 
 function dot(s) {
-  if (s === 'ok')    return 'background: var(--success); box-shadow: 0 0 6px rgba(34,211,155,0.6);'
-  if (s === 'warn')  return 'background: var(--warn);    box-shadow: 0 0 6px rgba(245,165,36,0.6);'
-  if (s === 'error') return 'background: var(--danger);  box-shadow: 0 0 6px rgba(255,90,122,0.6);'
+  if (s === 'ok')    return 'background: var(--success);'
+  if (s === 'warn')  return 'background: var(--warn);'
+  if (s === 'error') return 'background: var(--danger);'
   return 'background: var(--text-muted);'
 }
 function statusPill(s) {

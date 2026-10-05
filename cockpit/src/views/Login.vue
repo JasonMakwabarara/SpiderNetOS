@@ -3,17 +3,17 @@
     <!-- Ambient grid + glow -->
     <div class="absolute inset-0 sn-grid-bg opacity-40 pointer-events-none"></div>
     <div class="absolute -top-40 -left-40 w-[40rem] h-[40rem] rounded-full pointer-events-none"
-         style="background: radial-gradient(circle, rgba(0,229,200,0.18), transparent 60%);"></div>
+         style="background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-primary) 18%, transparent), transparent 60%);"></div>
     <div class="absolute -bottom-40 -right-40 w-[34rem] h-[34rem] rounded-full pointer-events-none"
-         style="background: radial-gradient(circle, rgba(0,229,200,0.10), transparent 60%);"></div>
+         style="background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-secondary) 16%, transparent), transparent 60%);"></div>
 
     <div class="relative w-full max-w-[1020px] grid md:grid-cols-[1.1fr_1fr] gap-10 items-center">
       <!-- Left pitch column -->
       <div class="hidden md:block">
         <div class="flex items-center gap-2 mb-6">
           <div class="w-8 h-8 rounded-md flex items-center justify-center"
-               style="background: linear-gradient(135deg,#00E5C8,#087D6E); box-shadow: 0 0 0 1px rgba(0,229,200,0.35);">
-            <svg class="w-5 h-5" style="color:#05070A" viewBox="0 0 24 24" fill="currentColor">
+               style="background: var(--color-accent-fill); color: var(--color-on-accent); box-shadow: 0 0 0 1px var(--color-border-strong);">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3 7.2 17l.9-5.4-3.9-3.8 5.4-.8L12 2z"/>
             </svg>
           </div>
@@ -92,7 +92,7 @@
                 class="px-2 py-1.5 text-xs rounded-md transition-colors"
                 :class="loginForm.role === r.value ? '' : 'hover:text-white'"
                 :style="loginForm.role === r.value
-                  ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid rgba(0,229,200,0.30);'
+                  ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid var(--color-border-strong);'
                   : 'background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);'"
                 :data-testid="`login-role-${r.value}`"
                 @click="loginForm.role = r.value"
@@ -140,7 +140,7 @@
 
         <div v-if="authStore.error"
              class="mt-4 p-3 rounded-md text-xs"
-             style="background: rgba(255,90,122,0.08); border: 1px solid rgba(255,90,122,0.28); color: var(--danger);"
+             style="background: color-mix(in srgb, var(--danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent); color: var(--danger);"
              data-testid="auth-error">
           {{ authStore.error }}
         </div>

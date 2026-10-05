@@ -182,21 +182,21 @@ onMounted(load)
 
 <style scoped>
 .sn-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); opacity: 0.85; }
-.sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
-.sn-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
-.sn-input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); padding: 0.55rem 0.85rem; border-radius: 8px; color: var(--text-primary); outline: none; }
-.sn-input:focus { border-color: var(--accent); }
-.sn-btn-primary { background: var(--accent-warm); color: #fff; padding: 0.55rem 1.1rem; border-radius: 999px; font-weight: 500; font-size: 0.875rem; transition: filter .15s; display: inline-flex; align-items: center; gap: 6px; }
+.sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.sn-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.sn-input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); padding: 0.55rem 0.85rem; border-radius: var(--radius-control); color: var(--text-primary); outline: none; }
+.sn-input:focus { border-color: var(--color-focus-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus-ring) 28%, transparent); }
+.sn-btn-primary { background: var(--color-accent-fill); color: var(--color-on-accent); padding: 0.55rem 1.1rem; border-radius: var(--radius-button); font-weight: 500; font-size: 0.875rem; transition: filter var(--motion-hover-duration); display: inline-flex; align-items: center; gap: 6px; }
 .sn-btn-primary:hover { filter: brightness(1.1); }
 .sn-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 .mono { font-family: 'JetBrains Mono', monospace; }
-.is-on { border-color: rgba(0,214,201,0.6); background: rgba(0,214,201,0.1); color: var(--accent); }
+.is-on { border-color: var(--color-border-strong); background: var(--color-nav-active); color: var(--accent); }
 .is-off { border-color: var(--border); color: var(--text-secondary); }
 .is-off:hover { border-color: rgba(255,255,255,0.3); }
 .kv { display: flex; flex-direction: column; gap: 2px; }
 .kv > span { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .kv > code { color: var(--text-primary); }
 .sn-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid var(--border); color: var(--text-secondary); }
-.sn-pill-success { color: var(--success); border-color: rgba(49,214,123,0.4); background: rgba(49,214,123,0.06); }
-.sn-pill-cyan { color: var(--accent); border-color: rgba(0,214,201,0.4); background: rgba(0,214,201,0.06); }
+.sn-pill-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 10%, transparent); }
+.sn-pill-cyan { color: var(--accent); border-color: var(--color-border-strong); background: var(--color-nav-active); }
 </style>
