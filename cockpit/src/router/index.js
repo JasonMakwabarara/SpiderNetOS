@@ -36,6 +36,10 @@ const PartnerSettings = () => import('../views/sales/PartnerSettings.vue')
 const PartnerThread   = () => import('../views/sales/PartnerThread.vue')
 const ComplianceHome  = () => import('../views/compliance/ComplianceHome.vue')
 const Operating       = () => import('../views/operating/Operating.vue')
+const Operations      = () => import('../views/operations/Operations.vue')
+const People          = () => import('../views/operations/People.vue')
+const EmployeeProfile = () => import('../views/operations/EmployeeProfile.vue')
+const Purchasing      = () => import('../views/operations/Purchasing.vue')
 
 // Lazy slice-0 surfaces (skills, map, brain, voice, runs, board, social)
 const Skills          = () => import('../views/skills/Skills.vue')
@@ -122,6 +126,10 @@ const routes = [
   { path: '/skills/:slug',      name: 'SkillCard',     component: SkillCard,     meta: { requiresAuth: true } },
   { path: '/map',               name: 'BusinessMap',   component: BusinessMap,   meta: { requiresAuth: true } },
   { path: '/brain',             name: 'Brain',         component: Brain,         meta: { requiresAuth: true } },
+  { path: '/operations',        name: 'Operations',    component: Operations,    meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/people', name: 'People',        component: People,        meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/people/:id', name: 'EmployeeProfile', component: EmployeeProfile, meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/purchasing', name: 'Purchasing', component: Purchasing, meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
   { path: '/settings/voice',    name: 'VoiceSettings', component: VoiceSettings, meta: { requiresAuth: true } },
   // NOTE: /agents/runs must precede /agents/:slug/workspace so the literal segment wins.
   { path: '/agents/runs',            name: 'AgentRuns',      component: AgentRuns,      meta: { requiresAuth: true } },

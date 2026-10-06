@@ -22,6 +22,30 @@ class DocumentNumberService
         return sprintf('%s-%s-%06d', $prefix, date('Ymd'), $number);
     }
 
+    /**
+     * Tenant-scoped serial that does not embed a date.
+     * Callers must already be inside a transaction. Prefix changes do not reset the counter.
+     */
+    public function nextSerial(string $tenantId, string $type, string $prefix, int $pad = 4): string
+    {
+        return $this->formatSerial($prefix, $this->allocate($tenantId, $type), $pad);
+    }
+
+    public function previewSerial(string $tenantId, string $type, string $prefix, int $pad = 4): string
+    {
+        $row = DB::table('document_sequences')
+            ->where('tenant_id', $tenantId)
+            ->where('sequence_type', $type)
+            ->first();
+
+        return $this->formatSerial($prefix, $row ? (int) $row->next_number : 1, $pad);
+    }
+
+    private function formatSerial(string $prefix, int $number, int $pad): string
+    {
+        return $prefix.'-'.str_pad((string) $number, $pad, '0', STR_PAD_LEFT);
+    }
+
     private function allocate(string $tenantId, string $type): int
     {
         $row = DB::table('document_sequences')

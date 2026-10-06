@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\DomainException;
 use App\Http\Middleware\CheckAgentPermission;
 use App\Http\Middleware\EnforcePlanLimits;
 use App\Http\Middleware\EnforcePlanQuota;
@@ -21,6 +22,7 @@ use App\Providers\SecurityServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -108,5 +110,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (DomainException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => $e->getMessage()], 409);
+            }
+        });
     })->create();

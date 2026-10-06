@@ -364,6 +364,8 @@ const userNav = {
     { key: 'first-win', name: 'First win', path: '/operate/first-win', icon: ic.firstwin },
     { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
+    { key: 'people', name: 'People', path: '/operations/people', icon: ic.users, adminOnly: true },
+    { key: 'purchasing', name: 'Purchasing', path: '/operations/purchasing', icon: ic.inbox, adminOnly: true },
     { key: 'traces', name: 'Traces', path: '/traces', icon: ic.traces },
   ],
 }

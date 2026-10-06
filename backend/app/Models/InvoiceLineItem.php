@@ -12,7 +12,7 @@ class InvoiceLineItem extends Model
 
     protected $fillable = [
         'invoice_id', 'description', 'quantity', 'unit', 'unit_price',
-        'tax_rate', 'total', 'sku', 'metadata',
+        'tax_rate', 'total', 'sku', 'metadata', 'purchase_order_line_id',
     ];
 
     protected $casts = [

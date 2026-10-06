@@ -174,6 +174,9 @@ class ApprovalController extends Controller
      * transitions only a pending approval, records the decision with it and
      * fires the resource hook after commit. This translates its outcome into
      * HTTP and nothing more; the rule itself lives in one place.
+     * A requisition is not a special case here. resource_type requisition is
+     * registered in config/approvals.php and RequisitionService::onApprovalResolved
+     * is the only writer of approved or rejected.
      */
     private function decide(Request $request, string $tenantId, string $id, bool $granted): JsonResponse
     {

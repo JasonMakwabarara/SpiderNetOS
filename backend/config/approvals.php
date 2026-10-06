@@ -3,6 +3,7 @@
 use App\Services\Agents\AgentArtifactApprovals;
 use App\Services\Agents\AgentRunResumer;
 use App\Services\Brain\BrainProposalService;
+use App\Services\Enterprise\RequisitionService;
 use App\Services\Launch\BusinessLaunchService;
 use App\Services\Outreach\Bot\OutreachReplyService;
 
@@ -45,6 +46,10 @@ return [
         // approved -> the launch goes live, rejected -> back to `drafted`
         // so the founder can revise and resubmit.
         'business_plan' => [BusinessLaunchService::class, 'onApprovalResolved'],
+
+        // Procurement: approved means approved for buying. The hook does not
+        // create a purchase order and does not touch invoices.
+        'requisition' => [RequisitionService::class, 'onApprovalResolved'],
     ],
 
     /*
@@ -74,6 +79,7 @@ return [
         'agent_artifact' => 'transactional',   // ArtifactApplier: templates, assets, events
         'agent_tool_call' => 'transactional',  // AgentRunResumer: run state; the resume job is dispatched after commit
         'business_plan' => 'transactional',    // BusinessLaunchService: launch status and events
+        'requisition' => 'transactional',      // RequisitionService: status and structural events only
     ],
 
     // A transactional action still failing after this many attempts is failed.

@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Shared supplier identity for bill pay and procurement.
+ * Status is active or archived. Procurement refuses anything that is not active.
+ */
 class Vendor extends Model
 {
     use HasUuids;
@@ -32,6 +36,11 @@ class Vendor extends Model
     public function bills(): HasMany
     {
         return $this->hasMany(Bill::class);
+    }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
     }
 
     public function scopeForTenant($query, string $tenantId)
