@@ -6,11 +6,13 @@ namespace App\Http\Controllers\Enterprise;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cashbook;
+use App\Models\CreditNote;
 use App\Models\FiscalSubmission;
 use App\Models\Invoice;
 use App\Models\PayablesPosting;
 use App\Models\ThreeWayMatch;
 use App\Services\Enterprise\CashManagementService;
+use App\Services\Enterprise\CreditNoteService;
 use App\Services\Enterprise\FiscalisationService;
 use App\Services\Enterprise\PayablesService;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +24,7 @@ class PayablesController extends Controller
         private readonly PayablesService $payables,
         private readonly CashManagementService $cash,
         private readonly FiscalisationService $fiscal,
+        private readonly CreditNoteService $credits,
     ) {}
 
     public function invoiceFromPurchaseOrder(Request $request, string $id): JsonResponse
@@ -44,7 +47,43 @@ class PayablesController extends Controller
             'match' => ThreeWayMatch::forTenant($tenantId)->where('invoice_id', $invoice->id)->with('lines')->first(),
             'posting' => PayablesPosting::forTenant($tenantId)->where('invoice_id', $invoice->id)->first(),
             'fiscal' => FiscalSubmission::forTenant($tenantId)->where('invoice_id', $invoice->id)->first(),
+            'credit_notes' => CreditNote::forTenant($tenantId)->where('invoice_id', $invoice->id)->with('lines')->orderBy('credit_note_number')->get(),
         ]);
+    }
+
+    public function storeCreditNote(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:2000',
+            'lines' => 'required|array|min:1',
+            'lines.*.description' => 'required|string|max:2000',
+            'lines.*.quantity' => 'required|numeric|gt:0',
+            'lines.*.unit_price' => 'required|numeric|gt:0',
+        ]);
+        $note = $this->credits->create(
+            (string) $request->attributes->get('tenant_id'),
+            $id,
+            $data['lines'],
+            $data['reason'] ?? null,
+        );
+
+        return response()->json(['data' => $note], 201);
+    }
+
+    public function showCreditNote(Request $request, string $id): JsonResponse
+    {
+        $note = CreditNote::forTenant((string) $request->attributes->get('tenant_id'))
+            ->with('lines')
+            ->findOrFail($id);
+
+        return response()->json(['data' => $note]);
+    }
+
+    public function issueCreditNote(Request $request, string $id): JsonResponse
+    {
+        $note = $this->credits->issue((string) $request->attributes->get('tenant_id'), $id);
+
+        return response()->json(['data' => $note]);
     }
 
     public function match(Request $request, string $id): JsonResponse

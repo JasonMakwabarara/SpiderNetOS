@@ -476,6 +476,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/supplier-invoices/{id}/match', [PayablesController::class, 'match']);
         Route::post('/supplier-invoices/{id}/post', [PayablesController::class, 'post']);
         Route::post('/supplier-invoices/{id}/fiscalise', [PayablesController::class, 'fiscalise']);
+        Route::post('/supplier-invoices/{id}/credit-notes', [PayablesController::class, 'storeCreditNote']);
+        Route::get('/credit-notes/{id}', [PayablesController::class, 'showCreditNote']);
+        Route::post('/credit-notes/{id}/issue', [PayablesController::class, 'issueCreditNote']);
         Route::get('/cashbooks', [PayablesController::class, 'indexCashbooks']);
         Route::post('/cashbooks', [PayablesController::class, 'storeCashbook']);
         Route::post('/cashbooks/{id}/movements', [PayablesController::class, 'storeMovement']);

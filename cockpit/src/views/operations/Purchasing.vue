@@ -131,11 +131,15 @@
             <p v-if="matchStatus" class="text-sm" :style="{ color: 'var(--text-secondary)' }" data-testid="match-status">Match: {{ label(matchStatus) }}</p>
             <p v-if="posted" class="text-sm" :style="{ color: 'var(--text-secondary)' }" data-testid="posting-status">Ledger: Posted</p>
             <p v-if="fiscalReceipt" class="text-sm" :style="{ color: 'var(--text-secondary)' }" data-testid="fiscal-receipt">Fiscal: {{ fiscalReceipt }}</p>
+            <p v-for="note in creditNotes" :key="note.id" class="text-sm" :style="{ color: 'var(--text-secondary)' }" data-testid="credit-note">
+              {{ note.credit_note_number }} · {{ label(note.status) }}
+            </p>
             <div class="flex flex-wrap gap-2">
               <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="invoice-match" :disabled="busy" @click="matchInvoice">Match</button>
               <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="invoice-post" :disabled="busy || matchStatus !== 'matched'" @click="postInvoice">Post</button>
               <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="invoice-fiscal" :disabled="busy || !posted" @click="fiscalise">Fiscalise sandbox</button>
               <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="invoice-pay" :disabled="busy || !posted || supplierInvoice.status === 'paid'" @click="payInvoice">Pay from cash</button>
+              <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="invoice-credit" :disabled="busy" @click="creditInvoice">Issue credit note</button>
             </div>
           </template>
         </section>
@@ -180,6 +184,7 @@ const supplierInvoice = ref(null)
 const matchStatus = ref('')
 const posted = ref(false)
 const fiscalReceipt = ref('')
+const creditNotes = ref([])
 const busy = ref(false)
 
 const activeVendors = computed(() => vendors.value.filter(vendor => vendor.status === 'active'))
@@ -232,6 +237,7 @@ async function loadOrder(id) {
   matchStatus.value = ''
   posted.value = false
   fiscalReceipt.value = ''
+  creditNotes.value = []
   if (order.value.supplier_invoice) await loadFinance(order.value.supplier_invoice.id)
 }
 
@@ -241,6 +247,26 @@ async function loadFinance(invoiceId) {
   matchStatus.value = res.data.match?.status || ''
   posted.value = !!res.data.posting
   fiscalReceipt.value = res.data.fiscal?.fiscal_receipt_id || ''
+  creditNotes.value = res.data.credit_notes || []
+}
+
+async function creditInvoice() {
+  financeError.value = ''
+  busy.value = true
+  try {
+    const lines = (supplierInvoice.value.line_items || []).map(line => ({
+      description: line.description,
+      quantity: Number(line.quantity),
+      unit_price: Number(line.unit_price),
+    }))
+    const created = await api.post(`/api/enterprise/supplier-invoices/${supplierInvoice.value.id}/credit-notes`, { lines })
+    await api.post(`/api/enterprise/credit-notes/${created.data.data.id}/issue`)
+    await loadFinance(supplierInvoice.value.id)
+  } catch (err) {
+    financeFail(err)
+  } finally {
+    busy.value = false
+  }
 }
 
 function financeFail(err) {
