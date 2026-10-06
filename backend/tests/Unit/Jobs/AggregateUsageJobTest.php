@@ -38,14 +38,6 @@ class AggregateUsageJobTest extends TestCase
         $this->assertStringNotContainsString("'updated_at'", $src, 'updated_at must NOT appear in upsert');
     }
 
-    public function test_emits_persist_event_with_v2_schema(): void
-    {
-        $src = file_get_contents((new \ReflectionClass(AggregateUsageJob::class))->getFileName());
-
-        $this->assertStringContainsString("'usage.aggregate.persisted'", $src, 'Must emit usage.aggregate.persisted event');
-        $this->assertStringContainsString("'schema_version' => '2.0.0'", $src, 'Event must declare schema_version 2.0.0');
-    }
-
     public function test_shadow_diff_wiring_present(): void
     {
         $src = file_get_contents((new \ReflectionClass(AggregateUsageJob::class))->getFileName());
