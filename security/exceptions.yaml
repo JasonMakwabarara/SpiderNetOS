@@ -106,3 +106,22 @@ exceptions:
     is opened, which is the control the rule is asking for.
   owner: jason
   review_date: '2027-03-19'
+- rule_id: python.lang.security.use-defused-xml.use-defused-xml
+  locations:
+  - inference/tts_providers.py
+  classification: FALSE_POSITIVE
+  reason: The import is xml.sax.saxutils.escape, used to escape text placed inside SSML. Nothing in the
+    file parses XML, so there is no parser for defusedxml to harden.
+  owner: jason
+  review_date: '2027-04-08'
+- rule_id: python.jinja2.security.audit.autoescape-disabled-false.incorrect-autoescape-disabled
+  locations:
+  - intelligence/services/business_launch/docgen.py
+  classification: ACCEPTED_RISK
+  reason: The environment renders Markdown documents from templates in the repository, not HTML, so HTML
+    autoescaping would corrupt the output (an ampersand in a business name would become &amp;). The
+    cockpit displays Markdown through cockpit/src/utils/markdown.js, which HTML-escapes every character
+    before applying formatting, so markup in a rendered document cannot reach the DOM. Revisit if these
+    documents are ever served as HTML.
+  owner: jason
+  review_date: '2027-04-08'
