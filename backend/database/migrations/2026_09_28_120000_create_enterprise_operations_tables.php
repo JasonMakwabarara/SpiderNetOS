@@ -8,15 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('document_sequences', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('tenant_id')->index();
-            $table->string('series', 64);
-            $table->string('prefix', 16);
-            $table->unsignedInteger('last_number')->default(0);
-            $table->timestamps();
-            $table->unique(['tenant_id', 'series']);
-        });
+        if (! Schema::hasTable('document_sequences')) {
+            Schema::create('document_sequences', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->uuid('tenant_id');
+                $table->string('sequence_type', 30);
+                $table->unsignedBigInteger('next_number')->default(1);
+                $table->timestamps();
+                $table->unique(['tenant_id', 'sequence_type']);
+            });
+        }
 
         Schema::create('departments', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -67,14 +68,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('vendors', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('tenant_id')->index();
-            $table->string('name');
-            $table->string('email')->nullable();
-            $table->string('phone')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('vendors')) {
+            Schema::create('vendors', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->uuid('tenant_id')->index();
+                $table->string('name');
+                $table->string('email')->nullable();
+                $table->string('phone')->nullable();
+                $table->timestamps();
+            });
+        }
 
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->uuid('id')->primary();

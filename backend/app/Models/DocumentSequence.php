@@ -12,5 +12,5 @@ class DocumentSequence extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['tenant_id', 'series', 'prefix', 'last_number'];
+    protected $fillable = ['tenant_id', 'sequence_type', 'next_number'];
 }

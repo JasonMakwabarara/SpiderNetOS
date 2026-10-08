@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\DocumentNumberService;
 use App\Services\EventStore;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -225,7 +226,7 @@ class HrService
             ];
 
             $employee->status = 'inactive';
-            $employee->inactive_from = $from;
+            $employee->inactive_from = Carbon::parse($from);
             $employee->inactive_reason = $reason;
             $employee->save();
 
@@ -301,7 +302,7 @@ class HrService
     {
         $this->eventStore->append($tenantId, 'employee', $employeeId, $eventType, [
             'employee_id' => $employeeId,
-            'fields_changed' => array_values($fields),
+            'fields_changed' => $fields,
             'actor_id' => $actorId,
         ]);
     }

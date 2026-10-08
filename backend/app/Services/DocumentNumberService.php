@@ -14,8 +14,8 @@ class DocumentNumberService
     {
         $last = DocumentSequence::query()
             ->where('tenant_id', $tenantId)
-            ->where('series', $series)
-            ->value('last_number');
+            ->where('sequence_type', $series)
+            ->value('next_number');
 
         return $this->format($prefix, ((int) $last) + 1, $pad);
     }
@@ -25,7 +25,7 @@ class DocumentNumberService
         return DB::transaction(function () use ($tenantId, $series, $prefix, $pad) {
             $row = DocumentSequence::query()
                 ->where('tenant_id', $tenantId)
-                ->where('series', $series)
+                ->where('sequence_type', $series)
                 ->lockForUpdate()
                 ->first();
 
@@ -33,21 +33,20 @@ class DocumentNumberService
                 try {
                     $row = DocumentSequence::create([
                         'tenant_id' => $tenantId,
-                        'series' => $series,
-                        'prefix' => $prefix,
-                        'last_number' => 0,
+                        'sequence_type' => $series,
+                        'next_number' => 0,
                     ]);
                 } catch (UniqueConstraintViolationException) {
                     $row = DocumentSequence::query()
                         ->where('tenant_id', $tenantId)
-                        ->where('series', $series)
+                        ->where('sequence_type', $series)
                         ->lockForUpdate()
                         ->firstOrFail();
                 }
             }
 
-            $next = (int) $row->last_number + 1;
-            $row->update(['last_number' => $next, 'prefix' => $prefix]);
+            $next = (int) $row->next_number + 1;
+            $row->update(['next_number' => $next]);
 
             return $this->format($prefix, $next, $pad);
         });
