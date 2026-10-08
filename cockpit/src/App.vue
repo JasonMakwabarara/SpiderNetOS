@@ -17,47 +17,38 @@
 
     <!-- Top bar -->
     <header
-      class="flex items-center justify-between px-4 h-12 border-b sticky top-0 z-30"
-      style="background: rgba(10,13,18,0.85); border-color: var(--border); backdrop-filter: blur(14px);"
+      class="sn-shell-header flex items-center justify-between px-4 h-12 border-b sticky top-0 z-30"
       data-testid="app-top-bar"
     >
       <div class="flex items-center gap-4 min-w-0">
         <div class="flex items-center gap-2.5 shrink-0">
-          <!-- SpiderNet logo mark — matches landing/marketing surface -->
-          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="sn-lg-topbar" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#FF6B2C"/>
-                <stop offset="1" stop-color="#00D6C9"/>
-              </linearGradient>
-            </defs>
-            <circle cx="16" cy="16" r="3" fill="url(#sn-lg-topbar)"/>
-            <g stroke="url(#sn-lg-topbar)" stroke-width="1.4" stroke-linecap="round" opacity="0.9">
-              <line x1="16" y1="16" x2="6" y2="6"/>
-              <line x1="16" y1="16" x2="26" y2="6"/>
-              <line x1="16" y1="16" x2="6" y2="26"/>
-              <line x1="16" y1="16" x2="26" y2="26"/>
-              <line x1="16" y1="16" x2="16" y2="2"/>
-              <line x1="16" y1="16" x2="16" y2="30"/>
-              <line x1="16" y1="16" x2="2" y2="16"/>
-              <line x1="16" y1="16" x2="30" y2="16"/>
+          <svg v-if="theme === 'solarpunk'" class="sn-mark" width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <circle cx="16" cy="16" r="5" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="16" y1="3" x2="16" y2="7"/><line x1="16" y1="25" x2="16" y2="29"/>
+              <line x1="3" y1="16" x2="7" y2="16"/><line x1="25" y1="16" x2="29" y2="16"/>
+              <line x1="6.5" y1="6.5" x2="9.2" y2="9.2"/><line x1="22.8" y1="22.8" x2="25.5" y2="25.5"/>
+              <line x1="25.5" y1="6.5" x2="22.8" y2="9.2"/><line x1="9.2" y1="22.8" x2="6.5" y2="25.5"/>
             </g>
-            <g fill="#F4F7FB">
-              <circle cx="6" cy="6" r="1.4"/><circle cx="26" cy="6" r="1.4"/>
-              <circle cx="6" cy="26" r="1.4"/><circle cx="26" cy="26" r="1.4"/>
-              <circle cx="16" cy="2" r="1.2"/><circle cx="16" cy="30" r="1.2"/>
-              <circle cx="2" cy="16" r="1.2"/><circle cx="30" cy="16" r="1.2"/>
+          </svg>
+          <svg v-else class="sn-mark" width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <circle cx="16" cy="16" r="2.4" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+              <line x1="16" y1="16" x2="6" y2="6"/><line x1="16" y1="16" x2="26" y2="6"/>
+              <line x1="16" y1="16" x2="6" y2="26"/><line x1="16" y1="16" x2="26" y2="26"/>
+              <line x1="16" y1="16" x2="16" y2="3"/><line x1="16" y1="16" x2="16" y2="29"/>
+              <line x1="16" y1="16" x2="3" y2="16"/><line x1="16" y1="16" x2="29" y2="16"/>
             </g>
           </svg>
           <span class="font-heading font-semibold tracking-tight text-[15px]" style="color: var(--text-primary);">
-            Spider<span style="color: var(--accent-warm);">Net</span>OS
+            SpiderNetOS
           </span>
         </div>
 
         <!-- Tenant switcher -->
         <div class="h-5 w-px" style="background: var(--border);"></div>
         <button
-          class="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-ink-700"
+          class="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-ink-700 min-w-0"
           style="color: var(--text-secondary);"
           data-testid="tenant-switcher-button"
           @click="showTenantMenu = !showTenantMenu"
@@ -65,7 +56,7 @@
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/>
           </svg>
-          <span class="font-medium" style="color: var(--text-primary);">{{ authStore.tenant?.name || 'Acme Ops' }}</span>
+          <span class="sn-tenant-name font-medium" style="color: var(--text-primary);">{{ authStore.tenant?.name || 'Acme Ops' }}</span>
           <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path d="M5 7l5 5 5-5H5z"/></svg>
         </button>
 
@@ -97,7 +88,7 @@
 
         <!-- Command palette trigger -->
         <button
-          class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md text-xs hover:border-cyan-500"
+          class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md text-xs"
           style="background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary);"
           data-testid="command-palette-trigger"
           @click="openCommandBar"
@@ -112,7 +103,7 @@
         </button>
 
         <!-- Budget alert -->
-        <RouterLink v-if="usageStore.isNearLimit" to="/usage" class="sn-pill sn-pill-warn" data-testid="budget-alert">
+        <RouterLink v-if="usageStore.isNearLimit" to="/billing" class="sn-pill sn-pill-warn" data-testid="budget-alert">
           Budget
         </RouterLink>
 
@@ -132,7 +123,7 @@
           >
             <div
               class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold"
-              style="background: var(--accent-weak); color: var(--accent); border: 1px solid rgba(0,229,200,0.30);"
+              style="background: var(--accent-weak); color: var(--accent); border: 1px solid var(--color-border-strong);"
             >{{ userInitials }}</div>
             <span class="text-sm hidden sm:inline" style="color: var(--text-primary);">{{ authStore.user?.name }}</span>
             <svg class="w-3 h-3 hidden sm:inline" viewBox="0 0 20 20" fill="currentColor" style="color: var(--text-muted);">
@@ -163,7 +154,7 @@
                   class="px-2 py-1 text-[11px] rounded-md transition-colors"
                   :class="authStore.role === r ? 'text-white' : 'hover:text-white'"
                   :style="authStore.role === r
-                    ? 'background: var(--accent-weak); color: var(--accent); border:1px solid rgba(0,229,200,0.30);'
+                    ? 'background: var(--accent-weak); color: var(--accent); border:1px solid var(--color-border-strong);'
                     : 'background: var(--bg-elevated); color: var(--text-secondary); border:1px solid var(--border);'"
                   :data-testid="`role-switch-${r}`"
                   @click="switchTo(r)"
@@ -178,6 +169,10 @@
               :data-testid="`user-menu-${item.key}`"
               @click="showUserMenu = false"
             >{{ item.label }}</RouterLink>
+
+            <div class="px-3 py-2 border-b" style="border-color: var(--border);" data-testid="appearance-menu">
+              <AppearancePicker />
+            </div>
 
             <div class="border-t mt-1 pt-1" style="border-color: var(--border);">
               <button
@@ -195,8 +190,9 @@
     <div class="flex flex-1 min-h-0">
       <!-- Sidebar -->
       <aside
-        class="w-56 shrink-0 flex flex-col border-r"
-        style="background: var(--bg-subtle); border-color: var(--border);"
+        class="sn-rail shrink-0 flex flex-col border-r"
+        :class="{ 'is-live': wsConnected }"
+        :style="{ width: 'var(--sidebar-width)', background: 'var(--color-bg-shell)', borderColor: 'var(--color-border-default)' }"
         data-testid="app-sidebar"
       >
         <!-- Workspace pivot -->
@@ -225,7 +221,6 @@
               :class="{ active: isActiveRoute(item.path, item.exact) }"
               :data-testid="`nav-${item.key}`"
             >
-              <span v-html="item.icon" class="shrink-0 opacity-80" />
               <span class="truncate">{{ item.name }}</span>
               <span v-if="item.badge" class="ml-auto sn-pill sn-pill-accent text-[10px]">{{ item.badge }}</span>
             </RouterLink>
@@ -245,8 +240,9 @@
       </aside>
 
       <!-- Main -->
-      <main class="flex-1 flex flex-col min-w-0">
-        <div class="flex-1 overflow-auto" style="background: var(--bg);">
+      <main class="sn-canvas flex-1 flex flex-col min-w-0">
+        <div class="sn-atmosphere" aria-hidden="true"></div>
+        <div class="flex-1 overflow-auto relative z-[1]">
           <RouterView v-slot="{ Component }">
             <transition name="sn-fade" mode="out-in">
               <component :is="Component" />
@@ -272,6 +268,7 @@ import { useWebSocket } from './composables/useWebSocket.js'
 import { useAgentsStore } from './stores/agents.js'
 import { useFlowsStore } from './stores/flows.js'
 import CommandBar from './components/CommandBar.vue'
+import AppearancePicker from './components/AppearancePicker.vue'
 import RoleBadge from './components/security/RoleBadge.vue'
 import ImpersonationBanner from './components/impersonation/ImpersonationBanner.vue'
 import InstallPrompt from './components/InstallPrompt.vue'
@@ -284,6 +281,8 @@ import { useSkillsStore } from './stores/skills.js'
 import { useBrainStore } from './stores/brain.js'
 import { useRunsStore } from './stores/runs.js'
 import { useMapStore } from './stores/map.js'
+
+import { useAppearance } from './composables/useAppearance.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -300,6 +299,7 @@ const skillsStore = useSkillsStore()
 const brainStore = useBrainStore()
 const runsStore = useRunsStore()
 const mapStore = useMapStore()
+const { theme } = useAppearance()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -307,7 +307,7 @@ const cmdBarRef = ref(null)
 
 // Env badge
 const envLabel = computed(() => import.meta.env.MODE === 'production' ? 'prod' : 'local')
-const envColor = computed(() => envLabel.value === 'prod' ? '#22D39B' : '#F5A524')
+const envColor = computed(() => envLabel.value === 'prod' ? 'var(--success)' : 'var(--warn)')
 const envPillClass = computed(() => envLabel.value === 'prod' ? 'sn-pill-success' : 'sn-pill-warn')
 
 // Icons (consistent stroke)
@@ -365,6 +365,7 @@ const userNav = {
     { key: 'research-briefs', name: 'Research briefs', path: '/research-briefs', icon: ic.brief },
     { key: 'first-win', name: 'First win', path: '/operate/first-win', icon: ic.firstwin },
     { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
+    { key: 'operations', name: 'Operations', path: '/operations', icon: ic.overview },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
     { key: 'people', name: 'People', path: '/operations/people', icon: ic.users, adminOnly: true },
     { key: 'purchasing', name: 'Purchasing', path: '/operations/purchasing', icon: ic.inbox, adminOnly: true },
@@ -621,7 +622,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sn-fade-enter-active, .sn-fade-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
+.sn-fade-enter-active, .sn-fade-leave-active { transition: opacity var(--motion-enter-duration) var(--motion-enter-easing), transform var(--motion-enter-duration) var(--motion-enter-easing); }
 .sn-fade-enter-from { opacity: 0; transform: translateY(3px); }
 .sn-fade-leave-to   { opacity: 0; transform: translateY(-3px); }
 </style>

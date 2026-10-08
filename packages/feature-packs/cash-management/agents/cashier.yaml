@@ -1,0 +1,12 @@
+id: cashier
+displayName: "Cash Operations"
+description: "Opens cashbooks in one currency and records positive receipts or payments. Does not post the ledger."
+capabilities:
+  - id: list_cashbooks
+    description: "List cashbooks"
+  - id: create_cashbook
+    description: "Create a cashbook with a single currency"
+  - id: record_cash_receipt
+    description: "Record a positive receipt in the cashbook currency"
+  - id: record_cash_payment
+    description: "Record a positive payment in the cashbook currency"

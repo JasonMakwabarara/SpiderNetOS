@@ -1,0 +1,10 @@
+id: billing
+displayName: "Billing Clerk"
+description: "Drafts and issues credit notes against an existing invoice. Does not create a second invoice model."
+capabilities:
+  - id: list_credit_notes
+    description: "List credit notes"
+  - id: create_credit_note_draft
+    description: "Create a draft credit note with line items and a CN number"
+  - id: issue_credit_note
+    description: "Issue a draft credit note when currency matches and the invoice is not over-credited"

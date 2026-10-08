@@ -176,6 +176,9 @@ const routes = [
   { path: '/financial/accounting/export', name: 'ExportCenter',       component: ExportCenter,       meta: { requiresAuth: true, capability: 'accounting.manage' } },
   { path: '/financial/spend',             name: 'SpendAnalytics',     component: SpendAnalytics,     meta: { requiresAuth: true, capability: 'finance.view' } },
 
+  { path: '/operations/attendance', name: 'OperationsAttendance', component: () => import('../views/operations/Attendance.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/assets', name: 'OperationsAssets', component: () => import('../views/operations/Assets.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+
   // ---------------- ADMIN SPACE ----------------
   {
     path: '/admin',

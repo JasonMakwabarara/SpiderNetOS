@@ -1,0 +1,25 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: invoice-billing
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Invoice billing"
+  description: "Credit notes with line items against the existing invoice. Does not replace invoicing."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+
+  provides:
+    dynamic_agents:
+      - id: billing
+        displayName: "Billing Clerk"
+        capabilities: [list_credit_notes, create_credit_note_draft, issue_credit_note]
+
+    ste_chains:
+      - id: credit_note_lifecycle
+        description: "Credit note draft then issued"
+        states: [draft, issued]

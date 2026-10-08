@@ -33,7 +33,7 @@
           <button
             class="sn-btn flex-1 justify-center text-xs"
             :style="state[s.key] !== 'fallback'
-              ? 'background: var(--accent-weak); color: var(--accent); border-color: rgba(0,229,200,0.30);'
+              ? 'background: var(--accent-weak); color: var(--accent); border-color: var(--color-border-strong);'
               : ''"
             :data-testid="`copy-${s.key}-on`"
             @click="setSurface(s.key, 'on')"

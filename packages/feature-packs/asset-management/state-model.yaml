@@ -1,0 +1,14 @@
+chains:
+  - id: asset_custody
+    namespace: pack.asset-management
+    states: [available, assigned]
+    transitions:
+      - event: enterprise.asset.created
+        from: null
+        to: available
+      - event: enterprise.asset.assigned
+        from: available
+        to: assigned
+      - event: enterprise.asset.returned
+        from: assigned
+        to: available

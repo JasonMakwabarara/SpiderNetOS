@@ -1,0 +1,10 @@
+id: fiscal
+displayName: "Fiscal Compliance"
+description: "Registers a fiscal device and fiscalises an invoice through the sandbox gateway. Does not call ZIMRA."
+capabilities:
+  - id: list_fiscal_devices
+    description: "List fiscal devices for this tenant"
+  - id: register_fiscal_device
+    description: "Register a fiscal device record"
+  - id: fiscalise_invoice_sandbox
+    description: "Fiscalise an invoice with the sandbox driver"

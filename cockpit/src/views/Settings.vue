@@ -25,6 +25,13 @@
       </div>
 
       <div class="p-6">
+        <div v-if="activeTab === 'appearance'" class="space-y-4 max-w-3xl">
+          <p class="text-sm" style="color: var(--text-secondary);">
+            Midnight Harbour and Copper Ledger remember their own light or dark mode. Solarpunk stays sunlit.
+          </p>
+          <AppearancePicker variant="settings" />
+        </div>
+
         <!-- General Settings -->
         <div v-if="activeTab === 'general'" class="space-y-6 max-w-lg">
           <div>
@@ -195,15 +202,17 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import AppearancePicker from '../components/AppearancePicker.vue'
 
 const tabs = [
+  { id: 'appearance', name: 'Appearance' },
   { id: 'general', name: 'General' },
   { id: 'notifications', name: 'Notifications' },
   { id: 'security', name: 'Security' },
   { id: 'api', name: 'API & Webhooks' }
 ]
 
-const activeTab = ref('general')
+const activeTab = ref('appearance')
 const isSaving = ref(false)
 const saveMessage = ref(null)
 

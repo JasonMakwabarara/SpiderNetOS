@@ -1,0 +1,17 @@
+chains:
+  - id: fiscal_submission
+    namespace: pack.zimra-fiscalisation
+    states: [pending, accepted, failed]
+    transitions:
+      - event: fiscal.submission.started
+        from: null
+        to: pending
+      - event: fiscal.submission.succeeded
+        from: pending
+        to: accepted
+      - event: fiscal.submission.failed
+        from: pending
+        to: failed
+      - event: fiscal.submission.started
+        from: failed
+        to: pending

@@ -76,7 +76,7 @@
       <svg
         v-if="series.length"
         :viewBox="`0 0 ${spark.w} ${spark.h}`"
-        class="w-full"
+        class="sn-chart w-full"
         :style="`height: ${spark.h}px;`"
         role="img"
         aria-label="30-day cost sparkline"
@@ -84,7 +84,7 @@
         <!-- Grid -->
         <g v-for="(y, i) in spark.gridY" :key="`gy-${i}`">
           <line :x1="spark.padX" :x2="spark.w - spark.padX" :y1="y" :y2="y"
-                :stroke="i === spark.gridY.length - 1 ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)'"
+                :stroke="i === spark.gridY.length - 1 ? 'var(--color-border-strong)' : 'var(--color-border-default)'"
                 stroke-width="1" />
         </g>
         <!-- Area fill -->
@@ -93,11 +93,11 @@
         <path :d="spark.linePath" fill="none" stroke="var(--accent)" stroke-width="1.6" />
         <!-- Last point -->
         <circle :cx="spark.lastX" :cy="spark.lastY" r="3" fill="var(--accent)" />
-        <circle :cx="spark.lastX" :cy="spark.lastY" r="6" fill="rgba(0,229,200,0.20)" />
+        <circle :cx="spark.lastX" :cy="spark.lastY" r="6" fill="color-mix(in srgb, var(--color-accent-primary) 22%, transparent)" />
         <!-- Hover -->
         <g v-if="hoverIdx >= 0">
           <line :x1="hoverX" :x2="hoverX" :y1="spark.padY" :y2="spark.h - spark.padY"
-                stroke="rgba(0,229,200,0.5)" stroke-width="1" stroke-dasharray="2 2"/>
+                stroke="color-mix(in srgb, var(--color-accent-primary) 50%, transparent)" stroke-width="1" stroke-dasharray="2 2"/>
           <circle :cx="hoverX" :cy="hoverY" r="3" fill="var(--accent)" />
         </g>
         <!-- X labels -->
@@ -110,8 +110,8 @@
               @mousemove="onSparkHover" @mouseleave="hoverIdx = -1"/>
         <defs>
           <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="rgba(0,229,200,0.28)"/>
-            <stop offset="100%" stop-color="rgba(0,229,200,0)"/>
+            <stop offset="0%" stop-color="var(--color-meter-fill)" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="var(--color-meter-fill)" stop-opacity="0"/>
           </linearGradient>
         </defs>
       </svg>
@@ -154,6 +154,7 @@
               class="h-4 rounded-sm cursor-default"
               :style="`background: ${heatColor(cell.norm)};`"
               :title="cell.title"
+              :aria-label="cell.title"
               :data-testid="`heat-${cell.key}`"
             ></div>
           </div>
@@ -342,10 +343,9 @@ const heatLegend = computed(() => [0.05, 0.25, 0.5, 0.75, 1.0])
 
 function heatColor(norm) {
   if (norm == null) return 'transparent'
-  if (norm <= 0.04) return 'rgba(255,255,255,0.05)'
-  // Cyan ramp from accent at 0.15 alpha → 1.0 alpha
-  const a = 0.15 + norm * 0.85
-  return `rgba(0,229,200,${a.toFixed(2)})`
+  if (norm <= 0.04) return 'var(--color-meter-track)'
+  const pct = Math.round((0.18 + norm * 0.82) * 100)
+  return `color-mix(in srgb, var(--color-meter-fill) ${pct}%, transparent)`
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
