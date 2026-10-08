@@ -109,7 +109,7 @@ final class SkillCard
             coreAgent: (string) ($card['core_agent'] ?? ''),
             runsOn: (string) ($card['runs_on'] ?? ''),
             mode: (string) ($card['mode'] ?? 'single_shot'),
-            packId: isset($card['pack_id']) && $card['pack_id'] !== null ? (string) $card['pack_id'] : null,
+            packId: isset($card['pack_id']) ? (string) $card['pack_id'] : null,
             brain: self::normaliseBrain((array) ($card['brain'] ?? []), $keyResolver),
             tools: array_values(array_map('strval', (array) ($card['tools'] ?? []))),
             inputs: (array) ($card['inputs'] ?? ['type' => 'object']),

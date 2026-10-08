@@ -156,8 +156,8 @@ class CostGovernor
         if (! $budget) {
             // Default budget from environment
             return [
-                'daily_limit' => (float) env('COST_CEILING_DEFAULT', 10.00),
-                'monthly_limit' => (float) env('COST_CEILING_DEFAULT', 10.00) * 10,
+                'daily_limit' => (float) config('services.cost_governor.default_ceiling'),
+                'monthly_limit' => (float) config('services.cost_governor.default_ceiling') * 10,
                 'alert_threshold' => 0.80,
                 'action_at_limit' => 'block',
             ];

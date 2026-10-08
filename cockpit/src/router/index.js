@@ -2,22 +2,22 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
 // ---------------------------------------------------------------------------
-// Eagerly-loaded user views (existing)
+// Eagerly-loaded entry views: the first screens after load
 // ---------------------------------------------------------------------------
 import Dashboard    from '../views/Dashboard.vue'
-import Agents       from '../views/Agents.vue'
-import Flows        from '../views/Flows.vue'
-import FlowBuilder  from '../views/FlowBuilder.vue'
-import Memory       from '../views/Memory.vue'
-import Usage        from '../views/Usage.vue'
-import Settings     from '../views/Settings.vue'
 import Login        from '../views/Login.vue'
-import Atlas        from '../views/Atlas.vue'
-import Approvals    from '../views/Approvals.vue'
-import Traces       from '../views/Traces.vue'
-import Intelligence from '../views/Intelligence.vue'
 
 // Lazy user views
+const Agents        = () => import('../views/Agents.vue')
+const Flows         = () => import('../views/Flows.vue')
+const FlowBuilder   = () => import('../views/FlowBuilder.vue')
+const Memory        = () => import('../views/Memory.vue')
+const Usage         = () => import('../views/Usage.vue')
+const Settings      = () => import('../views/Settings.vue')
+const Atlas         = () => import('../views/Atlas.vue')
+const Approvals     = () => import('../views/Approvals.vue')
+const Traces        = () => import('../views/Traces.vue')
+const Intelligence  = () => import('../views/Intelligence.vue')
 const AgentBuilder  = () => import('../views/AgentBuilder.vue')
 const Billing       = () => import('../views/Billing.vue')
 const Outcomes      = () => import('../views/Outcomes.vue')
@@ -176,13 +176,8 @@ const routes = [
   { path: '/financial/accounting/export', name: 'ExportCenter',       component: ExportCenter,       meta: { requiresAuth: true, capability: 'accounting.manage' } },
   { path: '/financial/spend',             name: 'SpendAnalytics',     component: SpendAnalytics,     meta: { requiresAuth: true, capability: 'finance.view' } },
 
-  { path: '/operations/attendance', name: 'OperationsAttendance', component: () => import('../views/operations/Attendance.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/requisitions', name: 'OperationsRequisitions', component: () => import('../views/operations/Requisitions.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/procurement', name: 'OperationsProcurement', component: () => import('../views/operations/Procurement.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/assets', name: 'OperationsAssets', component: () => import('../views/operations/Assets.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/cash', name: 'OperationsCash', component: () => import('../views/operations/Cash.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/billing', name: 'OperationsBilling', component: () => import('../views/operations/Billing.vue'), meta: { requiresAuth: true } },
-  { path: '/operations/fiscal', name: 'OperationsFiscal', component: () => import('../views/operations/Fiscal.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/attendance', name: 'OperationsAttendance', component: () => import('../views/operations/Attendance.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/assets', name: 'OperationsAssets', component: () => import('../views/operations/Assets.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
 
   // ---------------- ADMIN SPACE ----------------
   {

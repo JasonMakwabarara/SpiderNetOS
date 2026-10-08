@@ -24,6 +24,7 @@ class RequisitionLine extends Model
         'unit_price' => 'decimal:4',
     ];
 
+    /** @return BelongsTo<Requisition, $this> */
     public function requisition(): BelongsTo
     {
         return $this->belongsTo(Requisition::class);

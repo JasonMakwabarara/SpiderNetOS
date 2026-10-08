@@ -3,10 +3,9 @@ Unit tests for inference/doctor.py. httpx is mocked with MockTransport — no ne
 """
 import json
 
+import doctor
 import httpx
 import pytest
-
-import doctor
 from doctor import (
     FAIL,
     PASS,

@@ -23,6 +23,7 @@ return [
             'api_base' => 'https://api.twilio.com/2010-04-01',
             'webhook_url' => env('TWILIO_WEBHOOK_URL', 'https://your-domain.com/voice/inbound'),
             'status_callback' => env('TWILIO_STATUS_CALLBACK', 'https://your-domain.com/voice/status'),
+            'skip_signature_verify' => filter_var(env('TWILIO_SKIP_SIGNATURE_VERIFY', false), FILTER_VALIDATE_BOOLEAN),
         ],
         'signalwire' => [
             'project_id' => env('SIGNALWIRE_PROJECT_ID', ''),

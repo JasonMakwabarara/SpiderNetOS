@@ -8,9 +8,9 @@ use App\Models\Concerns\TenantScoped;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class DocumentSequence extends Model
+class JobDescriptionTemplate extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['tenant_id', 'sequence_type', 'next_number'];
+    protected $fillable = ['tenant_id', 'title_key', 'body'];
 }

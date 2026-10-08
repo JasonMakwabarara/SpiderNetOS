@@ -11,6 +11,7 @@ use App\Models\TenantAgentState;
 use App\Models\TenantSkill;
 use App\Services\EventStore;
 use App\Services\Notifications\NotificationService;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -213,7 +214,7 @@ class AgentCircuitBreaker
     //  Tripwires
     // ------------------------------------------------------------------ //
 
-    private function consecutiveRejections(string $tenantId, string $skillSlug, int $n, ?Carbon $since): ?string
+    private function consecutiveRejections(string $tenantId, string $skillSlug, int $n, ?CarbonInterface $since): ?string
     {
         if ($n <= 0 || ! self::hasTable('approvals')) {
             return null;
@@ -254,7 +255,7 @@ class AgentCircuitBreaker
         return null;
     }
 
-    private function validatorRejectRate(string $tenantId, string $skillSlug, float $rate, int $window, ?Carbon $since): ?string
+    private function validatorRejectRate(string $tenantId, string $skillSlug, float $rate, int $window, ?CarbonInterface $since): ?string
     {
         if ($window <= 0 || ! self::hasTable('agent_runs') || ! self::hasTable('agent_run_steps')) {
             return null;

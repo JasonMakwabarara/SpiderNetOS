@@ -16,13 +16,10 @@ from pathlib import Path
 from typing import Callable, Mapping, Optional, Sequence
 
 import httpx
+import tts_providers
 from config import OLLAMA_URL
 from fastapi import HTTPException
 from pydantic import BaseModel
-
-import tts_providers
-from config import OLLAMA_URL, DEFAULT_COST_CEILING
-
 
 # ─── Request/Response Models ─────────────────────────────────────────────────
 
@@ -140,7 +137,7 @@ class SpeechService:
                 path=self.personas_path,
             )
         except tts_providers.NoPersonaConfigured as exc:
-            raise HTTPException(status_code=503, detail=str(exc))
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         if chain and persona["provider"] != chain[0]:
             raise HTTPException(status_code=400, detail=f"persona provider {persona['provider']} is not {chain[0]}")
         if persona["provider"] == "piper" and request.speed != 1.0 and not persona.get("rate"):
@@ -149,7 +146,7 @@ class SpeechService:
         try:
             result = await asyncio.to_thread(self._synthesize_sync, request.text, persona, chain)
         except tts_providers.SynthesisFailed as exc:
-            raise HTTPException(status_code=502, detail={"message": str(exc), "attempts": exc.attempts})
+            raise HTTPException(status_code=502, detail={"message": str(exc), "attempts": exc.attempts}) from exc
 
         speed = request.speed if result.provider == "piper" and request.speed > 0 else 1.0
         return TTSResponse(

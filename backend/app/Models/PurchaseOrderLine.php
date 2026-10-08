@@ -24,6 +24,7 @@ class PurchaseOrderLine extends Model
         'unit_price' => 'decimal:4',
     ];
 
+    /** @return BelongsTo<PurchaseOrder, $this> */
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);

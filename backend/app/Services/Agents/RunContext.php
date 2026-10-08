@@ -101,7 +101,7 @@ final class RunContext
      */
     public static function allowlistFor(SkillCardView $card, ?TenantSkill $tenantSkill): array
     {
-        $overrides = (array) ($tenantSkill?->tool_overrides ?? []);
+        $overrides = (array) ($tenantSkill->tool_overrides ?? []);
         $allow = array_map('strval', (array) ($overrides['allow'] ?? []));
         $deny = array_map('strval', (array) ($overrides['deny'] ?? []));
 

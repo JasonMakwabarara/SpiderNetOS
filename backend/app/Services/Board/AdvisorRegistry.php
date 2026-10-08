@@ -277,18 +277,16 @@ class AdvisorRegistry
             'inspired_by' => isset($front['inspired_by']) ? (string) $front['inspired_by'] : null,
             'extends' => isset($front['extends']) ? (string) $front['extends'] : null,
             'tenant_visible' => (bool) ($front['tenant_visible'] ?? true),
-            'requires_flag' => isset($front['requires_flag']) && $front['requires_flag'] !== null
-                ? (string) $front['requires_flag'] : null,
+            'requires_flag' => isset($front['requires_flag']) ? (string) $front['requires_flag'] : null,
             'order' => (int) ($front['order'] ?? 999),
-            'voice_persona' => isset($front['voice_persona']) && $front['voice_persona'] !== null
-                ? (string) $front['voice_persona'] : null,
+            'voice_persona' => isset($front['voice_persona']) ? (string) $front['voice_persona'] : null,
             'brain_scopes' => array_values(array_map('strval', (array) ($front['brain_scopes'] ?? []))),
             'stance_priors' => array_values(array_map('strval', (array) ($front['stance_priors'] ?? []))),
             'question_style' => array_values(array_map('strval', (array) ($front['question_style'] ?? []))),
             'kill_criteria_style' => (string) ($front['kill_criteria_style'] ?? ''),
             // Names and phrases that must not survive into an anonymised round.
             'redact_terms' => array_values(array_map('strval', (array) ($front['redact_terms'] ?? []))),
-            'body' => trim((string) ($parts[2] ?? '')),
+            'body' => trim($parts[2]),
             'path' => $path,
         ];
     }

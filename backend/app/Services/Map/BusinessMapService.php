@@ -202,7 +202,7 @@ final class BusinessMapService
                 'name' => (string) $skill->name,
                 'pillar' => (string) $skill->pillar,
                 'node_id' => $this->skillNodeId($skill),
-                'enabled' => (bool) ($row?->enabled ?? false),
+                'enabled' => (bool) ($row->enabled ?? false),
                 'stage' => $this->stageOf($skill, $row),
             ];
         }
@@ -297,7 +297,7 @@ final class BusinessMapService
             foreach ($node['skill_slugs'] as $slug) {
                 $skill = $skills->get($slug);
                 $row = $tenantSkills->get($slug);
-                $enabled = (bool) ($row?->enabled ?? false);
+                $enabled = (bool) ($row->enabled ?? false);
                 $stage = $this->stageOf($skill, $row);
 
                 $files = $brainOn ? ($brainCache[$slug] ??= $this->brainFiles($tenantId, $skill)) : [];
@@ -555,7 +555,7 @@ final class BusinessMapService
             ->value('name');
 
         return [
-            'name' => (string) ($tenant?->name ?? 'Your business'),
+            'name' => (string) ($tenant->name ?? 'Your business'),
             'three_brains' => [
                 'knowledge' => $this->knowledge($tenantId, $brainOn),
                 'operating' => [
@@ -564,7 +564,7 @@ final class BusinessMapService
                 ],
                 'learning' => $this->learning($tenantId),
             ],
-            'owner' => ['name' => (string) ($owner ?? $viewer?->name ?? '')],
+            'owner' => ['name' => (string) ($owner ?? $viewer->name ?? '')],
         ];
     }
 
@@ -703,7 +703,7 @@ final class BusinessMapService
 
     private function stageOf(Skill $skill, ?TenantSkill $row): string
     {
-        return (string) ($row?->autonomy_level
+        return (string) ($row->autonomy_level
             ?? (($skill->card ?? [])['pipeline']['default_level'] ?? null)
             ?? TenantSkill::AUTONOMY_HUMAN_LED);
     }

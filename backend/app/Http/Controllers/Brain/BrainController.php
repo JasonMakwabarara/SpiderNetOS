@@ -127,7 +127,7 @@ class BrainController extends Controller
         $existing = $this->store->read($tenantId, $path);
         $existed = $existing !== null;
         // PUT without a `frontmatter` key keeps the structured facts as they are.
-        $frontmatter = $request->has('frontmatter') ? $request->frontmatterInput() : (array) ($existing?->frontmatter ?? []);
+        $frontmatter = $request->has('frontmatter') ? $request->frontmatterInput() : (array) ($existing->frontmatter ?? []);
 
         try {
             $file = $this->store->write(
@@ -396,7 +396,7 @@ class BrainController extends Controller
     {
         $tenant = $request->attributes->get('tenant');
 
-        return (string) ($tenant?->id ?? $request->attributes->get('tenant_id'));
+        return (string) ($tenant->id ?? $request->attributes->get('tenant_id'));
     }
 
     private function gate(string $tenantId): ?JsonResponse

@@ -211,7 +211,7 @@ class RevisionRecorder
     private function links(string $text): array
     {
         preg_match_all(self::URL_PATTERN, $text, $m);
-        $urls = array_map(fn (string $u): string => strtolower(rtrim($u, '.,;:!?)')), $m[0] ?? []);
+        $urls = array_map(fn (string $u): string => strtolower(rtrim($u, '.,;:!?)')), $m[0]);
         $urls = array_values(array_unique($urls));
         sort($urls);
 
@@ -223,10 +223,10 @@ class RevisionRecorder
     {
         $text = (string) preg_replace(self::URL_PATTERN, ' ', $text);
         preg_match_all(self::NUMBER_PATTERN, $text, $m);
-        $nums = array_map(fn (string $n): string => strtolower(str_replace(',', '', $n)), $m[0] ?? []);
+        $nums = array_map(fn (string $n): string => strtolower(str_replace(',', '', $n)), $m[0]);
         sort($nums);
 
-        return array_values($nums);
+        return $nums;
     }
 
     private function lengthChanged(string $a, string $b): bool
@@ -249,7 +249,7 @@ class RevisionRecorder
 
         return [
             'questions' => substr_count($lower, '?'),
-            'cta' => count($m[0] ?? []) > 0,
+            'cta' => count($m[0]) > 0,
         ];
     }
 

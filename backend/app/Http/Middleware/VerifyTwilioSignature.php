@@ -76,7 +76,7 @@ class VerifyTwilioSignature
             return true;
         }
 
-        return filter_var(env('TWILIO_SKIP_SIGNATURE_VERIFY', false), FILTER_VALIDATE_BOOLEAN);
+        return (bool) config('telephony.providers.twilio.skip_signature_verify', false);
     }
 
     /**

@@ -27,4 +27,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](@vue|vue|vue-router|pinia|axios)[\\/]/.test(id)) {
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
 })

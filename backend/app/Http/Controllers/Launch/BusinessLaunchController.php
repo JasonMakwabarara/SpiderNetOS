@@ -225,7 +225,7 @@ class BusinessLaunchController extends Controller
     {
         $tenant = $request->attributes->get('tenant');
 
-        return (string) ($tenant?->id ?? $request->attributes->get('tenant_id'));
+        return (string) ($tenant->id ?? $request->attributes->get('tenant_id'));
     }
 
     private function gate(Request $request): ?JsonResponse

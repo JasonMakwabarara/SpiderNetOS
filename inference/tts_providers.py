@@ -604,11 +604,11 @@ _ELEVENLABS_OUTPUT_FORMAT_RE = re.compile(r"^(mp3|pcm|ulaw|alaw|opus)_\d+(_\d+)?
 _NO_PERSONA_HINT = "send a persona, or set VOICE_DEFAULT_PERSONA to a slug in voice_personas.yaml"
 
 
-class NoPersonaConfigured(RuntimeError):
+class NoPersonaConfigured(RuntimeError):  # noqa: N818 - the name is the condition callers branch on
     """Nothing says which voice to speak with (maps to HTTP 503 "no TTS persona configured")."""
 
 
-class SynthesisFailed(RuntimeError):
+class SynthesisFailed(RuntimeError):  # noqa: N818 - the name is the condition callers branch on
     """Every provider in the chain was unavailable or failed; `attempts` lists why, per provider."""
 
     def __init__(self, attempts: list[dict]) -> None:

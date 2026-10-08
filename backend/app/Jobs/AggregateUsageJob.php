@@ -101,7 +101,7 @@ class AggregateUsageJob implements ShouldQueue
         // 2. Tenant's current daily cost ceiling (for the cost_ceiling column)
         $costCeiling = (float) DB::table('cost_budgets')
             ->where('tenant_id', $tenantId)
-            ->value('daily_limit') ?: (float) env('COST_CEILING_DEFAULT', 10.00);
+            ->value('daily_limit') ?: (float) config('services.cost_governor.default_ceiling');
 
         // 3. Per-resource-type breakdown from event_log using Postgres jsonb operators
         $breakdown = DB::table('event_log')

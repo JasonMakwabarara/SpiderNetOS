@@ -43,7 +43,7 @@ class SkillsController extends Controller
         if (! empty($validated['pillar'])) {
             $entries = array_values(array_filter($entries, fn (array $e) => $e['pillar'] === $validated['pillar']));
         }
-        if (isset($validated['enabled']) && $validated['enabled'] !== null && $validated['enabled'] !== '') {
+        if (isset($validated['enabled']) && $validated['enabled'] !== '') {
             $wanted = in_array($validated['enabled'], ['1', 'true', true], true);
             $entries = array_values(array_filter($entries, fn (array $e) => $e['enabled'] === $wanted));
         }
@@ -154,7 +154,7 @@ class SkillsController extends Controller
         if ($stage === TenantSkill::AUTONOMY_AUTONOMOUS) {
             /** @var Tenant|null $tenant */
             $tenant = $request->attributes->get('tenant') ?? Tenant::find($tenantId);
-            $tenantLevel = (string) ($tenant?->automation_level ?? 'manual');
+            $tenantLevel = (string) ($tenant->automation_level ?? 'manual');
             if ($tenantLevel === 'manual') {
                 return response()->json([
                     'message' => 'Your workspace automation level is manual; raise it in Settings before any skill can run autonomously.',

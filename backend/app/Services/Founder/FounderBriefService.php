@@ -12,6 +12,7 @@ use App\Models\ConversationMessage;
 use App\Models\Tenant;
 use App\Services\AtlasDiscoveryService;
 use App\Services\Notifications\NotificationService;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -120,7 +121,7 @@ class FounderBriefService
 
     public static function timezoneOf(?Tenant $tenant): string
     {
-        $settings = (array) ($tenant?->settings ?? []);
+        $settings = (array) ($tenant->settings ?? []);
         $zone = (string) (($settings['timezone'] ?? null) ?: (($settings['outreach']['sending']['timezone'] ?? null) ?: 'UTC'));
         try {
             new \DateTimeZone($zone);
@@ -217,8 +218,8 @@ class FounderBriefService
             return [];
         }
 
-        $path = (string) ($gap['path'] ?? '');
-        $section = (string) ($gap['section'] ?? '');
+        $path = $gap['path'];
+        $section = $gap['section'];
 
         return [$this->item(
             kind: 'brain_gap',
@@ -372,9 +373,6 @@ class FounderBriefService
     /** @return array<string, mixed>|null */
     private function oneMoreQuestion(string $tenantId): ?array
     {
-        if (! method_exists($this->discovery, 'oneMoreQuestion')) {
-            return null;
-        }
         try {
             $q = $this->discovery->oneMoreQuestion($tenantId, null, null, '', null);
 
@@ -403,7 +401,7 @@ class FounderBriefService
                 if (! empty($item['age'])) {
                     $meta[] = $item['age'];
                 }
-                if (isset($item['money']) && $item['money'] !== null) {
+                if (isset($item['money'])) {
                     $meta[] = self::money((float) $item['money']);
                 }
                 $lines[] = sprintf(
@@ -470,7 +468,7 @@ class FounderBriefService
         string $detail,
         array $action,
         float $score,
-        ?Carbon $at,
+        ?CarbonInterface $at,
         Carbon $now,
         ?float $money = null,
         array $extra = [],
@@ -489,7 +487,7 @@ class FounderBriefService
         ] + $extra;
     }
 
-    public static function age(Carbon $at, Carbon $now): string
+    public static function age(CarbonInterface $at, CarbonInterface $now): string
     {
         // Carbon 3 diffs are signed floats: $at (past) → $now is positive.
         $minutes = (int) floor(max(0.0, (float) $at->diffInMinutes($now)));

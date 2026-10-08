@@ -191,7 +191,7 @@ class SkillInstaller
         }
         $roots = [
             storage_path('app/feature-packs/'.$packId),
-            rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/').'/'.$packId,
+            rtrim((string) config('feature_packs.root'), '/').'/'.$packId,
         ];
         $candidates = array_unique([$identityKey, Str::slug($identityKey), Str::slug($identityKey, '_')]);
         foreach ($roots as $root) {

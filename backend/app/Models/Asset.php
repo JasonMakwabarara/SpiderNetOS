@@ -13,10 +13,29 @@ class Asset extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['tenant_id', 'tag', 'name', 'status'];
+    protected $fillable = [
+        'tenant_id', 'tag', 'name', 'status',
+        'acquired_on', 'cost', 'residual_value', 'useful_life_months', 'depreciation_method',
+    ];
 
+    protected function casts(): array
+    {
+        return [
+            'acquired_on' => 'date',
+            'cost' => 'decimal:4',
+            'residual_value' => 'decimal:4',
+        ];
+    }
+
+    /** @return HasMany<AssetAssignment, $this> */
     public function assignments(): HasMany
     {
         return $this->hasMany(AssetAssignment::class);
+    }
+
+    /** @return HasMany<DepreciationEntry, $this> */
+    public function depreciationEntries(): HasMany
+    {
+        return $this->hasMany(DepreciationEntry::class);
     }
 }

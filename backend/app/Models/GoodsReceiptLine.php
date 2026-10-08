@@ -22,11 +22,13 @@ class GoodsReceiptLine extends Model
         'quantity' => 'decimal:4',
     ];
 
+    /** @return BelongsTo<GoodsReceipt, $this> */
     public function receipt(): BelongsTo
     {
         return $this->belongsTo(GoodsReceipt::class, 'goods_receipt_id');
     }
 
+    /** @return BelongsTo<PurchaseOrderLine, $this> */
     public function purchaseOrderLine(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrderLine::class);

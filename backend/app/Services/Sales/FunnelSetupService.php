@@ -761,14 +761,6 @@ class FunnelSetupService
         return $this->packRunner()->loadPackFile($relativePath);
     }
 
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function findQuestion(array $questions, string $questionId): ?array
-    {
-        return $this->packRunner()->findQuestion($questions, $questionId);
-    }
-
     /** The interview runner bound to one funnel setup's answers. */
     private function runner(FunnelSetup $setup): InterviewRunner
     {

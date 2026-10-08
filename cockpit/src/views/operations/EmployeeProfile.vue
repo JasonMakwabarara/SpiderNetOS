@@ -40,6 +40,16 @@
         </label>
         <button class="dct-btn-primary px-4 py-2 text-sm w-fit" data-testid="employee-save">Save</button>
       </form>
+      <form class="flex flex-wrap gap-2 border-t pt-3" @submit.prevent="saveContract">
+        <input v-model="contract.starts_on" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="contract-start" />
+        <input v-model="contract.pay_amount" type="number" min="0.01" step="0.01" required class="px-3 py-2 rounded border" :style="field" data-testid="contract-pay" />
+        <select v-model="contract.pay_period" class="px-3 py-2 rounded border" :style="field" data-testid="contract-period">
+          <option value="month">Month</option>
+          <option value="hour">Hour</option>
+        </select>
+        <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="contract-save">Activate contract</button>
+      </form>
+      <p v-if="contractStatus" class="text-sm" data-testid="contract-status" :style="{ color: 'var(--text-secondary)' }">{{ contractStatus }}</p>
       <form v-if="employee.status === 'active'" class="grid gap-3 md:grid-cols-3 border-t pt-3" @submit.prevent="deactivate">
         <input v-model="deactivation.inactive_from" type="date" class="px-3 py-2 rounded border" :style="field" data-testid="deactivate-date" />
         <input v-model="deactivation.reason" placeholder="Reason" class="px-3 py-2 rounded border" :style="field" data-testid="deactivate-reason" />
@@ -47,16 +57,39 @@
       </form>
     </section>
 
-    <section v-else-if="active === 'attendance'" class="space-y-2" data-testid="panel-attendance">
-      <p class="text-sm" :style="{ color: 'var(--text-muted)' }">Hours and punctuality are not calculated yet. These are the recorded clock events.</p>
-      <p v-for="event in attendance" :key="event.id" class="text-sm" :style="{ color: 'var(--text-primary)' }">
+    <section v-else-if="active === 'attendance'" class="space-y-3" data-testid="panel-attendance">
+      <p v-if="workforceError" class="text-sm" data-testid="workforce-error" :style="{ color: 'var(--text-secondary)' }">{{ workforceError }}</p>
+      <div class="flex flex-wrap gap-2">
+        <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="clock-in" @click="clock('in')">Clock in</button>
+        <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="clock-out" @click="clock('out')">Clock out</button>
+        <input v-model="workDate" type="date" class="px-3 py-2 rounded border" :style="field" data-testid="close-date" />
+        <button class="dct-btn-primary px-3 py-2 text-sm" data-testid="close-day" @click="closeDay">Close day</button>
+        <button class="px-3 py-2 text-sm rounded border" :style="field" data-testid="shift-day" @click="useDayShift">Assign day shift</button>
+      </div>
+      <p v-for="day in attendanceDays" :key="day.id" class="text-sm" data-testid="attendance-day" :style="{ color: 'var(--text-primary)' }">
+        {{ String(day.work_date).slice(0, 10) }} · {{ day.punctuality }} · {{ day.minutes }} minutes
+      </p>
+      <p v-for="event in attendance" :key="event.id" class="text-sm" :style="{ color: 'var(--text-muted)' }">
         {{ formatWhen(event.recorded_at) }} {{ event.type.toUpperCase() }}
       </p>
       <p v-if="!attendance.length" class="text-sm" :style="{ color: 'var(--text-muted)' }">No clock events recorded.</p>
     </section>
 
-    <section v-else-if="active === 'leave'" data-testid="panel-leave">
-      <p class="text-sm" :style="{ color: 'var(--text-muted)' }">Not yet available. Leave requests, balances and approvals will be available in the HR workflow expansion.</p>
+    <section v-else-if="active === 'leave'" class="space-y-3" data-testid="panel-leave">
+      <p v-if="workforceError" class="text-sm" data-testid="workforce-error" :style="{ color: 'var(--text-secondary)' }">{{ workforceError }}</p>
+      <form class="flex flex-wrap gap-2" @submit.prevent="requestLeave">
+        <select v-model="leave.leave_type" class="px-3 py-2 rounded border" :style="field" data-testid="leave-type">
+          <option value="annual">Annual</option>
+          <option value="sick">Sick</option>
+          <option value="unpaid">Unpaid</option>
+        </select>
+        <input v-model="leave.starts_on" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="leave-start" />
+        <input v-model="leave.ends_on" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="leave-end" />
+        <button class="dct-btn-primary px-3 py-2 text-sm" data-testid="leave-submit">Request leave</button>
+      </form>
+      <p v-for="row in leaveRows" :key="row.id" class="text-sm" data-testid="leave-row" :style="{ color: 'var(--text-primary)' }">
+        {{ row.leave_type }} · {{ String(row.starts_on).slice(0, 10) }} · {{ row.status }}
+      </p>
     </section>
 
     <section v-else-if="active === 'assets'" class="space-y-2" data-testid="panel-assets">
@@ -93,7 +126,14 @@ const tabs = ['overview', 'attendance', 'leave', 'assets', 'activity']
 const active = ref('overview')
 const employee = ref(null)
 const attendance = ref([])
+const attendanceDays = ref([])
+const leaveRows = ref([])
 const assets = ref([])
+const workforceError = ref('')
+const workDate = ref(new Date().toISOString().slice(0, 10))
+const leave = ref({ leave_type: 'annual', starts_on: '', ends_on: '' })
+const contract = ref({ starts_on: new Date().toISOString().slice(0, 10), pay_amount: 1, pay_period: 'month' })
+const contractStatus = ref('')
 const activity = ref([])
 const departments = ref([])
 const message = ref('')
@@ -121,6 +161,10 @@ async function load() {
   const res = await api.get(`/api/enterprise/employees/${route.params.id}`)
   employee.value = res.data.data
   attendance.value = res.data.attendance || []
+  attendanceDays.value = res.data.attendance_days || []
+  leaveRows.value = res.data.leave || []
+  const openContract = (res.data.contracts || []).find(row => row.status === 'active')
+  contractStatus.value = openContract ? `${openContract.contract_number} · ${openContract.status}` : ''
   assets.value = res.data.assets || []
   activity.value = res.data.activity || []
   fillEdit(employee.value)
@@ -151,6 +195,72 @@ async function deactivate() {
     await load()
   } catch (err) {
     message.value = err.response?.data?.message || 'Could not deactivate the employee.'
+  }
+}
+
+async function saveContract() {
+  message.value = ''
+  try {
+    const created = await api.post(`/api/enterprise/employees/${route.params.id}/contracts`, {
+      starts_on: contract.value.starts_on,
+      pay_amount: Number(contract.value.pay_amount),
+      currency: 'USD',
+      pay_period: contract.value.pay_period,
+    })
+    await api.post(`/api/enterprise/contracts/${created.data.data.id}/activate`)
+    await load()
+  } catch (err) {
+    message.value = err.response?.data?.message || 'Could not activate the contract.'
+  }
+}
+
+async function useDayShift() {
+  workforceError.value = ''
+  try {
+    const shift = await api.post('/api/enterprise/shifts', {
+      name: 'Day',
+      starts_at: '08:00',
+      ends_at: '17:00',
+      grace_minutes: 15,
+    })
+    await api.post(`/api/enterprise/employees/${route.params.id}/shift`, {
+      shift_id: shift.data.data.id,
+      effective_from: workDate.value,
+    })
+    await load()
+  } catch (err) {
+    workforceError.value = err.response?.data?.message || 'Could not assign the shift.'
+  }
+}
+
+async function clock(type) {
+  workforceError.value = ''
+  try {
+    await api.post('/api/enterprise/clock-events', { employee_id: route.params.id, type })
+    await load()
+  } catch (err) {
+    workforceError.value = err.response?.data?.message || 'Could not record the clock event.'
+  }
+}
+
+async function closeDay() {
+  workforceError.value = ''
+  try {
+    await api.post(`/api/enterprise/employees/${route.params.id}/attendance-days`, { work_date: workDate.value })
+    await load()
+  } catch (err) {
+    workforceError.value = err.response?.data?.message || 'Could not close the day.'
+  }
+}
+
+async function requestLeave() {
+  workforceError.value = ''
+  try {
+    const created = await api.post(`/api/enterprise/employees/${route.params.id}/leave`, leave.value)
+    await api.post(`/api/enterprise/leave-requests/${created.data.data.id}/submit`)
+    await load()
+  } catch (err) {
+    workforceError.value = err.response?.data?.message || 'Could not request leave.'
   }
 }
 

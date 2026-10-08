@@ -8,12 +8,14 @@ use App\Exceptions\DomainException;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\HrAuditEntry;
+use App\Models\JobDescriptionTemplate;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\EventStore;
 use App\Services\Financial\DocumentNumberService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class HrService
@@ -68,13 +70,25 @@ class HrService
         return $this->numberingSettings($tenantId);
     }
 
-    public function suggestJobDescription(string $positionTitle): string
+    public function suggestJobDescription(string $tenantId, string $positionTitle): string
     {
         $title = trim($positionTitle);
+        $saved = JobDescriptionTemplate::forTenant($tenantId)
+            ->where('title_key', mb_strtolower($title))
+            ->value('body');
+        if (is_string($saved) && $saved !== '') {
+            return $saved;
+        }
+
         $known = [
             'procurement officer' => 'Responsible for supplier sourcing, quotation comparison, purchase-order administration, procurement documentation, supplier coordination, and compliance with organizational purchasing procedures.',
             'accountant' => 'Responsible for recording transactions, reconciling accounts, preparing management reports, and keeping financial records accurate and complete.',
             'driver' => 'Responsible for safe operation of assigned vehicles, scheduled trips, vehicle condition reporting, and custody of keys and fuel records.',
+            'receptionist' => 'Responsible for receiving visitors, handling incoming calls and messages, keeping the front desk record, and directing people to the right office.',
+            'stores clerk' => 'Responsible for receiving goods, checking quantities against documents, storing stock, and issuing items against authorised requests.',
+            'security officer' => 'Responsible for access control, patrol of the premises, incident recording, and custody of keys issued for the shift.',
+            'human resources officer' => 'Responsible for the employee register, leave records, contract files, and keeping personal records limited to people who need them.',
+            'workshop supervisor' => 'Responsible for assigning workshop tasks, checking completed work, recording tools issued, and reporting equipment that is not fit for use.',
         ];
 
         return $known[strtolower($title)]
@@ -90,7 +104,7 @@ class HrService
                 $number = $this->documentNumbers->nextSerial($tenantId, 'employee', $prefix, $pad);
                 $jobDescription = trim((string) ($data['job_description'] ?? ''));
                 if ($jobDescription === '') {
-                    $jobDescription = $this->suggestJobDescription($data['position_title']);
+                    $jobDescription = $this->suggestJobDescription($tenantId, $data['position_title']);
                 }
 
                 $employee = Employee::create([
@@ -225,7 +239,7 @@ class HrService
             ];
 
             $employee->status = 'inactive';
-            $employee->inactive_from = $from;
+            $employee->inactive_from = Carbon::parse($from);
             $employee->inactive_reason = $reason;
             $employee->save();
 

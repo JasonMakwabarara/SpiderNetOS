@@ -81,7 +81,7 @@ class BackfillUsageAggregates extends Command
 
         $costCeiling = (float) DB::table('cost_budgets')
             ->where('tenant_id', $tenantId)
-            ->value('daily_limit') ?: (float) env('COST_CEILING_DEFAULT', 10.00);
+            ->value('daily_limit') ?: (float) config('services.cost_governor.default_ceiling');
 
         // Iterate each day in the range
         $current = Carbon::parse($from);

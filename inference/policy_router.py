@@ -13,11 +13,11 @@ from config import (
     DEEPSEEK_BASE_URL,
     MODEL_COST_TABLE,
     MODELARK_MODEL_MAP,
-    PROVIDER_PRIORITY,
-    PROVIDER_PRIORITY_DEFAULT,
     OLLAMA_ENABLED,
     OLLAMA_URL,
     OPENAI_API_KEY,
+    PROVIDER_PRIORITY,
+    PROVIDER_PRIORITY_DEFAULT,
 )
 from cost import record_usage
 from metrics import record_failure, record_success

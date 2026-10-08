@@ -108,7 +108,7 @@ class ReceiptHeuristics
         $pool = $boostedOnly !== [] ? $boostedOnly : $candidates;
 
         usort($pool, fn (array $a, array $b) => $b['amount'] <=> $a['amount']);
-        $winner = array_values($pool)[0];
+        $winner = $pool[0];
 
         return [number_format($winner['amount'], 2, '.', ''), $winner['boosted'] ? 0.4 : 0.3];
     }

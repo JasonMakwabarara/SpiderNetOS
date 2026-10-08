@@ -6,6 +6,9 @@ parameters:
     level: 5
     paths:
         - app
+    # Docblock shapes describe intent; code that still guards untrusted
+    # input (JSON columns, card YAML, LLM output) is not "always true".
+    treatPhpDocTypesAsCertain: false
 
     ignoreErrors:
         # minishlink/web-push is deliberately not installed: web push is a

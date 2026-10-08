@@ -70,6 +70,24 @@ class PayablesController extends Controller
         return response()->json(['data' => $note], 201);
     }
 
+    public function storeSalesCreditNote(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => 'required|string|max:1000',
+            'lines' => 'required|array|min:1',
+            'lines.*.invoice_line_item_id' => 'required|uuid',
+            'lines.*.quantity' => 'required|numeric|gt:0',
+        ]);
+        $note = $this->credits->createForSalesInvoice(
+            (string) $request->attributes->get('tenant_id'),
+            $id,
+            $data['lines'],
+            $data['reason'],
+        );
+
+        return response()->json(['data' => $note], 201);
+    }
+
     public function showCreditNote(Request $request, string $id): JsonResponse
     {
         $note = CreditNote::forTenant((string) $request->attributes->get('tenant_id'))

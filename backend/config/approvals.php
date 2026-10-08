@@ -4,6 +4,7 @@ use App\Services\Agents\AgentArtifactApprovals;
 use App\Services\Agents\AgentRunResumer;
 use App\Services\Brain\BrainProposalService;
 use App\Services\Enterprise\RequisitionService;
+use App\Services\Enterprise\WorkforceService;
 use App\Services\Launch\BusinessLaunchService;
 use App\Services\Outreach\Bot\OutreachReplyService;
 
@@ -50,6 +51,10 @@ return [
         // Procurement: approved means approved for buying. The hook does not
         // create a purchase order and does not touch invoices.
         'requisition' => [RequisitionService::class, 'onApprovalResolved'],
+
+        // Leave: approved means the absence is granted. The hook does not
+        // change pay, contracts, or employee status.
+        'leave_request' => [WorkforceService::class, 'onApprovalResolved'],
     ],
 
     /*
@@ -80,6 +85,7 @@ return [
         'agent_tool_call' => 'transactional',  // AgentRunResumer: run state; the resume job is dispatched after commit
         'business_plan' => 'transactional',    // BusinessLaunchService: launch status and events
         'requisition' => 'transactional',      // RequisitionService: status and structural events only
+        'leave_request' => 'transactional',    // WorkforceService: leave status and structural events only
     ],
 
     // A transactional action still failing after this many attempts is failed.

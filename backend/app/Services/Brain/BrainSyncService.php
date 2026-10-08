@@ -251,7 +251,7 @@ final class BrainSyncService
             ['section' => 'Mission', 'key' => 'alignment.mission', 'body' => self::first($al?->mission, $a['mission'] ?? null)],
             ['section' => 'Vision', 'key' => 'alignment.vision', 'body' => self::first($al?->vision, $a['vision'] ?? null)],
             ['section' => '90-day target', 'key' => 'alignment.ninety_day', 'body' => self::first(
-                self::targetsText((array) ($al?->ninety_day_targets ?? [])),
+                self::targetsText((array) ($al->ninety_day_targets ?? [])),
                 $a['ninety_day_target'] ?? null,
             )],
         ]);
@@ -522,7 +522,7 @@ final class BrainSyncService
                 'Email: '.$user->email,
             ])],
             ['section' => 'Goals', 'key' => 'user.goals', 'body' => self::first(
-                self::targetsText((array) ($al?->ninety_day_targets ?? [])),
+                self::targetsText((array) ($al->ninety_day_targets ?? [])),
                 ! empty($a['ninety_day_target']) ? '90-day target: '.$a['ninety_day_target'] : null,
             )],
             ['section' => 'Working rhythm', 'key' => 'user.rhythm', 'body' => self::lines([
@@ -601,7 +601,7 @@ final class BrainSyncService
             }
         }
 
-        $content = $existing?->content ?? $this->template($path, $extraSections, $title);
+        $content = $existing->content ?? $this->template($path, $extraSections, $title);
 
         foreach ($blocks as $block) {
             $inner = $block['body'] !== null ? trim($block['body']) : '';
@@ -614,7 +614,7 @@ final class BrainSyncService
 
         $content = $this->normalizeMissingMarkers($content, $path, $extraSections);
 
-        $merged = array_replace($defaults, (array) ($existing?->frontmatter ?? []), $frontmatter);
+        $merged = array_replace($defaults, (array) ($existing->frontmatter ?? []), $frontmatter);
 
         $before = $existing !== null ? (int) $existing->version : 0;
         $file = $this->store->write(
@@ -706,7 +706,7 @@ final class BrainSyncService
         }
 
         $answers = [];
-        foreach ((array) ($setup?->interview_answers ?? []) as $id => $entry) {
+        foreach ((array) ($setup->interview_answers ?? []) as $id => $entry) {
             $text = is_array($entry) ? ($entry['answer'] ?? null) : $entry;
             if (is_string($text) && trim($text) !== '') {
                 $answers[(string) $id] = trim($text);

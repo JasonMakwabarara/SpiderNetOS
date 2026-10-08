@@ -104,7 +104,7 @@ class AgentsRun extends Command
             $this->line('');
             $this->info('Outputs');
             foreach (['summary', 'sequence_id', 'artifact_id', 'approval_id', 'campaign_key', 'step_count', 'model', 'prompt_version'] as $key) {
-                if (isset($outputs[$key]) && $outputs[$key] !== '' && $outputs[$key] !== null) {
+                if (isset($outputs[$key]) && $outputs[$key] !== '') {
                     $this->line("  {$key}: ".(is_scalar($outputs[$key]) ? (string) $outputs[$key] : json_encode($outputs[$key])));
                 }
             }

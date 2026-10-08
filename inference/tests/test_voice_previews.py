@@ -9,7 +9,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 import voice_previews as vp
 
 CATALOGUE = Path(vp.DEFAULT_PERSONAS_PATH)

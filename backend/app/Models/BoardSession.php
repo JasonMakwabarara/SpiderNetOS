@@ -40,11 +40,13 @@ class BoardSession extends Model
         return $query->where('tenant_id', $tenantId);
     }
 
+    /** @return HasMany<BoardTake, $this> */
     public function takes(): HasMany
     {
         return $this->hasMany(BoardTake::class, 'session_id')->orderBy('round')->orderBy('seat');
     }
 
+    /** @return HasOne<BoardVerdict, $this> */
     public function verdict(): HasOne
     {
         return $this->hasOne(BoardVerdict::class, 'session_id');
