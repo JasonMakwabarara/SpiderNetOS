@@ -13,8 +13,14 @@
       </div>
       <div class="flex items-center space-x-2">
         <span v-if="isTyping" class="text-xs text-indigo-600 font-medium">Processing...</span>
+        <SpeakToggle
+          :enabled="voice.speakEnabled"
+          :blocked="voice.autoplayBlocked"
+          @toggle="onToggleSpeak"
+        />
       </div>
     </div>
+    <p class="sr-only" aria-live="polite" data-testid="atlas-voice-live">{{ voiceAnnouncement }}</p>
 
     <!-- Messages Area -->
     <div ref="messagesContainer" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -54,6 +60,14 @@
               {{ message.role === 'user' ? 'You' : 'Atlas' }}
             </span>
             <span class="text-xs text-gray-400">{{ formatTimestamp(message.timestamp) }}</span>
+            <MessagePlayButton
+              v-if="message.role === 'assistant' && !message.isError && message.id != null"
+              :message-id="message.id"
+              :state="voice.stateFor(message.id)"
+              :blocked="voice.autoplayBlocked && voice.lastAutoSpokenId === message.id"
+              @play="onPlayMessage(message)"
+              @stop="voice.stop()"
+            />
           </div>
 
           <!-- Message content -->
@@ -205,8 +219,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeRouteLeave, matchedRouteKey } from 'vue-router'
 import AtlasCommandInput from './AtlasCommandInput.vue'
+import SpeakToggle from './voice/SpeakToggle.vue'
+import MessagePlayButton from './voice/MessagePlayButton.vue'
+import { useVoiceStore } from '../stores/voice.js'
 
 const props = defineProps({
   messages: {
@@ -260,6 +278,72 @@ function formatTimestamp(ts) {
   if (!ts) return ''
   const date = new Date(ts)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+// ── Atlas voice ─────────────────────────────────────────────────────
+// Speak toggle + per-reply play. Autoplay policy: both handlers call the
+// voice store synchronously from the click so the audio unlock happens
+// inside the gesture. Auto-speak only fires for replies that arrive while
+// this panel is open, the tab is visible, and the reply has finished
+// streaming. Playback stops on route leave, unmount and when the tab hides.
+const voice = useVoiceStore()
+const voiceAction = ref('')
+
+function onToggleSpeak() {
+  const enabling = !voice.speakEnabled
+  voice.toggleSpeak(enabling)
+  voiceAction.value = enabling ? 'Atlas will read new replies aloud.' : 'Atlas stopped reading replies aloud.'
+}
+
+function onPlayMessage(message) {
+  voiceAction.value = ''
+  voice.speak(message.id, message.content, { gesture: true })
+}
+
+const voiceAnnouncement = computed(() => {
+  if (voice.pendingMessageId != null) return 'Atlas is getting ready to speak.'
+  if (voice.playingMessageId != null) return voice.via === 'browser' ? 'Atlas is speaking with the browser voice.' : 'Atlas is speaking.'
+  if (voice.speakEnabled && voice.autoplayBlocked) return 'Your browser blocked audio. Press Tap to hear on the reply.'
+  if (voice.speakError) return voice.speakError
+  return voiceAction.value
+})
+
+const newestMessage = computed(() => props.messages[props.messages.length - 1] || null)
+let seenAtMount = null
+
+function maybeAutoSpeak() {
+  const msg = newestMessage.value
+  if (!msg || msg.id == null || msg.id === seenAtMount) return
+  if (props.isTyping || msg.streaming) return
+  voice.autoSpeak(msg)
+}
+
+watch(
+  () => [newestMessage.value?.id, newestMessage.value?.streaming, props.isTyping],
+  () => maybeAutoSpeak(),
+)
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'hidden') voice.stop()
+}
+
+onMounted(() => {
+  // History already on screen is never read out — only new replies.
+  seenAtMount = newestMessage.value?.id ?? null
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  voice.stop()
+})
+
+// Only register the guard when rendered inside a <RouterView> (the Atlas
+// route); a bare mount (tests, embeds) has no route record to guard.
+if (inject(matchedRouteKey, null)?.value) {
+  onBeforeRouteLeave(() => {
+    voice.stop()
+  })
 }
 
 // Auto-scroll to bottom

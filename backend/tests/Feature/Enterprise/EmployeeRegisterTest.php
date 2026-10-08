@@ -8,7 +8,7 @@ use App\Models\Employee;
 use App\Models\HrAuditEntry;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\DocumentNumberService;
+use App\Services\Financial\DocumentNumberService;
 use App\Support\EmployeeNameBackfill;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -16,13 +16,19 @@ use Illuminate\Support\Str;
 use LogicException;
 use Tests\TestCase;
 
-/**
- * Specimen of the HR register contract. The canonical test and schema live in
- * sn-brain (Financial\DocumentNumberService and document_sequences).
- */
 class EmployeeRegisterTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        $driver = getenv('DB_CONNECTION') ?: ($_ENV['DB_CONNECTION'] ?? 'sqlite');
+        if ($driver !== 'pgsql') {
+            $this->markTestSkipped('Employee register test requires PostgreSQL.');
+        }
+
+        parent::setUp();
+    }
 
     public function test_employee_register_contract(): void
     {
@@ -191,8 +197,8 @@ class EmployeeRegisterTest extends TestCase
 
         $numbers = app(DocumentNumberService::class);
         $this->assertNotSame(
-            $numbers->next($tenant->id, 'employee', 'HT-EMP-', 4),
-            $numbers->next($tenant->id, 'employee', 'HT-EMP-', 4),
+            $numbers->nextSerial($tenant->id, 'employee', 'HT-EMP', 4),
+            $numbers->nextSerial($tenant->id, 'employee', 'HT-EMP', 4),
         );
 
         $entry = HrAuditEntry::query()->where('employee_id', $second['id'])->firstOrFail();

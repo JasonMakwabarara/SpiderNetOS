@@ -1,0 +1,279 @@
+# Follow-up Drafting — Sales · Follow-ups (plan D5 roster: crm "Pipeline" → Nexus)
+# Day 3, no reply: a new angle, never a nudge. The re-pointed target of the live dead-end
+# (ConversationReplyBridgeProjection → sales_crm_crm) in PR 2.
+
+id: follow-up-drafting
+display_name: "Follow-up Drafting"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › Follow-ups"
+core_agent: nexus
+runs_on: crm
+pack_id: sales-crm
+
+intent_keywords:
+  - follow up
+  - follow-up
+  - follow ups
+  - chase
+  - no reply
+  - went quiet
+  - bump
+  - nudge
+  - second email
+  - follow-up cadence
+
+at_a_glance: >-
+  Writes the follow-up that adds something — a case example, an insight, a change in their
+  world — for every thread that went quiet, on the cadence in your follow-up rules, and ends
+  the sequence with a courteous close-out instead of a fourth nudge.
+
+covers: >-
+  Sales › Follow-ups — every touch after the first one that got no answer.
+
+breaks_into:
+  - name: "Silence Finder"
+    does: "Threads with no reply past the cadence in processes/follow-ups.md, grouped by campaign and touch number."
+  - name: "New-angle Writer"
+    does: "Each follow-up carries one new angle: a proof point, an insight about their world, a change since the last touch."
+  - name: "Cadence Keeper"
+    does: "Day 3, day 7, day 14 by default (or your rules); never inside quiet hours; never past the cap."
+  - name: "Close-out Writer"
+    does: "The last touch is a pressure-free close-out that leaves the door open and records the no."
+
+builds_on:
+  - name: "Cold Email Drafting"
+    slug: cold-email-drafting
+    why: "The sequence it continues; same voice, same facts, same links."
+  - name: "Inbox Triage & Reply Classifier"
+    slug: inbox-triage-reply-classifier
+    why: "A follow-up only goes to threads triage says are silent, not to cold or opt-out."
+  - name: "Follow-up rules"
+    ref: "brain:processes/follow-ups.md#Cadence"
+    why: "When, how many times, and when to stop."
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+  - name: "Sequence with intent"
+    ref: "principle:structured-followup-cadence"
+  - name: "Callback laps"
+    ref: "principle:callback-laps"
+
+replaces:
+  - what: "An SDR's follow-up hours"
+    cost: "$2–3k/mo"
+    kind: retainer
+  - what: "A sequencer that sends 'just bumping this' three times"
+    cost: "$50–150/mo per seat"
+    kind: tool
+  - what: "The follow-up that never went out, and the reply it would have earned"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted, autonomous]
+  stage_copy:
+    human_led:
+      summary: "Drafts the follow-ups due today; you send."
+      your_role: "Read the drafts grouped by campaign, send the ones you like, delete the ones you don't — each delete teaches the next batch."
+      atlas_role: "Pipeline (Nexus) finds the silent threads past their cadence and drafts one new-angle follow-up each, then stops."
+      default: true
+    assisted:
+      summary: "Follow-ups wait for one approval per batch; approved ones send on cadence."
+      your_role: "Approve the morning batch. Edit anything that does not sound like you."
+      atlas_role: "Drafts on cadence, bundles the batch into one approval, sends approved follow-ups through the outreach sender with quiet hours and caps."
+    autonomous:
+      summary: "Follow-ups go on cadence; close-outs recorded; you see the numbers."
+      your_role: "Change the cadence or the voice file when the replies tell you to."
+      atlas_role: "Sends new-angle follow-ups on your cadence within the approved frame; any reply drops the thread to Inbox Triage; a bounce spike pauses everything."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "bounce > 5% on 20+ sends"
+      - "opt-out rate > 2% on 50+ follow-ups"
+
+brain:
+  requires:
+    - key: processes.follow_ups
+      path: processes/follow-ups.md
+      sections: ["Cadence"]
+    - key: offer.proof
+      path: offer/offer.md
+      sections: ["Proof"]
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+  reads:
+    - offer/offer.md#Products and services
+    - offer/offer.md#Pricing
+    - brand/voice.md#Do and don't
+    - customers/objections.md
+    - offer/approved-sequences.md
+    - people/user.md#Never say or offer
+    - people/user.md#Working rhythm
+  writes: []
+
+hands_off_to:
+  - type: skill
+    slug: inbox-triage-reply-classifier
+    name: "Inbox Triage & Reply Classifier"
+    when: "The moment a follow-up earns a reply."
+  - type: skill
+    slug: meeting-booking
+    name: "Meeting Booking"
+    when: "A follow-up gets a yes to a time."
+  - type: skill
+    slug: nurture-sequence-runner
+    name: "Nurture Sequence Runner"
+    when: "After the close-out, when the lead is worth a longer rhythm."
+
+one_step_further:
+  summary: >-
+    Beyond today's drafts it proposes the cadence rule itself when the follow-up file is thin,
+    and files the close-outs so the next campaign learns which angle earned the replies.
+  allow_dynamic: true
+  steps:
+    - id: research_before_second_touch
+      label: "Research the silent ones before touch two"
+      does: "Runs Prospect Research Analysis on silent threads so touch two has a real change-in-their-world angle."
+      skill: prospect-research-analysis
+      inputs_from:
+        prospect: outputs.items[0].contact
+      when: on_success
+      risk: read
+      cost_hint_usd: 0.08
+    - id: triage_after_send
+      label: "Triage the replies this batch earns"
+      does: "Runs Inbox Triage on the campaign after the batch goes out."
+      skill: inbox-triage-reply-classifier
+      inputs_from:
+        campaign: inputs.campaign
+      when: on_approval_applied
+      risk: write
+      cost_hint_usd: 0.05
+
+inputs:
+  type: object
+  additionalProperties: false
+  properties:
+    thread_id:
+      type: string
+      title: "Thread"
+      description: "One thread to follow up; leave empty for every thread past its cadence."
+    campaign:
+      type: string
+      title: "Campaign"
+      maxLength: 80
+    segment:
+      type: string
+      title: "Segment"
+      maxLength: 120
+    sequence_id:
+      type: string
+      title: "Sequence"
+      description: "The approved draft_sequence these follow-ups continue."
+    touch:
+      type: integer
+      title: "Touch number"
+      minimum: 2
+      maximum: 6
+      description: "Which follow-up this is (2 = first follow-up). Defaults from the thread."
+    max_drafts:
+      type: integer
+      title: "Max drafts this run"
+      minimum: 1
+      maximum: 50
+      default: 20
+
+outputs:
+  - kind: draft_email
+    primary: true
+    description: "One follow-up per silent thread, each with a new angle; the last one a close-out."
+    key_pattern: "followup.<thread_id>.touch{n}"
+    count: "one per silent thread, up to max_drafts"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [thread_id, touch, angle, subject, body, send_day, is_close_out]
+            properties:
+              thread_id: { type: string, minLength: 1 }
+              contact: { type: string }
+              touch: { type: integer, minimum: 2, maximum: 6 }
+              angle:
+                type: string
+                enum: [case_example, insight, change_in_their_world, question, close_out]
+              subject: { type: string, minLength: 3, maxLength: 80 }
+              body: { type: string, minLength: 30, maxLength: 700 }
+              send_day: { type: integer, minimum: 0, maximum: 60 }
+              is_close_out: { type: boolean }
+              cta: { type: string, maxLength: 160 }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - crm.list_replies
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+  - type: scheduled
+    cron: "0 8 * * 1-5"
+    quiet_day_shift: true
+
+cost_budget:
+  daily_limit_usd: 1.5
+  per_run_usd: 0.20
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=draft_email; batch approval grouped by campaign; max_recipients per batch"
+
+model:
+  heavy: false
+  temperature: 0.5
+  max_tokens: 3000
+  json_mode: true
+
+limits:
+  max_iterations: 8
+  max_tool_calls: 12
+  max_artifacts: 50
+  timeout_seconds: 150
+
+mode: agentic
+
+run:
+  kind: agent
+  entry_path: /skills/follow-up-drafting
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save
+    - drafts.submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.8
+
+tags: [sales, follow-up, outreach, cadence]

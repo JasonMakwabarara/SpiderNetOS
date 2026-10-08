@@ -8,6 +8,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api.js'
+import { useBrainStore } from './brain.js'
 
 export const useAtlasStore = defineStore('atlas', () => {
   // ── State ──────────────────────────────────────────────────────────
@@ -43,6 +44,29 @@ export const useAtlasStore = defineStore('atlas', () => {
 
   /** @type {import('vue').Ref<Array<object>>} Contextual suggestions from Atlas */
   const suggestions = ref([])
+
+  /**
+   * "One step further" (plan D8): the context thread this conversation is
+   * answering. Sent back as `thread_id` so Atlas can tie an answer to the
+   * question it asked.
+   * @type {import('vue').Ref<string|null>}
+   */
+  const threadId = ref(null)
+
+  /**
+   * `metadata.launch` from the business-launch interview (plan D7 §5):
+   * { id, status, stage, stage_title, next_question, now_filling,
+   *   progress_pct, jurisdiction, jurisdictions, stages, deliverables }.
+   * @type {import('vue').Ref<object|null>}
+   */
+  const launch = ref(null)
+
+  /**
+   * `metadata.brain` — BrainGapAnalyzer::readiness for this tenant, mirrored
+   * into the brain store so the readiness rows update as answers land.
+   * @type {import('vue').Ref<{pct: number, files: Array<object>}|null>}
+   */
+  const brainReadiness = ref(null)
 
   // AST / context state (carried over from v3.1)
   const commandAst = ref(null)
@@ -119,7 +143,13 @@ export const useAtlasStore = defineStore('atlas', () => {
     return parts.join('') || contract.action_summary || 'Done.'
   }
 
-  async function sendMessage(text) {
+  /**
+   * @param {string} text
+   * @param {{mode?: string, thread_id?: string|null}} [options]
+   *   `mode` is one of chat | answer | skip | run | launch; `launch` routes
+   *   the turn into the business-launch interview instead of the planner.
+   */
+  async function sendMessage(text, options = {}) {
     if (!text || !text.trim()) return { success: false }
 
     const userMessage = {
@@ -137,6 +167,9 @@ export const useAtlasStore = defineStore('atlas', () => {
         message: text.trim(),
         session_id: currentSessionId.value,
       }
+      if (options.mode) payload.mode = options.mode
+      const thread = options.thread_id ?? threadId.value
+      if (thread) payload.thread_id = thread
       const response = await api.post('/api/atlas/chat', payload)
 
       const data = response.data
@@ -185,6 +218,9 @@ export const useAtlasStore = defineStore('atlas', () => {
           profile_pct: data.message?.metadata?.profile_pct ?? null,
           pending_action: data.message?.metadata?.pending_action || data.pending_action || null,
           status: data.message?.metadata?.status || null,
+          launch: data.message?.metadata?.launch || null,
+          brain: data.message?.metadata?.brain || null,
+          thread_id: data.message?.metadata?.thread_id || data.one_step?.thread_id || null,
         },
       }
       messages.value.push(assistantMessage)
@@ -192,6 +228,7 @@ export const useAtlasStore = defineStore('atlas', () => {
       suggestedNext.value = data.suggested_next || null
       discoveryQuestions.value = data.message?.metadata?.questions || []
       pendingAction.value = assistantMessage.metadata.pending_action || null
+      captureContext(data)
 
       if (data.suggestions && Array.isArray(data.suggestions)) {
         suggestions.value = data.suggestions
@@ -223,6 +260,32 @@ export const useAtlasStore = defineStore('atlas', () => {
     } finally {
       isTyping.value = false
     }
+  }
+
+  /**
+   * Pull the envelope's side-channels off one reply: the thread id the next
+   * answer belongs to, `metadata.launch`, and `metadata.brain` — which is
+   * handed straight to the brain store so the readiness rows on the launch
+   * panel move as the interview fills them.
+   */
+  function captureContext(data) {
+    const metadata = data?.message?.metadata || {}
+
+    const thread = metadata.thread_id || data?.one_step?.thread_id || null
+    if (thread) threadId.value = thread
+
+    if (metadata.launch) launch.value = metadata.launch
+
+    if (metadata.brain && Array.isArray(metadata.brain.files)) {
+      brainReadiness.value = metadata.brain
+      try {
+        useBrainStore().applyReadiness(metadata.brain)
+      } catch {
+        // The brain store is optional here — never break a chat turn over it.
+      }
+    }
+
+    return { thread, launch: metadata.launch || null, brain: metadata.brain || null }
   }
 
   async function confirmAction(actionId) {
@@ -478,6 +541,9 @@ export const useAtlasStore = defineStore('atlas', () => {
     pendingAction.value = null
     suggestions.value = []
     error.value = null
+    threadId.value = null
+    launch.value = null
+    brainReadiness.value = null
   }
 
   /**
@@ -540,6 +606,9 @@ export const useAtlasStore = defineStore('atlas', () => {
     activeAgent,
     pendingAction,
     slashCommands,
+    threadId,
+    launch,
+    brainReadiness,
     // Getters
     currentSession,
     currentMessages,
@@ -563,6 +632,7 @@ export const useAtlasStore = defineStore('atlas', () => {
     executeSuggestion,
     confirmAction,
     cancelAction,
+    captureContext,
     handleTaskUpdate,
     handleAgentUpdate,
     handleStreamChunk,

@@ -82,4 +82,5 @@ axios.interceptors.response.use(
   }
 )
 
+export { readAccessToken }
 export default api

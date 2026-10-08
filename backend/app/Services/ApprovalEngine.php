@@ -7,7 +7,9 @@ namespace App\Services;
 use App\Models\ApprovalPolicy;
 use App\Models\ApprovalPolicyStep;
 use App\Models\ApprovalStep;
+use App\Models\Event;
 use App\Models\User;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\Financial\PaymentService;
 use App\Services\Notifications\NotificationService;
 use App\Services\Outreach\Bot\OutreachReplyService;
@@ -101,6 +103,11 @@ class ApprovalEngine
     /**
      * Resolve an existing approval (grant or reject).
      *
+     * A single-stage approval is decided by decideSingleStage(), the same
+     * operation the HTTP controller uses — so who may decide, and the rule
+     * that decides only once, live in one place. What stays here is this
+     * caller's own consequence: resuming a blocked execution after a grant.
+     *
      * @param  string  $approvalId  The approval to resolve.
      * @param  string  $approverId  The user performing the approval action.
      * @param  bool  $approved  True = granted, false = rejected.
@@ -112,6 +119,7 @@ class ApprovalEngine
         string $approverId,
         bool $approved,
         string $response = '',
+        ?string $presentedVersion = null,
     ): array {
         $approval = DB::table('approvals')->where('id', $approvalId)->first();
 
@@ -121,37 +129,12 @@ class ApprovalEngine
 
         // Chained approvals resolve one step at a time.
         if ($approval->current_step !== null) {
-            return $this->resolveStep($approvalId, $approverId, $approved, $response);
+            return $this->resolveStep($approvalId, $approverId, $approved, $response, $presentedVersion);
         }
 
-        if ($approval->status !== 'pending') {
-            throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$approval->status}).");
-        }
+        $this->decideSingleStage((string) $approval->tenant_id, $approvalId, User::find($approverId), $approved, $response, $presentedVersion);
 
-        // Status vocabulary is canonicalized on 'approved' (the value the
-        // cockpit UI and ApprovalController already use); domain event names
-        // (approval.granted / approval.rejected) are unchanged.
-        $newStatus = $approved ? 'approved' : 'rejected';
-
-        DB::table('approvals')
-            ->where('id', $approvalId)
-            ->update([
-                'status' => $newStatus,
-                'approver_id' => $approverId,
-                'response' => $response,
-                'responded_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        $eventType = $approved ? 'approval.granted' : 'approval.rejected';
-
-        $this->eventStore->append($approval->tenant_id, $eventType, [
-            'approval_id' => $approvalId,
-            'approver_id' => $approverId,
-            'response' => $response,
-        ]);
-
-        Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
+        Log::info('Approval '.($approved ? 'approved' : 'rejected'), compact('approvalId', 'approverId'));
 
         // If the approval was granted, attempt to resume any blocked execution.
         if ($approved) {
@@ -161,6 +144,214 @@ class ApprovalEngine
         return $this->formatApproval(
             DB::table('approvals')->where('id', $approvalId)->first()
         );
+    }
+
+    /**
+     * Decide a single-stage approval: the one operation every caller uses.
+     *
+     *   authorise the actor → transition only if still pending → record the
+     *   decision → commit → then the resource hook
+     *
+     * Who may decide. The actor must belong to the approval's tenant and hold
+     * the `approvals.decide` capability. Admins hold it through `approvals.*`;
+     * members and viewers do not, unless granted it per user. Until this, the
+     * capability was declared in User::ROLE_CAPABILITIES and checked nowhere:
+     * any signed-in user of the tenant could approve anything single-stage,
+     * including a viewer. Chains keep their own rule — each step's approver,
+     * via ApprovalStep::actableBy() — which is why this is enforced here
+     * rather than on the route: route middleware would lock out a member who
+     * is a chain step's named approver.
+     *
+     * Deciding once. The update carries `status = pending` (and no chain) in
+     * its WHERE clause, and only the request whose update changed a row goes
+     * on; on Postgres a competing update waits on the row lock and then
+     * re-reads the committed row. The decision, its event and the DAG node
+     * record commit together or not at all.
+     *
+     * Deciding the version that was seen. For a resource type with a version
+     * binding (config/approvals.php `version_bindings`), a grant must present
+     * the version hash the approver was shown; it is compared, under the
+     * resource's own locks, with what approving would apply now, and the
+     * version is bound to the decision (`approved_version_hash`) — the applier
+     * checks the payload against it before writing anything.
+     *
+     * A rejection normally carries the version it judged too, and is refused
+     * as stale if the content changed since — rejecting something the reviewer
+     * never saw would be attributed to content they did not examine. Without
+     * a version it is a cancellation of the pending request, whatever its
+     * content, and the decision's event records that no version was observed.
+     *
+     * The action the decision owes is recorded in the same transaction
+     * (approval_actions), then run after the commit, for the decider only,
+     * with the approval that decided and the version it bound. The hook stays
+     * outside the decision's transaction — it can send mail, and holding the
+     * transaction would also hold the global event-sequence lock — but it is
+     * no longer owed only in memory: a process that dies after the commit, or
+     * a hook that fails, leaves the record for approvals:recover-actions
+     * rather than a decided approval whose effect nothing will ever apply.
+     * How it is run, and what a failure means, is ApprovalActions'.
+     *
+     * @throws \InvalidArgumentException no such approval in this tenant
+     * @throws \DomainException the actor may not decide it
+     * @throws ApprovalAlreadyDecided it was no longer pending
+     * @throws ApprovalVersionConflict the version presented is not the version that exists
+     * @throws BundleIntegrityException the resource does not hold together
+     * @throws \LogicException it is a chained approval (resolveStep)
+     */
+    public function decideSingleStage(string $tenantId, string $approvalId, ?User $actor, bool $granted, ?string $reason, ?string $presentedVersion = null): ApprovalDecision
+    {
+        $approval = DB::table('approvals')->where('id', $approvalId)->where('tenant_id', $tenantId)->first();
+        if (! $approval) {
+            throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
+        }
+        if ($approval->current_step !== null) {
+            throw new \LogicException("Approval [{$approvalId}] is a chained approval; resolve it step by step.");
+        }
+        if ($actor === null || (string) $actor->tenant_id !== $tenantId || ! $actor->can_do('approvals.decide')) {
+            throw new \DomainException('User is not authorized to decide this approval.');
+        }
+
+        $bound = null;
+        $actionId = null;
+        $actions = app(ApprovalActions::class);
+        $event = DB::transaction(function () use ($tenantId, $approval, $actor, $granted, $reason, $presentedVersion, $actions, &$bound, &$actionId): Event {
+            $bound = $granted ? $this->verifyVersion($tenantId, $approval, $presentedVersion) : null;
+            $observed = $granted ? $bound : $this->observedVersion($tenantId, $approval, $presentedVersion);
+
+            // Columns must match the actual `approvals` schema
+            // (2024_01_01_000008_create_approvals_table.php): approver_id /
+            // responded_at — NOT resolved_by / resolved_at.
+            $changed = DB::table('approvals')
+                ->where('id', $approval->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->whereNull('current_step')
+                ->when($bound !== null, fn ($q) => $q->where('version_hash', $bound))
+                ->update([
+                    'status' => $granted ? 'approved' : 'rejected',
+                    'approver_id' => $actor->id,
+                    'response' => $reason,
+                    'responded_at' => now(),
+                    'approved_version_hash' => $bound,
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                $status = DB::table('approvals')->where('id', $approval->id)->value('status');
+                if ($status === 'pending') {
+                    throw new ApprovalVersionConflict('stale', "Approval [{$approval->id}] was bound to a newer version while this decision was being made.");
+                }
+                throw new ApprovalAlreadyDecided((string) $approval->id, $status);
+            }
+
+            // Hard Rule #1: All writes go through EventStore. One shape for
+            // every caller, keyed to the approval itself.
+            $event = $this->eventStore->append(
+                tenantId: $tenantId,
+                aggregateType: 'approval',
+                aggregateId: $approval->id,
+                eventType: $granted ? 'approval.granted' : 'approval.rejected',
+                payload: [
+                    'approval_id' => $approval->id,
+                    'approver_id' => $actor->id,
+                    ($granted ? 'approved_by' : 'rejected_by') => $actor->id,
+                    'reason' => $reason,
+                    'approved_version_hash' => $bound,
+                    // What the decider was looking at: the bound version for a
+                    // grant, the judged version for a rejection, null for a
+                    // cancellation made without one.
+                    'observed_version_hash' => $observed,
+                    'flow_execution_id' => $approval->flow_execution_id ?? null,
+                    'dag_node_id' => $approval->dag_node_id ?? null,
+                ],
+                metadata: [
+                    'user_id' => $actor->id,
+                ]
+            );
+
+            // Resume or fail the blocked DAG node, if there is one.
+            if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
+                $this->recordDagNode($tenantId, (string) $approval->flow_execution_id, (string) $approval->dag_node_id, $event->id, $granted, (string) $reason);
+            }
+
+            // What the decision owes, committed with it.
+            $actionId = $actions->record($approval, $granted, $reason, [
+                'approval_id' => (string) $approval->id,
+                'approved_version_hash' => $bound,
+            ]);
+
+            return $event;
+        });
+
+        // The decision is committed; nothing here may undo or fail it.
+        return new ApprovalDecision($event, (string) $actionId, $actions->runLogged((string) $actionId));
+    }
+
+    /**
+     * For a resource type with a version binding: lock the resource and hash
+     * what approving it would apply now, then require that the approver was
+     * shown exactly that. Returns the version to bind, or null for a type
+     * with no binding. Called inside the decision's transaction, before the
+     * approval row is written, so the resource is locked first — the order
+     * every writer of a bundle uses.
+     *
+     * @throws ApprovalVersionConflict
+     */
+    /**
+     * The version a rejection judged: verified like a grant's when one is
+     * presented, null when the rejection is a cancellation made without one.
+     */
+    private function observedVersion(string $tenantId, object $approval, ?string $presented): ?string
+    {
+        return $presented === null || $presented === '' ? null : $this->verifyVersion($tenantId, $approval, $presented);
+    }
+
+    private function verifyVersion(string $tenantId, object $approval, ?string $presented): ?string
+    {
+        $binding = config('approvals.version_bindings.'.$approval->resource_type);
+        if (! is_array($binding) || count($binding) < 2) {
+            return null;
+        }
+        [$class, $method] = $binding;
+
+        $current = (string) app($class)->{$method}($tenantId, $approval);
+        // Re-read under the resource's lock: an edit that committed after the
+        // approval was first read has already moved the bound version.
+        $boundNow = DB::table('approvals')->where('id', $approval->id)->value('version_hash');
+
+        if ($boundNow === null) {
+            throw new ApprovalVersionConflict('unbound', "Approval [{$approval->id}] was never bound to a version, so what was seen cannot be checked. Reject it and submit again.");
+        }
+        if ($presented === null || $presented === '') {
+            throw new ApprovalVersionConflict('missing', "Approving [{$approval->id}] needs the version you were shown (version_hash).");
+        }
+        if (! hash_equals((string) $boundNow, $presented) || ! hash_equals($current, $presented)) {
+            throw new ApprovalVersionConflict('stale', "Approval [{$approval->id}] changed after it was shown to you. Review the current version and decide on that.");
+        }
+
+        return $current;
+    }
+
+    /** The blocked DAG node's transition, recorded with the decision. */
+    private function recordDagNode(string $tenantId, string $flowExecutionId, string $dagNodeId, string $approvalEventId, bool $granted, string $reason): void
+    {
+        $this->eventStore->append(
+            tenantId: $tenantId,
+            aggregateType: 'flow_execution',
+            aggregateId: $flowExecutionId,
+            eventType: $granted ? 'dag.node.resumed' : 'dag.node.failed',
+            payload: [
+                'dag_node_id' => $dagNodeId,
+                'approval_event_id' => $approvalEventId,
+            ] + ($granted
+                ? ['resumed_at' => now()->toIso8601String()]
+                : ['reason' => $reason, 'failed_at' => now()->toIso8601String()]),
+        );
+
+        DB::table('flow_executions')
+            ->where('id', $flowExecutionId)
+            ->where('tenant_id', $tenantId)
+            ->update(['updated_at' => now()]);
     }
 
     // ------------------------------------------------------------------ //
@@ -286,8 +477,16 @@ class ApprovalEngine
         string $approverId,
         bool $approved,
         string $response = '',
+        ?string $presentedVersion = null,
     ): array {
-        return DB::transaction(function () use ($approvalId, $approverId, $approved, $response) {
+        return DB::transaction(function () use ($approvalId, $approverId, $approved, $response, $presentedVersion) {
+            // A bound resource is locked before the approval row, the order
+            // every writer uses; each approving step decides the version it saw.
+            $unlocked = DB::table('approvals')->where('id', $approvalId)->first();
+            $open = $unlocked && $unlocked->current_step !== null && $unlocked->status === 'pending';
+            $bound = $open && $approved ? $this->verifyVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion) : null;
+            $observed = $open && ! $approved ? $this->observedVersion((string) $unlocked->tenant_id, $unlocked, $presentedVersion) : $bound;
+
             $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
 
             if (! $approval) {
@@ -320,6 +519,9 @@ class ApprovalEngine
                 'acted_by' => $approverId,
                 'response' => $response,
                 'responded_at' => now(),
+                // The version this step decided, so completion can require
+                // that every approving step decided the same one.
+                'version_hash' => $observed,
             ]);
 
             $this->eventStore->append($approval->tenant_id, $approved ? 'approval.step_granted' : 'approval.step_rejected', [
@@ -327,6 +529,7 @@ class ApprovalEngine
                 'step_order' => $step->step_order,
                 'acted_by' => $approverId,
                 'response' => $response,
+                'version_hash' => $observed,
             ]);
 
             if (! $approved) {
@@ -345,7 +548,7 @@ class ApprovalEngine
                 ->first();
 
             if ($next === null) {
-                $this->finalizeChain($approval, $approverId, true, $response);
+                $this->finalizeChain($approval, $approverId, true, $response, $bound);
 
                 return $this->formatApproval(DB::table('approvals')->where('id', $approvalId)->first());
             }
@@ -505,7 +708,10 @@ class ApprovalEngine
                         'resource_id' => $approval->resource_id,
                     ]);
 
-                    $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, false, 'expired');
+                    $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, false, 'expired', [
+                        'approval_id' => (string) $approval->id,
+                        'approved_version_hash' => null,
+                    ]);
                 }
 
                 $count++;
@@ -518,13 +724,35 @@ class ApprovalEngine
     /**
      * Terminal transition shared by grant-on-last-step and reject-anywhere.
      */
-    private function finalizeChain(object $approval, string $approverId, bool $granted, string $response): void
+    private function finalizeChain(object $approval, string $approverId, bool $granted, string $response, ?string $approvedVersion = null): void
     {
+        // Every approval the chain needed must be an approval of the version
+        // it now binds. An earlier step that approved different content does
+        // not carry forward: the chain cannot complete on it, and the whole
+        // final step rolls back. (Edits are refused once a step has approved,
+        // so through the API this cannot arise; this is the invariant, held
+        // where completion happens.)
+        if ($granted && $approvedVersion !== null) {
+            $divergent = ApprovalStep::where('approval_id', $approval->id)
+                ->where('status', 'approved')
+                ->where(fn ($q) => $q->whereNull('version_hash')->orWhere('version_hash', '!=', $approvedVersion))
+                ->orderBy('step_order')
+                ->pluck('step_order')
+                ->all();
+            if ($divergent !== []) {
+                throw new ApprovalVersionConflict('stale', sprintf(
+                    'Approval [%s] cannot complete: step(s) %s approved a different version than the one now being approved.',
+                    $approval->id, implode(', ', $divergent),
+                ));
+            }
+        }
+
         DB::table('approvals')->where('id', $approval->id)->update([
             'status' => $granted ? 'approved' : 'rejected',
             'approver_id' => $approverId,
             'response' => $response,
             'responded_at' => now(),
+            'approved_version_hash' => $approvedVersion,
             'updated_at' => now(),
         ]);
 
@@ -532,22 +760,65 @@ class ApprovalEngine
             'approval_id' => $approval->id,
             'approver_id' => $approverId,
             'response' => $response,
+            'approved_version_hash' => $approvedVersion,
         ]);
 
         if ($granted) {
             $this->resumeBlockedExecution($approval->id);
         }
 
-        $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, $granted, $response);
+        $this->fireResourceHook($approval->resource_type, $approval->tenant_id, $approval->resource_id, $granted, $response, [
+            'approval_id' => (string) $approval->id,
+            'approved_version_hash' => $approvedVersion,
+        ]);
     }
 
     /**
-     * Resource-type activation hooks. Failures propagate so the enclosing
-     * transaction rolls back — an approval must not read "approved" while
-     * its downstream effect failed to apply.
+     * Resource-type activation hooks. Driven by config/approvals.php
+     * `resource_hooks` (resource_type => [class, method]); handler classes
+     * are resolved lazily, so an entry whose stream has not shipped yet is
+     * skipped with a log line. Resource types outside the map keep their
+     * legacy inline hooks below. The single-stage path and the chained path
+     * fire exactly the same hooks.
+     * Failures propagate. The chain and expiry paths call this inside their
+     * own transaction, so a failure rolls their decision back. The
+     * single-stage path calls it through ApprovalActions, which records the
+     * failure against the action the committed decision owes.
      */
-    private function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = ''): void
+    /**
+     * @param  array{approval_id?: string, approved_version_hash?: ?string}  $decision  which approval decided and the version it bound; handlers that do not declare it ignore it
+     */
+    public function fireResourceHook(string $resourceType, string $tenantId, string $resourceId, bool $granted, string $response = '', array $decision = []): void
     {
+        $hooks = (array) config('approvals.resource_hooks', []);
+
+        if (array_key_exists($resourceType, $hooks)) {
+            $hook = (array) $hooks[$resourceType];
+            $class = $hook[0] ?? $hook['class'] ?? null;
+            $method = $hook[1] ?? $hook['method'] ?? 'onApprovalResolved';
+
+            if (! is_string($class) || $class === '' || ! (app()->bound($class) || class_exists($class))) {
+                Log::warning('Approval resource hook skipped: handler class not available', [
+                    'resource_type' => $resourceType,
+                    'class' => $class,
+                    'resource_id' => $resourceId,
+                ]);
+
+                return;
+            }
+
+            // The decision goes only to a handler that declares a fifth
+            // parameter for it; the others keep their four-argument contract.
+            $handler = app($class);
+            $args = [$tenantId, $resourceId, $granted, $response];
+            if (method_exists($handler, $method) && (new \ReflectionMethod($handler, $method))->getNumberOfParameters() >= 5) {
+                $args[] = $decision;
+            }
+            $handler->{$method}(...$args);
+
+            return;
+        }
+
         switch ($resourceType) {
             case 'sales_script':
                 $service = app(FunnelSetupService::class);
@@ -569,6 +840,7 @@ class ApprovalEngine
                 break;
 
             case 'outreach_reply':
+                // Fallback when config/approvals.php is absent from a cached config.
                 app(OutreachReplyService::class)->onApprovalResolved($tenantId, $resourceId, $granted, $response);
                 break;
 

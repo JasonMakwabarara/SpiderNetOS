@@ -36,6 +36,20 @@ class ConnectorRegistry
             'docs_url' => 'https://api.slack.com/authentication/token-types',
         ],
 
+        // ─── Knowledge ──────────────────────────────────────────────
+        'zetkai' => [
+            'name' => 'ZetKai',
+            'category' => 'knowledge',
+            'auth' => 'api_key',
+            'description' => 'Read your ZetKai vault into the Knowledge brain, and file notes back. Private categories never leave ZetKai.',
+            'fields' => [
+                ['key' => 'base_url', 'label' => 'ZetKai URL', 'secret' => false, 'required' => true],
+                ['key' => 'token', 'label' => 'Integration token', 'secret' => true, 'required' => true],
+            ],
+            'actions' => ['query', 'sync', 'create_note'],
+            'docs_url' => null,
+        ],
+
         // ─── Generic outbound (breadth multiplier) ──────────────────
         'webhook' => [
             'name' => 'Webhook / Zapier',

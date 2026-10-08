@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\EventStore;
 use App\Services\FeatureFlag;
 use App\Services\UsageAggregateShadow;
 use Illuminate\Bus\Queueable;
@@ -12,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 /**
  * AggregateUsageJob
@@ -193,7 +194,11 @@ class AggregateUsageJob implements ShouldQueue
     }
 
     /**
-     * Emit a usage.aggregate.persisted event into event_log for Atlas RL.
+     * Emit usage.aggregate.persisted through EventStore.
+     *
+     * event_log.aggregate_id is a UUID, so the logical key
+     * tenant:date:resource is stored as a deterministic UUIDv5.
+     * A failed append fails the job; the aggregate upsert is idempotent.
      */
     private function emitPersistEvent(
         string $tenantId,
@@ -202,33 +207,30 @@ class AggregateUsageJob implements ShouldQueue
         int $totalCalls,
         int $totalTokens,
     ): void {
-        try {
-            DB::table('event_log')->insert([
-                'id' => Str::uuid(),
+        $logicalAggregateId = $tenantId.':'.$this->targetDate.':'.$resourceType;
+        $aggregateId = Uuid::uuid5(
+            Uuid::NAMESPACE_URL,
+            'spidernet:usage_aggregate:'.$logicalAggregateId,
+        )->toString();
+
+        app(EventStore::class)->append(
+            $tenantId,
+            'usage_aggregate',
+            $aggregateId,
+            'usage.aggregate.persisted',
+            [
+                'schema_version' => '2.0.0',
                 'tenant_id' => $tenantId,
-                'aggregate_type' => 'usage_aggregate',
-                'aggregate_id' => $tenantId.':'.$this->targetDate.':'.$resourceType,
-                'event_type' => 'usage.aggregate.persisted',
-                'sequence_num' => 0,
-                'occurred_at' => now(),
-                'payload' => json_encode([
-                    'schema_version' => '2.0.0',
-                    'tenant_id' => $tenantId,
-                    'date' => $this->targetDate,
-                    'resource_type' => $resourceType,
-                    'total_calls' => $totalCalls,
-                    'total_tokens' => $totalTokens,
-                    'total_cost' => $totalCost,
-                    'calculated_at' => now()->toIso8601String(),
-                    'atlas' => [
-                        'ts_signal' => 'observability_integrity',
-                    ],
-                ]),
-                'metadata' => json_encode([]),
-            ]);
-        } catch (\Throwable $e) {
-            // Never let telemetry block the primary write
-            Log::warning('[AggregateUsage] Failed to emit persist event: '.$e->getMessage());
-        }
+                'date' => $this->targetDate,
+                'resource_type' => $resourceType,
+                'total_calls' => $totalCalls,
+                'total_tokens' => $totalTokens,
+                'total_cost' => $totalCost,
+                'calculated_at' => now()->toIso8601String(),
+                'atlas' => [
+                    'ts_signal' => 'observability_integrity',
+                ],
+            ],
+        );
     }
 }

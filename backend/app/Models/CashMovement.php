@@ -13,8 +13,13 @@ class CashMovement extends Model
     use HasUuids, TenantScoped;
 
     protected $fillable = [
-        'tenant_id', 'cashbook_id', 'type', 'amount', 'currency', 'movement_date',
-        'reference', 'description', 'invoice_id', 'ledger_entry_id',
+        'tenant_id',
+        'cashbook_id',
+        'invoice_id',
+        'type',
+        'amount',
+        'currency',
+        'movement_date',
     ];
 
     protected $casts = [

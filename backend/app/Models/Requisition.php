@@ -13,7 +13,13 @@ class Requisition extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['tenant_id', 'employee_id', 'requisition_number', 'title', 'status'];
+    protected $fillable = [
+        'tenant_id',
+        'employee_id',
+        'requisition_number',
+        'title',
+        'status',
+    ];
 
     public function lines(): HasMany
     {

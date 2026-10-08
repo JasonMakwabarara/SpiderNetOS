@@ -12,6 +12,48 @@ return [
         'url' => env('INFERENCE_URL', 'http://localhost:9000'),
         'token' => env('INFERENCE_TOKEN', ''),
         'timeout' => (int) env('INFERENCE_TIMEOUT', 60),
+        // Local checkout of the inference plane, for `inference:doctor` and
+        // `voice:render-previews` (prod: INFERENCE_PATH=/opt/spidernet-inference).
+        'path' => env('INFERENCE_PATH', ''),
+        'python' => env('INFERENCE_PYTHON', ''),
+    ],
+
+    /*
+     | Hannah AI (hannah-ai.world) — a separate Apex Synchronia product, reached
+     | as a PARTNER, not as a tenant of itself. The connector id, the tool
+     | prefix and the flags are all `hannah_ai`; the core `hannah` character
+     | inside SpiderNetOS is a different thing entirely and the two namespaces
+     | must never be collapsed (ADR-0002).
+     |
+     | Auth is an RS256 assertion signed with SpiderNet's private key and
+     | exchanged at Hannah's POST /api/partner/token for a short-lived bearer.
+     | The key is a FILE PATH, never an env-inlined PEM: the previous shared
+     | key pair leaked into a OneDrive folder as .pem.txt and is treated as
+     | compromised.
+     */
+    'hannah' => [
+        'url' => env('HANNAH_URL', 'https://hannah-ai.world'),
+        'timeout' => (int) env('HANNAH_TIMEOUT', 30),
+        // RS256 private key SpiderNet signs partner assertions with.
+        'signing_key_path' => env('HANNAH_SIGNING_KEY_PATH', ''),
+        'signing_key_id' => env('HANNAH_SIGNING_KEY_ID', 'spidernet-partner-1'),
+        // Public key Hannah's webhooks are verified against (slice 2).
+        'verify_key_path' => env('HANNAH_VERIFY_KEY_PATH', ''),
+        'issuer' => env('HANNAH_ISSUER', 'spidernet'),
+        'audience' => env('HANNAH_AUDIENCE', 'hannah-ai'),
+        // Assertions are single-use and short: Hannah caches the jti to refuse replays.
+        'assertion_ttl_seconds' => (int) env('HANNAH_ASSERTION_TTL', 300),
+        // How long an exchanged bearer is cached before re-exchanging.
+        'token_ttl_seconds' => (int) env('HANNAH_TOKEN_TTL', 900),
+    ],
+
+    /*
+     | ZetKai (zetkai.spidernetos.com) — Jason's personal Zettelkasten. Reached
+     | with a per-tenant integration token stored in tenant_secrets, never an
+     | env value: the vault belongs to a person, not to this installation.
+     */
+    'zetkai' => [
+        'timeout' => (int) env('ZETKAI_TIMEOUT', 30),
     ],
 
     'intelligence_gateway' => [

@@ -12,7 +12,12 @@ class RequisitionLine extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['requisition_id', 'description', 'quantity', 'unit_price'];
+    protected $fillable = [
+        'requisition_id',
+        'description',
+        'quantity',
+        'unit_price',
+    ];
 
     protected $casts = [
         'quantity' => 'decimal:4',

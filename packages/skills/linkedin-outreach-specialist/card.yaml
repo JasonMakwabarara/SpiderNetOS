@@ -1,0 +1,275 @@
+# LinkedIn Outreach Specialist — Sales · LinkedIn messaging (plan D5, Appendix A card 2)
+# The written half; Richard (linkedin-campaign-runner, PR 7) is the sending half.
+
+id: linkedin-outreach-specialist
+display_name: "LinkedIn Outreach Specialist"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › LinkedIn messaging"
+core_agent: nexus
+runs_on: growth
+pack_id: sales-crm
+
+intent_keywords:
+  - linkedin
+  - linkedin message
+  - linkedin messages
+  - connection request
+  - connection note
+  - linkedin dm
+  - linkedin outreach
+  - inmail
+
+at_a_glance: >-
+  Personalised connection requests and follow-up DM sequences that read professional to
+  professional. Give it one prospect or a Prospect Research Analysis report; it returns a
+  connection note under 300 characters, three to four DMs, the angle it chose and why.
+
+covers: >-
+  Sales › LinkedIn messaging — the written half of LinkedIn outreach; Richard is the sending half.
+
+breaks_into:
+  - name: "Connection Note Writer"
+    does: "Under 300 characters, one real reason to connect, no pitch in the note."
+  - name: "DM Sequence Writer"
+    does: "Three to four messages after the accept, professional to professional, one ask each."
+  - name: "Profile Angle Finder"
+    does: "Picks the one angle from their profile, posts or the research report that a peer would respect, and says why."
+  - name: "Engagement Opener"
+    does: "A first comment or reaction line for the prospect's latest post, when there is one worth engaging."
+  - name: "Campaign Packager"
+    slug: linkedin-campaign-runner
+    does: "Bundles the approved sequence and the lead list for Richard once HeyReach is connected."
+
+builds_on:
+  - name: "Prospect Research Analysis"
+    slug: prospect-research-analysis
+    why: "The angle and the personalisation come from the report."
+  - name: "ICP Definition"
+    slug: icp-definition
+    why: "Who is worth a connection request at all."
+  - name: "Brand voice — peer register"
+    ref: "brain:brand/voice.md#Tone"
+    why: "Peer to peer, never vendor to buyer."
+  - name: "The user's own profile"
+    ref: "brain:people/user.md#Who I am"
+    why: "It goes out under their name, headline and recent posts."
+  - name: "Brief personal framing before value"
+    ref: "principle:short-story-positioning"
+  - name: "Own the opening seconds"
+    ref: "principle:controlled-introduction"
+
+replaces:
+  - what: "A LinkedIn lead-generation agency"
+    cost: "$1.5–3k/mo"
+    kind: retainer
+  - what: "A blast tool that sends the same note to 500 people"
+    cost: "$100–300/mo"
+    kind: tool
+  - what: "A dormant profile because nobody has time"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted]
+  stage_copy:
+    human_led:
+      summary: "Paste one prospect; get a note and three DMs to send yourself."
+      your_role: "Give it a prospect (or a research report), read the note and the DMs, send them from your own profile."
+      atlas_role: "Growth (Nexus) drafts one connection note and a DM sequence from the report and your profile file, then stops."
+      default: true
+    assisted:
+      summary: "Batches drafted from a research report; approve per segment; Richard sends within caps."
+      your_role: "Approve the first sequence per segment and own who you are willing to be seen messaging — it goes out under your name."
+      atlas_role: "Drafts per segment into the DM queue, one approval per segment; when Richard is connected and the LinkedIn terms acknowledgement is signed, he sends within the daily caps."
+    autonomous:
+      summary: "Not available until Richard (HeyReach) lands in PR 7."
+      your_role: "Not offered yet. Sequences per segment refreshed automatically, replies to Inbox Triage, accepts feed the next batch — after Richard is connected with a daily cap."
+      atlas_role: "Planned: per-segment sequences refreshed from reply data; any restriction warning from LinkedIn drops it back to assisted immediately."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "any LinkedIn restriction warning"
+      - "connection acceptance rate < 15% on 50+ requests"
+
+brain:
+  requires:
+    - key: business.profile
+      path: business/profile.md
+      sections: ["What we do"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+    - key: offer.proof
+      path: offer/offer.md
+      sections: ["Proof"]
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+    - key: customers.icp
+      path: customers/icp.md
+      sections: ["Who we sell to"]
+    - key: people.user
+      path: people/user.md
+      sections: ["Who I am"]
+  reads:
+    - brand/voice.md#Do and don't
+    - people/user.md#Never say or offer
+    - customers/icp.md#Who we do not sell to
+    - notes/research/**
+  writes: []
+
+hands_off_to:
+  - type: skill
+    slug: linkedin-campaign-runner
+    name: "Richard — LinkedIn Campaign Runner"
+    when: "\"Push to Richard\" enables only when a sequence is approved and HeyReach is connected (PR 7)."
+  - type: skill
+    slug: inbox-triage-reply-classifier
+    name: "Inbox Triage & Reply Classifier"
+    when: "The moment a prospect replies or accepts and writes back."
+  - type: skill
+    slug: meeting-booking
+    name: "Meeting Booking"
+    when: "A reply asks for a call."
+
+one_step_further:
+  summary: >-
+    Beyond the note and the DMs it proposes the research pass for the next five profiles in
+    the same segment, and the reply rules so accepts and replies are sorted the way you would.
+  allow_dynamic: true
+  steps:
+    - id: research_next_batch
+      label: "Research the next five prospects in this segment"
+      does: "Runs Prospect Research Analysis on the next profiles so the next batch has real angles, not guesses."
+      skill: prospect-research-analysis
+      inputs_from:
+        segment: inputs.segment
+      when: on_success
+      risk: read
+      cost_hint_usd: 0.10
+    - id: reply_rules_for_linkedin
+      label: "Define reply rules for LinkedIn replies"
+      does: "Turns this sequence's ask into hot / warm / cold rules for Inbox Triage on the LinkedIn channel."
+      skill: inbox-triage-reply-classifier
+      inputs_from:
+        segment: inputs.segment
+      when: on_approval_applied
+      risk: write
+      cost_hint_usd: 0.04
+
+inputs:
+  type: object
+  additionalProperties: false
+  required: [segment]
+  properties:
+    prospect_id:
+      type: string
+      title: "Prospect"
+      description: "partner_prospects id or a LinkedIn profile URL."
+    research_report_id:
+      type: string
+      title: "Prospect research report"
+      description: "Artifact id from Prospect Research Analysis (preferred over a bare prospect)."
+    segment:
+      type: string
+      title: "Segment"
+      minLength: 2
+      maxLength: 120
+    steps:
+      type: integer
+      title: "DMs after accept"
+      minimum: 3
+      maximum: 4
+      default: 3
+    notes:
+      type: string
+      title: "Anything the drafts must know"
+      maxLength: 600
+
+outputs:
+  - kind: draft_sequence
+    primary: true
+    description: "One connection note plus three to four DMs, the chosen angle and why, one approval."
+    key_pattern: "linkedin.<segment>.connect / linkedin.<segment>.dm{n}"
+    count: "1 note + 3–4 DMs"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [segment, angle, angle_why, connect_note, messages]
+      properties:
+        segment: { type: string, minLength: 1 }
+        prospect_ref: { type: string }
+        angle: { type: string, minLength: 5, maxLength: 160 }
+        angle_why: { type: string, minLength: 10, maxLength: 400 }
+        connect_note: { type: string, minLength: 20, maxLength: 300 }
+        engagement_opener: { type: string, maxLength: 280 }
+        messages:
+          type: array
+          minItems: 3
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required: [step, body, send_day, ask]
+            properties:
+              step: { type: integer, minimum: 1, maximum: 4 }
+              body: { type: string, minLength: 30, maxLength: 1200 }
+              send_day: { type: integer, minimum: 0, maximum: 30 }
+              ask: { type: string, minLength: 3, maxLength: 160 }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+
+cost_budget:
+  daily_limit_usd: 1.0
+  per_run_usd: 0.12
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=draft_sequence; channel=linkedin; assisted send requires outreach.linkedin.tos_acknowledged"
+
+model:
+  heavy: false
+  temperature: 0.6
+  max_tokens: 2000
+  json_mode: true
+
+limits:
+  max_artifacts: 1
+  timeout_seconds: 120
+
+mode: single_shot
+
+run:
+  kind: agent
+  entry_path: /skills/linkedin-outreach-specialist
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save_sequence
+    - drafts.submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.8
+
+tags: [sales, linkedin, outreach, richard]

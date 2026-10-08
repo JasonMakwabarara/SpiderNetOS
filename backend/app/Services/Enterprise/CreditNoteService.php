@@ -6,76 +6,74 @@ namespace App\Services\Enterprise;
 
 use App\Exceptions\DomainException;
 use App\Models\CreditNote;
-use App\Models\CreditNoteLineItem;
+use App\Models\CreditNoteLine;
+use App\Models\FinancialAccount;
 use App\Models\Invoice;
-use App\Services\DocumentNumberService;
+use App\Models\PayablesPosting;
 use App\Services\EventStore;
+use App\Services\Financial\DocumentNumberService;
+use App\Services\Financial\LedgerService;
 use Illuminate\Support\Facades\DB;
 
 class CreditNoteService
 {
     public function __construct(
-        private readonly EventStore $eventStore,
-        private readonly DocumentNumberService $documentNumbers,
+        private readonly DocumentNumberService $numbers,
+        private readonly LedgerService $ledger,
+        private readonly EventStore $events,
     ) {}
 
-    public function create(string $tenantId, array $data): CreditNote
+    /**
+     * @param  list<array{description: string, quantity: string, unit_price: string}>  $lines
+     */
+    public function create(string $tenantId, string $invoiceId, array $lines, ?string $reason): CreditNote
     {
-        $lines = $data['lines'] ?? [];
         if ($lines === []) {
             throw new DomainException('A credit note needs at least one line.');
         }
 
-        $invoice = Invoice::forTenant($tenantId)->findOrFail($data['invoice_id']);
+        return DB::transaction(function () use ($tenantId, $invoiceId, $lines, $reason): CreditNote {
+            $invoice = Invoice::forTenant($tenantId)->lockForUpdate()->findOrFail($invoiceId);
+            $currency = Money::code((string) $invoice->currency);
+            $subtotal = '0.0000';
 
-        if (! empty($data['currency']) && Money::code($data['currency']) !== $invoice->currency) {
-            throw new DomainException('Credit note currency must match the invoice currency.');
-        }
-
-        return DB::transaction(function () use ($tenantId, $data, $lines, $invoice) {
-            $subtotal = 0.0;
-            $tax = 0.0;
-            $prepared = [];
             foreach ($lines as $line) {
-                $qty = (float) $line['quantity'];
-                $price = (float) $line['unit_price'];
-                $rate = (float) ($line['tax_rate'] ?? 0);
-                $lineNet = $qty * $price;
-                $lineTax = $lineNet * $rate / 100;
-                $subtotal += $lineNet;
-                $tax += $lineTax;
-                $prepared[] = [
-                    'description' => $line['description'],
-                    'quantity' => $qty,
-                    'unit_price' => $price,
-                    'tax_rate' => $rate,
-                    'total' => round($lineNet + $lineTax, 4),
-                ];
+                $quantity = Money::positive((string) $line['quantity']);
+                $price = Money::positive((string) $line['unit_price']);
+                $subtotal = bcadd($subtotal, bcmul($quantity, $price, 4), 4);
             }
 
             $note = CreditNote::create([
                 'tenant_id' => $tenantId,
                 'invoice_id' => $invoice->id,
-                'credit_note_number' => $this->documentNumbers->next($tenantId, 'credit_note', 'CN-'),
-                'reason' => $data['reason'] ?? null,
-                'subtotal' => round($subtotal, 4),
-                'tax_amount' => round($tax, 4),
-                'total_amount' => round($subtotal + $tax, 4),
-                'currency' => $invoice->currency,
+                'credit_note_number' => $this->numbers->next($tenantId, 'credit_note', 'CN'),
+                'reason' => $reason !== null && trim($reason) !== '' ? trim($reason) : null,
+                'subtotal' => $subtotal,
+                'tax_amount' => '0.0000',
+                'total_amount' => $subtotal,
+                'currency' => $currency,
                 'status' => 'draft',
             ]);
 
-            foreach ($prepared as $line) {
-                CreditNoteLineItem::create(['credit_note_id' => $note->id] + $line);
+            foreach ($lines as $line) {
+                $quantity = Money::positive((string) $line['quantity']);
+                $price = Money::positive((string) $line['unit_price']);
+                CreditNoteLine::create([
+                    'credit_note_id' => $note->id,
+                    'description' => trim((string) $line['description']),
+                    'quantity' => $quantity,
+                    'unit_price' => $price,
+                    'line_total' => bcmul($quantity, $price, 4),
+                ]);
             }
 
-            $this->eventStore->append($tenantId, 'credit_note', $note->id, 'invoice.credit_note.created', [
-                'credit_note_id' => $note->id,
-                'invoice_id' => $invoice->id,
-                'status' => 'draft',
-                'currency' => $note->currency,
-                'total_amount' => $note->total_amount,
-            ]);
+            $this->events->append(
+                $tenantId,
+                'credit_note',
+                $note->id,
+                'enterprise.credit_note.created',
+                ['credit_note_id' => $note->id, 'invoice_id' => $invoice->id, 'status' => 'draft'],
+            );
 
             return $note->load('lines');
         });
@@ -83,38 +81,54 @@ class CreditNoteService
 
     public function issue(string $tenantId, string $creditNoteId): CreditNote
     {
-        return DB::transaction(function () use ($tenantId, $creditNoteId) {
+        return DB::transaction(function () use ($tenantId, $creditNoteId): CreditNote {
             $note = CreditNote::forTenant($tenantId)->lockForUpdate()->findOrFail($creditNoteId);
-            $invoice = Invoice::forTenant($tenantId)->lockForUpdate()->findOrFail($note->invoice_id);
-
             if ($note->status !== 'draft') {
                 throw new DomainException('Only a draft credit note can be issued.');
             }
 
-            if ($note->currency !== $invoice->currency) {
-                throw new DomainException('Credit note currency must match the invoice currency.');
+            $invoice = Invoice::forTenant($tenantId)->lockForUpdate()->findOrFail($note->invoice_id);
+            $issued = '0.0000';
+            foreach (CreditNote::forTenant($tenantId)->where('invoice_id', $invoice->id)->where('status', 'issued')->lockForUpdate()->get() as $existing) {
+                $issued = bcadd($issued, (string) $existing->total_amount, 4);
             }
 
-            $issued = (float) CreditNote::forTenant($tenantId)
-                ->where('invoice_id', $invoice->id)
-                ->where('status', 'issued')
-                ->sum('total_amount');
-
-            if (round($issued + (float) $note->total_amount, 4) - (float) $invoice->total_amount > 0.0001) {
+            $next = bcadd($issued, (string) $note->total_amount, 4);
+            if (bccomp($next, (string) $invoice->total_amount, 4) === 1) {
                 throw new DomainException('Credit notes cannot exceed the invoice total.');
             }
 
+            if (PayablesPosting::forTenant($tenantId)->where('invoice_id', $invoice->id)->exists()) {
+                $expense = FinancialAccount::query()->firstOrCreate(
+                    ['tenant_id' => $tenantId, 'account_number' => 'EXP-PURCHASES'],
+                    ['name' => 'Purchases', 'type' => 'expense', 'currency' => 'USD', 'status' => 'active'],
+                );
+                $payable = FinancialAccount::query()->firstOrCreate(
+                    ['tenant_id' => $tenantId, 'account_number' => 'LIA-AP'],
+                    ['name' => 'Accounts payable', 'type' => 'liability', 'currency' => 'USD', 'status' => 'active'],
+                );
+                $this->ledger->createJournalEntry(
+                    $tenantId,
+                    $expense->id,
+                    $payable->id,
+                    number_format((float) $note->total_amount, 4, '.', ''),
+                    $note->currency,
+                    'Supplier credit note',
+                    'credit_note',
+                    $note->id,
+                );
+            }
+
             $note->update(['status' => 'issued']);
+            $this->events->append(
+                $tenantId,
+                'credit_note',
+                $note->id,
+                'enterprise.credit_note.issued',
+                ['credit_note_id' => $note->id, 'invoice_id' => $invoice->id, 'status' => 'issued'],
+            );
 
-            $this->eventStore->append($tenantId, 'credit_note', $note->id, 'invoice.credit_note.issued', [
-                'credit_note_id' => $note->id,
-                'invoice_id' => $invoice->id,
-                'status' => 'issued',
-                'currency' => $note->currency,
-                'total_amount' => $note->total_amount,
-            ]);
-
-            return $note->refresh()->load('lines');
+            return $note->fresh('lines');
         });
     }
 }

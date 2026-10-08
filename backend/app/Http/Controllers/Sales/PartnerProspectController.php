@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Models\ArtifactRevision;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
 use App\Models\PartnerProspect;
@@ -17,9 +18,11 @@ use App\Services\Outreach\Import\ProspectImportService;
 use App\Services\Outreach\OutreachSender;
 use App\Services\Outreach\OutreachSettings;
 use App\Services\Outreach\ProspectStateMachine;
+use App\Services\Revisions\RevisionRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Partner outreach (affiliate recruitment) for the sales-crm pack: prospect
@@ -251,12 +254,39 @@ class PartnerProspectController extends Controller
         if ($draft->status !== 'draft') {
             return response()->json(['message' => 'Only pending drafts can be edited.'], 409);
         }
-        $validated = $request->validate(['body' => 'required|string|max:10000']);
+        $validated = $request->validate([
+            'body' => 'required|string|max:10000',
+            // Optional "why?" chip (plan D8 #1): facts | links | numbers | length | tone | ask | other text
+            'why' => 'sometimes|nullable|string|max:160',
+        ]);
+
+        $original = (string) $draft->body;
 
         $draft->update([
             'body' => $validated['body'],
             'draft_meta' => ((array) $draft->draft_meta) + ['edited_by' => (string) $request->user()->id, 'edited_at' => now()->toIso8601String()],
         ]);
+
+        // Every edit is a lesson: keep the original next to the edited body.
+        try {
+            app(RevisionRecorder::class)->record(
+                (string) $tenant->id,
+                ArtifactRevision::SUBJECT_CONVERSATION_MESSAGE,
+                (string) $draft->id,
+                $original,
+                $validated['body'],
+                (string) $request->user()->id,
+                [
+                    'action' => ArtifactRevision::ACTION_EDIT,
+                    'why' => $validated['why'] ?? null,
+                    'skill_slug' => 'inbox-triage-reply-classifier',
+                    'channel' => 'outreach_reply',
+                    'draft_action' => $draft->draft_action,
+                ],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('outreach.draft.revision_failed', ['message_id' => $draft->id, 'error' => $e->getMessage()]);
+        }
 
         $approval = DB::table('approvals')->where('tenant_id', $tenant->id)->where('resource_type', 'outreach_reply')
             ->where('resource_id', $draft->id)->where('status', 'pending')->first();

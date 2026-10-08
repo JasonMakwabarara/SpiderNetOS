@@ -16,9 +16,11 @@ class Invoice extends Model
         'customer_email', 'subtotal', 'tax_amount', 'discount_amount',
         'total_amount', 'currency', 'status', 'issue_date', 'due_date',
         'paid_at', 'cancelled_at', 'notes', 'terms', 'pdf_path', 'metadata',
-        // Specimen only. Canonical Invoice in sn-brain does not carry these.
-        'purchase_order_id', 'fiscal_status', 'fiscalised_at',
+        'purchase_order_id', 'vendor_id',
     ];
+
+    // purchase_order_id and vendor_id are links. Invoice numbering and status stay here.
+    // Fiscal state is a fiscal_submissions row, not a column on this model.
 
     protected $casts = [
         'subtotal' => 'decimal:4',
@@ -46,6 +48,16 @@ class Invoice extends Model
     public function lineItems(): HasMany
     {
         return $this->hasMany(InvoiceLineItem::class);
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     public function payments(): HasMany

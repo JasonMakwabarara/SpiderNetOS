@@ -55,57 +55,39 @@ export const useApprovalsStore = defineStore('approvals', () => {
   }
 
   /**
-   * Approve an approval request.
+   * Decide an approval on the version the approver was shown.
+   *
+   * `version` is the version of the content the approver saw — taken from
+   * the review snapshot the page captured when it showed that content, never
+   * looked up here at click time: a refresh between display and click would
+   * otherwise pair the new version with the old content still on screen. The
+   * server refuses a decision whose version is not the one that exists now;
+   * on that refusal the list is reloaded so the current version is shown,
+   * and nothing is retried — the approver decides again on what they see.
+   *
+   * @param {'approve'|'reject'} action
    * @param {string} id - The approval ID.
-   * @param {string} [comment] - Optional approval comment.
-   * @returns {Promise<object>} Result with success flag.
+   * @param {string} [reason] - Comment or rejection reason, kept in the audit log.
+   * @param {string|null} [version] - The version shown to the approver.
+   * @returns {Promise<object>} { success, data } or { success: false, error, reason, stale }
    */
-  async function approve(id, comment) {
-    try {
-      const payload = {}
-      if (comment) {
-        payload.comment = comment
-      }
-      const response = await api.post(`/api/approvals/${id}/approve`, payload)
-
-      // Update local state
-      const index = approvals.value.findIndex((a) => a.id === id)
-      if (index !== -1) {
-        approvals.value[index] = response.data.data || {
-          ...approvals.value[index],
-          status: 'approved',
-          comment,
-          resolved_at: new Date().toISOString(),
-        }
-      }
-
-      return { success: true, data: response.data }
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to approve'
-      return { success: false, error: error.value }
-    }
-  }
-
-  /**
-   * Reject an approval request.
-   * @param {string} id - The approval ID.
-   * @param {string} [reason] - Reason for rejection.
-   * @returns {Promise<object>} Result with success flag.
-   */
-  async function reject(id, reason) {
+  async function decide(action, id, reason, version) {
     try {
       const payload = {}
       if (reason) {
+        // The API reads `reason`; this used to send `comment`, which it ignored.
         payload.reason = reason
       }
-      const response = await api.post(`/api/approvals/${id}/reject`, payload)
+      if (version) {
+        payload.version_hash = version
+      }
+      const response = await api.post(`/api/approvals/${id}/${action}`, payload)
 
-      // Update local state
       const index = approvals.value.findIndex((a) => a.id === id)
       if (index !== -1) {
         approvals.value[index] = response.data.data || {
           ...approvals.value[index],
-          status: 'rejected',
+          status: action === 'approve' ? 'approved' : 'rejected',
           reason,
           resolved_at: new Date().toISOString(),
         }
@@ -113,9 +95,24 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
       return { success: true, data: response.data }
     } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to reject'
-      return { success: false, error: error.value }
+      const body = err.response?.data || {}
+      error.value = body.message || body.error || (action === 'approve' ? 'Failed to approve' : 'Failed to reject')
+      const stale = String(body.reason || '').startsWith('version_')
+      if (stale) {
+        await fetchApprovals()
+      }
+      return { success: false, error: error.value, reason: body.reason, stale }
     }
+  }
+
+  /** Approve on the version shown. See decide(). */
+  function approve(id, reason, version) {
+    return decide('approve', id, reason, version)
+  }
+
+  /** Reject the version shown; without a version it cancels the request. See decide(). */
+  function reject(id, reason, version) {
+    return decide('reject', id, reason, version)
   }
 
   // ── Real-time handlers ─────────────────────────────────────────────

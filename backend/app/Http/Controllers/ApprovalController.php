@@ -3,23 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Approval;
+use App\Services\Agents\Exceptions\BundleIntegrityException;
+use App\Services\ApprovalActions;
+use App\Services\ApprovalAlreadyDecided;
 use App\Services\ApprovalEngine;
-use App\Services\EventStore;
-use App\Services\Outreach\Bot\OutreachReplyService;
-use App\Services\Sales\FunnelSetupService;
+use App\Services\ApprovalVersionConflict;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ApprovalController extends Controller
 {
-    private EventStore $eventStore;
-
-    public function __construct(EventStore $eventStore)
-    {
-        $this->eventStore = $eventStore;
-    }
-
     /**
      * Single approval with its chain steps (empty for legacy single-stage).
      */
@@ -106,6 +100,9 @@ class ApprovalController extends Controller
     {
         $request->validate([
             'reason' => 'nullable|string|max:2000',
+            // The version the approver was shown; required for resource types
+            // with a version binding (ApprovalEngine::decideSingleStage).
+            'version_hash' => 'nullable|string|max:80',
         ]);
 
         $tenantId = $request->attributes->get('tenant_id');
@@ -119,6 +116,7 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
+        // A fast path for an obvious replay. It decides nothing — see decide().
         if ($approval->status !== 'pending') {
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
@@ -128,66 +126,10 @@ class ApprovalController extends Controller
         // Multi-stage chains resolve through the engine (per-step auth,
         // step advancement, terminal hooks, events).
         if ($approval->current_step !== null) {
-            return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''));
+            return $this->resolveChainStep($request, $id, true, (string) $request->input('reason', ''), $request->input('version_hash'));
         }
 
-        // Hard Rule #1: All writes go through EventStore
-        $event = $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'approval',
-            aggregateId: $id,
-            eventType: 'approval.granted',
-            payload: [
-                'approved_by' => $request->user()?->id,
-                'reason' => $request->input('reason'),
-                'flow_execution_id' => $approval->flow_execution_id ?? null,
-                'dag_node_id' => $approval->dag_node_id ?? null,
-            ],
-            metadata: [
-                'user_id' => $request->user()?->id,
-            ]
-        );
-
-        // Update approval projection. Columns must match the actual
-        // `approvals` schema (2024_01_01_000008_create_approvals_table.php):
-        // approver_id / responded_at — NOT resolved_by / resolved_at, which
-        // do not exist and previously made this UPDATE fail on every call.
-        DB::table('approvals')
-            ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'status' => 'approved',
-                'approver_id' => $request->user()?->id,
-                'response' => $request->input('reason'),
-                'responded_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        // Resume blocked DAG node if applicable
-        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
-            $this->resumeDagNode(
-                $tenantId,
-                $approval->flow_execution_id,
-                $approval->dag_node_id,
-                $event->id,
-            );
-        }
-
-        // Resource-type hooks: some resources activate a downstream workflow
-        // when their approval is granted, rather than resuming a paused DAG.
-        if ($approval->resource_type === 'sales_script') {
-            app(FunnelSetupService::class)->activateFromApproval($tenantId, $approval->resource_id);
-        }
-        if ($approval->resource_type === 'outreach_reply') {
-            app(OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, true, (string) $request->input('reason', ''));
-        }
-
-        return response()->json([
-            'id' => $id,
-            'event_id' => $event->id,
-            'status' => 'approved',
-            'message' => 'Approval granted.',
-        ]);
+        return $this->decide($request, $tenantId, $id, granted: true);
     }
 
     /**
@@ -211,6 +153,7 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'Approval not found.'], 404);
         }
 
+        // A fast path for an obvious replay. It decides nothing — see decide().
         if ($approval->status !== 'pending') {
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
@@ -222,66 +165,61 @@ class ApprovalController extends Controller
             return $this->resolveChainStep($request, $id, false, (string) $request->input('reason', ''));
         }
 
-        // Hard Rule #1: All writes go through EventStore
-        $event = $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'approval',
-            aggregateId: $id,
-            eventType: 'approval.rejected',
-            payload: [
-                'rejected_by' => $request->user()?->id,
-                'reason' => $request->input('reason'),
-                'flow_execution_id' => $approval->flow_execution_id ?? null,
-                'dag_node_id' => $approval->dag_node_id ?? null,
-            ],
-            metadata: [
-                'user_id' => $request->user()?->id,
-            ]
-        );
+        return $this->decide($request, $tenantId, $id, granted: false);
+    }
 
-        // Update approval projection (see approve() for the column-name note).
-        DB::table('approvals')
-            ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'status' => 'rejected',
-                'approver_id' => $request->user()?->id,
-                'response' => $request->input('reason'),
-                'responded_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        // Fail blocked DAG node if applicable
-        if (! empty($approval->flow_execution_id) && ! empty($approval->dag_node_id)) {
-            $this->failDagNode(
-                $tenantId,
-                $approval->flow_execution_id,
-                $approval->dag_node_id,
-                $request->input('reason'),
-                $event->id,
+    /**
+     * A single-stage decision, made by ApprovalEngine::decideSingleStage() —
+     * the one operation every caller uses, which authorises the actor,
+     * transitions only a pending approval, records the decision with it and
+     * fires the resource hook after commit. This translates its outcome into
+     * HTTP and nothing more; the rule itself lives in one place.
+     * A requisition is not a special case here. resource_type requisition is
+     * registered in config/approvals.php and RequisitionService::onApprovalResolved
+     * is the only writer of approved or rejected.
+     */
+    private function decide(Request $request, string $tenantId, string $id, bool $granted): JsonResponse
+    {
+        try {
+            $decision = app(ApprovalEngine::class)->decideSingleStage(
+                $tenantId, $id, $request->user(), $granted, $request->input('reason'), $request->input('version_hash'),
             );
+        } catch (\InvalidArgumentException) {
+            return response()->json(['error' => 'Approval not found.'], 404);
+        } catch (\DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        } catch (ApprovalAlreadyDecided $e) {
+            // The loser of a race, or a replay: the answer already given.
+            return response()->json(['error' => "Approval has already been {$e->status}."], 409);
+        } catch (ApprovalVersionConflict $e) {
+            // Deliberately without the current version: a client must show it
+            // to the approver again, not resend it unseen.
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'version_'.$e->reason], 409);
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'bundle_integrity'], 409);
         }
 
-        if ($approval->resource_type === 'sales_script') {
-            app(FunnelSetupService::class)->rejectFromApproval($tenantId, $approval->resource_id, $request->input('reason'));
-        }
-        if ($approval->resource_type === 'outreach_reply') {
-            app(OutreachReplyService::class)->onApprovalResolved($tenantId, $approval->resource_id, false, (string) $request->input('reason', ''));
-        }
-
+        // The decision is final either way. 202 says its effect is not done
+        // yet: retried by recovery (pending), or waiting on a person (failed,
+        // uncertain). The reason stays in the action record and the log.
         return response()->json([
             'id' => $id,
-            'event_id' => $event->id,
-            'status' => 'rejected',
-            'message' => 'Approval rejected.',
-        ]);
+            'event_id' => $decision->event->id,
+            'status' => $granted ? 'approved' : 'rejected',
+            'action' => ['id' => $decision->actionId, 'status' => $decision->actionStatus],
+            'message' => ($granted ? 'Approval granted.' : 'Approval rejected.').match ($decision->actionStatus) {
+                ApprovalActions::DONE => '',
+                ApprovalActions::PENDING => ' Its effect did not complete and will be retried.',
+                default => ' Its effect did not complete and needs checking.',
+            },
+        ], $decision->settled() ? 200 : 202);
     }
 
     /**
      * Route a chained approval through ApprovalEngine::resolveStep with
      * HTTP error mapping.
      */
-    private function resolveChainStep(Request $request, string $id, bool $approved, string $response): JsonResponse
+    private function resolveChainStep(Request $request, string $id, bool $approved, string $response, ?string $presentedVersion = null): JsonResponse
     {
         try {
             $result = app(ApprovalEngine::class)->resolveStep(
@@ -289,7 +227,12 @@ class ApprovalController extends Controller
                 (string) $request->user()?->id,
                 $approved,
                 $response,
+                $presentedVersion,
             );
+        } catch (ApprovalVersionConflict $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'version_'.$e->reason], 409);
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => $e->getMessage(), 'reason' => 'bundle_integrity'], 409);
         } catch (\DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 403);
         } catch (\LogicException $e) {
@@ -302,63 +245,5 @@ class ApprovalController extends Controller
             'current_step' => $result['current_step'],
             'message' => $approved ? 'Step approved.' : 'Approval rejected.',
         ]);
-    }
-
-    /**
-     * Resume a blocked DAG node after approval is granted.
-     */
-    private function resumeDagNode(
-        string $tenantId,
-        string $flowExecutionId,
-        string $dagNodeId,
-        string $approvalEventId,
-    ): void {
-        $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'flow_execution',
-            aggregateId: $flowExecutionId,
-            eventType: 'dag.node.resumed',
-            payload: [
-                'dag_node_id' => $dagNodeId,
-                'approval_event_id' => $approvalEventId,
-                'resumed_at' => now()->toIso8601String(),
-            ],
-        );
-
-        // Update the DAG node status in flow_executions if tracked
-        DB::table('flow_executions')
-            ->where('id', $flowExecutionId)
-            ->where('tenant_id', $tenantId)
-            ->update(['updated_at' => now()]);
-    }
-
-    /**
-     * Fail a blocked DAG node after approval is rejected.
-     */
-    private function failDagNode(
-        string $tenantId,
-        string $flowExecutionId,
-        string $dagNodeId,
-        string $reason,
-        string $approvalEventId,
-    ): void {
-        $this->eventStore->append(
-            tenantId: $tenantId,
-            aggregateType: 'flow_execution',
-            aggregateId: $flowExecutionId,
-            eventType: 'dag.node.failed',
-            payload: [
-                'dag_node_id' => $dagNodeId,
-                'approval_event_id' => $approvalEventId,
-                'reason' => $reason,
-                'failed_at' => now()->toIso8601String(),
-            ],
-        );
-
-        // Update the DAG node status in flow_executions if tracked
-        DB::table('flow_executions')
-            ->where('id', $flowExecutionId)
-            ->where('tenant_id', $tenantId)
-            ->update(['updated_at' => now()]);
     }
 }

@@ -1,0 +1,206 @@
+# Zimbabwe — business-launch jurisdiction pack.
+#
+# Not legal or financial advice. Same schema as uk.yaml. Zimbabwe has no
+# public company-registry API: registration and tax registration are done
+# through online portals or a registered agent, so Atlas can only explain
+# the steps and track the checklist — it cannot check status automatically.
+# Figures that could not be confirmed against an official source for
+# `valid_as_of` carry `confidence: medium` or `low`.
+
+code: zw
+name: "Zimbabwe"
+valid_as_of: 2026-09-16
+review_after_days: 180
+currency: USD
+disclaimer: "Not legal or financial advice. Check with the Registrar of Companies, ZIMRA or a qualified adviser before you act."
+
+structures:
+  - id: sole_trader
+    local_name: "Sole trader"
+  - id: partnership
+    local_name: "Partnership"
+  - id: company
+    local_name: "Private limited company ((Private) Limited)"
+
+registration:
+  body: "Registrar of Companies (Deeds, Companies and Intellectual Property)"
+  website: "https://www.zida.co.zw"
+  applies_to: [company]
+  law: "Companies and Other Business Entities Act [Chapter 24:31]"
+  api:
+    availability: portal_only
+    name: null
+    docs: null
+    auth: null
+    notes: "No public registry or tax API. Company registration is done through the Registrar's online system or a registered agent; tax registration through ZIMRA's online portal."
+  atlas_may:
+    - explain_registration_steps
+    - track_checklist_from_uploaded_documents
+  atlas_never:
+    - register_company
+    - log_in_to_government_portals_on_your_behalf
+    - file_returns
+    - register_for_tax_with_zimra
+
+tax:
+  authority: "Zimbabwe Revenue Authority (ZIMRA)"
+  website: "https://www.zimra.co.zw"
+  corporate_rate_pct: 24.72
+  notes: "Corporate income tax 24% plus the 3% AIDS levy on the tax (24.72% effective). Provisional tax is paid on Quarterly Payment Dates (QPDs)."
+  confidence: medium
+
+tax_registrations:
+  - id: zimra_registration
+    title: "ZIMRA tax registration (TIN / BP number)"
+    applies_to: [sole_trader, partnership, company]
+    when: "Register with ZIMRA through its online portal before you start trading."
+    confidence: medium
+  - id: vat
+    title: "VAT"
+    applies_to: [sole_trader, partnership, company]
+    when: "Registration becomes compulsory once taxable supplies pass the ZIMRA registration threshold — confirm the current figure with ZIMRA."
+    confidence: low
+  - id: paye_nssa
+    title: "PAYE and NSSA (as an employer)"
+    applies_to: [sole_trader, partnership, company]
+    when: "Register for PAYE with ZIMRA and with the National Social Security Authority when you employ people."
+    confidence: medium
+
+deadlines:
+  - id: zw_annual_return
+    title: "Annual return to the Registrar"
+    relative_to: incorporation
+    offset: { months: 12 }
+    recurring: annual
+    rule: "An annual return is filed with the Registrar each year; confirm the exact due date for your company with the Registrar or your agent."
+    confidence: medium
+  - id: zw_qpd
+    title: "Provisional tax — Quarterly Payment Dates"
+    relative_to: calendar
+    rule: "25 March (10%), 25 June (25%), 25 September (30%) and 20 December (35%) of the year's estimated tax."
+    confidence: medium
+
+checklist:
+  - id: zw_choose_structure
+    title: "Choose how you'll trade: sole trader, partnership or private limited company"
+    owner: advisor
+    category: registration
+    applies_to: [all]
+    links: ["https://www.zida.co.zw"]
+    confidence: high
+
+  - id: zw_name_search
+    title: "Search and reserve your company name with the Registrar"
+    owner: founder
+    category: registration
+    applies_to: [company]
+    links: ["https://www.zida.co.zw"]
+    confidence: medium
+
+  - id: zw_register_company
+    title: "Register your private limited company under the COBE Act"
+    detail: "Through the Registrar's online system or a registered agent. Keep your certificate of incorporation — Atlas will ask you to upload it, because there is no API to check it."
+    owner: advisor
+    category: registration
+    applies_to: [company]
+    severity: action_needed
+    links: ["https://www.zida.co.zw"]
+    confidence: medium
+
+  - id: zw_beneficial_ownership
+    title: "Keep a register of beneficial owners and file it with the Registrar"
+    owner: advisor
+    category: registration
+    applies_to: [company]
+    links: []
+    confidence: medium
+
+  - id: zw_atlas_portal_only
+    title: "No registry API — Atlas tracks this checklist from your uploads"
+    detail: "Atlas cannot check registration or tax status automatically in Zimbabwe. Upload certificates as you get them and Atlas ticks the items off. Atlas never logs in to government portals for you."
+    owner: atlas
+    category: registration
+    applies_to: [all]
+    links: []
+    confidence: high
+
+  - id: zw_zimra_register
+    title: "Register with ZIMRA for a tax number"
+    owner: founder
+    category: tax
+    applies_to: [all]
+    links: ["https://www.zimra.co.zw"]
+    confidence: medium
+
+  - id: zw_qpd
+    title: "Diarise the Quarterly Payment Dates for provisional tax"
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    deadline: zw_qpd
+    links: ["https://www.zimra.co.zw"]
+    confidence: medium
+
+  - id: zw_tax_clearance
+    title: "Get a tax clearance certificate (ITF263)"
+    detail: "Customers and tenders commonly ask for it, and without it some payments to you may have tax withheld."
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    links: ["https://www.zimra.co.zw"]
+    confidence: medium
+
+  - id: zw_vat
+    title: "Register for VAT once taxable supplies pass the ZIMRA threshold"
+    owner: advisor
+    category: tax
+    applies_to: [all]
+    trigger: vat_threshold
+    links: ["https://www.zimra.co.zw"]
+    confidence: low
+
+  - id: zw_paye_nssa
+    title: "Register for PAYE and with NSSA when you employ people"
+    owner: founder
+    category: people
+    applies_to: [all]
+    trigger: hires
+    links: ["https://www.zimra.co.zw", "https://www.nssa.org.zw"]
+    confidence: medium
+
+  - id: zw_data_protection
+    title: "Check your duties under the Cyber and Data Protection Act"
+    detail: "If you process personal information, the Cyber and Data Protection Act [Chapter 12:07] applies and data controllers may need a licence from POTRAZ, the data protection authority."
+    owner: founder
+    category: data
+    applies_to: [all]
+    trigger: handles_personal_data
+    links: ["https://www.potraz.gov.zw"]
+    confidence: medium
+
+  - id: zw_licences
+    title: "Check shop and sector licences for your activity"
+    detail: "Local authorities issue shop licences; food, liquor, health and transport businesses need sector licences."
+    owner: advisor
+    category: licences
+    applies_to: [all]
+    trigger: regulated_activity
+    links: []
+    confidence: medium
+
+  - id: zw_annual_return
+    title: "File your annual return with the Registrar"
+    owner: founder
+    category: registration
+    applies_to: [company]
+    deadline: zw_annual_return
+    links: []
+    confidence: medium
+
+  - id: zw_business_bank
+    title: "Open a separate business bank account"
+    owner: founder
+    category: banking
+    applies_to: [all]
+    links: []
+    confidence: high

@@ -1,0 +1,1020 @@
+# SpiderNetOS — C-Suite newsletter quote bank
+#
+# One quote per issue, picked by CSuiteNewsletterComposer (plan D8 #15) with one line on why
+# it fits the week; no repeats within 26 weeks; tone_tags let the composer match the week's mood.
+#
+# Rules (enforced by the generator that produced this file):
+#   - traditions: zen | buddhist | stoic | hopeful | lighthearted | proverb; balanced; >= 15 lighthearted
+#   - attribution is never invented: a saying with no reliable author is "traditional",
+#     and source_note says where it comes from (verse, case, book, proverb tradition)
+#   - public_domain: true for original works, proverbs and pre-1930 texts; false when the
+#     quoted phrasing is a modern translation or a living/recent author — those stay under 15 words
+#   - African proverbs carry the original language plus an English translation in brackets
+#   - length_chars is computed from text
+#
+# The lighthearted set deliberately includes a few zen/stoic/proverb lines tagged "lighthearted"
+# in tone_tags, so the composer can pick a light line from any tradition.
+
+version: 1
+count: 99
+quotes:
+- id: zen-chop-wood
+  text: Before enlightenment, chop wood, carry water. After enlightenment, chop wood, carry water.
+  attribution: traditional
+  tradition: zen
+  tone_tags:
+  - grounded
+  - work
+  - humility
+  length_chars: 90
+  public_domain: true
+  source_note: Zen saying; traditional, often linked to Layman Pang (8th c.).
+- id: zen-walk-eat
+  text: When walking, walk. When eating, eat.
+  attribution: traditional
+  tradition: zen
+  tone_tags:
+  - presence
+  - simple
+  length_chars: 37
+  public_domain: true
+  source_note: Zen saying, traditional.
+- id: zen-obstacle-path
+  text: The obstacle is the path.
+  attribution: traditional
+  tradition: zen
+  tone_tags:
+  - resilience
+  - grounded
+  length_chars: 25
+  public_domain: true
+  source_note: Zen proverb, traditional.
+- id: zen-spring-grass
+  text: Sitting quietly, doing nothing, spring comes, and the grass grows by itself.
+  attribution: Zenrin Kushū
+  tradition: zen
+  tone_tags:
+  - patience
+  - calm
+  length_chars: 76
+  public_domain: true
+  source_note: Zenrin Kushū (Zen phrase anthology, 15th c.); translation traditional.
+- id: zen-beginners-mind
+  text: In the beginner's mind there are many possibilities; in the expert's, few.
+  attribution: Shunryu Suzuki
+  tradition: zen
+  tone_tags:
+  - curiosity
+  - humility
+  length_chars: 74
+  public_domain: false
+  source_note: Zen Mind, Beginner's Mind (1970); abridged.
+- id: zen-not-knowing
+  text: Not knowing is most intimate.
+  attribution: Dizang (Luohan Guichen)
+  tradition: zen
+  tone_tags:
+  - curiosity
+  - humility
+  length_chars: 29
+  public_domain: true
+  source_note: Book of Serenity, case 20; koan, traditional translation.
+- id: zen-study-self
+  text: To study the self is to forget the self.
+  attribution: Dōgen
+  tradition: zen
+  tone_tags:
+  - humility
+  - reflection
+  length_chars: 40
+  public_domain: true
+  source_note: Genjōkōan (1233); translation traditional.
+- id: zen-good-day
+  text: Every day is a good day.
+  attribution: Yunmen Wenyan
+  tradition: zen
+  tone_tags:
+  - hopeful
+  - simple
+  length_chars: 24
+  public_domain: true
+  source_note: Blue Cliff Record, case 6.
+- id: zen-wash-bowl
+  text: Have you eaten your rice? Then wash your bowl.
+  attribution: Zhaozhou Congshen
+  tradition: zen
+  tone_tags:
+  - grounded
+  - work
+  - lighthearted
+  length_chars: 46
+  public_domain: true
+  source_note: Gateless Gate, case 7.
+- id: zen-best-season
+  text: If your mind is not clouded by unnecessary things, this is the best season of your life.
+  attribution: Wumen Huikai
+  tradition: zen
+  tone_tags:
+  - presence
+  - hopeful
+  length_chars: 88
+  public_domain: true
+  source_note: Gateless Gate (1228), verse to case 19; abridged, translation traditional.
+- id: zen-journey-home
+  text: Every day is a journey, and the journey itself is home.
+  attribution: Matsuo Bashō
+  tradition: zen
+  tone_tags:
+  - presence
+  - hopeful
+  length_chars: 55
+  public_domain: true
+  source_note: Oku no Hosomichi (1702), opening lines; translation traditional.
+- id: zen-thief-moon
+  text: 'The thief left it behind: the moon at my window.'
+  attribution: Ryōkan
+  tradition: zen
+  tone_tags:
+  - lighthearted
+  - perspective
+  length_chars: 48
+  public_domain: true
+  source_note: Haiku by Ryōkan Taigu (1758–1831); translation traditional.
+- id: zen-lao-journey
+  text: A journey of a thousand miles begins with a single step.
+  attribution: Lao Tzu
+  tradition: zen
+  tone_tags:
+  - agency
+  - patience
+  - taoist
+  length_chars: 56
+  public_domain: true
+  source_note: Tao Te Ching 64; Taoist.
+- id: zen-lao-know-self
+  text: Knowing others is wisdom; knowing yourself is enlightenment.
+  attribution: Lao Tzu
+  tradition: zen
+  tone_tags:
+  - self
+  - wisdom
+  - taoist
+  length_chars: 60
+  public_domain: true
+  source_note: Tao Te Ching 33; adapted from James Legge (1891); Taoist.
+- id: zen-lao-difficult
+  text: Do the difficult while it is easy; do the great while it is small.
+  attribution: Lao Tzu
+  tradition: zen
+  tone_tags:
+  - planning
+  - work
+  - taoist
+  length_chars: 66
+  public_domain: true
+  source_note: Tao Te Ching 63; Taoist.
+- id: bud-dhp-1
+  text: Mind precedes all things; they are mind-made.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - reflection
+  - mind
+  length_chars: 45
+  public_domain: true
+  source_note: Dhammapada 1; adapted from Max Müller (1881).
+- id: bud-dhp-5
+  text: Hatred is never appeased by hatred; by non-hatred alone is hatred appeased.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - kindness
+  - peace
+  length_chars: 75
+  public_domain: true
+  source_note: Dhammapada 5.
+- id: bud-dhp-103
+  text: Greater than conquering a thousand men in battle is conquering oneself.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - discipline
+  - self
+  length_chars: 71
+  public_domain: true
+  source_note: Dhammapada 103; abridged.
+- id: bud-dhp-276
+  text: You yourselves must strive; the Buddhas only point the way.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - agency
+  - work
+  length_chars: 59
+  public_domain: true
+  source_note: Dhammapada 276.
+- id: bud-dhp-122
+  text: Drop by drop the water-pot is filled; little by little the wise fill themselves with good.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - patience
+  - growth
+  length_chars: 90
+  public_domain: true
+  source_note: Dhammapada 122; abridged.
+- id: bud-dhp-204
+  text: Health is the greatest gift, contentment the greatest wealth.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - contentment
+  - gratitude
+  length_chars: 61
+  public_domain: true
+  source_note: Dhammapada 204.
+- id: bud-dhp-223
+  text: Overcome anger by non-anger; overcome bad by good.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - kindness
+  - peace
+  length_chars: 50
+  public_domain: true
+  source_note: Dhammapada 223.
+- id: bud-dhp-50
+  text: Look not at the faults of others, but at what you yourself have done and left undone.
+  attribution: Dhammapada
+  tradition: buddhist
+  tone_tags:
+  - humility
+  - reflection
+  length_chars: 85
+  public_domain: true
+  source_note: Dhammapada 50; abridged.
+- id: bud-metta
+  text: May all beings be happy; may all beings be at ease.
+  attribution: Karaniya Metta Sutta
+  tradition: buddhist
+  tone_tags:
+  - kindness
+  - hopeful
+  length_chars: 51
+  public_domain: true
+  source_note: Sutta Nipāta 1.8; traditional rendering.
+- id: bud-shantideva
+  text: All the joy the world contains has come through wishing happiness for others.
+  attribution: Shantideva
+  tradition: buddhist
+  tone_tags:
+  - kindness
+  - generosity
+  length_chars: 77
+  public_domain: true
+  source_note: Bodhicaryāvatāra 8.129 (8th c.); translation adapted.
+- id: bud-hot-coal
+  text: Holding on to anger is like grasping a hot coal; you are the one who gets burned.
+  attribution: traditional
+  tradition: buddhist
+  tone_tags:
+  - peace
+  - letting-go
+  length_chars: 81
+  public_domain: true
+  source_note: Buddhist teaching, often attributed to the Buddha; closest canonical source is Buddhaghosa's Visuddhimagga.
+- id: bud-tnh-smile
+  text: Smile, breathe, and go slowly.
+  attribution: Thich Nhat Hanh
+  tradition: buddhist
+  tone_tags:
+  - calm
+  - presence
+  length_chars: 30
+  public_domain: false
+  source_note: Widely quoted teaching.
+- id: bud-tnh-peace
+  text: Peace is every step.
+  attribution: Thich Nhat Hanh
+  tradition: buddhist
+  tone_tags:
+  - calm
+  - presence
+  length_chars: 20
+  public_domain: false
+  source_note: Title and refrain of Peace Is Every Step (1991).
+- id: bud-pema-sky
+  text: You are the sky. Everything else is just the weather.
+  attribution: Pema Chödrön
+  tradition: buddhist
+  tone_tags:
+  - perspective
+  - calm
+  length_chars: 53
+  public_domain: false
+  source_note: Widely quoted.
+- id: bud-dalai-kind
+  text: Be kind whenever possible. It is always possible.
+  attribution: Dalai Lama XIV
+  tradition: buddhist
+  tone_tags:
+  - kindness
+  - simple
+  length_chars: 49
+  public_domain: false
+  source_note: Widely quoted.
+- id: sto-ma-present
+  text: Confine yourself to the present.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - presence
+  - focus
+  length_chars: 32
+  public_domain: true
+  source_note: Meditations 7.29; George Long translation (1862).
+- id: sto-ma-little
+  text: Very little is needed to make a happy life; it is all within yourself.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - contentment
+  - calm
+  length_chars: 70
+  public_domain: true
+  source_note: Meditations 7.67; adapted from Long (1862).
+- id: sto-ma-way
+  text: What stands in the way becomes the way.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - resilience
+  - grounded
+  length_chars: 39
+  public_domain: false
+  source_note: Meditations 5.20; phrasing after Gregory Hays (2002); the original is public domain.
+- id: sto-ma-revenge
+  text: The best revenge is not to be like your enemy.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - kindness
+  - discipline
+  length_chars: 46
+  public_domain: true
+  source_note: Meditations 6.6; adapted from Long.
+- id: sto-ma-fountain
+  text: Look within. Within is the fountain of good, and it will ever bubble up if you will ever dig.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - hopeful
+  - self
+  length_chars: 93
+  public_domain: true
+  source_note: Meditations 7.59; Long (1862).
+- id: sto-ma-swarm
+  text: That which is not good for the swarm is not good for the bee.
+  attribution: Marcus Aurelius
+  tradition: stoic
+  tone_tags:
+  - team
+  - perspective
+  length_chars: 61
+  public_domain: true
+  source_note: Meditations 6.54; Long (1862).
+- id: sto-sen-imagination
+  text: We suffer more often in imagination than in reality.
+  attribution: Seneca
+  tradition: stoic
+  tone_tags:
+  - calm
+  - perspective
+  length_chars: 52
+  public_domain: true
+  source_note: Letters to Lucilius 13.4; Gummere (1917).
+- id: sto-sen-long
+  text: Life is long, if you know how to use it.
+  attribution: Seneca
+  tradition: stoic
+  tone_tags:
+  - time
+  - focus
+  length_chars: 40
+  public_domain: true
+  source_note: On the Shortness of Life 2.1.
+- id: sto-sen-each-day
+  text: Begin at once to live, and count each separate day as a separate life.
+  attribution: Seneca
+  tradition: stoic
+  tone_tags:
+  - presence
+  - agency
+  length_chars: 70
+  public_domain: true
+  source_note: Letters to Lucilius 101.10; Gummere.
+- id: sto-sen-stars
+  text: There is no easy way from the earth to the stars.
+  attribution: Seneca
+  tradition: stoic
+  tone_tags:
+  - resilience
+  - work
+  length_chars: 49
+  public_domain: true
+  source_note: Hercules Furens 437 (non est ad astra mollis e terris via).
+- id: sto-sen-port
+  text: No wind is favourable to the sailor who does not know their port.
+  attribution: Seneca
+  tradition: stoic
+  tone_tags:
+  - focus
+  - planning
+  length_chars: 65
+  public_domain: true
+  source_note: Letters to Lucilius 71.3; adapted.
+- id: sto-epi-judgements
+  text: It is not things that disturb us, but our judgements about things.
+  attribution: Epictetus
+  tradition: stoic
+  tone_tags:
+  - perspective
+  - calm
+  length_chars: 66
+  public_domain: true
+  source_note: Enchiridion 5.
+- id: sto-epi-power
+  text: Some things are within our power, and some are not.
+  attribution: Epictetus
+  tradition: stoic
+  tone_tags:
+  - acceptance
+  - focus
+  length_chars: 51
+  public_domain: true
+  source_note: Enchiridion 1.
+- id: sto-epi-foolish
+  text: If you want to improve, be content to be thought foolish and stupid.
+  attribution: Epictetus
+  tradition: stoic
+  tone_tags:
+  - growth
+  - humility
+  - lighthearted
+  length_chars: 68
+  public_domain: true
+  source_note: Enchiridion 13.
+- id: sto-epi-first-say
+  text: First say to yourself what you would be; then do what you have to do.
+  attribution: Epictetus
+  tradition: stoic
+  tone_tags:
+  - agency
+  - discipline
+  length_chars: 69
+  public_domain: true
+  source_note: Discourses 3.23.1; adapted from Long (1877).
+- id: sto-zeno-ears
+  text: We have two ears and one mouth, so we should listen more than we say.
+  attribution: Zeno of Citium
+  tradition: stoic
+  tone_tags:
+  - listening
+  - lighthearted
+  length_chars: 69
+  public_domain: true
+  source_note: Reported by Diogenes Laertius, Lives 7.23; adapted.
+- id: hope-dickinson
+  text: Hope is the thing with feathers that perches in the soul.
+  attribution: Emily Dickinson
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - poetic
+  length_chars: 57
+  public_domain: true
+  source_note: Poem 314 (c. 1861).
+- id: hope-tutu-good
+  text: Do your little bit of good where you are.
+  attribution: Desmond Tutu
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - kindness
+  - agency
+  length_chars: 41
+  public_domain: false
+  source_note: From interviews; widely quoted; abridged from the longer 'little bits of good' line.
+- id: hope-mandela
+  text: It always seems impossible until it's done.
+  attribution: Nelson Mandela
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - resilience
+  length_chars: 43
+  public_domain: false
+  source_note: Widely attributed.
+- id: hope-maathai
+  text: My little thing is planting trees.
+  attribution: Wangari Maathai
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - agency
+  length_chars: 34
+  public_domain: false
+  source_note: From interviews on the Green Belt Movement; abridged.
+- id: hope-achebe
+  text: If you want to see the world well, do not stand in one place.
+  attribution: Chinua Achebe
+  tradition: hopeful
+  tone_tags:
+  - curiosity
+  - perspective
+  length_chars: 61
+  public_domain: false
+  source_note: Arrow of God (1964), the mask-dancing line; abridged.
+- id: hope-keller
+  text: Keep your face to the sunshine and you cannot see a shadow.
+  attribution: Helen Keller
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - perspective
+  length_chars: 59
+  public_domain: true
+  source_note: We Bereaved (1929).
+- id: hope-wilde-stars
+  text: We are all in the gutter, but some of us are looking at the stars.
+  attribution: Oscar Wilde
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - lighthearted
+  length_chars: 66
+  public_domain: true
+  source_note: Lady Windermere's Fan (1892).
+- id: hope-frank
+  text: Think of all the beauty still left around you and be happy.
+  attribution: Anne Frank
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - gratitude
+  length_chars: 59
+  public_domain: false
+  source_note: Diary, 7 March 1944.
+- id: hope-havel
+  text: Hope is the certainty that something makes sense, however it turns out.
+  attribution: Václav Havel
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - meaning
+  length_chars: 71
+  public_domain: false
+  source_note: Disturbing the Peace (1986); abridged.
+- id: hope-ashe
+  text: Start where you are. Use what you have. Do what you can.
+  attribution: Arthur Ashe
+  tradition: hopeful
+  tone_tags:
+  - agency
+  - grounded
+  length_chars: 56
+  public_domain: false
+  source_note: Widely attributed.
+- id: hope-rogers
+  text: Look for the helpers. You will always find people who are helping.
+  attribution: Fred Rogers
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - kindness
+  length_chars: 66
+  public_domain: false
+  source_note: Mister Rogers, recalling his mother's advice.
+- id: hope-ramdass-home
+  text: We're all just walking each other home.
+  attribution: Ram Dass
+  tradition: hopeful
+  tone_tags:
+  - kindness
+  - unity
+  length_chars: 39
+  public_domain: false
+  source_note: Widely quoted.
+- id: hope-vonnegut
+  text: I urge you to please notice when you are happy.
+  attribution: Kurt Vonnegut
+  tradition: hopeful
+  tone_tags:
+  - gratitude
+  - presence
+  - lighthearted
+  length_chars: 47
+  public_domain: false
+  source_note: A Man Without a Country (2005).
+- id: hope-rumi-wound
+  text: The wound is the place where the light enters you.
+  attribution: Rumi
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - resilience
+  length_chars: 50
+  public_domain: false
+  source_note: 13th c.; phrasing after Coleman Barks; the original is public domain.
+- id: hope-rumi-seek
+  text: What you seek is seeking you.
+  attribution: Rumi
+  tradition: hopeful
+  tone_tags:
+  - hopeful
+  - curiosity
+  length_chars: 29
+  public_domain: false
+  source_note: Phrasing after Coleman Barks.
+- id: hope-rumi-beauty
+  text: Let the beauty of what you love be what you do.
+  attribution: Rumi
+  tradition: hopeful
+  tone_tags:
+  - work
+  - meaning
+  length_chars: 47
+  public_domain: false
+  source_note: Phrasing after Coleman Barks.
+- id: lite-bacon
+  text: Hope is a good breakfast, but it is a bad supper.
+  attribution: Francis Bacon
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - planning
+  length_chars: 49
+  public_domain: true
+  source_note: Apophthegms (1625).
+- id: lite-twain-right
+  text: Always do right. This will gratify some people and astonish the rest.
+  attribution: Mark Twain
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - integrity
+  length_chars: 69
+  public_domain: true
+  source_note: Note to the Young People's Society, Greenpoint Presbyterian Church, 1901.
+- id: lite-milne-rivers
+  text: 'Rivers know this: there is no hurry. We shall get there some day.'
+  attribution: A. A. Milne
+  tradition: lighthearted
+  tone_tags:
+  - calm
+  - patience
+  - wit
+  length_chars: 65
+  public_domain: true
+  source_note: The House at Pooh Corner (1928).
+- id: lite-berra-over
+  text: It ain't over till it's over.
+  attribution: Yogi Berra
+  tradition: lighthearted
+  tone_tags:
+  - hopeful
+  - wit
+  length_chars: 29
+  public_domain: false
+  source_note: Said of the 1973 Mets.
+- id: lite-berra-fork
+  text: When you come to a fork in the road, take it.
+  attribution: Yogi Berra
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - decision
+  length_chars: 45
+  public_domain: false
+  source_note: Directions to his house, by his own account.
+- id: lite-berra-watch
+  text: You can observe a lot by just watching.
+  attribution: Yogi Berra
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - observation
+  length_chars: 39
+  public_domain: false
+  source_note: Widely quoted.
+- id: lite-adams
+  text: I love deadlines. I love the whooshing noise they make as they go by.
+  attribution: Douglas Adams
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - work
+  length_chars: 69
+  public_domain: false
+  source_note: The Salmon of Doubt (2002).
+- id: lite-tomlin
+  text: 'The trouble with the rat race: even if you win, you''re still a rat.'
+  attribution: Lily Tomlin
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - perspective
+  length_chars: 67
+  public_domain: false
+  source_note: Stage routine; abridged.
+- id: lite-schulz
+  text: 'My new philosophy: I''m only going to dread one day at a time.'
+  attribution: Charles M. Schulz
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - resilience
+  length_chars: 61
+  public_domain: false
+  source_note: Peanuts (Charlie Brown); abridged.
+- id: lite-jerome
+  text: I like work; it fascinates me. I can sit and look at it for hours.
+  attribution: Jerome K. Jerome
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - work
+  length_chars: 66
+  public_domain: true
+  source_note: Three Men in a Boat (1889).
+- id: lite-yiddish
+  text: Man plans and God laughs.
+  attribution: traditional
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - humility
+  length_chars: 25
+  public_domain: true
+  source_note: Yiddish proverb (Der mentsh trakht un got lakht).
+- id: lite-chamfort
+  text: The most wasted of all days is one without laughter.
+  attribution: Nicolas Chamfort
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - joy
+  length_chars: 52
+  public_domain: true
+  source_note: Maximes et pensées (1796); often misattributed to Chaplin or E. E. Cummings.
+- id: lite-chesterton
+  text: Angels can fly because they take themselves lightly.
+  attribution: G. K. Chesterton
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - humility
+  length_chars: 52
+  public_domain: true
+  source_note: Orthodoxy (1908).
+- id: lite-troly
+  text: Time you enjoy wasting is not wasted time.
+  attribution: Marthe Troly-Curtin
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - rest
+  length_chars: 42
+  public_domain: true
+  source_note: Phrynette Married (1912); often misattributed to Bertrand Russell.
+- id: lite-issa-spiders
+  text: Don't worry, spiders, I keep house casually.
+  attribution: Kobayashi Issa
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - calm
+  length_chars: 44
+  public_domain: false
+  source_note: Haiku (early 19th c.); translation after Robert Hass; the original is public domain.
+- id: lite-watterson
+  text: There's treasure everywhere.
+  attribution: Bill Watterson
+  tradition: lighthearted
+  tone_tags:
+  - wonder
+  - wit
+  length_chars: 28
+  public_domain: false
+  source_note: Calvin and Hobbes (1996).
+- id: lite-monkeys
+  text: Even monkeys fall from trees.
+  attribution: traditional
+  tradition: lighthearted
+  tone_tags:
+  - wit
+  - humility
+  length_chars: 29
+  public_domain: true
+  source_note: Japanese proverb (Saru mo ki kara ochiru).
+- id: prov-shona-kuziva
+  text: Kuziva mbuya huudzwa. (To know your grandmother, you have to be told.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - asking
+  - learning
+  - curiosity
+  length_chars: 70
+  public_domain: true
+  source_note: 'Shona proverb: knowledge comes by asking — ask one more question.'
+- id: prov-shona-chara
+  text: Chara chimwe hachitswanyi inda. (One finger cannot crush a louse.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - team
+  - cooperation
+  length_chars: 66
+  public_domain: true
+  source_note: Shona proverb.
+- id: prov-shona-rume
+  text: Rume rimwe harikombi churu. (One man cannot surround an anthill.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - team
+  - delegation
+  length_chars: 65
+  public_domain: true
+  source_note: Shona proverb.
+- id: prov-shona-chitsva
+  text: 'Chitsva chiri murutsoka. (The new thing is in the feet: go, and you will find it.)'
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - curiosity
+  - action
+  length_chars: 82
+  public_domain: true
+  source_note: Shona proverb.
+- id: prov-shona-mwana
+  text: Mwana asingachemi anofira mumbereko. (The child who does not cry dies on its mother's back.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - asking
+  - courage
+  length_chars: 92
+  public_domain: true
+  source_note: 'Shona proverb: speak up; ask.'
+- id: prov-zulu-ubuntu
+  text: Umuntu ngumuntu ngabantu. (A person is a person through other people.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - unity
+  - kindness
+  length_chars: 70
+  public_domain: true
+  source_note: Zulu proverb; the ubuntu principle.
+- id: prov-zulu-indlela
+  text: Indlela ibuzwa kwabaphambili. (The way is asked from those who have walked it before.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - asking
+  - learning
+  length_chars: 86
+  public_domain: true
+  source_note: Zulu proverb.
+- id: prov-zulu-izandla
+  text: Izandla ziyagezana. (Hands wash each other.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - team
+  - reciprocity
+  length_chars: 44
+  public_domain: true
+  source_note: Zulu proverb.
+- id: prov-zulu-ndlovu
+  text: Akukho ndlovu yasindwa umboko wayo. (No elephant finds its own trunk too heavy.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - resilience
+  - ownership
+  length_chars: 80
+  public_domain: true
+  source_note: Zulu proverb.
+- id: prov-swahili-haba
+  text: Haba na haba hujaza kibaba. (Little by little fills the measure.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - patience
+  - compounding
+  length_chars: 65
+  public_domain: true
+  source_note: Swahili proverb.
+- id: prov-swahili-haraka
+  text: Haraka haraka haina baraka. (Hurry, hurry has no blessing.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - patience
+  - lighthearted
+  length_chars: 59
+  public_domain: true
+  source_note: Swahili proverb.
+- id: prov-swahili-mvumilivu
+  text: Mvumilivu hula mbivu. (The patient one eats ripe fruit.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - patience
+  - reward
+  length_chars: 56
+  public_domain: true
+  source_note: Swahili proverb.
+- id: prov-yoruba-owo
+  text: Ọwọ́ ọmọdé kò tó pẹpẹ, ti àgbàlagbà kò wọ kèrègbè. (A child's hand cannot reach the shelf; an elder's cannot
+    enter the gourd.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - team
+  - respect
+  length_chars: 126
+  public_domain: true
+  source_note: 'Yoruba proverb: everyone has something only they can do.'
+- id: prov-yoruba-ona
+  text: Ọ̀nà kan ò wọ ọjà. (Only one road does not lead to the market.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - perspective
+  - options
+  length_chars: 63
+  public_domain: true
+  source_note: Yoruba proverb.
+- id: prov-igbo-ask
+  text: Onye ajụjụ anaghị efu ụzọ. (One who asks questions never loses the way.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - asking
+  - curiosity
+  length_chars: 72
+  public_domain: true
+  source_note: Igbo proverb.
+- id: prov-akan-sankofa
+  text: Se wo were fi na wosankofa a yenkyi. (It is not wrong to go back for what you have forgotten.)
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - learning
+  - reflection
+  length_chars: 94
+  public_domain: true
+  source_note: Akan proverb; the Sankofa symbol.
+- id: prov-ethiopia-spider
+  text: When spider webs unite, they can tie up a lion.
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - team
+  - unity
+  length_chars: 47
+  public_domain: true
+  source_note: Ethiopian proverb.
+- id: prov-african-dawn
+  text: However long the night, the dawn will break.
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - hopeful
+  length_chars: 44
+  public_domain: true
+  source_note: African proverb, widely given as Hausa; origin traditional.
+- id: prov-chinese-tree
+  text: The best time to plant a tree was twenty years ago. The second best time is now.
+  attribution: traditional
+  tradition: proverb
+  tone_tags:
+  - agency
+  - hopeful
+  length_chars: 80
+  public_domain: true
+  source_note: Proverb commonly called Chinese; origin uncertain.
+- id: prov-confucius-mistake
+  text: 'To make a mistake and not correct it: this is a real mistake.'
+  attribution: Confucius
+  tradition: proverb
+  tone_tags:
+  - learning
+  - integrity
+  length_chars: 61
+  public_domain: true
+  source_note: Analects 15.30; adapted from Legge (1861).

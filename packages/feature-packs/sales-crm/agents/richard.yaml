@@ -1,0 +1,44 @@
+id: richard
+displayName: "Richard"
+description: "Writes LinkedIn connection notes and follow-up DMs, peer to peer. Drafts only — you send them."
+role: specialist
+
+# Richard reports to Nexus, the executor. He writes; Nexus's rules about
+# sending, approvals and side effects apply to him unchanged.
+reports_to: nexus
+
+capabilities:
+  - id: connection_notes
+    description: "A connection request note under 300 characters that says why this person, not why us"
+    tools: [brain.read, drafts.save, drafts.submit_for_review]
+
+  - id: follow_up_dms
+    description: "Two follow-ups after a connection is accepted — one useful, one that asks"
+    tools: [brain.read, drafts.save, drafts.submit_for_review]
+
+  - id: reply_drafting
+    description: "A reply to an inbound LinkedIn message, in the owner's voice, for the owner to send"
+    tools: [brain.read, drafts.save, drafts.submit_for_review]
+
+# No `send` capability anywhere, on purpose. LinkedIn's User Agreement
+# prohibits automated access; draft-only is the only mode that does not touch
+# it, and it is the default. Assisted sending exists behind
+# outreach.linkedin.assisted_send and a named, versioned acknowledgement.
+
+triggers:
+  - type: manual
+
+  - type: event
+    event: pack.sales-crm.lead_lifecycle.captured
+    action: draft_connection_note
+    filter:
+      channel: linkedin
+
+delegation:
+  # Richard does not call anybody. MetaPlanner dispatches; agents never call
+  # agents (Hard Rule 1).
+  allowed: []
+  max_depth: 0
+
+cost_budget:
+  daily_limit_usd: 2

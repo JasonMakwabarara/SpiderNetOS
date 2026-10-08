@@ -16,7 +16,7 @@ use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\Enterprise\AssetController;
 use App\Http\Controllers\Enterprise\EnterpriseAuthController;
 use App\Http\Controllers\Enterprise\EnterpriseRegistrationController;
-use App\Http\Controllers\Enterprise\FinanceOpsController;
+use App\Http\Controllers\Enterprise\PayablesController;
 use App\Http\Controllers\Enterprise\PeopleController;
 use App\Http\Controllers\Enterprise\PurchasingController;
 use App\Http\Controllers\FeaturePackController;
@@ -36,6 +36,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ObservabilityController;
 use App\Http\Controllers\Operating\OperatingController;
 use App\Http\Controllers\OutcomesController;
+use App\Http\Controllers\Outreach\LinkedInSettingsController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\Sales\ConversationController;
 use App\Http\Controllers\Sales\FunnelSetupController;
@@ -218,7 +219,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     Route::get('/agents/templates', [AgentController::class, 'templates']);
     Route::get('/agents/graph/delegation', [AgentController::class, 'delegationGraph']);
     Route::get('/agents/{agent}/delegations', [AgentController::class, 'delegations']);
-    Route::get('/agents/{agent}', [AgentController::class, 'show']);
+    // `breaker` is the circuit-breaker endpoint (routes/api/founder.php), not an agent id.
+    Route::get('/agents/{agent}', [AgentController::class, 'show'])->where('agent', '^(?!breaker$).+');
     Route::put('/agents/{agent}', [AgentController::class, 'update']);
     Route::delete('/agents/{agent}', [AgentController::class, 'destroy']);
     Route::patch('/agents/{agent}/status', [AgentController::class, 'toggleStatus']);
@@ -369,6 +371,25 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/autonomy', [OutcomesController::class, 'autonomy']);
         Route::put('/autonomy', [OutcomesController::class, 'updateAutonomy']);
     });
+
+    // ─── Brain / Workspaces / Skills program (ADR-0002) ──────────────
+    // One route file per stream so parallel work never edits this file:
+    //   routes/api/brain.php   → /api/brain/*            (Knowledge brain)
+    //   routes/api/skills.php  → /api/skills/*           (catalogue, cards, run)
+    //   routes/api/agents.php  → /api/agent-runs/*, /api/artifacts/*, /api/research-briefs/*, /api/agents/breaker
+    //   routes/api/founder.php → /api/today, /api/atlas/sessions/*, /api/notifications/*
+    //   routes/api/map.php     → /api/map/*                (business map)
+    //   routes/api/voice.php   → /api/voice/personas, /api/me/voice, /api/atlas/speak
+    //   routes/api/launch.php  → /api/launch/*             (business-launch pack)
+    //   routes/api/reports.php → /api/reports/weekly/*      (Monday letter + C-Suite)
+    //   routes/api/board.php   → /api/board/*              (board of advisors)
+    //   routes/api/hannah.php  → /api/hannah/*             (Hannah AI hand-off)
+    foreach (['brain', 'skills', 'agents', 'founder', 'map', 'voice', 'launch', 'reports', 'board', 'hannah'] as $programRoutes) {
+        $programRoutesPath = __DIR__.'/api/'.$programRoutes.'.php';
+        if (is_file($programRoutesPath)) {
+            require $programRoutesPath;
+        }
+    }
 });
 
 // ─── Admin workspace (role:admin) ───────────────────────────────
@@ -413,6 +434,65 @@ Route::middleware(['auth:sanctum', 'role:super_admin', 'throttle:platform'])->pr
     Route::post('/impersonate', [PlatformController::class, 'impersonate'])->middleware('step.up');
     Route::post('/impersonate/{id}/end', [PlatformController::class, 'endImpersonation']);
 });
+
+// ─── Enterprise operations: HR register ──────────────────────────────
+// Public enterprise/register and enterprise/auth stay above. This group is
+// the authenticated tenant register. Employee numbers come from
+// Financial\DocumentNumberService against document_sequences.
+Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
+    ->prefix('enterprise')
+    ->group(function () {
+        Route::get('/departments', [PeopleController::class, 'departments']);
+        Route::post('/departments', [PeopleController::class, 'storeDepartment']);
+        Route::get('/departments/{id}', [PeopleController::class, 'showDepartment']);
+
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/hr/settings', [PeopleController::class, 'numberingSettings']);
+            Route::patch('/hr/settings', [PeopleController::class, 'updateNumberingSettings']);
+            Route::post('/employees/job-description-suggestion', [PeopleController::class, 'suggestJobDescription']);
+            Route::get('/employees', [PeopleController::class, 'employees']);
+            Route::post('/employees', [PeopleController::class, 'storeEmployee']);
+            Route::get('/employees/{id}/audit.csv', [PeopleController::class, 'exportAudit']);
+            Route::get('/employees/{id}', [PeopleController::class, 'showEmployee']);
+            Route::patch('/employees/{id}', [PeopleController::class, 'updateEmployee']);
+            Route::post('/employees/{id}/deactivate', [PeopleController::class, 'deactivateEmployee']);
+        });
+
+        Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);
+        Route::post('/requisitions', [PurchasingController::class, 'storeRequisition']);
+        Route::get('/requisitions/{id}', [PurchasingController::class, 'showRequisition']);
+        Route::post('/requisitions/{id}/submit', [PurchasingController::class, 'submitRequisition']);
+
+        Route::get('/vendors', [PurchasingController::class, 'indexVendors']);
+        Route::post('/vendors', [PurchasingController::class, 'storeVendor']);
+
+        Route::get('/purchase-orders', [PurchasingController::class, 'indexPurchaseOrders']);
+        Route::post('/purchase-orders', [PurchasingController::class, 'storePurchaseOrder']);
+        Route::get('/purchase-orders/{id}', [PurchasingController::class, 'showPurchaseOrder']);
+        Route::post('/purchase-orders/{id}/issue', [PurchasingController::class, 'issuePurchaseOrder']);
+        Route::post('/purchase-orders/{id}/receipts', [PurchasingController::class, 'receivePurchaseOrder']);
+        Route::post('/purchase-orders/{id}/invoice', [PayablesController::class, 'invoiceFromPurchaseOrder']);
+        Route::get('/supplier-invoices/{id}', [PayablesController::class, 'showSupplierInvoice']);
+        Route::post('/supplier-invoices/{id}/match', [PayablesController::class, 'match']);
+        Route::post('/supplier-invoices/{id}/post', [PayablesController::class, 'post']);
+        Route::post('/supplier-invoices/{id}/fiscalise', [PayablesController::class, 'fiscalise']);
+        Route::post('/supplier-invoices/{id}/credit-notes', [PayablesController::class, 'storeCreditNote']);
+        Route::get('/credit-notes/{id}', [PayablesController::class, 'showCreditNote']);
+        Route::post('/credit-notes/{id}/issue', [PayablesController::class, 'issueCreditNote']);
+        Route::get('/cashbooks', [PayablesController::class, 'indexCashbooks']);
+        Route::post('/cashbooks', [PayablesController::class, 'storeCashbook']);
+        Route::post('/cashbooks/{id}/movements', [PayablesController::class, 'storeMovement']);
+
+        Route::get('/clock-events', [PeopleController::class, 'clockEvents']);
+        Route::post('/clock-events', [PeopleController::class, 'storeClockEvent']);
+        Route::get('/clock-events/{id}', [PeopleController::class, 'showClockEvent']);
+
+        Route::get('/assets', [AssetController::class, 'index']);
+        Route::post('/assets', [AssetController::class, 'store']);
+        Route::get('/assets/{id}', [AssetController::class, 'show']);
+        Route::post('/assets/{id}/assign', [AssetController::class, 'assign']);
+        Route::post('/assets/{id}/return', [AssetController::class, 'returnAsset']);
+    });
 
 // ─── Financial Services (Financial OS) ───────────────────────────────
 Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
@@ -607,6 +687,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
         Route::get('/partners', [PartnerProspectController::class, 'index']);
         Route::get('/partners/dm-queue', [PartnerProspectController::class, 'dmQueue']);
         Route::get('/partners/settings', [PartnerProspectController::class, 'settings']);
+
+        // LinkedIn outreach (plan D7 §3). Default draft_only: Richard drafts,
+        // a person sends, and nothing touches LinkedIn. Moving to assisted
+        // needs a named, versioned acknowledgement of LinkedIn's terms.
+        Route::get('/partners/linkedin/settings', [LinkedInSettingsController::class, 'show']);
+        Route::put('/partners/linkedin/settings', [LinkedInSettingsController::class, 'update'])->middleware('role:admin');
         Route::put('/partners/settings', [PartnerProspectController::class, 'updateSettings'])->middleware('role:admin');
         Route::post('/partners/import', [PartnerProspectController::class, 'import'])->middleware('role:admin');
         Route::post('/partners/run', [PartnerProspectController::class, 'run'])->middleware('role:admin');
@@ -630,75 +716,15 @@ Route::middleware(['auth:sanctum', 'tenant', 'pack.entitled:sales-crm', 'onboard
 // Backend-internal — called by Python intelligence workers only (never the
 // cockpit). Shared-key auth via X-Internal-Key, tenant scope via X-Tenant-Id.
 Route::prefix('internal')->middleware('internal.key')->group(function () {
+    // Program internal routes (tool gateway / brain reads for the Python plane)
+    if (is_file(__DIR__.'/api/internal.php')) {
+        require __DIR__.'/api/internal.php';
+    }
     Route::post('/sales/leads/{id}/stage', [SalesController::class, 'updateStage']);
     Route::post('/sales/leads/{id}/score', [SalesController::class, 'updateScore']);
     Route::post('/sales/leads/{id}/message', [SalesController::class, 'sendMessage']);
     Route::post('/sales/leads/{id}/enroll', [SalesController::class, 'enrollInSequence']);
 });
-
-// ─── Enterprise Operations ──────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
-    ->prefix('enterprise')
-    ->group(function () {
-        Route::get('/overview', [FinanceOpsController::class, 'overview']);
-
-        Route::get('/departments', [PeopleController::class, 'departments']);
-        Route::post('/departments', [PeopleController::class, 'storeDepartment']);
-        Route::get('/departments/{id}', [PeopleController::class, 'showDepartment']);
-        Route::middleware('role:admin')->group(function () {
-            Route::get('/hr/settings', [PeopleController::class, 'numberingSettings']);
-            Route::patch('/hr/settings', [PeopleController::class, 'updateNumberingSettings']);
-            Route::post('/employees/job-description-suggestion', [PeopleController::class, 'suggestJobDescription']);
-            Route::get('/employees', [PeopleController::class, 'employees']);
-            Route::post('/employees', [PeopleController::class, 'storeEmployee']);
-            Route::get('/employees/{id}/audit.csv', [PeopleController::class, 'exportAudit']);
-            Route::get('/employees/{id}', [PeopleController::class, 'showEmployee']);
-            Route::patch('/employees/{id}', [PeopleController::class, 'updateEmployee']);
-            Route::post('/employees/{id}/deactivate', [PeopleController::class, 'deactivateEmployee']);
-        });
-
-        Route::get('/clock-events', [PeopleController::class, 'clockEvents']);
-        Route::post('/clock-events', [PeopleController::class, 'storeClockEvent']);
-        Route::get('/clock-events/{id}', [PeopleController::class, 'showClockEvent']);
-
-        Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);
-        Route::post('/requisitions', [PurchasingController::class, 'storeRequisition']);
-        Route::get('/requisitions/{id}', [PurchasingController::class, 'showRequisition']);
-        Route::post('/requisitions/{id}/submit', [PurchasingController::class, 'submitRequisition']);
-
-        Route::get('/vendors', [PurchasingController::class, 'indexVendors']);
-        Route::post('/vendors', [PurchasingController::class, 'storeVendor']);
-        Route::get('/vendors/{id}', [PurchasingController::class, 'showVendor']);
-        Route::get('/purchase-orders', [PurchasingController::class, 'indexPurchaseOrders']);
-        Route::post('/purchase-orders', [PurchasingController::class, 'storePurchaseOrder']);
-        Route::get('/purchase-orders/{id}', [PurchasingController::class, 'showPurchaseOrder']);
-        Route::post('/purchase-orders/{id}/issue', [PurchasingController::class, 'issuePurchaseOrder']);
-
-        Route::get('/assets', [AssetController::class, 'index']);
-        Route::post('/assets', [AssetController::class, 'store']);
-        Route::get('/assets/{id}', [AssetController::class, 'show']);
-        Route::post('/assets/{id}/assign', [AssetController::class, 'assign']);
-        Route::post('/assets/{id}/return', [AssetController::class, 'returnAsset']);
-
-        Route::get('/cashbooks', [FinanceOpsController::class, 'indexCashbooks']);
-        Route::post('/cashbooks', [FinanceOpsController::class, 'storeCashbook']);
-        Route::get('/cashbooks/{id}', [FinanceOpsController::class, 'showCashbook']);
-        Route::get('/cash-movements', [FinanceOpsController::class, 'indexMovements']);
-        Route::post('/cash-movements', [FinanceOpsController::class, 'storeMovement']);
-        Route::get('/cash-movements/{id}', [FinanceOpsController::class, 'showMovement']);
-
-        Route::get('/credit-notes', [FinanceOpsController::class, 'indexCreditNotes']);
-        Route::post('/credit-notes', [FinanceOpsController::class, 'storeCreditNote']);
-        Route::get('/credit-notes/{id}', [FinanceOpsController::class, 'showCreditNote']);
-        Route::post('/credit-notes/{id}/issue', [FinanceOpsController::class, 'issueCreditNote']);
-
-        Route::get('/fiscal-devices', [FinanceOpsController::class, 'indexDevices']);
-        Route::post('/fiscal-devices', [FinanceOpsController::class, 'storeDevice']);
-        Route::get('/fiscal-devices/{id}', [FinanceOpsController::class, 'showDevice']);
-        Route::get('/fiscal-submissions', [FinanceOpsController::class, 'indexSubmissions']);
-        Route::get('/fiscal-submissions/{id}', [FinanceOpsController::class, 'showSubmission']);
-        Route::post('/invoices/{invoice}/fiscalise', [FinanceOpsController::class, 'fiscalise']);
-    });
 
 // ─── State Transition Engine (STE) — read-first, super_admin only ──────────
 Route::middleware(['auth:sanctum', 'role:super_admin', 'can.do:ste.view'])

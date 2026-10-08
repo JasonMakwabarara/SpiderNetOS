@@ -137,7 +137,6 @@ function timeAgo(dateStr) {
 </script>
 
 <style scoped>
-.sn-eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
 .sn-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
 .sn-btn { background: linear-gradient(135deg, #00E5C8, #087D6E); color: #05070A; }
 .sn-pill { background: var(--accent-weak); color: var(--accent); border: 1px solid rgba(0,229,200,0.30); padding: 2px 8px; border-radius: 999px; }

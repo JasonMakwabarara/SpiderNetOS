@@ -9,8 +9,8 @@ use App\Models\Employee;
 use App\Models\Requisition;
 use App\Models\RequisitionLine;
 use App\Services\ApprovalEngine;
-use App\Services\DocumentNumberService;
 use App\Services\EventStore;
+use App\Services\Financial\DocumentNumberService;
 use Illuminate\Support\Facades\DB;
 
 class RequisitionService
@@ -36,7 +36,7 @@ class RequisitionService
             $requisition = Requisition::create([
                 'tenant_id' => $tenantId,
                 'employee_id' => $data['employee_id'] ?? null,
-                'requisition_number' => $this->documentNumbers->next($tenantId, 'requisition', 'REQ-'),
+                'requisition_number' => $this->documentNumbers->nextSerial($tenantId, 'requisition', 'REQ', 6),
                 'title' => $data['title'],
                 'status' => 'draft',
             ]);
@@ -90,6 +90,9 @@ class RequisitionService
         });
     }
 
+    /**
+     * Approval grants procurement. It does not create a purchase order.
+     */
     public function onApprovalResolved(string $tenantId, string $requisitionId, bool $granted, string $response = ''): void
     {
         $requisition = Requisition::forTenant($tenantId)->lockForUpdate()->findOrFail($requisitionId);

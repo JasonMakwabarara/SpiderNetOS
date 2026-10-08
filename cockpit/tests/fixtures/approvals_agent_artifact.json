@@ -1,0 +1,126 @@
+{
+  "data": [
+    {
+      "id": "apr_seq_q4_s1",
+      "type": "agent_artifact",
+      "resource_type": "agent_artifact",
+      "resource_id": "art_seq_q4_s1a",
+      "resource_name": "outreach.q4-founders.step1.a",
+      "title": "Cold email · step 1 (A)",
+      "status": "pending",
+      "risk": "medium",
+      "requested_by": "Nexus",
+      "created_at": "2026-09-15T08:13:40Z",
+      "summary": "First touch for the founders segment.",
+      "context": {
+        "skill_slug": "cold-email-drafting",
+        "skill_name": "Cold Email Drafting",
+        "run_id": "run_0915_cold",
+        "artifact_id": "art_seq_q4_s1a",
+        "artifact": {
+          "kind": "message_template",
+          "title": "outreach.q4-founders.step1.a",
+          "step": 1,
+          "variant": "a",
+          "subject": "Quick one about {{company}}'s pipeline",
+          "body": "Hi {{first_name}},\n\nMost founders I talk to send the same three emails to everyone and wonder why nobody answers.\n\nWe fixed that for 14 founders this year — 11 shipped a sequence that got replies in week one.\n\nWorth 20 minutes to see if it fits {{company}}?\n\n— {{sender_name}}"
+        },
+        "changed_vs_last_approved": "Opener shortened by 2 lines; proof line added."
+      }
+    },
+    {
+      "id": "apr_seq_q4_s2",
+      "type": "agent_artifact",
+      "resource_type": "agent_artifact",
+      "resource_id": "art_seq_q4_s2a",
+      "resource_name": "outreach.q4-founders.step2.a",
+      "title": "Cold email · step 2 (A)",
+      "status": "pending",
+      "risk": "medium",
+      "requested_by": "Nexus",
+      "created_at": "2026-09-15T08:13:41Z",
+      "summary": "Day-3 follow-up for the founders segment.",
+      "context": {
+        "skill_slug": "cold-email-drafting",
+        "skill_name": "Cold Email Drafting",
+        "run_id": "run_0915_cold",
+        "artifact_id": "art_seq_q4_s2a",
+        "artifact": {
+          "kind": "message_template",
+          "title": "outreach.q4-founders.step2.a",
+          "step": 2,
+          "variant": "a",
+          "subject": "Re: Quick one about {{company}}'s pipeline",
+          "body": "{{first_name}} — one more thought.\n\nThe founders who got replies in week one all did one thing: one ask per message.\n\nIf that is useful, I can show you the exact sequence on a 20-minute call.\n\n— {{sender_name}}"
+        },
+        "changed_vs_last_approved": null
+      }
+    },
+    {
+      "id": "apr_seq_q4_s3",
+      "type": "agent_artifact",
+      "resource_type": "agent_artifact",
+      "resource_id": "art_seq_q4_s3a",
+      "resource_name": "outreach.q4-founders.step3.a",
+      "title": "Cold email · step 3 (A)",
+      "status": "pending",
+      "risk": "medium",
+      "requested_by": "Nexus",
+      "created_at": "2026-09-15T08:13:42Z",
+      "summary": "Break-up email for the founders segment.",
+      "context": {
+        "skill_slug": "cold-email-drafting",
+        "skill_name": "Cold Email Drafting",
+        "run_id": "run_0915_cold",
+        "artifact_id": "art_seq_q4_s3a",
+        "artifact": {
+          "kind": "message_template",
+          "title": "outreach.q4-founders.step3.a",
+          "step": 3,
+          "variant": "a",
+          "subject": "Closing the loop",
+          "body": "{{first_name}}, I will stop here.\n\nIf pipeline is not the problem this quarter, no reply needed. If it is, the offer stands.\n\n— {{sender_name}}"
+        },
+        "changed_vs_last_approved": "Removed the discount mention."
+      }
+    },
+    {
+      "id": "apr_social_17",
+      "type": "agent_artifact",
+      "resource_type": "agent_artifact",
+      "resource_id": "art_social_17",
+      "resource_name": "social.linkedin.2026-09-16",
+      "title": "LinkedIn post · Tuesday",
+      "status": "pending",
+      "risk": "low",
+      "requested_by": "Nexus",
+      "created_at": "2026-09-16T06:30:00Z",
+      "summary": "Tuesday post from Social Caption Drafting.",
+      "context": {
+        "skill_slug": "social-caption-drafting",
+        "skill_name": "Social Caption Drafting",
+        "run_id": "run_0916_social",
+        "artifact_id": "art_social_17",
+        "artifact": {
+          "kind": "social_post",
+          "title": "social.linkedin.2026-09-16",
+          "body": "Eleven of fourteen founders shipped a cold sequence that got replies in week one. The difference was not the copy. It was one ask per message."
+        }
+      }
+    },
+    {
+      "id": "apr_bill_44",
+      "type": "bill",
+      "resource_type": "bill",
+      "resource_id": "bill_44",
+      "resource_name": "Vercel · September",
+      "title": "Pay the Vercel invoice",
+      "status": "pending",
+      "risk": "low",
+      "requested_by": "Finance",
+      "created_at": "2026-09-16T01:00:00Z",
+      "summary": "$240.00 due Friday; matches last month.",
+      "diff": { "field": "status", "before": "unpaid", "after": "scheduled" }
+    }
+  ]
+}

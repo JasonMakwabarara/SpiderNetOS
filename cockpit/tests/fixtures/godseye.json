@@ -1,0 +1,59 @@
+{
+  "data": {
+    "generated_at": "2026-09-19T09:12:00+00:00",
+    "window_hours": 24,
+    "characters": [
+      {
+        "slug": "atlas", "display_name": "Atlas", "state": "idle",
+        "runs": 2, "active": 0, "waiting": 0, "failed": 0, "cost_usd": 0.14, "last_run_at": "2026-09-19T07:00:00+00:00",
+        "skills": [
+          { "slug": "business-launch-interviewer", "display_name": "Business Launch Interviewer", "enabled": true, "state": "idle", "runs": 2, "active": 0, "waiting": 0, "failed": 0, "cost_usd": 0.14, "last_run_at": "2026-09-19T07:00:00+00:00" }
+        ]
+      },
+      {
+        "slug": "hannah", "display_name": "Hannah", "state": "waiting",
+        "runs": 1, "active": 0, "waiting": 1, "failed": 0, "cost_usd": 0.05, "last_run_at": "2026-09-19T08:40:00+00:00",
+        "skills": [
+          { "slug": "brand-voice-keeper", "display_name": "Brand Voice Keeper", "enabled": true, "state": "waiting", "runs": 1, "active": 0, "waiting": 1, "failed": 0, "cost_usd": 0.05, "last_run_at": "2026-09-19T08:40:00+00:00" }
+        ]
+      },
+      {
+        "slug": "forge", "display_name": "Forge", "state": "off",
+        "runs": 0, "active": 0, "waiting": 0, "failed": 0, "cost_usd": 0, "last_run_at": null, "skills": []
+      },
+      {
+        "slug": "sentinel", "display_name": "Sentinel", "state": "off",
+        "runs": 0, "active": 0, "waiting": 0, "failed": 0, "cost_usd": 0, "last_run_at": null, "skills": []
+      },
+      {
+        "slug": "prism", "display_name": "Prism", "state": "idle",
+        "runs": 3, "active": 0, "waiting": 0, "failed": 1, "cost_usd": 0.22, "last_run_at": "2026-09-19T06:10:00+00:00",
+        "skills": [
+          { "slug": "prospect-research-analysis", "display_name": "Prospect Research Analysis", "enabled": true, "state": "idle", "runs": 3, "active": 0, "waiting": 0, "failed": 1, "cost_usd": 0.22, "last_run_at": "2026-09-19T06:10:00+00:00" }
+        ]
+      },
+      {
+        "slug": "nexus", "display_name": "Nexus", "state": "working",
+        "runs": 9, "active": 2, "waiting": 1, "failed": 0, "cost_usd": 0.61, "last_run_at": "2026-09-19T09:08:00+00:00",
+        "skills": [
+          { "slug": "cold-email-drafting", "display_name": "Cold Email Drafting", "enabled": true, "state": "working", "runs": 5, "active": 2, "waiting": 0, "failed": 0, "cost_usd": 0.38, "last_run_at": "2026-09-19T09:08:00+00:00" },
+          { "slug": "follow-up-drafting", "display_name": "Follow-up Drafting", "enabled": true, "state": "waiting", "runs": 3, "active": 0, "waiting": 1, "failed": 0, "cost_usd": 0.17, "last_run_at": "2026-09-19T08:20:00+00:00" },
+          { "slug": "meeting-booking", "display_name": "Meeting Booking", "enabled": true, "state": "idle", "runs": 1, "active": 0, "waiting": 0, "failed": 0, "cost_usd": 0.06, "last_run_at": "2026-09-19T05:55:00+00:00" }
+        ]
+      }
+    ],
+    "totals": {
+      "runs": 15, "active": 2, "waiting": 2, "failed": 1, "cost_usd": 1.02,
+      "characters_working": 1, "characters_idle": 4, "drafts": 11
+    },
+    "live": [
+      { "id": "run_0919_ce_a", "skill_slug": "cold-email-drafting", "display_name": "Cold Email Drafting", "status": "running", "trigger": "scheduled", "started_at": "2026-09-19T09:08:00+00:00" },
+      { "id": "run_0919_ce_b", "skill_slug": "cold-email-drafting", "display_name": "Cold Email Drafting", "status": "queued", "trigger": "manual", "started_at": "2026-09-19T09:11:00+00:00" }
+    ],
+    "needs_you": [
+      { "id": "run_0919_voice", "skill_slug": "brand-voice-keeper", "display_name": "Brand Voice Keeper", "status": "waiting_input", "question": "Two adjectives for how the business should sound?", "waiting_since": "2026-09-19T08:40:00+00:00", "path": "/agents/runs/run_0919_voice" },
+      { "id": "run_0919_fu", "skill_slug": "follow-up-drafting", "display_name": "Follow-up Drafting", "status": "waiting_approval", "question": null, "waiting_since": "2026-09-19T08:20:00+00:00", "path": "/agents/runs/run_0919_fu" }
+    ],
+    "breaker": { "paused": false, "scopes": [] }
+  }
+}

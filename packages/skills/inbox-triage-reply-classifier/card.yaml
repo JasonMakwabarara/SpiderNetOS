@@ -1,0 +1,323 @@
+# Inbox Triage & Reply Classifier — Sales · Reply handling (plan D5, Appendix A card 3)
+# Sentinel watches the inbox (monitor half); the drafting half is Nexus through the crm identity.
+
+id: inbox-triage-reply-classifier
+display_name: "Inbox Triage & Reply Classifier"
+version: 1.0.0
+pillar: sales
+map_node: "Sales › Reply handling"
+core_agent: sentinel
+runs_on: crm
+pack_id: sales-crm
+
+intent_keywords:
+  - inbox
+  - triage
+  - classify replies
+  - classify reply
+  - who replied
+  - reply handling
+  - hot leads
+  - new replies
+  - sort my inbox
+  - what came in
+
+at_a_glance: >-
+  Watches the inbox, classifies every reply hot / warm / cold (plus bounce, auto-reply,
+  opt-out, decline, flagged), drafts the answer in the approved script's voice and proposes
+  two concrete meeting slots for the hot ones. Complaints, legal, refunds and pricing
+  negotiation come to you untouched.
+
+covers: >-
+  Sales › Reply handling — everything that happens the moment a stranger answers.
+
+breaks_into:
+  - name: "Inbox Monitor"
+    does: "Polls the connected mailbox every few minutes and matches replies to their threads and prospects."
+  - name: "Reply Classifier"
+    does: "hot / warm / cold, plus bounce, auto-reply, opt-out, decline and flagged — with the reason in one line."
+  - name: "Reply Drafter"
+    does: "Answers warm and hot replies in the approved script's voice, one step forward per message."
+  - name: "Meeting Proposer"
+    slug: meeting-booking
+    does: "Hot reply → two concrete slots from the calendar and the user's meeting types."
+  - name: "Flag & Escalate"
+    does: "Complaints, legal language, refunds, pricing negotiation and distress go to you, untouched, with the thread."
+
+builds_on:
+  - name: "Cold Email Drafting"
+    slug: cold-email-drafting
+    why: "The threads it answers were opened by the outreach skills."
+  - name: "LinkedIn Outreach Specialist"
+    slug: linkedin-outreach-specialist
+    why: "LinkedIn replies land here too (PR 7)."
+  - name: "Meeting Booking"
+    slug: meeting-booking
+    why: "Hot replies hand off to the booking flow."
+  - name: "Objections and answers"
+    ref: "brain:customers/objections.md#Objections and answers"
+    why: "The three push-backs and how you answer them."
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+  - name: "Red-amber-green triage"
+    ref: "principle:traffic-light-triage"
+  - name: "See the buying signal and stop selling"
+    ref: "principle:buying-signals-stop-selling"
+  - name: "A no is data"
+    ref: "principle:objections-as-filters"
+
+replaces:
+  - what: "An inbox VA reading and sorting replies"
+    cost: "$2–3k/mo"
+    kind: retainer
+  - what: "A sales assistant"
+    cost: "$45–60k/yr"
+    kind: salary
+  - what: "The reply that sat four days and cost the deal"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted, autonomous]
+  stage_copy:
+    human_led:
+      summary: "Classifies and drafts; you send."
+      your_role: "Read the queue grouped hot / warm / cold / flagged, send the drafts you like from your own mailbox, correct any wrong label — that correction is training data."
+      atlas_role: "Sentinel watches the inbox and labels every reply; Pipeline (Nexus) drafts the answer and stops. Nothing is sent."
+      default: true
+    assisted:
+      summary: "Drafts wait for approval; opt-outs and bounces are handled automatically."
+      your_role: "Approve-and-send from the queue; take the hot meetings; own anything flagged."
+      atlas_role: "Sends approved replies through the outreach sender; suppresses opt-outs and bounces on its own; flagged threads always come to you."
+    autonomous:
+      summary: "Warm and hot answered and meetings offered; flagged threads always come to you."
+      your_role: "Read the hot ones and take the meetings. Correct a wrong classification when you see one. Own anything flagged."
+      atlas_role: "Answers warm and hot replies within the approved script and offers two slots to hot ones; anything outside the script, or any complaint, legal, refund or pricing thread, is held for you."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "bounce > 5% on 20+ sends"
+      - "a flagged thread was answered without a human"
+      - "three classification corrections in one day"
+    shadow_agreement: 0.95
+    shadow_decisions: 30
+
+brain:
+  requires:
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+    - key: customers.objections
+      path: customers/objections.md
+      sections: ["Objections and answers"]
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+    - key: people.user.calendar
+      path: people/user.md
+      sections: ["Calendar and meetings"]
+  reads:
+    - offer/offer.md#Pricing
+    - offer/offer.md#Proof
+    - customers/objections.md#Signals to stop selling
+    - brand/voice.md#Do and don't
+    - people/user.md#Never say or offer
+    - processes/follow-ups.md#Escalation
+    - offer/approved-sequences.md
+  writes: []
+
+hands_off_to:
+  - type: skill
+    slug: meeting-booking
+    name: "Meeting Booking"
+    when: "A hot reply — two slots proposed, the booking made on approval."
+  - type: skill
+    slug: follow-up-drafting
+    name: "Follow-up Drafting"
+    when: "A warm reply that went quiet again."
+  - type: skill
+    slug: nurture-sequence-runner
+    name: "Nurture / Win-back"
+    when: "A cold or 'not now' reply worth a longer rhythm."
+  - type: skill
+    slug: deal-pipeline-tracker
+    name: "Deal Pipeline Tracker"
+    when: "A hot reply moves the lead's stage."
+  - type: human
+    ref: owner
+    name: "You"
+    when: "Anything flagged: complaint, legal, refund, pricing negotiation, distress — untouched, with the thread."
+  - type: character
+    ref: sentinel
+    name: "Sentinel"
+    when: "Bounce rate climbs — sends pause before the domain is hurt."
+
+one_step_further:
+  summary: >-
+    Beyond sorting and drafting it books the hot ones, writes the follow-up for the warm ones
+    that go quiet, and turns every corrected label into a proposed rule for the objections file.
+  allow_dynamic: true
+  steps:
+    - id: book_hot_replies
+      label: "Book the hot replies"
+      does: "Proposes two concrete slots per hot thread and drafts the booking message."
+      skill: meeting-booking
+      inputs_from:
+        thread_id: outputs.items[0].thread_id
+      when: on_success
+      requires_brain:
+        - people/user.md#Calendar and meetings
+      risk: write
+      cost_hint_usd: 0.05
+    - id: follow_up_warm_silence
+      label: "Follow up the warm replies that went quiet"
+      does: "Drafts a new-angle follow-up for warm threads with no answer after three days."
+      skill: follow-up-drafting
+      inputs_from:
+        thread_id: outputs.items[0].thread_id
+      when: on_outcome:no_response
+      risk: write
+      cost_hint_usd: 0.06
+
+inputs:
+  type: object
+  additionalProperties: false
+  properties:
+    thread_id:
+      type: string
+      title: "Thread"
+      description: "One conversation to classify; leave empty to poll and classify everything new."
+    channel:
+      type: string
+      title: "Channel"
+      enum: [email, whatsapp, linkedin, all]
+      default: all
+    campaign:
+      type: string
+      title: "Campaign"
+      description: "When set, the sequence's ask and objections shape the hot / warm / cold rules."
+    sequence_id:
+      type: string
+      title: "Sequence"
+      description: "Approved draft_sequence artifact this reply answers."
+    segment:
+      type: string
+      title: "Segment"
+      maxLength: 120
+    since:
+      type: string
+      title: "Since"
+      description: "ISO-8601 timestamp; defaults to the last run."
+
+outputs:
+  - kind: classification
+    primary: true
+    description: "Per message: classification, reason, draft_action, and for hot ones two slots."
+    key_pattern: "triage.<thread_id>"
+    count: "one per new inbound message"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [message_id, thread_id, classification, reason, draft_action]
+            properties:
+              message_id: { type: string, minLength: 1 }
+              thread_id: { type: string, minLength: 1 }
+              classification:
+                type: string
+                enum: [hot, warm, cold, bounce, auto_reply, opt_out, decline, flagged]
+              reason: { type: string, minLength: 5, maxLength: 240 }
+              buying_signal: { type: string, maxLength: 160 }
+              draft_action:
+                type: string
+                enum: [reply, book, none, escalate, unsubscribe]
+              draft_reply: { type: [string, "null"], maxLength: 1200 }
+              slots:
+                type: array
+                maxItems: 2
+                items: { type: string, minLength: 5, maxLength: 80 }
+              confidence: { type: number, minimum: 0, maximum: 1 }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+  - kind: draft_reply
+    description: "One conversation_messages draft per warm or hot reply, in the approved script's voice."
+    key_pattern: "reply.<thread_id>"
+    count: "0–1 per message"
+  - kind: meeting_proposal
+    description: "Two concrete slots for each hot reply, handed to Meeting Booking."
+    count: "0–1 per hot message"
+
+tools:
+  - brain.read
+  - inbox.list_unread
+  - inbox.flag
+  - crm.list_replies
+  - crm.classify_reply
+  - crm.update_stage
+  - calendar.propose_slots
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+  - type: event
+    event: conversation.message.received
+    filter: { direction: in }
+  - type: scheduled
+    cron: "*/5 * * * *"
+
+cost_budget:
+  daily_limit_usd: 2.0
+  per_run_usd: 0.10
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=draft_reply; classification=flagged always human; tainted (inbound) runs: send needs approval"
+
+model:
+  heavy: false
+  temperature: 0.2
+  max_tokens: 2400
+  json_mode: true
+
+limits:
+  max_iterations: 12
+  max_tool_calls: 30
+  max_artifacts: 50
+  timeout_seconds: 180
+
+mode: agentic
+
+run:
+  kind: agent
+  entry_path: /sales/partners/inbox
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save
+    - drafts.submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.9
+
+tags: [sales, inbox, replies, triage, sentinel]

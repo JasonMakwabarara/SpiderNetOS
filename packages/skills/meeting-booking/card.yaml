@@ -1,0 +1,273 @@
+# Meeting Booking — Deals · Booking (plan D5 roster: crm "Pipeline" → Nexus)
+# Hot reply → two concrete slots → booking on approval. The meeting-lifecycle gap
+# (no meetings table, no lead.no_show, hardcoded time zone) is scoped into this card in PR 2.
+
+id: meeting-booking
+display_name: "Meeting Booking"
+version: 1.0.0
+pillar: deals
+map_node: "Deals › Booking"
+core_agent: nexus
+runs_on: crm
+pack_id: sales-crm
+
+intent_keywords:
+  - book a meeting
+  - book a call
+  - propose times
+  - propose a time
+  - schedule a call
+  - meeting slots
+  - find a slot
+  - set up a call
+  - calendar
+
+at_a_glance: >-
+  Turns a hot reply into a booked first call: two concrete slots from your calendar in the
+  prospect's time zone, one plain message that offers them, and the booking itself once you
+  approve. No-shows and reschedules come back as follow-ups, not silence.
+
+covers: >-
+  Deals › Booking — the moment a conversation becomes a time in the diary.
+
+breaks_into:
+  - name: "Slot Finder"
+    does: "Two slots that fit your calendar, your meeting types and the prospect's time zone; mornings if you said mornings."
+  - name: "Booking Message Writer"
+    does: "One short message that offers the two slots (or your booking link) and confirms what the call is for."
+  - name: "Confirmation Writer"
+    does: "After the yes: one line restating the time, the length and what to bring, so second thoughts have nothing to feed on."
+  - name: "Reschedule & No-show Handler"
+    does: "A reschedule gets two new slots; a no-show gets one gracious follow-up, then stops."
+
+builds_on:
+  - name: "Inbox Triage & Reply Classifier"
+    slug: inbox-triage-reply-classifier
+    why: "Hot replies arrive from triage with the buying signal already named."
+  - name: "Calendar and meetings"
+    ref: "brain:people/user.md#Calendar and meetings"
+    why: "Booking link, first-call length, meeting types, quiet hours."
+  - name: "Brand voice"
+    ref: "brain:brand/voice.md#Tone"
+  - name: "Confirm after the yes"
+    ref: "principle:rehash-while-warm"
+  - name: "Tight decision window"
+    ref: "principle:tight-decision-window"
+
+replaces:
+  - what: "A scheduling VA chasing times by email"
+    cost: "$1.5–2.5k/mo"
+    kind: retainer
+  - what: "A scheduling tool that books anyone, anytime, with no context"
+    cost: "$10–20/mo per seat"
+    kind: tool
+  - what: "The hot reply that waited a weekend for two times and cooled"
+    cost: "never gets done"
+    kind: undone
+
+pipeline:
+  default_level: human_led
+  ladder: [human_led, assisted, autonomous]
+  stage_copy:
+    human_led:
+      summary: "Two slots and a message drafted; you send and you book."
+      your_role: "Read the two slots and the message; send it yourself; put the meeting in your own diary when they say yes."
+      atlas_role: "Pipeline (Nexus) reads your calendar, proposes two slots in the prospect's time zone, drafts the message and stops."
+      default: true
+    assisted:
+      summary: "Message waits for one approval; the booking is made when they accept."
+      your_role: "Approve the message. Show up. Mark no-shows — that trains the follow-up."
+      atlas_role: "Sends the approved message; when the prospect picks a slot, books it through the connected calendar with an invite and a confirmation line."
+    autonomous:
+      summary: "Hot replies get slots without waiting; you see the diary fill."
+      your_role: "Keep your calendar honest (blocks, quiet hours, meeting types). Take the calls."
+      atlas_role: "Offers slots to hot replies, books accepted ones, handles reschedules and one no-show follow-up. Anything outside your meeting types or quiet hours is held for you."
+  promotion_gate:
+    clean_drafts: 20
+    resets_on_edit: true
+    demote_when:
+      - "no-show rate > 40% on 10+ bookings"
+      - "a booking landed outside declared hours"
+
+brain:
+  requires:
+    - key: people.user.calendar
+      path: people/user.md
+      sections: ["Calendar and meetings"]
+    - key: offer.products
+      path: offer/offer.md
+      sections: ["Products and services"]
+    - key: voice.tone
+      path: brand/voice.md
+      sections: ["Tone"]
+  reads:
+    - people/user.md#Working rhythm
+    - people/user.md#Never say or offer
+    - brand/voice.md#Do and don't
+    - customers/objections.md#Signals to stop selling
+  writes: []
+
+hands_off_to:
+  - type: skill
+    slug: follow-up-drafting
+    name: "Follow-up Drafting"
+    when: "No answer to the slots after two days, or a no-show."
+  - type: skill
+    slug: deal-pipeline-tracker
+    name: "Deal Pipeline Tracker"
+    when: "The meeting is booked — the lead moves to meeting_booked."
+  - type: skill
+    slug: proposal-quote-drafting
+    name: "Proposal / Quote Drafting"
+    when: "After the call, when they ask for numbers in writing."
+
+one_step_further:
+  summary: >-
+    Beyond the two slots it drafts the confirmation line to send after the yes and the
+    follow-up for silence, so the booking has a before and an after without another brief.
+  allow_dynamic: false
+  steps:
+    - id: follow_up_if_silent
+      label: "Follow up if they go quiet"
+      does: "Drafts one new-angle follow-up when the slots get no answer in two days."
+      skill: follow-up-drafting
+      inputs_from:
+        thread_id: inputs.thread_id
+      when: on_outcome:no_response
+      risk: write
+      cost_hint_usd: 0.05
+    - id: prep_notes
+      label: "Prepare the call notes"
+      does: "Runs Prospect Research Analysis on the booked contact so you walk in knowing their world."
+      skill: prospect-research-analysis
+      inputs_from:
+        prospect: inputs.contact
+      when: on_approval_applied
+      risk: read
+      cost_hint_usd: 0.08
+
+inputs:
+  type: object
+  additionalProperties: false
+  required: [thread_id]
+  properties:
+    thread_id:
+      type: string
+      title: "Thread"
+      minLength: 1
+    contact:
+      type: string
+      title: "Contact"
+      description: "Name or lead id when the thread does not carry one."
+    meeting_type:
+      type: string
+      title: "Meeting type"
+      description: "One of the meeting types in people/user.md; defaults to the first."
+    prospect_timezone:
+      type: string
+      title: "Prospect time zone"
+      description: "IANA zone, e.g. Europe/London; defaults to the tenant's."
+    window_days:
+      type: integer
+      title: "Look ahead (days)"
+      minimum: 1
+      maximum: 14
+      default: 5
+
+outputs:
+  - kind: meeting_proposal
+    primary: true
+    description: "Two concrete slots and the message that offers them; booked on approval."
+    key_pattern: "meeting.<thread_id>"
+    count: "1"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [thread_id, status, meeting_type, duration_minutes, timezone, slots, message]
+      properties:
+        thread_id: { type: string, minLength: 1 }
+        status:
+          type: string
+          enum: [proposed, needs_hours]
+          description: "proposed = two real slots offered; needs_hours = the calendar had none inside declared hours, message is a question to the owner."
+        contact: { type: string }
+        meeting_type: { type: string, minLength: 2, maxLength: 80 }
+        duration_minutes: { type: integer, minimum: 10, maximum: 120 }
+        timezone: { type: string, minLength: 3 }
+        slots:
+          type: array
+          minItems: 0
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [start, end, label]
+            properties:
+              start: { type: string, minLength: 16 }
+              end: { type: string, minLength: 16 }
+              label: { type: string, minLength: 5, maxLength: 80 }
+        message: { type: string, minLength: 30, maxLength: 900 }
+        confirmation_line: { type: string, maxLength: 300 }
+        booking_link: { type: [string, "null"] }
+        next_steps:
+          type: array
+          items:
+            type: object
+            required: [id, label, does, skill]
+            properties:
+              id: { type: string }
+              label: { type: string, maxLength: 80 }
+              does: { type: string }
+              skill: { type: string }
+              inputs: { type: object }
+
+tools:
+  - brain.read
+  - calendar.propose_slots
+  - calendar.book
+  - crm.update_stage
+  - drafts.save
+  - drafts.submit_for_review
+
+triggers:
+  - type: manual
+  - type: event
+    event: conversation.message.received
+    filter: { classification: hot }
+
+cost_budget:
+  daily_limit_usd: 1.0
+  per_run_usd: 0.08
+
+approval:
+  resource_type: agent_artifact
+  required: by_ladder
+  policy_hint: "artifact_kind=meeting_proposal; calendar.book is a write — assisted needs approval, autonomous books inside declared hours only"
+
+model:
+  heavy: false
+  temperature: 0.3
+  max_tokens: 1200
+  json_mode: true
+
+limits:
+  max_iterations: 6
+  max_tool_calls: 8
+  max_artifacts: 1
+  timeout_seconds: 90
+
+mode: agentic
+
+run:
+  kind: agent
+  entry_path: /skills/meeting-booking
+  prompt: prompts/task.md
+  post_actions:
+    - drafts.save
+    - drafts.submit_for_review
+
+evals:
+  cases: evals/cases.yaml
+  min_score: 0.85
+
+tags: [deals, calendar, booking, meetings]

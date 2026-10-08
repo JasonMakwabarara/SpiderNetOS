@@ -10,9 +10,8 @@ use App\Models\Employee;
 use App\Models\HrAuditEntry;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\DocumentNumberService;
 use App\Services\EventStore;
-use Carbon\Carbon;
+use App\Services\Financial\DocumentNumberService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +47,7 @@ class HrService
         return [
             'employee_number_prefix' => $prefix,
             'employee_number_padding' => $pad,
-            'next_employee_number' => $this->documentNumbers->preview($tenantId, 'employee', $prefix.'-', $pad),
+            'next_employee_number' => $this->documentNumbers->previewSerial($tenantId, 'employee', $prefix, $pad),
         ];
     }
 
@@ -88,7 +87,7 @@ class HrService
             $employee = DB::transaction(function () use ($tenantId, $data, $actorId) {
                 $this->assertDepartment($tenantId, $data['department_id'] ?? null);
                 [$prefix, $pad] = $this->numbering($tenantId);
-                $number = $this->documentNumbers->next($tenantId, 'employee', $prefix.'-', $pad);
+                $number = $this->documentNumbers->nextSerial($tenantId, 'employee', $prefix, $pad);
                 $jobDescription = trim((string) ($data['job_description'] ?? ''));
                 if ($jobDescription === '') {
                     $jobDescription = $this->suggestJobDescription($data['position_title']);
@@ -226,7 +225,7 @@ class HrService
             ];
 
             $employee->status = 'inactive';
-            $employee->inactive_from = Carbon::parse($from);
+            $employee->inactive_from = $from;
             $employee->inactive_reason = $reason;
             $employee->save();
 
@@ -302,7 +301,7 @@ class HrService
     {
         $this->eventStore->append($tenantId, 'employee', $employeeId, $eventType, [
             'employee_id' => $employeeId,
-            'fields_changed' => $fields,
+            'fields_changed' => array_values($fields),
             'actor_id' => $actorId,
         ]);
     }

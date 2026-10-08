@@ -13,13 +13,10 @@ class FiscalSubmission extends Model
     use HasUuids, TenantScoped;
 
     protected $fillable = [
-        'tenant_id', 'fiscal_device_id', 'invoice_id', 'fiscal_day', 'receipt_counter',
-        'verification_code', 'qr_payload', 'status', 'driver', 'is_live',
-    ];
-
-    protected $casts = [
-        'fiscal_day' => 'date',
-        'qr_payload' => 'array',
-        'is_live' => 'boolean',
+        'tenant_id',
+        'invoice_id',
+        'environment',
+        'status',
+        'fiscal_receipt_id',
     ];
 }
