@@ -204,7 +204,7 @@ Use only the tools listed. Never send or publish anything yourself; save drafts 
     /**
      * SkillPromptBuilder::build(SkillCard, BrainSnapshot, inputs, context).
      *
-     * @return array{system: string, prompt: string, version: string}
+     * @return array{system: string, prompt: string, version: string, facts: array<string, mixed>}
      */
     private function buildPrompt(RunContext $ctx, array $context = []): array
     {

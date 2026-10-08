@@ -18,7 +18,7 @@ class LLMService
 
     public function __construct()
     {
-        $this->client = OpenAI::client(env('OPENAI_API_KEY'));
+        $this->client = OpenAI::client((string) config('services.openai.api_key'));
     }
 
     public function chat(array $messages, string $model = 'gpt-3.5-turbo')

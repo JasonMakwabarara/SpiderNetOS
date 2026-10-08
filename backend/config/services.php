@@ -84,6 +84,7 @@ return [
         'cost_estimate_max_drift_ratio' => (float) env('COST_ESTIMATE_MAX_DRIFT_RATIO', 0.75),
         'truth_anchor_tolerance' => (float) env('ATLAS_TRUTH_ANCHOR_TOLERANCE', 1.25),
         'atlas_default_style' => env('ATLAS_DEFAULT_STYLE', 'balanced'),
+        'atlas_intent_confidence' => filter_var(env('ATLAS_INTENT_CONFIDENCE', false), FILTER_VALIDATE_BOOL),
 
         // Transformation Score weights (B6) — sum of positive weights should be 1.0
         'ts_weights' => [

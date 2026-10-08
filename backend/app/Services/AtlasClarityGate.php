@@ -296,13 +296,11 @@ class AtlasClarityGate
 
     private function inferenceConfigured(): bool
     {
-        if (filter_var(env('ATLAS_INTENT_CONFIDENCE', false), FILTER_VALIDATE_BOOL)) {
-            $url = (string) config('services.inference.url', env('INFERENCE_URL', ''));
+        $url = (string) config('services.inference.url', '');
 
+        if (config('services.spidernet.atlas_intent_confidence')) {
             return $url !== '';
         }
-
-        $url = (string) config('services.inference.url', env('INFERENCE_URL', ''));
 
         if ($url === '') {
             return false;

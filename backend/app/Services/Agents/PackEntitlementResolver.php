@@ -64,7 +64,7 @@ final class PackEntitlementResolver
     /** @return array<string, mixed>|null the pack's spec.pricing block */
     private function pricing(string $packId): ?array
     {
-        $root = rtrim((string) env('FEATURE_PACKS_ROOT', dirname(base_path()).'/packages/feature-packs'), '/');
+        $root = rtrim((string) config('feature_packs.root'), '/');
         $manifestPath = $root.'/'.$packId.'/pack.yaml';
 
         if (! is_readable($manifestPath)) {
