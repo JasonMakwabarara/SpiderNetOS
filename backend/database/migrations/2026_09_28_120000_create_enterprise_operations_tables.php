@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // The August sequence migration already owns this table on main.
         if (! Schema::hasTable('document_sequences')) {
             Schema::create('document_sequences', function (Blueprint $table) {
                 $table->uuid('id')->primary();
