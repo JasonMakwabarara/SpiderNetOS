@@ -48,6 +48,7 @@ const BusinessMap     = () => import('../views/map/BusinessMap.vue')
 const SystemsMap      = () => import('../views/operate/SystemsMap.vue')
 const VoiceSettings   = () => import('../views/settings/VoiceSettings.vue')
 const Brain           = () => import('../views/brain/Brain.vue')
+const ResearchBriefs  = () => import('../views/research/ResearchBriefs.vue')
 const AgentRuns       = () => import('../views/agents/AgentRuns.vue')
 const AgentRunDetail  = () => import('../views/agents/AgentRunDetail.vue')
 const AgentWorkspace  = () => import('../views/agents/AgentWorkspace.vue')
@@ -126,6 +127,7 @@ const routes = [
   { path: '/skills/:slug',      name: 'SkillCard',     component: SkillCard,     meta: { requiresAuth: true } },
   { path: '/map',               name: 'BusinessMap',   component: BusinessMap,   meta: { requiresAuth: true } },
   { path: '/brain',             name: 'Brain',         component: Brain,         meta: { requiresAuth: true } },
+  { path: '/research-briefs',   name: 'ResearchBriefs', component: ResearchBriefs, meta: { requiresAuth: true } },
   { path: '/operations',        name: 'Operations',    component: Operations,    meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
   { path: '/operations/people', name: 'People',        component: People,        meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
   { path: '/operations/people/:id', name: 'EmployeeProfile', component: EmployeeProfile, meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },

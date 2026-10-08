@@ -376,7 +376,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
     // One route file per stream so parallel work never edits this file:
     //   routes/api/brain.php   → /api/brain/*            (Knowledge brain)
     //   routes/api/skills.php  → /api/skills/*           (catalogue, cards, run)
-    //   routes/api/agents.php  → /api/agent-runs/*, /api/artifacts/*, /api/agents/breaker
+    //   routes/api/agents.php  → /api/agent-runs/*, /api/artifacts/*, /api/research-briefs/*, /api/agents/breaker
     //   routes/api/founder.php → /api/today, /api/atlas/sessions/*, /api/notifications/*
     //   routes/api/map.php     → /api/map/*                (business map)
     //   routes/api/voice.php   → /api/voice/personas, /api/me/voice, /api/atlas/speak
