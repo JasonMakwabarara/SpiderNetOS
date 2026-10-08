@@ -16,6 +16,7 @@ use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\Enterprise\AssetController;
 use App\Http\Controllers\Enterprise\EnterpriseAuthController;
 use App\Http\Controllers\Enterprise\EnterpriseRegistrationController;
+use App\Http\Controllers\Enterprise\FiscalDeviceController;
 use App\Http\Controllers\Enterprise\PayablesController;
 use App\Http\Controllers\Enterprise\PeopleController;
 use App\Http\Controllers\Enterprise\PurchasingController;
@@ -476,6 +477,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
             Route::post('/payroll-runs', [WorkforceController::class, 'storePayroll']);
             Route::get('/payroll-runs/{id}', [WorkforceController::class, 'showPayroll']);
             Route::post('/payroll-runs/{id}/post', [WorkforceController::class, 'postPayroll']);
+            Route::get('/fdms/status', [FiscalDeviceController::class, 'status']);
+            Route::post('/fdms/config', [FiscalDeviceController::class, 'syncConfig']);
+            Route::post('/fdms/day/open', [FiscalDeviceController::class, 'openDay']);
+            Route::post('/fdms/day/close', [FiscalDeviceController::class, 'closeDay']);
+            Route::post('/sales-invoices/{id}/fiscalise', [FiscalDeviceController::class, 'fiscaliseInvoice']);
         });
 
         Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);

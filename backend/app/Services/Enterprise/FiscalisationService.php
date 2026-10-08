@@ -13,15 +13,18 @@ use Illuminate\Support\Facades\DB;
 
 class FiscalisationService
 {
-    public function __construct(private readonly EventStore $eventStore) {}
+    public function __construct(
+        private readonly EventStore $eventStore,
+    ) {}
 
     /**
-     * Sandbox only. Live FDMS is not called.
+     * Sandbox only. A supplier fiscalises its own invoice with ZIMRA; live
+     * receipts for the tenant's sales invoices go through FdmsDeviceService.
      */
     public function fiscalise(string $tenantId, string $invoiceId, string $environment = 'sandbox'): FiscalSubmission
     {
-        if ($environment !== 'sandbox' || config('fiscal.live') === true) {
-            throw new DomainException('Live fiscalisation is disabled.');
+        if ($environment !== 'sandbox') {
+            throw new DomainException('Supplier invoices are fiscalised by the supplier, not on this device.');
         }
 
         return DB::transaction(function () use ($tenantId, $invoiceId) {
