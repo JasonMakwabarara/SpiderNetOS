@@ -4,6 +4,7 @@ use App\Http\Controllers\Agents\AgentRunController;
 use App\Http\Controllers\Agents\AgentWorkspaceController;
 use App\Http\Controllers\Agents\ArtifactController;
 use App\Http\Controllers\Agents\GodsEyeController;
+use App\Http\Controllers\Agents\ResearchBriefController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,6 +33,14 @@ Route::patch('/artifacts/{id}', [ArtifactController::class, 'update'])->middlewa
 Route::post('/artifacts/{id}/submit', [ArtifactController::class, 'submit']);
 // Applying makes an approved artifact real: the approver's capability.
 Route::post('/artifacts/{id}/apply', [ArtifactController::class, 'apply'])->middleware('can.do:approvals.decide');
+
+// Research briefs are agent artifacts of kind research_brief. The body
+// cannot choose a tenant or an approval state. Submit stays on
+// POST /artifacts/{id}/submit so the approval resource stays one path.
+Route::get('/research-briefs', [ResearchBriefController::class, 'index']);
+Route::post('/research-briefs', [ResearchBriefController::class, 'store']);
+Route::get('/research-briefs/{id}/markdown', [ResearchBriefController::class, 'markdown']);
+Route::get('/research-briefs/{id}', [ResearchBriefController::class, 'show']);
 
 Route::get('/agent-workspaces', [AgentWorkspaceController::class, 'index']);
 Route::get('/agent-workspaces/{slug}', [AgentWorkspaceController::class, 'show']);

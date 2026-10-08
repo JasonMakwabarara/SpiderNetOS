@@ -12,6 +12,7 @@ use App\Services\Agents\Exceptions\AgentRuntimeException;
 use App\Services\Agents\Exceptions\BundleIntegrityException;
 use App\Services\Agents\ReviewBundle;
 use App\Services\Agents\RunContextFactory;
+use App\Services\ApprovalEngine;
 use App\Services\Tools\Drafts\DraftsSubmitForReviewTool;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -182,6 +183,10 @@ class ArtifactController extends AgentsController
 
         $run = $artifact->run_id ? AgentRun::forTenant($this->tenantId($request))->find($artifact->run_id) : null;
         if ($run === null) {
+            if ($artifact->kind === AgentArtifact::KIND_RESEARCH_BRIEF) {
+                return $this->submitResearchBrief($request, $artifact, app(ApprovalEngine::class));
+            }
+
             return response()->json(['error' => 'artifact_has_no_run', 'message' => 'Only artifacts produced by a run can be submitted.'], 422);
         }
 
@@ -197,6 +202,66 @@ class ArtifactController extends AgentsController
         }
 
         return response()->json(['data' => $result->data + ['status' => AgentArtifact::STATUS_SUBMITTED]]);
+    }
+
+    /**
+     * An imported research brief has no agent run. It still becomes one
+     * agent_artifact approval, the same resource the run-backed submit uses.
+     * Approving it does not publish the brief or fetch its sources.
+     */
+    private function submitResearchBrief(Request $request, AgentArtifact $artifact, ApprovalEngine $approvals): JsonResponse
+    {
+        try {
+            $payload = ApplicationPayload::for($artifact);
+        } catch (BundleIntegrityException $e) {
+            return response()->json(['error' => 'bundle_integrity', 'message' => $e->getMessage()], 422);
+        }
+
+        $reason = trim((string) $request->input('reason', ''));
+        if ($reason === '') {
+            $reason = 'Research brief for review: '.(string) $artifact->title;
+        }
+
+        $approval = $approvals->createChainedApproval(
+            (string) $artifact->tenant_id,
+            (string) ($request->user()?->id ?? $artifact->tenant_id),
+            'agent_artifact',
+            'agent_artifact',
+            (string) $artifact->id,
+            mb_substr($reason, 0, 500),
+            [
+                'action' => 'submit',
+                'attributes' => [
+                    'kind' => $artifact->kind,
+                    'steps' => 1,
+                    'risk' => 'draft',
+                ],
+                'kind' => $artifact->kind,
+                'artifact_id' => $artifact->id,
+                'artifact_ids' => [(string) $artifact->id],
+                'title' => $artifact->title,
+                'preview' => mb_substr((string) $artifact->content, 0, 1200),
+                'payload' => $payload,
+                'risk' => 'draft',
+            ],
+        );
+        $approvalId = (string) ($approval['id'] ?? '');
+
+        DB::table('approvals')->where('id', $approvalId)->update([
+            'version_hash' => ApplicationPayload::hash($payload),
+        ]);
+
+        $artifact->forceFill([
+            'status' => AgentArtifact::STATUS_SUBMITTED,
+            'approval_id' => $approvalId,
+            'submitted_at' => now(),
+        ])->save();
+
+        return response()->json(['data' => [
+            'approval_id' => $approvalId,
+            'artifact_id' => $artifact->id,
+            'status' => AgentArtifact::STATUS_SUBMITTED,
+        ]]);
     }
 
     public function apply(Request $request, string $id, ArtifactApplier $applier): JsonResponse

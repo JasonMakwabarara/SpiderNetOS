@@ -15,6 +15,7 @@ const CASES = [
   ['/operate/systems',       'SystemsMap'],
   ['/settings/voice',        'VoiceSettings'],
   ['/brain',                 'Brain'],
+  ['/research-briefs',      'ResearchBriefs'],
   ['/agents/runs',           'AgentRuns'],
   ['/agents/runs/run_1',     'AgentRunDetail'],
   ['/agents/richard/workspace', 'AgentWorkspace'],

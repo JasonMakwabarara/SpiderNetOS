@@ -349,6 +349,7 @@ const ic = {
   map:      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><circle cx="4.5" cy="6" r="1.5"/><circle cx="19.5" cy="6" r="1.5"/><circle cx="4.5" cy="18" r="1.5"/><circle cx="19.5" cy="18" r="1.5"/><path stroke-linecap="round" d="M10 10.5L6 7.2M14 10.5l4-3.3M10 13.5L6 16.8M14 13.5l4 3.3"/></svg>',
   systems:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path stroke-linecap="round" d="M7 7h.01M7 17h.01"/></svg>',
   brain:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16M9 4a3 3 0 00-3 3 3 3 0 00-2 3.5A3 3 0 005 15a3 3 0 003 4h4V4H9zM15 4a3 3 0 013 3 3 3 0 012 3.5A3 3 0 0119 15a3 3 0 01-3 4h-4V4h3z"/></svg>',
+  brief:    '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path stroke-linecap="round" d="M14 3v6h6M9 13h6M9 17h4"/></svg>',
   runs:     '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h10M4 12h6M4 18h8"/><path stroke-linejoin="round" d="M15 10l5 3-5 3v-6z"/></svg>',
   godseye:  '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
 }
@@ -361,6 +362,7 @@ const userNav = {
     { key: 'map', name: 'Business map', path: '/map', icon: ic.map },
     { key: 'systems', name: 'Systems', path: '/operate/systems', icon: ic.systems },
     { key: 'brain', name: 'Brain', path: '/brain', icon: ic.brain },
+    { key: 'research-briefs', name: 'Research briefs', path: '/research-briefs', icon: ic.brief },
     { key: 'first-win', name: 'First win', path: '/operate/first-win', icon: ic.firstwin },
     { key: 'communications', name: 'Communications', path: '/communications', icon: ic.comms },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
@@ -534,6 +536,7 @@ const BREADCRUMB_MAP = {
   '/map': ['Business map'],
   '/operate/systems': ['Systems'],
   '/brain': ['Brain'],
+  '/research-briefs': ['Research briefs'],
   '/settings/voice': ['Settings', 'Atlas voice'],
   '/agents/runs': ['Agents', 'Runs'],
   '/gods-eye': ["God's Eye"],

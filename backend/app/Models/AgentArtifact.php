@@ -33,9 +33,12 @@ class AgentArtifact extends Model
 
     public const KIND_MEETING_PROPOSAL = 'meeting_proposal';
 
+    public const KIND_RESEARCH_BRIEF = 'research_brief';
+
     public const KINDS = [
         self::KIND_DRAFT_EMAIL, self::KIND_DRAFT_SEQUENCE, self::KIND_DRAFT_REPLY, self::KIND_CAPTION,
         self::KIND_REPORT, self::KIND_NOTE, self::KIND_CLASSIFICATION, self::KIND_MEETING_PROPOSAL,
+        self::KIND_RESEARCH_BRIEF,
     ];
 
     public const STATUS_DRAFT = 'draft';
