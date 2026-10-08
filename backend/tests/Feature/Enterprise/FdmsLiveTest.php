@@ -22,9 +22,9 @@ class FdmsLiveTest extends TestCase
 {
     use RefreshDatabase;
 
-    private string $keyPath;
+    private string $keyPath = '';
 
-    private string $certPath;
+    private string $certPath = '';
 
     protected function setUp(): void
     {
@@ -43,8 +43,11 @@ class FdmsLiveTest extends TestCase
 
     protected function tearDown(): void
     {
-        @unlink($this->keyPath);
-        @unlink($this->certPath);
+        foreach ([$this->keyPath, $this->certPath] as $path) {
+            if ($path !== '') {
+                @unlink($path);
+            }
+        }
         parent::tearDown();
     }
 

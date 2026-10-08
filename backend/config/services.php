@@ -60,6 +60,7 @@ return [
         // Host dev: localhost:8005 maps to semantic-gateway container :8000
         'url' => env('INTELLIGENCE_GATEWAY_URL', 'http://localhost:8005'),
         'timeout' => (int) env('INTELLIGENCE_GATEWAY_TIMEOUT', 30),
+        'connect_timeout' => (int) env('INTELLIGENCE_GATEWAY_CONNECT_TIMEOUT', 2),
     ],
 
     'dag_compiler' => [

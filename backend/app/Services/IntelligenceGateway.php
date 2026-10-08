@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -10,6 +13,11 @@ use Illuminate\Support\Facades\Log;
  */
 class IntelligenceGateway
 {
+    /** After a refused or timed-out connection, reads skip the gateway for this long. */
+    private const UNREACHABLE_KEY = 'intelligence_gateway.unreachable';
+
+    private const UNREACHABLE_SECONDS = 30;
+
     protected string $baseUrl;
 
     protected string $dagCompilerUrl;
@@ -31,7 +39,7 @@ class IntelligenceGateway
         $url = "{$this->baseUrl}/v2/gateway/evaluate";
 
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->client()
                 ->acceptJson()
                 ->withQueryParameters([
                     'workspace_id' => $workspaceId,
@@ -67,7 +75,7 @@ class IntelligenceGateway
         $url = "{$this->baseUrl}/v2/atlas/coordinate-cycle";
 
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->client()
                 ->acceptJson()
                 ->withQueryParameters(['workspace_id' => $workspaceId])
                 ->post($url);
@@ -100,7 +108,7 @@ class IntelligenceGateway
         $url = "{$this->dagCompilerUrl}/validate";
 
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->client()
                 ->acceptJson()
                 ->post($url, $dag);
 
@@ -138,7 +146,8 @@ class IntelligenceGateway
     {
         foreach (['/api/health', '/health'] as $path) {
             try {
-                $response = Http::timeout(5)->get($this->baseUrl.$path);
+                $response = $this->client(5)->get($this->baseUrl.$path);
+                Cache::forget(self::UNREACHABLE_KEY);
                 if ($response->successful()) {
                     $body = $response->json() ?? [];
                     $status = $body['status'] ?? 'healthy';
@@ -149,6 +158,11 @@ class IntelligenceGateway
                         'details' => $body,
                     ];
                 }
+            } catch (ConnectionException $e) {
+                // Same host for both paths: if it will not connect, the second probe cannot either.
+                $this->markUnreachable();
+                Log::debug('IntelligenceGateway health probe failed', ['path' => $path, 'error' => $e->getMessage()]);
+                break;
             } catch (\Throwable $e) {
                 Log::debug('IntelligenceGateway health probe failed', ['path' => $path, 'error' => $e->getMessage()]);
             }
@@ -199,18 +213,36 @@ class IntelligenceGateway
 
     protected function getJson(string $url): mixed
     {
+        if (Cache::has(self::UNREACHABLE_KEY)) {
+            return ['ok' => false, 'error' => 'semantic gateway unreachable'];
+        }
+
         try {
-            $response = Http::timeout($this->timeout)->acceptJson()->get($url);
+            $response = $this->client()->acceptJson()->get($url);
             if ($response->failed()) {
                 return ['ok' => false, 'error' => $response->body()];
             }
 
             return $response->json();
         } catch (\Throwable $e) {
+            if ($e instanceof ConnectionException) {
+                $this->markUnreachable();
+            }
             Log::warning('IntelligenceGateway GET failed', ['url' => $url, 'error' => $e->getMessage()]);
 
             return ['ok' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    protected function client(?int $timeout = null): PendingRequest
+    {
+        return Http::connectTimeout((int) config('services.intelligence_gateway.connect_timeout', 2))
+            ->timeout($timeout ?? $this->timeout);
+    }
+
+    private function markUnreachable(): void
+    {
+        Cache::put(self::UNREACHABLE_KEY, true, self::UNREACHABLE_SECONDS);
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -226,7 +258,7 @@ class IntelligenceGateway
     protected function patchJson(string $url): array
     {
         try {
-            $response = Http::timeout($this->timeout)->acceptJson()->patch($url);
+            $response = $this->client()->acceptJson()->patch($url);
             if ($response->failed()) {
                 return ['ok' => false, 'error' => $response->body()];
             }
@@ -240,7 +272,7 @@ class IntelligenceGateway
     protected function putJson(string $url, array $payload): array
     {
         try {
-            $response = Http::timeout($this->timeout)->acceptJson()->put($url, $payload);
+            $response = $this->client()->acceptJson()->put($url, $payload);
             if ($response->failed()) {
                 return ['ok' => false, 'error' => $response->body()];
             }
@@ -259,7 +291,7 @@ class IntelligenceGateway
     protected function postTo(string $url, array $payload): array
     {
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->client()
                 ->acceptJson()
                 ->post($url, $payload);
 
