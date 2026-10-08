@@ -6,7 +6,8 @@ from datetime import date
 
 import pytest
 
-from intelligence.services.business_launch import DISCLAIMER, jurisdiction as j
+from intelligence.services.business_launch import DISCLAIMER
+from intelligence.services.business_launch import jurisdiction as j
 
 TODAY = date(2026, 9, 16)
 
