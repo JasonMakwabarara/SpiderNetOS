@@ -55,8 +55,8 @@
       <form class="flex flex-wrap gap-2" @submit.prevent="draftPayroll">
         <input v-model="payrollForm.period_start" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="payroll-start" />
         <input v-model="payrollForm.period_end" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="payroll-end" />
-        <button class="dct-btn-primary px-3 py-2 text-sm" data-testid="payroll-draft">Draft payroll</button>
-        <button type="button" class="px-3 py-2 text-sm rounded border" :style="field" data-testid="payroll-post" :disabled="!payroll || payroll.status !== 'draft'" @click="postPayroll">Post</button>
+        <button class="dct-btn-primary px-3 py-2 text-sm" data-testid="payroll-draft" :disabled="payrollBusy">Draft payroll</button>
+        <button type="button" class="px-3 py-2 text-sm rounded border" :style="field" data-testid="payroll-post" :disabled="payrollBusy || !payroll || payroll.status !== 'draft'" @click="postPayroll">Post</button>
       </form>
     </section>
 
@@ -115,6 +115,7 @@ const form = ref({ first_name: '', surname: '', position_title: '', department_i
 const filters = ref({ q: '', department_id: '', status: 'active' })
 const payroll = ref(null)
 const payrollError = ref('')
+const payrollBusy = ref(false)
 const payrollForm = ref({ period_start: '', period_end: '', currency: 'USD' })
 
 async function load() {
@@ -154,22 +155,40 @@ async function regenerate() {
 }
 
 async function draftPayroll() {
+  if (payrollBusy.value) return
+  payrollBusy.value = true
   payrollError.value = ''
   try {
     const res = await api.post('/api/enterprise/payroll-runs', { ...payrollForm.value, currency: 'USD' })
     payroll.value = res.data.data
   } catch (err) {
     payrollError.value = err.response?.data?.message || 'Could not draft payroll.'
+  } finally {
+    payrollBusy.value = false
   }
 }
 
 async function postPayroll() {
+  if (payrollBusy.value || !payroll.value) return
+  payrollBusy.value = true
   payrollError.value = ''
+  const id = payroll.value.id
   try {
-    const res = await api.post(`/api/enterprise/payroll-runs/${payroll.value.id}/post`)
+    const res = await api.post(`/api/enterprise/payroll-runs/${id}/post`)
     payroll.value = res.data.data
   } catch (err) {
-    payrollError.value = err.response?.data?.message || 'Could not post payroll.'
+    // A lost or unreadable response can follow a successful post, so trust the stored run.
+    try {
+      const fresh = await api.get(`/api/enterprise/payroll-runs/${id}`)
+      payroll.value = fresh.data.data
+    } catch {
+      // Keep the original error below.
+    }
+    if (payroll.value?.status !== 'posted') {
+      payrollError.value = err.response?.data?.message || 'Could not post payroll.'
+    }
+  } finally {
+    payrollBusy.value = false
   }
 }
 
