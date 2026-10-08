@@ -13,6 +13,10 @@ yarn-error.log
 /storage/app/feature-packs/
 # `skills:eval` writes a JSON report per run; they are artefacts of a run, not source.
 /storage/app/private/skill-evals/
+# Encrypted DSAR exports hold personal data; never commit them.
+/storage/app/dsar/
+# Device keys and certificates written by `fdms:register`.
+/storage/app/fdms/
 Homestead.json
 Homestead.yaml
 auth.json

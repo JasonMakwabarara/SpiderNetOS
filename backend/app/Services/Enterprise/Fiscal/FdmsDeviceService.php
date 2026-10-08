@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Enterprise\Fiscal;
 
 use App\Exceptions\DomainException;
+use App\Models\CreditNote;
 use App\Models\FdmsDevice;
 use App\Models\FdmsReceipt;
 use App\Models\Invoice;
+use App\Models\InvoiceLineItem;
 use App\Services\EventStore;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -146,6 +148,71 @@ class FdmsDeviceService
 
     public function fiscaliseInvoice(string $tenantId, string $invoiceId, string $moneyType): FdmsReceipt
     {
+        return $this->submit(
+            $tenantId,
+            $moneyType,
+            'invoice',
+            function () use ($tenantId, $invoiceId, $moneyType): array {
+                $invoice = Invoice::forTenant($tenantId)->with('lineItems')->lockForUpdate()->findOrFail($invoiceId);
+                if ($invoice->vendor_id !== null || $invoice->purchase_order_id !== null) {
+                    throw new DomainException('Supplier invoices are fiscalised by the supplier, not on this device.');
+                }
+                if (! in_array($invoice->status, ['sent', 'paid'], true)) {
+                    throw new DomainException('Only a sent or paid sales invoice can be fiscalised.');
+                }
+
+                return [
+                    FdmsReceipt::forTenant($tenantId)->where('invoice_id', $invoice->id)->whereNull('credit_note_id')->first(),
+                    fn (FdmsDevice $device, int $deviceId): FdmsReceipt => $this->buildInvoiceReceipt($tenantId, $device, $invoice, $moneyType, $deviceId),
+                ];
+            },
+        );
+    }
+
+    public function fiscaliseCreditNote(string $tenantId, string $creditNoteId, string $moneyType): FdmsReceipt
+    {
+        return $this->submit(
+            $tenantId,
+            $moneyType,
+            'credit note',
+            function () use ($tenantId, $creditNoteId, $moneyType): array {
+                $note = CreditNote::forTenant($tenantId)->with('lines.invoiceLineItem')->lockForUpdate()->findOrFail($creditNoteId);
+                $invoice = Invoice::forTenant($tenantId)->lockForUpdate()->findOrFail($note->invoice_id);
+                if ($invoice->vendor_id !== null || $invoice->purchase_order_id !== null) {
+                    throw new DomainException('Supplier credit notes are fiscalised by the supplier, not on this device.');
+                }
+                if ($note->status !== 'issued') {
+                    throw new DomainException('Issue the credit note before fiscalising it.');
+                }
+                if (trim((string) $note->reason) === '') {
+                    throw new DomainException('ZIMRA requires a reason on every credit note.');
+                }
+                $original = FdmsReceipt::forTenant($tenantId)
+                    ->with('device')
+                    ->where('invoice_id', $invoice->id)
+                    ->whereNull('credit_note_id')
+                    ->where('status', 'accepted')
+                    ->first();
+                if ($original === null) {
+                    throw new DomainException('Fiscalise the original invoice before its credit notes.');
+                }
+
+                return [
+                    FdmsReceipt::forTenant($tenantId)->where('credit_note_id', $note->id)->first(),
+                    fn (FdmsDevice $device, int $deviceId): FdmsReceipt => $this->buildCreditNoteReceipt($tenantId, $device, $note, $invoice, $original, $moneyType, $deviceId),
+                ];
+            },
+        );
+    }
+
+    /**
+     * Shared submission: a pending receipt is resent unchanged, a rejected one
+     * is rebuilt, and only one receipt per device may await FDMS at a time.
+     *
+     * @param  \Closure(): array{0: ?FdmsReceipt, 1: \Closure(FdmsDevice, int): FdmsReceipt}  $find  Locks and checks the document; returns its existing receipt and a builder for a new one.
+     */
+    private function submit(string $tenantId, string $moneyType, string $label, \Closure $find): FdmsReceipt
+    {
         if (! in_array($moneyType, FdmsSigner::MONEY_TYPES, true)) {
             throw new DomainException('Unknown money type.');
         }
@@ -153,19 +220,11 @@ class FdmsDeviceService
         $deviceId = $this->deviceId();
 
         $failure = null;
-        $receipt = DB::transaction(function () use ($tenantId, $invoiceId, $moneyType, $client, $deviceId, &$failure) {
+        $receipt = DB::transaction(function () use ($tenantId, $label, $find, $client, $deviceId, &$failure) {
             $device = $this->lockedDevice($tenantId);
-            $invoice = Invoice::forTenant($tenantId)->with('lineItems')->lockForUpdate()->findOrFail($invoiceId);
-            if ($invoice->vendor_id !== null || $invoice->purchase_order_id !== null) {
-                throw new DomainException('Supplier invoices are fiscalised by the supplier, not on this device.');
-            }
-            if (! in_array($invoice->status, ['sent', 'paid'], true)) {
-                throw new DomainException('Only a sent or paid sales invoice can be fiscalised.');
-            }
-
-            $existing = FdmsReceipt::forTenant($tenantId)->where('invoice_id', $invoice->id)->first();
+            [$existing, $build] = $find();
             if ($existing?->status === 'accepted') {
-                throw new DomainException('This invoice already has an FDMS receipt.');
+                throw new DomainException('This '.$label.' already has an FDMS receipt.');
             }
             if ($existing?->status === 'rejected') {
                 $existing->delete();
@@ -177,7 +236,7 @@ class FdmsDeviceService
                 ->when($existing, fn ($q) => $q->whereKeyNot($existing->id))
                 ->exists();
             if ($held) {
-                throw new DomainException('Another receipt is awaiting FDMS confirmation. Resend that invoice first.');
+                throw new DomainException('Another receipt is awaiting FDMS confirmation. Resend that document first.');
             }
             if (! in_array($device->fiscal_day_status, ['FiscalDayOpened', 'FiscalDayCloseFailed'], true)) {
                 throw new DomainException('Open a fiscal day before fiscalising.');
@@ -186,7 +245,7 @@ class FdmsDeviceService
                 throw new DomainException('Fetch the FDMS device configuration before fiscalising.');
             }
 
-            $receipt = $existing ?? $this->buildReceipt($tenantId, $device, $invoice, $moneyType, $deviceId);
+            $receipt = $existing ?? $build($device, $deviceId);
 
             try {
                 $answer = $client->submitReceipt($receipt->payload);
@@ -199,77 +258,135 @@ class FdmsDeviceService
                 return $receipt;
             }
 
-            $this->accept($tenantId, $device, $receipt, $answer, $deviceId);
+            $this->accept($tenantId, $device, $receipt, $answer);
 
             return $receipt;
         });
 
         if ($failure instanceof FdmsException) {
             throw $failure->outcomeUnknown
-                ? new FdmsException('FDMS did not confirm the receipt. It is held with the same number; fiscalise this invoice again to resend it.', $failure->httpStatus, $failure->errorCode, true)
+                ? new FdmsException('FDMS did not confirm the receipt. It is held with the same number; fiscalise this '.$label.' again to resend it.', $failure->httpStatus, $failure->errorCode, true)
                 : $failure;
         }
 
         return $receipt->refresh();
     }
 
-    private function buildReceipt(string $tenantId, FdmsDevice $device, Invoice $invoice, string $moneyType, int $deviceId): FdmsReceipt
+    private function buildInvoiceReceipt(string $tenantId, FdmsDevice $device, Invoice $invoice, string $moneyType, int $deviceId): FdmsReceipt
     {
-        if ((float) $invoice->discount_amount > 0) {
-            throw new DomainException('Invoices with a discount cannot be fiscalised yet.');
-        }
         if ($invoice->lineItems->isEmpty()) {
             throw new DomainException('An invoice needs at least one line to be fiscalised.');
         }
 
-        $lines = [];
-        $groups = [];
-        foreach ($invoice->lineItems->values() as $i => $item) {
-            $tax = $this->taxFor($device, $item->metadata['fdms_tax_id'] ?? null, (float) $item->tax_rate);
-            $price = round((float) $item->unit_price, 6);
-            $quantity = round((float) $item->quantity, 6);
-            $total = round($price * $quantity, 2);
-            $line = [
-                'receiptLineType' => 'Sale',
-                'receiptLineNo' => $i + 1,
-                'receiptLineName' => mb_substr((string) $item->description, 0, 200),
-                'receiptLinePrice' => $price,
-                'receiptLineQuantity' => $quantity,
-                'receiptLineTotal' => $total,
-                'taxID' => (int) $tax['taxID'],
-            ];
-            if (array_key_exists('taxPercent', $tax) && $tax['taxPercent'] !== null) {
-                $line['taxPercent'] = (float) $tax['taxPercent'];
-            }
-            if (! empty($item->metadata['hs_code'])) {
-                $line['receiptLineHSCode'] = (string) $item->metadata['hs_code'];
-            }
-            $lines[] = $line;
-
-            $key = (int) $tax['taxID'];
-            $groups[$key] ??= ['taxID' => $key, 'taxPercent' => $tax['taxPercent'] ?? null, 'cents' => 0];
-            $groups[$key]['cents'] += FdmsSigner::cents($total);
+        $discounts = FdmsReceiptMath::invoiceDiscounts($invoice);
+        $items = [];
+        foreach ($invoice->lineItems as $item) {
+            $items[] = $this->item($device, $item, (float) $item->quantity, $discounts[(string) $item->id] ?? 0);
         }
+        // A discount is part of the billed total, so discounted receipts carry tax-inclusive lines.
+        $inclusive = $discounts !== [];
+        $body = FdmsReceiptMath::body($items, $inclusive, 1);
 
-        ksort($groups);
-        $taxes = [];
-        $totalCents = 0;
-        foreach ($groups as $group) {
-            $taxCents = $group['taxPercent'] === null ? 0 : (int) round($group['cents'] * (float) $group['taxPercent'] / 100);
-            $tax = ['taxID' => $group['taxID']];
-            if ($group['taxPercent'] !== null) {
-                $tax['taxPercent'] = (float) $group['taxPercent'];
-            }
-            $tax['taxAmount'] = $taxCents / 100;
-            $tax['salesAmountWithTax'] = ($group['cents'] + $taxCents) / 100;
-            $taxes[] = $tax;
-            $totalCents += $group['cents'] + $taxCents;
-        }
-
-        if ($totalCents !== FdmsSigner::cents($invoice->total_amount)) {
+        if ($body['total_cents'] !== FdmsSigner::cents($invoice->total_amount)) {
             throw new DomainException('The invoice total does not equal the fiscal receipt total built from its lines.');
         }
 
+        return $this->store($tenantId, $device, $deviceId, 'FiscalInvoice', $invoice->id, null, [
+            'currency' => (string) $invoice->currency,
+            'number' => (string) $invoice->invoice_number,
+            'inclusive' => $inclusive,
+            'extra' => [],
+        ], $body, $moneyType);
+    }
+
+    private function buildCreditNoteReceipt(
+        string $tenantId,
+        FdmsDevice $device,
+        CreditNote $note,
+        Invoice $invoice,
+        FdmsReceipt $original,
+        string $moneyType,
+        int $deviceId,
+    ): FdmsReceipt {
+        if ($note->lines->isEmpty()) {
+            throw new DomainException('A credit note needs at least one line to be fiscalised.');
+        }
+        $issuedAt = $original->server_date ?? $original->created_at;
+        if ($issuedAt !== null && $issuedAt->lt($this->now()->subYear())) {
+            throw new DomainException('ZIMRA does not accept credit notes for receipts issued more than 12 months ago.');
+        }
+
+        $items = [];
+        foreach ($note->lines as $line) {
+            $source = $line->invoiceLineItem;
+            if ($source === null || $source->invoice_id !== $invoice->id) {
+                throw new DomainException('Every credit note line must point at a line of the original invoice.');
+            }
+            $items[] = $this->item($device, $source, (float) $line->quantity, FdmsSigner::cents($line->discount_amount));
+        }
+        $inclusive = (bool) ($original->payload['receiptLinesTaxInclusive'] ?? false);
+        $body = FdmsReceiptMath::body($items, $inclusive, -1);
+
+        $credit = -$body['total_cents'];
+        if ($credit !== FdmsSigner::cents($note->total_amount)) {
+            throw new DomainException('The credit note total does not equal the fiscal receipt total built from its lines.');
+        }
+        $credited = FdmsReceipt::forTenant($tenantId)
+            ->where('invoice_id', $invoice->id)
+            ->whereNotNull('credit_note_id')
+            ->where('status', 'accepted')
+            ->get()
+            ->sum(fn (FdmsReceipt $r) => -FdmsSigner::cents($r->payload['receiptTotal']));
+        if ($credited + $credit > FdmsSigner::cents($original->payload['receiptTotal'])) {
+            throw new DomainException('Credit notes cannot exceed the fiscalised invoice total.');
+        }
+
+        return $this->store($tenantId, $device, $deviceId, 'CreditNote', $invoice->id, $note->id, [
+            'currency' => (string) $invoice->currency,
+            'number' => (string) $note->credit_note_number,
+            'inclusive' => $inclusive,
+            'extra' => [
+                'receiptNotes' => mb_substr(trim((string) $note->reason), 0, 1000),
+                'creditDebitNote' => [
+                    'receiptID' => $original->fdms_receipt_id,
+                    'deviceID' => $original->device->device_id,
+                    'receiptGlobalNo' => $original->receipt_global_no,
+                    'fiscalDayNo' => $original->fiscal_day_no,
+                ],
+            ],
+        ], $body, $moneyType);
+    }
+
+    /**
+     * @return array{name: string, price: float, quantity: float, tax: array<string, mixed>, hs_code: ?string, discount_cents: int}
+     */
+    private function item(FdmsDevice $device, InvoiceLineItem $line, float $quantity, int $discountCents): array
+    {
+        return [
+            'name' => (string) $line->description,
+            'price' => (float) $line->unit_price,
+            'quantity' => $quantity,
+            'tax' => $this->taxFor($device, $line->metadata['fdms_tax_id'] ?? null, (float) $line->tax_rate),
+            'hs_code' => isset($line->metadata['hs_code']) ? (string) $line->metadata['hs_code'] : null,
+            'discount_cents' => $discountCents,
+        ];
+    }
+
+    /**
+     * @param  array{currency: string, number: string, inclusive: bool, extra: array<string, mixed>}  $head
+     * @param  array{lines: list<array<string, mixed>>, taxes: list<array<string, mixed>>, total_cents: int}  $body
+     */
+    private function store(
+        string $tenantId,
+        FdmsDevice $device,
+        int $deviceId,
+        string $type,
+        string $invoiceId,
+        ?string $creditNoteId,
+        array $head,
+        array $body,
+        string $moneyType,
+    ): FdmsReceipt {
         $date = $this->now();
         $floor = $device->last_receipt_date ?? $device->fiscal_day_opened_at;
         if ($floor !== null) {
@@ -281,18 +398,20 @@ class FdmsDeviceService
 
         $counter = $device->receipt_counter + 1;
         $globalNo = $device->receipt_global_no + 1;
+        $total = $body['total_cents'] / 100;
         $payload = [
-            'receiptType' => 'FiscalInvoice',
-            'receiptCurrency' => strtoupper(trim((string) $invoice->currency)),
+            'receiptType' => $type,
+            'receiptCurrency' => strtoupper(trim($head['currency'])),
             'receiptCounter' => $counter,
             'receiptGlobalNo' => $globalNo,
-            'invoiceNo' => (string) $invoice->invoice_number,
+            'invoiceNo' => $head['number'],
+            ...$head['extra'],
             'receiptDate' => $date->format('Y-m-d\TH:i:s'),
-            'receiptLinesTaxInclusive' => false,
-            'receiptLines' => $lines,
-            'receiptTaxes' => $taxes,
-            'receiptPayments' => [['moneyTypeCode' => $moneyType, 'paymentAmount' => $totalCents / 100]],
-            'receiptTotal' => $totalCents / 100,
+            'receiptLinesTaxInclusive' => $head['inclusive'],
+            'receiptLines' => $body['lines'],
+            'receiptTaxes' => $body['taxes'],
+            'receiptPayments' => [['moneyTypeCode' => $moneyType, 'paymentAmount' => $total]],
+            'receiptTotal' => $total,
             'receiptPrintForm' => 'InvoiceA4',
         ];
 
@@ -307,8 +426,9 @@ class FdmsDeviceService
         return FdmsReceipt::create([
             'tenant_id' => $tenantId,
             'fdms_device_id' => $device->id,
-            'invoice_id' => $invoice->id,
-            'receipt_type' => 'FiscalInvoice',
+            'invoice_id' => $invoiceId,
+            'credit_note_id' => $creditNoteId,
+            'receipt_type' => $type,
             'fiscal_day_no' => $device->fiscal_day_no,
             'receipt_counter' => $counter,
             'receipt_global_no' => $globalNo,
@@ -323,7 +443,7 @@ class FdmsDeviceService
     /**
      * @param  array<string, mixed>  $answer
      */
-    private function accept(string $tenantId, FdmsDevice $device, FdmsReceipt $receipt, array $answer, int $deviceId): void
+    private function accept(string $tenantId, FdmsDevice $device, FdmsReceipt $receipt, array $answer): void
     {
         $payload = $receipt->payload;
         $receipt->update([
@@ -334,12 +454,16 @@ class FdmsDeviceService
             'validation_errors' => $answer['validationErrors'] ?? [],
         ]);
 
+        // Credit note amounts are already negative, so their counters decrease as the spec requires.
+        [$salesCounter, $taxCounter] = $payload['receiptType'] === 'CreditNote'
+            ? ['CreditNoteByTax', 'CreditNoteTaxByTax']
+            : ['SaleByTax', 'SaleTaxByTax'];
         $counters = $device->counters ?? [];
         $currency = $payload['receiptCurrency'];
         foreach ($payload['receiptTaxes'] as $tax) {
             $percent = $tax['taxPercent'] ?? null;
-            $this->bump($counters, 'SaleByTax', $currency, $tax['taxID'], $percent, null, FdmsSigner::cents($tax['salesAmountWithTax']));
-            $this->bump($counters, 'SaleTaxByTax', $currency, $tax['taxID'], $percent, null, FdmsSigner::cents($tax['taxAmount']));
+            $this->bump($counters, $salesCounter, $currency, $tax['taxID'], $percent, null, FdmsSigner::cents($tax['salesAmountWithTax']));
+            $this->bump($counters, $taxCounter, $currency, $tax['taxID'], $percent, null, FdmsSigner::cents($tax['taxAmount']));
         }
         foreach ($payload['receiptPayments'] as $payment) {
             $this->bump($counters, 'BalanceByMoneyType', $currency, null, null, $payment['moneyTypeCode'], FdmsSigner::cents($payment['paymentAmount']));
@@ -353,11 +477,12 @@ class FdmsDeviceService
             'counters' => $counters,
         ]);
 
-        $this->eventStore->append($tenantId, 'fdms_receipt', $receipt->id, 'enterprise.fiscal.fdms_accepted', [
-            'fdms_receipt_id' => $receipt->id,
-            'invoice_id' => $receipt->invoice_id,
-            'status' => 'accepted',
-        ]);
+        $event = ['fdms_receipt_id' => $receipt->id, 'invoice_id' => $receipt->invoice_id];
+        if ($receipt->credit_note_id !== null) {
+            $event['credit_note_id'] = $receipt->credit_note_id;
+        }
+        $event['status'] = 'accepted';
+        $this->eventStore->append($tenantId, 'fdms_receipt', $receipt->id, 'enterprise.fiscal.fdms_accepted', $event);
     }
 
     /**

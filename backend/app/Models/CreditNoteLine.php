@@ -14,6 +14,7 @@ class CreditNoteLine extends Model
 
     protected $fillable = [
         'credit_note_id', 'description', 'quantity', 'unit_price', 'line_total',
+        'invoice_line_item_id', 'tax_rate', 'discount_amount',
     ];
 
     protected function casts(): array
@@ -22,7 +23,15 @@ class CreditNoteLine extends Model
             'quantity' => 'decimal:4',
             'unit_price' => 'decimal:4',
             'line_total' => 'decimal:4',
+            'tax_rate' => 'decimal:2',
+            'discount_amount' => 'decimal:4',
         ];
+    }
+
+    /** @return BelongsTo<InvoiceLineItem, $this> */
+    public function invoiceLineItem(): BelongsTo
+    {
+        return $this->belongsTo(InvoiceLineItem::class);
     }
 
     /** @return BelongsTo<CreditNote, $this> */

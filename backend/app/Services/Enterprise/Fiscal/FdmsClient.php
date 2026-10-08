@@ -71,18 +71,45 @@ final class FdmsClient
         ]);
     }
 
+    /** @return array<string, mixed> */
+    public function verifyTaxpayerInformation(string $activationKey, string $serialNo): array
+    {
+        return $this->send('post', 'VerifyTaxpayerInformation', [
+            'activationKey' => $activationKey,
+            'deviceSerialNo' => $serialNo,
+        ], public: true);
+    }
+
+    /** @return array<string, mixed> */
+    public function registerDevice(string $activationKey, string $certificateRequestPem): array
+    {
+        return $this->send('post', 'RegisterDevice', [
+            'activationKey' => $activationKey,
+            'certificateRequest' => $certificateRequestPem,
+        ], public: true);
+    }
+
+    /** @return array<string, mixed> */
+    public function issueCertificate(string $certificateRequestPem): array
+    {
+        return $this->send('post', 'IssueCertificate', ['certificateRequest' => $certificateRequestPem]);
+    }
+
     /**
+     * Public endpoints (verify, register) run before a device certificate exists.
+     *
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>
      */
-    private function send(string $method, string $endpoint, array $body = []): array
+    private function send(string $method, string $endpoint, array $body = [], bool $public = false): array
     {
-        $path = '/Device/v1/'.$this->deviceId.'/'.$endpoint;
+        $path = ($public ? '/Public/v1/' : '/Device/v1/').$this->deviceId.'/'.$endpoint;
+        $request = $public ? $this->publicRequest() : $this->request();
 
         try {
             $response = $method === 'get'
-                ? $this->request()->get($path)
-                : $this->request()->post($path, $body);
+                ? $request->get($path)
+                : $request->post($path, $body);
         } catch (ConnectionException $e) {
             throw new FdmsException('FDMS could not be reached: '.$e->getMessage(), outcomeUnknown: true);
         }
@@ -108,6 +135,15 @@ final class FdmsClient
         $cert = $this->keyPassphrase ? [$this->certPath, $this->keyPassphrase] : $this->certPath;
         $key = $this->keyPassphrase ? [$this->keyPath, $this->keyPassphrase] : $this->keyPath;
 
+        return $this->publicRequest()->withOptions([
+            'cert' => $cert,
+            'ssl_key' => $key,
+            'verify' => true,
+        ]);
+    }
+
+    private function publicRequest(): PendingRequest
+    {
         return Http::baseUrl(rtrim($this->baseUrl, '/'))
             ->acceptJson()
             ->asJson()
@@ -116,10 +152,6 @@ final class FdmsClient
                 'DeviceModelName' => $this->modelName,
                 'DeviceModelVersionNo' => $this->modelVersion,
             ])
-            ->withOptions([
-                'cert' => $cert,
-                'ssl_key' => $key,
-                'verify' => true,
-            ]);
+            ->withOptions(['verify' => true]);
     }
 }

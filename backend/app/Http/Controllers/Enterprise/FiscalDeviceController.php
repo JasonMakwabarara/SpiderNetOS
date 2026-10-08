@@ -50,4 +50,18 @@ class FiscalDeviceController extends Controller
 
         return response()->json(['data' => $receipt], 201);
     }
+
+    public function fiscaliseCreditNote(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'money_type' => ['required', 'string', Rule::in(FdmsSigner::MONEY_TYPES)],
+        ]);
+        $receipt = $this->fdms->fiscaliseCreditNote(
+            (string) $request->attributes->get('tenant_id'),
+            $id,
+            $data['money_type'],
+        );
+
+        return response()->json(['data' => $receipt], 201);
+    }
 }

@@ -179,6 +179,130 @@ class FdmsLiveTest extends TestCase
         $this->assertSame(['fdms_receipt_id', 'invoice_id', 'status'], $keys);
     }
 
+    public function test_discounted_invoice_and_its_credit_note_are_fiscalised_with_credit_counters(): void
+    {
+        $tenant = $this->tenant('Hammer');
+        $admin = $this->user($tenant);
+        $this->actingAs($admin, 'sanctum');
+        $this->configure($tenant->id);
+
+        $base = 'https://fdms.test/Device/v1/321/';
+        Http::fake([
+            $base.'GetConfig' => Http::response([
+                'qrUrl' => 'https://invoice.zimra.co.zw',
+                'applicableTaxes' => [
+                    ['taxID' => 1, 'taxPercent' => 15, 'taxName' => 'VAT 15%'],
+                    ['taxID' => 2, 'taxPercent' => 0, 'taxName' => 'Zero rated'],
+                ],
+            ]),
+            $base.'GetStatus' => Http::response(['fiscalDayStatus' => 'FiscalDayClosed', 'lastFiscalDayNo' => 9, 'lastReceiptGlobalNo' => 50]),
+            $base.'OpenDay' => Http::response(['fiscalDayNo' => 10]),
+            $base.'SubmitReceipt' => Http::sequence()
+                ->push(['operationID' => 'o1', 'receiptID' => 7001, 'serverDate' => '2026-10-08T10:00:00'])
+                ->push(['operationID' => 'o2', 'receiptID' => 7002, 'serverDate' => '2026-10-08T10:05:00']),
+            $base.'CloseDay' => Http::response(['operationID' => 'o3']),
+        ]);
+
+        // 2 x 50 at 15% and 1 x 20 zero rated: 135 gross, 13.50 off, 121.50 billed.
+        $invoice = Invoice::create([
+            'tenant_id' => $tenant->id,
+            'invoice_number' => 'INV-D1',
+            'customer_name' => 'Walk-in',
+            'subtotal' => 120,
+            'tax_amount' => 15,
+            'discount_amount' => 13.5,
+            'total_amount' => 121.5,
+            'currency' => 'USD',
+            'status' => 'sent',
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(30)->toDateString(),
+        ]);
+        $vat = InvoiceLineItem::create([
+            'invoice_id' => $invoice->id, 'description' => 'Cement', 'quantity' => 2, 'unit' => 'each',
+            'unit_price' => 50, 'tax_rate' => 15, 'total' => 115, 'metadata' => ['hs_code' => '25232900'],
+        ]);
+        $zero = InvoiceLineItem::create([
+            'invoice_id' => $invoice->id, 'description' => 'Bread', 'quantity' => 1, 'unit' => 'each',
+            'unit_price' => 20, 'tax_rate' => 0, 'total' => 20, 'metadata' => ['fdms_tax_id' => 2],
+        ]);
+
+        $this->postJson('/api/enterprise/fdms/config')->assertOk();
+        $this->postJson('/api/enterprise/fdms/day/open')->assertOk();
+
+        $sale = $this->postJson('/api/enterprise/sales-invoices/'.$invoice->id.'/fiscalise', ['money_type' => 'Cash'])
+            ->assertCreated()
+            ->json('data');
+        $payload = $sale['payload'];
+        $this->assertTrue($payload['receiptLinesTaxInclusive']);
+        $this->assertEquals(121.5, $payload['receiptTotal']);
+        $this->assertEquals(
+            [['Sale', 57.5, 115, 1], ['Sale', 20, 20, 2], ['Discount', -11.5, -11.5, 1], ['Discount', -2, -2, 2]],
+            array_map(fn ($l) => [$l['receiptLineType'], $l['receiptLinePrice'] + 0, $l['receiptLineTotal'] + 0, $l['taxID']], $payload['receiptLines']),
+        );
+        $this->assertSame('25232900', $payload['receiptLines'][2]['receiptLineHSCode']);
+        $this->assertEquals([
+            ['taxID' => 1, 'taxPercent' => 15, 'taxAmount' => 13.5, 'salesAmountWithTax' => 103.5],
+            ['taxID' => 2, 'taxPercent' => 0, 'taxAmount' => 0, 'salesAmountWithTax' => 18],
+        ], $payload['receiptTaxes']);
+        $this->assertSigned($sale, null);
+
+        $this->postJson('/api/enterprise/sales-invoices/'.$invoice->id.'/credit-notes', [
+            'lines' => [['invoice_line_item_id' => $vat->id, 'quantity' => 1]],
+        ])->assertStatus(422);
+
+        $note = $this->postJson('/api/enterprise/sales-invoices/'.$invoice->id.'/credit-notes', [
+            'reason' => 'One bag returned damaged',
+            'lines' => [['invoice_line_item_id' => $vat->id, 'quantity' => 1]],
+        ])->assertCreated()->json('data');
+        $this->assertEquals(51.75, $note['total_amount']);
+        $this->assertEquals(6.75, $note['tax_amount']);
+        $this->assertEquals(5.75, $note['lines'][0]['discount_amount']);
+
+        $this->postJson('/api/enterprise/sales-invoices/'.$invoice->id.'/credit-notes', [
+            'reason' => 'Too many',
+            'lines' => [['invoice_line_item_id' => $vat->id, 'quantity' => 2]],
+        ])->assertStatus(409);
+
+        $this->postJson('/api/enterprise/credit-notes/'.$note['id'].'/fiscalise', ['money_type' => 'Cash'])->assertStatus(409);
+        $this->postJson('/api/enterprise/credit-notes/'.$note['id'].'/issue')->assertOk();
+
+        $credit = $this->postJson('/api/enterprise/credit-notes/'.$note['id'].'/fiscalise', ['money_type' => 'Cash'])
+            ->assertCreated()
+            ->json('data');
+        $this->assertSame('accepted', $credit['status']);
+        $this->assertSame('CreditNote', $credit['receipt_type']);
+        $this->assertSame($note['id'], $credit['credit_note_id']);
+        $this->assertSame(52, $credit['receipt_global_no']);
+        $cn = $credit['payload'];
+        $this->assertSame('CreditNote', $cn['receiptType']);
+        $this->assertSame($note['credit_note_number'], $cn['invoiceNo']);
+        $this->assertSame('One bag returned damaged', $cn['receiptNotes']);
+        $this->assertSame(['receiptID' => 7001, 'deviceID' => 321, 'receiptGlobalNo' => 51, 'fiscalDayNo' => 10], $cn['creditDebitNote']);
+        $this->assertEquals(-51.75, $cn['receiptTotal']);
+        $this->assertEquals(-51.75, $cn['receiptPayments'][0]['paymentAmount']);
+        $this->assertEquals(
+            [['Sale', -57.5, -57.5], ['Discount', 5.75, 5.75]],
+            array_map(fn ($l) => [$l['receiptLineType'], $l['receiptLinePrice'] + 0, $l['receiptLineTotal'] + 0], $cn['receiptLines']),
+        );
+        $this->assertEquals([['taxID' => 1, 'taxPercent' => 15, 'taxAmount' => -6.75, 'salesAmountWithTax' => -51.75]], $cn['receiptTaxes']);
+        $this->assertSigned($credit, $sale['receipt_hash']);
+        $this->postJson('/api/enterprise/credit-notes/'.$note['id'].'/fiscalise', ['money_type' => 'Cash'])->assertStatus(409);
+
+        $this->postJson('/api/enterprise/fdms/day/close')->assertOk();
+        $close = collect(Http::recorded())->first(fn ($pair) => $pair[0]->url() === $base.'CloseDay')[0];
+        $this->assertEquals([
+            ['SaleByTax', 1, 103.5], ['SaleByTax', 2, 18], ['SaleTaxByTax', 1, 13.5],
+            ['CreditNoteByTax', 1, -51.75], ['CreditNoteTaxByTax', 1, -6.75], ['BalanceByMoneyType', 'Cash', 69.75],
+        ], array_map(fn ($c) => [
+            $c['fiscalCounterType'], $c['fiscalCounterTaxID'] ?? $c['fiscalCounterMoneyType'], $c['fiscalCounterValue'] + 0,
+        ], $close['fiscalDayCounters']));
+
+        $event = \DB::table('event_log')->where('aggregate_id', $credit['id'])->value('payload');
+        $keys = array_keys(is_array($event) ? $event : json_decode((string) $event, true));
+        sort($keys);
+        $this->assertSame(['credit_note_id', 'fdms_receipt_id', 'invoice_id', 'status'], $keys);
+    }
+
     /**
      * @param  array<string, mixed>  $receipt
      */

@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property string $tenant_id
  * @property string $fdms_device_id
  * @property string $invoice_id
+ * @property string|null $credit_note_id
  * @property string $receipt_type
  * @property int $fiscal_day_no
  * @property int $receipt_counter
@@ -35,7 +36,7 @@ class FdmsReceipt extends Model
     use HasUuids, TenantScoped;
 
     protected $fillable = [
-        'tenant_id', 'fdms_device_id', 'invoice_id', 'receipt_type', 'fiscal_day_no',
+        'tenant_id', 'fdms_device_id', 'invoice_id', 'credit_note_id', 'receipt_type', 'fiscal_day_no',
         'receipt_counter', 'receipt_global_no', 'receipt_hash', 'receipt_signature',
         'payload', 'status', 'fdms_receipt_id', 'operation_id', 'server_date',
         'qr_data', 'validation_errors', 'error_code',

@@ -482,6 +482,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
             Route::post('/fdms/day/open', [FiscalDeviceController::class, 'openDay']);
             Route::post('/fdms/day/close', [FiscalDeviceController::class, 'closeDay']);
             Route::post('/sales-invoices/{id}/fiscalise', [FiscalDeviceController::class, 'fiscaliseInvoice']);
+            Route::post('/credit-notes/{id}/fiscalise', [FiscalDeviceController::class, 'fiscaliseCreditNote']);
         });
 
         Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);
@@ -503,6 +504,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/supplier-invoices/{id}/post', [PayablesController::class, 'post']);
         Route::post('/supplier-invoices/{id}/fiscalise', [PayablesController::class, 'fiscalise']);
         Route::post('/supplier-invoices/{id}/credit-notes', [PayablesController::class, 'storeCreditNote']);
+        Route::post('/sales-invoices/{id}/credit-notes', [PayablesController::class, 'storeSalesCreditNote']);
         Route::get('/credit-notes/{id}', [PayablesController::class, 'showCreditNote']);
         Route::post('/credit-notes/{id}/issue', [PayablesController::class, 'issueCreditNote']);
         Route::get('/cashbooks', [PayablesController::class, 'indexCashbooks']);
