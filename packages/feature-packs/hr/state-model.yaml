@@ -1,0 +1,14 @@
+chains:
+  - id: employee_lifecycle
+    namespace: pack.hr
+    states: [active, inactive]
+    transitions:
+      - event: enterprise.employee.created
+        from: null
+        to: active
+      - event: enterprise.employee.deactivated
+        from: active
+        to: inactive
+      - event: enterprise.employee.created
+        from: inactive
+        to: active

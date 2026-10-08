@@ -32,6 +32,7 @@ class Invoice extends Model
         'paid_at' => 'date',
         'cancelled_at' => 'date',
         'metadata' => 'array',
+        'fiscalised_at' => 'datetime',
     ];
 
     public function tenant(): BelongsTo

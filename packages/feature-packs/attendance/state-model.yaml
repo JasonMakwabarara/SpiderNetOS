@@ -1,0 +1,8 @@
+chains:
+  - id: clock_event
+    namespace: pack.attendance
+    states: [recorded]
+    transitions:
+      - event: enterprise.attendance.clock_recorded
+        from: null
+        to: recorded

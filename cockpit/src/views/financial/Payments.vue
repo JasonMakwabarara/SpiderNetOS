@@ -16,7 +16,7 @@
       </div>
       <div class="dct-card p-5" :style="{ background: 'var(--surface-low)' }">
         <p class="text-xs font-medium uppercase" :style="{ color: 'var(--text-muted)' }">Pending</p>
-        <p class="text-2xl font-bold mt-1" :style="{ color: '#FFAA00' }">${{ formatNumber(summary.pending) }}</p>
+        <p class="text-2xl font-bold mt-1" :style="{ color: 'var(--warn)' }">${{ formatNumber(summary.pending) }}</p>
       </div>
     </div>
 

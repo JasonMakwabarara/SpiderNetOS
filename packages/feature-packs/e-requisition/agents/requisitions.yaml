@@ -1,0 +1,10 @@
+id: requisitions
+displayName: "Requisition Clerk"
+description: "Creates draft requisitions and submits them for approval. Approved means approved for procurement."
+capabilities:
+  - id: list_requisitions
+    description: "List requisitions"
+  - id: create_requisition_draft
+    description: "Create a draft requisition with lines and a REQ number"
+  - id: submit_requisition
+    description: "Submit a draft requisition once"

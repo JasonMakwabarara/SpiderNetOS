@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: cash-management
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Cash"
+  description: "Currency-bound cashbooks and positive receipt or payment movements. No ledger posting."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    integrates_with: [invoice-billing]
+
+  provides:
+    dynamic_agents:
+      - id: cashier
+        displayName: "Cash Operations"
+        capabilities: [list_cashbooks, create_cashbook, record_cash_receipt, record_cash_payment]
+
+    ste_chains:
+      - id: cash_movement
+        description: "A cash movement is recorded"
+        states: [recorded]

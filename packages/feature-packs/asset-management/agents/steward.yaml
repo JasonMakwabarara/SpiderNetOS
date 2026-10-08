@@ -1,0 +1,12 @@
+id: steward
+displayName: "Asset Steward"
+description: "Registers assets and assigns or returns them. Does not depreciate assets."
+capabilities:
+  - id: list_assets
+    description: "List assets"
+  - id: create_asset
+    description: "Create an asset with a tenant-unique tag"
+  - id: assign_asset
+    description: "Assign an available asset to an employee"
+  - id: return_asset
+    description: "Return an assigned asset"

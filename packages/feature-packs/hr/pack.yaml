@@ -1,0 +1,25 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: hr
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "People"
+  description: "Departments and employees. Active or inactive. No payroll, leave, or contracts."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+
+  provides:
+    dynamic_agents:
+      - id: people
+        displayName: "People Operations"
+        capabilities: [list_employees, create_employee, set_employee_status]
+
+    ste_chains:
+      - id: employee_lifecycle
+        description: "Employee is active or inactive"
+        states: [active, inactive]

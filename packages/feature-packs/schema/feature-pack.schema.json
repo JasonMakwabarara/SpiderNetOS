@@ -63,6 +63,16 @@
               "type": "string",
               "pattern": "^\\d+\\.\\d+\\.\\d+$",
               "description": "Minimum SpiderNetOS version"
+            },
+            "feature_packs": {
+              "type": "array",
+              "description": "Hard dependency. The pack cannot operate without these packs.",
+              "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+            },
+            "integrates_with": {
+              "type": "array",
+              "description": "Soft integration. Foreign keys stay optional until a workflow links records.",
+              "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
             }
           }
         },
