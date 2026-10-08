@@ -7,8 +7,15 @@ import io
 
 import pytest
 
-from intelligence.services.business_launch import DISCLAIMER, finance_model as fm
-from intelligence.services.business_launch.formula_eval import FormulaError, Workbook, column_index, column_letter, evaluate_workbook
+from intelligence.services.business_launch import DISCLAIMER
+from intelligence.services.business_launch import finance_model as fm
+from intelligence.services.business_launch.formula_eval import (
+    FormulaError,
+    Workbook,
+    column_index,
+    column_letter,
+    evaluate_workbook,
+)
 
 GROWING = {
     "currency": "GBP",

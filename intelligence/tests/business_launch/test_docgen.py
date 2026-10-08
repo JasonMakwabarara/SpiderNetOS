@@ -6,7 +6,8 @@ import base64
 
 import pytest
 
-from intelligence.services.business_launch import DISCLAIMER, docgen, finance_model as fm
+from intelligence.services.business_launch import DISCLAIMER, docgen
+from intelligence.services.business_launch import finance_model as fm
 from intelligence.services.business_launch.docgen import DocgenError
 
 ASSUMPTIONS = {
