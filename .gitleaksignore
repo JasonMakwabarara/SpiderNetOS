@@ -33,3 +33,4 @@
 #
 c005799e9a4c0bb6d91505e5ad4106b0eaa99c34:.github/workflows/ci.yml:inline-db-password-literal:183
 69176eb1b662767aad7df8899c065e4d94b3e2f6:.github/workflows/backend-ci.yml:inline-db-password-literal:78
+d99f79546c903da5fe9fd134a52027050186b9b5:.github/workflows/feature-postgres.yml:inline-db-password-literal:74
