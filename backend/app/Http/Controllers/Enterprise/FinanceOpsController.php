@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Cashbook;
 use App\Models\CashMovement;
+use App\Models\ClockEvent;
 use App\Models\CreditNote;
 use App\Models\Employee;
 use App\Models\FiscalDevice;
@@ -35,7 +36,7 @@ class FinanceOpsController extends Controller
 
         return response()->json(['data' => [
             'employees_active' => Employee::forTenant($tenantId)->where('status', 'active')->count(),
-            'clock_events' => \App\Models\ClockEvent::forTenant($tenantId)->count(),
+            'clock_events' => ClockEvent::forTenant($tenantId)->count(),
             'requisitions_submitted' => Requisition::forTenant($tenantId)->where('status', 'submitted')->count(),
             'purchase_orders_open' => PurchaseOrder::forTenant($tenantId)->where('status', 'draft')->count(),
             'assets_unassigned' => Asset::forTenant($tenantId)->where('status', 'available')->count(),
