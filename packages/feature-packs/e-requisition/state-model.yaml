@@ -1,0 +1,17 @@
+chains:
+  - id: requisition_lifecycle
+    namespace: pack.e-requisition
+    states: [draft, submitted, approved, rejected]
+    transitions:
+      - event: enterprise.requisition.created
+        from: null
+        to: draft
+      - event: enterprise.requisition.submitted
+        from: draft
+        to: submitted
+      - event: enterprise.requisition.approved
+        from: submitted
+        to: approved
+      - event: enterprise.requisition.rejected
+        from: submitted
+        to: rejected

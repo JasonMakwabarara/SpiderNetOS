@@ -152,7 +152,14 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'tenant_id' => $user->tenant_id,
+                'onboarding_completed_at' => $user->onboarding_completed_at?->toIso8601String(),
             ],
+            'tenant' => $user->tenant ? [
+                'id' => $user->tenant->id,
+                'name' => $user->tenant->name,
+                'plan' => $user->tenant->plan,
+                'automation_level' => $user->tenant->automation_level,
+            ] : null,
             'token' => $token,
         ]);
     }

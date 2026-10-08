@@ -1,0 +1,11 @@
+chains:
+  - id: purchase_order_lifecycle
+    namespace: pack.procurement
+    states: [draft, issued]
+    transitions:
+      - event: enterprise.purchase_order.created
+        from: null
+        to: draft
+      - event: enterprise.purchase_order.issued
+        from: draft
+        to: issued

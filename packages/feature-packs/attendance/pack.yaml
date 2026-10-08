@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: attendance
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Attendance"
+  description: "Append-only clock in and clock out events for employees."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    feature_packs: [hr]
+
+  provides:
+    dynamic_agents:
+      - id: timekeeper
+        displayName: "Timekeeper"
+        capabilities: [list_clock_events, record_clock_event]
+
+    ste_chains:
+      - id: clock_event
+        description: "A clock event is recorded and kept"
+        states: [recorded]

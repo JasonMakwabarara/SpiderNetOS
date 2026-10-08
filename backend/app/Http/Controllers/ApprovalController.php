@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ApprovalEngine;
 use App\Services\EventStore;
 use App\Models\Approval;
 use Illuminate\Http\JsonResponse;
@@ -13,8 +14,10 @@ class ApprovalController extends Controller
 {
     private EventStore $eventStore;
 
-    public function __construct(EventStore $eventStore)
-    {
+    public function __construct(
+        EventStore $eventStore,
+        private readonly ApprovalEngine $approvalEngine,
+    ) {
         $this->eventStore = $eventStore;
     }
 
@@ -68,6 +71,23 @@ class ApprovalController extends Controller
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
             ], 409);
+        }
+
+        // Specimen short-circuit. Canonical sn-brain registers requisition in config/approvals.php.
+        if (($approval->resource_type ?? '') === 'requisition') {
+            $resolved = $this->approvalEngine->resolveApproval(
+                (string) $id,
+                (string) $request->user()->id,
+                true,
+                (string) $request->input('reason', ''),
+            );
+
+            return response()->json([
+                'id' => $id,
+                'status' => 'approved',
+                'approval_status' => $resolved['status'],
+                'message' => 'Approval granted.',
+            ]);
         }
 
         // Hard Rule #1: All writes go through EventStore
@@ -142,6 +162,23 @@ class ApprovalController extends Controller
             return response()->json([
                 'error' => "Approval has already been {$approval->status}.",
             ], 409);
+        }
+
+        // Specimen short-circuit. Canonical sn-brain registers requisition in config/approvals.php.
+        if (($approval->resource_type ?? '') === 'requisition') {
+            $resolved = $this->approvalEngine->resolveApproval(
+                (string) $id,
+                (string) $request->user()->id,
+                false,
+                (string) $request->input('reason', ''),
+            );
+
+            return response()->json([
+                'id' => $id,
+                'status' => 'rejected',
+                'approval_status' => $resolved['status'],
+                'message' => 'Approval rejected.',
+            ]);
         }
 
         // Hard Rule #1: All writes go through EventStore

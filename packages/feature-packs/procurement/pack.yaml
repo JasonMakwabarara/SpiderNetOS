@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: procurement
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Procurement"
+  description: "Supplier identity and draft or issued purchase orders."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    integrates_with: [e-requisition]
+
+  provides:
+    dynamic_agents:
+      - id: buyer
+        displayName: "Buyer"
+        capabilities: [list_vendors, create_vendor, list_purchase_orders, create_purchase_order_draft, issue_purchase_order]
+
+    ste_chains:
+      - id: purchase_order_lifecycle
+        description: "Purchase order draft then issued"
+        states: [draft, issued]

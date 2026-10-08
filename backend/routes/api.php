@@ -19,6 +19,10 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\FeaturePackController;
+use App\Http\Controllers\Enterprise\AssetController;
+use App\Http\Controllers\Enterprise\FinanceOpsController;
+use App\Http\Controllers\Enterprise\PeopleController;
+use App\Http\Controllers\Enterprise\PurchasingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -262,6 +266,70 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::post('/portfolios/{id}/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'executeTrade']);
         Route::post('/portfolios/{id}/update-prices', [\App\Http\Controllers\Financial\PortfolioController::class, 'updatePrices']);
         Route::get('/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'trades']);
+    });
+
+// ─── Enterprise Operations ──────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
+    ->prefix('enterprise')
+    ->group(function () {
+        Route::get('/overview', [FinanceOpsController::class, 'overview']);
+
+        Route::get('/departments', [PeopleController::class, 'departments']);
+        Route::post('/departments', [PeopleController::class, 'storeDepartment']);
+        Route::get('/departments/{id}', [PeopleController::class, 'showDepartment']);
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/hr/settings', [PeopleController::class, 'numberingSettings']);
+            Route::patch('/hr/settings', [PeopleController::class, 'updateNumberingSettings']);
+            Route::post('/employees/job-description-suggestion', [PeopleController::class, 'suggestJobDescription']);
+            Route::get('/employees', [PeopleController::class, 'employees']);
+            Route::post('/employees', [PeopleController::class, 'storeEmployee']);
+            Route::get('/employees/{id}/audit.csv', [PeopleController::class, 'exportAudit']);
+            Route::get('/employees/{id}', [PeopleController::class, 'showEmployee']);
+            Route::patch('/employees/{id}', [PeopleController::class, 'updateEmployee']);
+            Route::post('/employees/{id}/deactivate', [PeopleController::class, 'deactivateEmployee']);
+        });
+
+        Route::get('/clock-events', [PeopleController::class, 'clockEvents']);
+        Route::post('/clock-events', [PeopleController::class, 'storeClockEvent']);
+        Route::get('/clock-events/{id}', [PeopleController::class, 'showClockEvent']);
+
+        Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);
+        Route::post('/requisitions', [PurchasingController::class, 'storeRequisition']);
+        Route::get('/requisitions/{id}', [PurchasingController::class, 'showRequisition']);
+        Route::post('/requisitions/{id}/submit', [PurchasingController::class, 'submitRequisition']);
+
+        Route::get('/vendors', [PurchasingController::class, 'indexVendors']);
+        Route::post('/vendors', [PurchasingController::class, 'storeVendor']);
+        Route::get('/vendors/{id}', [PurchasingController::class, 'showVendor']);
+        Route::get('/purchase-orders', [PurchasingController::class, 'indexPurchaseOrders']);
+        Route::post('/purchase-orders', [PurchasingController::class, 'storePurchaseOrder']);
+        Route::get('/purchase-orders/{id}', [PurchasingController::class, 'showPurchaseOrder']);
+        Route::post('/purchase-orders/{id}/issue', [PurchasingController::class, 'issuePurchaseOrder']);
+
+        Route::get('/assets', [AssetController::class, 'index']);
+        Route::post('/assets', [AssetController::class, 'store']);
+        Route::get('/assets/{id}', [AssetController::class, 'show']);
+        Route::post('/assets/{id}/assign', [AssetController::class, 'assign']);
+        Route::post('/assets/{id}/return', [AssetController::class, 'returnAsset']);
+
+        Route::get('/cashbooks', [FinanceOpsController::class, 'indexCashbooks']);
+        Route::post('/cashbooks', [FinanceOpsController::class, 'storeCashbook']);
+        Route::get('/cashbooks/{id}', [FinanceOpsController::class, 'showCashbook']);
+        Route::get('/cash-movements', [FinanceOpsController::class, 'indexMovements']);
+        Route::post('/cash-movements', [FinanceOpsController::class, 'storeMovement']);
+        Route::get('/cash-movements/{id}', [FinanceOpsController::class, 'showMovement']);
+
+        Route::get('/credit-notes', [FinanceOpsController::class, 'indexCreditNotes']);
+        Route::post('/credit-notes', [FinanceOpsController::class, 'storeCreditNote']);
+        Route::get('/credit-notes/{id}', [FinanceOpsController::class, 'showCreditNote']);
+        Route::post('/credit-notes/{id}/issue', [FinanceOpsController::class, 'issueCreditNote']);
+
+        Route::get('/fiscal-devices', [FinanceOpsController::class, 'indexDevices']);
+        Route::post('/fiscal-devices', [FinanceOpsController::class, 'storeDevice']);
+        Route::get('/fiscal-devices/{id}', [FinanceOpsController::class, 'showDevice']);
+        Route::get('/fiscal-submissions', [FinanceOpsController::class, 'indexSubmissions']);
+        Route::get('/fiscal-submissions/{id}', [FinanceOpsController::class, 'showSubmission']);
+        Route::post('/invoices/{invoice}/fiscalise', [FinanceOpsController::class, 'fiscalise']);
     });
 
 // ─── State Transition Engine (STE) — read-first, super_admin only ──────────

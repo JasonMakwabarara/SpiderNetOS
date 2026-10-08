@@ -99,35 +99,45 @@ class ApprovalEngine
         bool   $approved,
         string $response = '',
     ): array {
-        $approval = DB::table('approvals')->where('id', $approvalId)->first();
-
-        if (!$approval) {
-            throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
-        }
-
-        if ($approval->status !== 'pending') {
-            throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$approval->status}).");
-        }
-
         $newStatus = $approved ? 'granted' : 'rejected';
 
-        DB::table('approvals')
-            ->where('id', $approvalId)
-            ->update([
-                'status'      => $newStatus,
-                'approver_id' => $approverId,
-                'response'    => $response,
-                'responded_at' => now(),
-                'updated_at'  => now(),
+        DB::transaction(function () use ($approvalId, $approverId, $approved, $response, $newStatus) {
+            $approval = DB::table('approvals')->where('id', $approvalId)->lockForUpdate()->first();
+
+            if (!$approval) {
+                throw new \InvalidArgumentException("Approval [{$approvalId}] not found.");
+            }
+
+            if ($approval->status !== 'pending') {
+                throw new \LogicException("Approval [{$approvalId}] has already been resolved (status: {$approval->status}).");
+            }
+
+            DB::table('approvals')
+                ->where('id', $approvalId)
+                ->update([
+                    'status'      => $newStatus,
+                    'approver_id' => $approverId,
+                    'response'    => $response,
+                    'responded_at' => now(),
+                    'updated_at'  => now(),
+                ]);
+
+            $eventType = $approved ? 'approval.granted' : 'approval.rejected';
+
+            $this->eventStore->append($approval->tenant_id, $eventType, [
+                'approval_id'  => $approvalId,
+                'approver_id'  => $approverId,
+                'response'     => $response,
             ]);
 
-        $eventType = $approved ? 'approval.granted' : 'approval.rejected';
-
-        $this->eventStore->append($approval->tenant_id, $eventType, [
-            'approval_id'  => $approvalId,
-            'approver_id'  => $approverId,
-            'response'     => $response,
-        ]);
+            $this->fireResourceHook(
+                (string) $approval->resource_type,
+                (string) $approval->tenant_id,
+                (string) $approval->resource_id,
+                $approved,
+                $response,
+            );
+        });
 
         Log::info("Approval {$newStatus}", compact('approvalId', 'approverId'));
 
@@ -139,6 +149,27 @@ class ApprovalEngine
         return $this->formatApproval(
             DB::table('approvals')->where('id', $approvalId)->first()
         );
+    }
+
+    /**
+     * Apply the domain transition for a resolved approval.
+     * A hook failure rolls back the approval update in the surrounding transaction.
+     */
+    private function fireResourceHook(
+        string $resourceType,
+        string $tenantId,
+        string $resourceId,
+        bool $granted,
+        string $response = '',
+    ): void {
+        if ($resourceType === 'requisition') {
+            app(\App\Services\Enterprise\RequisitionService::class)->onApprovalResolved(
+                $tenantId,
+                $resourceId,
+                $granted,
+                $response,
+            );
+        }
     }
 
     // ------------------------------------------------------------------ //

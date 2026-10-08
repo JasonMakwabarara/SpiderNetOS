@@ -1,0 +1,11 @@
+chains:
+  - id: cash_movement
+    namespace: pack.cash-management
+    states: [recorded]
+    transitions:
+      - event: enterprise.cash.receipt_recorded
+        from: null
+        to: recorded
+      - event: enterprise.cash.payment_recorded
+        from: null
+        to: recorded
