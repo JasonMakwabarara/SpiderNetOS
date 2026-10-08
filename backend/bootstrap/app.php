@@ -19,6 +19,7 @@ use App\Http\Middleware\VerifyTwilioSignature;
 use App\Http\Middleware\VoiceFeatureFlag;
 use App\Providers\OutreachServiceProvider;
 use App\Providers\SecurityServiceProvider;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -113,6 +114,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (DomainException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => $e->getMessage()], 409);
+            }
+        });
+        // A malformed UUID in a path cannot match a record; Postgres raises 22P02 instead of returning no row.
+        $exceptions->render(function (QueryException $e, Request $request) {
+            if ($request->is('api/*') && $e->getCode() === '22P02' && str_contains($e->getMessage(), 'type uuid')) {
+                return response()->json(['message' => 'Not found.'], 404);
             }
         });
     })->create();

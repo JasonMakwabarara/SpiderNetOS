@@ -191,7 +191,7 @@ class FinancialController extends Controller
     public function agingReport(Request $request): JsonResponse
     {
         $tenant = $request->attributes->get('tenant');
-        $aging = $this->reportingService->getAgingReport($tenant->id);
+        $aging = $this->reportingService->generateAgingReport($tenant->id);
 
         return response()->json(['data' => $aging]);
     }

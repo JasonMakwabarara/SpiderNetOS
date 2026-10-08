@@ -241,12 +241,6 @@ parameters:
 			path: app/Http/Controllers/FeaturePackController.php
 
 		-
-			message: '#^Call to an undefined method App\\Services\\Financial\\ReportingService\:\:getAgingReport\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Financial/FinancialController.php
-
-		-
 			message: '#^Match expression does not handle remaining value\: mixed$#'
 			identifier: match.unhandled
 			count: 1

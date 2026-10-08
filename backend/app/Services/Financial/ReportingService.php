@@ -172,8 +172,10 @@ class ReportingService
             '90_plus_days' => ['count' => 0, 'amount' => 0],
         ];
 
+        $today = now()->startOfDay();
         foreach ($invoices as $invoice) {
-            $daysOverdue = max(0, now()->diffInDays($invoice->due_date));
+            $due = $invoice->due_date?->copy()->startOfDay();
+            $daysOverdue = $due !== null && $due->lt($today) ? (int) $due->diffInDays($today) : 0;
 
             if ($daysOverdue === 0) {
                 $bucket = 'current';
