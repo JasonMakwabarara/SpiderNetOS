@@ -15,6 +15,7 @@ use App\Services\EventStore;
 use App\Services\Financial\DocumentNumberService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class HrService
@@ -238,7 +239,7 @@ class HrService
             ];
 
             $employee->status = 'inactive';
-            $employee->inactive_from = $from;
+            $employee->inactive_from = Carbon::parse($from);
             $employee->inactive_reason = $reason;
             $employee->save();
 

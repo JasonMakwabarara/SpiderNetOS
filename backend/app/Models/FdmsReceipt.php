@@ -8,7 +8,28 @@ use App\Models\Concerns\TenantScoped;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $tenant_id
+ * @property string $fdms_device_id
+ * @property string $invoice_id
+ * @property string $receipt_type
+ * @property int $fiscal_day_no
+ * @property int $receipt_counter
+ * @property int $receipt_global_no
+ * @property string $receipt_hash
+ * @property string $receipt_signature
+ * @property array<string, mixed> $payload
+ * @property string $status
+ * @property int|null $fdms_receipt_id
+ * @property string|null $operation_id
+ * @property Carbon|null $server_date
+ * @property string|null $qr_data
+ * @property list<array<string, mixed>>|null $validation_errors
+ * @property string|null $error_code
+ */
 class FdmsReceipt extends Model
 {
     use HasUuids, TenantScoped;
@@ -33,6 +54,7 @@ class FdmsReceipt extends Model
         ];
     }
 
+    /** @return BelongsTo<FdmsDevice, $this> */
     public function device(): BelongsTo
     {
         return $this->belongsTo(FdmsDevice::class, 'fdms_device_id');

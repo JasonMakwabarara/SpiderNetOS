@@ -32,8 +32,6 @@ class TrustLedger
 
     public const LADDER = ['human_led' => 'assisted', 'assisted' => 'autonomous'];
 
-    public function __construct(private readonly RevisionRecorder $revisions) {}
-
     /**
      * @return array{rows: list<array<string, mixed>>, promotions: list<array<string, mixed>>, totals: array<string, int>}
      */

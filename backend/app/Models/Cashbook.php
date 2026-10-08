@@ -20,6 +20,7 @@ class Cashbook extends Model
         'status',
     ];
 
+    /** @return HasMany<CashMovement, $this> */
     public function movements(): HasMany
     {
         return $this->hasMany(CashMovement::class);

@@ -63,7 +63,7 @@ class HannahHandoffService
             'enabled' => $this->enabled($tenantId),
             'configured' => $this->client->configured(),
             'linked' => $link?->isLinked() ?? false,
-            'status' => $link?->status ?? 'unlinked',
+            'status' => $link->status ?? 'unlinked',
             'owner_email' => $link?->owner_email,
             'workspace_id' => $link?->hannah_workspace_id,
             'last_brand_synced_at' => $link?->last_brand_synced_at,
@@ -118,7 +118,7 @@ class HannahHandoffService
             $result = $this->client->provision($tenantId, [
                 'owner_email' => (string) $actor->email,
                 'owner_name' => (string) $actor->name,
-                'workspace_name' => (string) ($tenant?->name ?? 'Workspace'),
+                'workspace_name' => (string) ($tenant->name ?? 'Workspace'),
                 'external_id' => $tenantId,
                 'terms_accepted_at' => $link->terms_accepted_at?->toIso8601String(),
                 'company' => $mapped['payload'],

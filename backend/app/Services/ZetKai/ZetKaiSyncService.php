@@ -82,7 +82,7 @@ class ZetKaiSyncService
         }
 
         $integration = $this->client->integrationFor($tenantId);
-        $config = (array) ($integration?->config ?? []);
+        $config = (array) ($integration->config ?? []);
         $since = isset($config['cursor']) ? (string) $config['cursor'] : null;
 
         $changes = $this->client->changes($tenantId, $since);

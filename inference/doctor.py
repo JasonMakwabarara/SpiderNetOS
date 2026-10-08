@@ -230,7 +230,7 @@ def check_ranking(rank_models_fn: Callable[..., Sequence[str]], provider_of: Cal
         return Check(name, FAIL, "rank_models() returned no candidates")
 
     providers = [provider_of(m) for m in ranked]
-    order = ", ".join(f"{m}({p})" for m, p in list(zip(ranked, providers))[:6])
+    order = ", ".join(f"{m}({p})" for m, p in list(zip(ranked, providers, strict=False))[:6])
     fallbacks = sorted({p for p in providers[1:] if p != "modelark"})
     data = {"order": ranked, "providers": providers, "fallbacks": fallbacks}
 

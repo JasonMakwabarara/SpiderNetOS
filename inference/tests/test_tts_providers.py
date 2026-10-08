@@ -10,11 +10,10 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fastapi import HTTPException
-
 import speech
 import tts_providers as tp
 import voice_previews as vp
+from fastapi import HTTPException
 
 INFERENCE_DIR = Path(tp.__file__).resolve().parent
 RACHEL = "21m00Tcm4TlvDq8ikWAM"
@@ -210,7 +209,7 @@ def test_speech_service_routes_on_the_persona_provider(tmp_path):
     assert rec.hosts() == ["api.fish.audio"]
 
 
-def test_speech_service_falls_back_to_VOICE_DEFAULT_PERSONA_and_VOICE_TTS_PROVIDER(tmp_path):
+def test_speech_service_falls_back_to_VOICE_DEFAULT_PERSONA_and_VOICE_TTS_PROVIDER(tmp_path):  # noqa: N802 - names the env vars
     rec = Recorder()
     env = {"ELEVENLABS_API_KEY": "e", "VOICE_DEFAULT_PERSONA": ELEVEN_PERSONA["slug"]}
     svc = service(tmp_path, env, rec, personas=[ELEVEN_PERSONA])

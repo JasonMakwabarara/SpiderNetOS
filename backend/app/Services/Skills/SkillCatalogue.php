@@ -111,11 +111,11 @@ class SkillCatalogue
                 'run_kind' => $card->runKind(),
                 'mode' => $card->mode,
                 'entry_path' => (string) ($card->run['entry_path'] ?? '/skills/'.$slug),
-                'enabled' => (bool) ($row?->enabled ?? false),
+                'enabled' => (bool) ($row->enabled ?? false),
                 'installed' => $row !== null,
-                'stage' => (string) ($row?->autonomy_level ?? $card->autonomy['default']),
+                'stage' => (string) ($row->autonomy_level ?? $card->autonomy['default']),
                 'stage_inherited' => $row === null,
-                'clean_drafts_count' => (int) ($row?->clean_drafts_count ?? 0),
+                'clean_drafts_count' => (int) ($row->clean_drafts_count ?? 0),
                 'entitlement' => $this->entitlement($tenantId, $card, $installedPacks),
                 'brain' => $this->brainSummary($files),
                 'readiness' => $this->readiness($tenantId, $card),
@@ -145,7 +145,7 @@ class SkillCatalogue
         $installedPacks = FeaturePack::where('tenant_id', $tenantId)->where('status', 'installed')->pluck('pack_id')->all();
         $files = $this->brainFiles($tenantId, $card);
         $entitlement = $this->entitlement($tenantId, $card, $installedPacks);
-        $stage = (string) ($row?->autonomy_level ?? $card->autonomy['default']);
+        $stage = (string) ($row->autonomy_level ?? $card->autonomy['default']);
         $tenantDefault = $this->tenantDefaultStage($tenant);
         $stageCopy = (array) ($card->card['pipeline']['stage_copy'] ?? []);
         $identity = $this->identitySummary($card);
@@ -185,7 +185,7 @@ class SkillCatalogue
                     'name' => (string) ($item['name'] ?? ''),
                     'does' => (string) ($item['does'] ?? ''),
                     'available' => $slug === null ? null : $this->registry->has($slug),
-                    'enabled' => $slug === null ? null : (bool) ($rows->get($slug)?->enabled ?? false),
+                    'enabled' => $slug === null ? null : (bool) ($rows->get($slug)->enabled ?? false),
                 ];
             }, (array) ($card->card['breaks_into'] ?? []))),
             'builds_on' => array_values(array_map(function (array $item): array {
@@ -209,7 +209,7 @@ class SkillCatalogue
                 'default_level' => $card->autonomy['default'],
                 'stage_copy' => $stageCopy,
                 'promotion_gate' => (array) ($card->card['pipeline']['promotion_gate'] ?? []),
-                'clean_drafts_count' => (int) ($row?->clean_drafts_count ?? 0),
+                'clean_drafts_count' => (int) ($row->clean_drafts_count ?? 0),
             ],
             'your_role' => (string) ($stageCopy[$stage]['your_role'] ?? ''),
             'one_step_further' => $this->oneStepFurther($card),
@@ -580,7 +580,7 @@ class SkillCatalogue
     /** Tenant automation_level (manual|assisted|autonomous) expressed on the skill ladder. */
     private function tenantDefaultStage(?Tenant $tenant): string
     {
-        return match ((string) ($tenant?->automation_level ?? 'manual')) {
+        return match ((string) ($tenant->automation_level ?? 'manual')) {
             'autonomous' => 'autonomous',
             'assisted' => 'assisted',
             default => 'human_led',

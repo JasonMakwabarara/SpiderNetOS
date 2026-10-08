@@ -28,8 +28,8 @@ class RegisterSpidernetCommands extends Command
             // own change set; class_exists() below keeps this list additive.
             BrainSync::class,
             BrainGaps::class,
-            BrainExport::class,
-            BrainImport::class,
+            'App\Console\Commands\BrainExport',
+            'App\Console\Commands\BrainImport',
             SkillsSeed::class,
             SkillsValidate::class,
             SkillsInstall::class,

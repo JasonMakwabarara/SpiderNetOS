@@ -555,7 +555,7 @@ class AtlasDiscoveryService
                 continue;
             }
             $j = $byTopic[$topic];
-            $keepNew = [self::ONE_STEP_SOURCE_RANK[$c['source']] ?? 0, $c['score']] > [self::ONE_STEP_SOURCE_RANK[$out[$j]['source']] ?? 0, $out[$j]['score']];
+            $keepNew = [self::ONE_STEP_SOURCE_RANK[$c['source']], $c['score']] > [self::ONE_STEP_SOURCE_RANK[$out[$j]['source']] ?? 0, $out[$j]['score']];
             unset($out[$keepNew ? $j : $i]);
             if ($keepNew) {
                 $byTopic[$topic] = $i;

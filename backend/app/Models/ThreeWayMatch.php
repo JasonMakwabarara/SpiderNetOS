@@ -20,6 +20,7 @@ class ThreeWayMatch extends Model
         'status',
     ];
 
+    /** @return HasMany<ThreeWayMatchLine, $this> */
     public function lines(): HasMany
     {
         return $this->hasMany(ThreeWayMatchLine::class);

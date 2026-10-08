@@ -237,13 +237,13 @@ final class BrainStore
         ?string $changedBy = null,
     ): BrainFile {
         $file = $this->read($tenantId, $path);
-        $content = BrainMarkdown::upsertSection($file?->content ?? '', $heading, $body);
+        $content = BrainMarkdown::upsertSection($file->content ?? '', $heading, $body);
 
         return $this->write(
             $tenantId,
             $path,
             $content,
-            (array) ($file?->frontmatter ?? []),
+            (array) ($file->frontmatter ?? []),
             $source,
             $changedBy,
             null,

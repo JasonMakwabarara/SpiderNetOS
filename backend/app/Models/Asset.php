@@ -27,11 +27,13 @@ class Asset extends Model
         ];
     }
 
+    /** @return HasMany<AssetAssignment, $this> */
     public function assignments(): HasMany
     {
         return $this->hasMany(AssetAssignment::class);
     }
 
+    /** @return HasMany<DepreciationEntry, $this> */
     public function depreciationEntries(): HasMany
     {
         return $this->hasMany(DepreciationEntry::class);

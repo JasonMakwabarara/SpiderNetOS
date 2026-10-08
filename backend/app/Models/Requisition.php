@@ -21,6 +21,7 @@ class Requisition extends Model
         'status',
     ];
 
+    /** @return HasMany<RequisitionLine, $this> */
     public function lines(): HasMany
     {
         return $this->hasMany(RequisitionLine::class);

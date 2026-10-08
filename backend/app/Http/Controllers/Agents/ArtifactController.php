@@ -224,7 +224,7 @@ class ArtifactController extends AgentsController
 
         $approval = $approvals->createChainedApproval(
             (string) $artifact->tenant_id,
-            (string) ($request->user()?->id ?? $artifact->tenant_id),
+            (string) ($request->user()->id ?? $artifact->tenant_id),
             'agent_artifact',
             'agent_artifact',
             (string) $artifact->id,

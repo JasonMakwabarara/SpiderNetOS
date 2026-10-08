@@ -579,7 +579,10 @@ def main(argv: Optional[Sequence[str]] = None, environ: Optional[Mapping[str, st
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     env = dict(environ if environ is not None else os.environ)
     if args.env_file:
-        from doctor import apply_env_file, load_env_file  # same directory; same parsing rules as the doctor
+        from doctor import (  # same directory; same parsing rules as the doctor
+            apply_env_file,
+            load_env_file,
+        )
 
         applied = apply_env_file(load_env_file(args.env_file), env)
         log.info("env-file %s: applied %d name(s) not already in the environment", args.env_file, len(applied))

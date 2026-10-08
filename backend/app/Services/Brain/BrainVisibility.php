@@ -57,7 +57,7 @@ final class BrainVisibility
             $classes[] = $class;
         }
 
-        return array_values($classes);
+        return $classes;
     }
 
     /** @return list<string> */
@@ -69,6 +69,6 @@ final class BrainVisibility
             $classes[] = BrainFile::DATA_CONFIDENTIAL;
         }
 
-        return array_values($classes);
+        return $classes;
     }
 }

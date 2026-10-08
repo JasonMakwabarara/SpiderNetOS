@@ -20,6 +20,7 @@ class PayrollRun extends Model
         return ['period_start' => 'date', 'period_end' => 'date'];
     }
 
+    /** @return HasMany<PayrollLine, $this> */
     public function lines(): HasMany
     {
         return $this->hasMany(PayrollLine::class);

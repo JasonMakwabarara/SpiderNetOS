@@ -314,7 +314,7 @@ final class AgentRunner
             if (! is_array($step)) {
                 continue;
             }
-            $subjects = array_values(array_filter(array_map('strval', (array) ($step['subjects'] ?? $step['subject_alternatives'] ?? [])), 'strlen'));
+            $subjects = array_values(array_filter(array_map('strval', (array) ($step['subjects'] ?? $step['subject_alternatives'] ?? [])), fn (string $s): bool => $s !== ''));
             $subject = trim((string) ($step['subject'] ?? ($subjects[0] ?? '')));
             $body = trim((string) ($step['body'] ?? $step['content'] ?? ''));
 
@@ -545,8 +545,8 @@ final class AgentRunner
             $run->forceFill(['status' => AgentRun::STATUS_WAITING_APPROVAL])->save();
         }
         $run->forceFill([
-            'tokens' => (int) $run->tokens + ($ctx?->spentTokens ?? 0),
-            'cost_usd' => round((float) $run->cost_usd + ($ctx?->spentUsd ?? 0.0), 6),
+            'tokens' => (int) $run->tokens + ($ctx->spentTokens ?? 0),
+            'cost_usd' => round((float) $run->cost_usd + ($ctx->spentUsd ?? 0.0), 6),
             'lease_expires_at' => null,
             'claimed_by' => null,
         ])->save();
@@ -568,8 +568,8 @@ final class AgentRunner
         $run->forceFill([
             'status' => AgentRun::STATUS_FAILED,
             'error' => $message,
-            'tokens' => (int) $run->tokens + ($ctx?->spentTokens ?? 0),
-            'cost_usd' => round((float) $run->cost_usd + ($ctx?->spentUsd ?? 0.0), 6),
+            'tokens' => (int) $run->tokens + ($ctx->spentTokens ?? 0),
+            'cost_usd' => round((float) $run->cost_usd + ($ctx->spentUsd ?? 0.0), 6),
             'lease_expires_at' => null,
             'finished_at' => now(),
         ])->save();

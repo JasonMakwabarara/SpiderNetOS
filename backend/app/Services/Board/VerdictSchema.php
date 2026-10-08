@@ -65,7 +65,7 @@ class VerdictSchema
         ];
 
         foreach (self::REQUIRED as $key) {
-            if (($verdict[$key] ?? '') === '') {
+            if ($verdict[$key] === '') {
                 $errors[] = "{$key} is empty";
             }
         }

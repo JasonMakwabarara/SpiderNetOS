@@ -23,6 +23,7 @@ class InvoiceLineItem extends Model
         'metadata' => 'array',
     ];
 
+    /** @return BelongsTo<Invoice, $this> */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);

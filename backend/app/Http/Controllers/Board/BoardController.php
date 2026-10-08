@@ -94,7 +94,7 @@ class BoardController extends Controller
         $session = $board->convene(
             $tenantId,
             $validated['question'],
-            (string) ($request->user()?->id ?? ''),
+            (string) ($request->user()->id ?? ''),
             $validated['seats'] ?? null,
         );
 

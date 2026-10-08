@@ -28,11 +28,13 @@ class CreditNote extends Model
         ];
     }
 
+    /** @return BelongsTo<Invoice, $this> */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
+    /** @return HasMany<CreditNoteLine, $this> */
     public function lines(): HasMany
     {
         return $this->hasMany(CreditNoteLine::class);

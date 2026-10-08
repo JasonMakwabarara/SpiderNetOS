@@ -704,7 +704,7 @@ class SkillRegistry
     public function resolveBrainKey(string $key): ?string
     {
         $class = 'App\\Services\\Brain\\BrainManifest';
-        if (class_exists($class) && method_exists($class, 'resolveKey')) {
+        if (class_exists($class)) {
             try {
                 $resolved = app($class)->resolveKey($key);
                 if (is_string($resolved) && $resolved !== '') {

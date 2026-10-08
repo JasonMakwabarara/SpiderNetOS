@@ -232,10 +232,6 @@ final class AtlasSpeechService
     /** @param array{provider: string, fallback_from: ?string} $rendered */
     private function recordUsage(string $tenantId, User $user, VoicePersona $persona, array $rendered, int $characters): void
     {
-        if (! method_exists($this->costGovernor, 'recordUsage')) {
-            return;
-        }
-
         // Billed at the rate of the provider that actually spoke; a fallback voice has no catalogue price here.
         $rate = $rendered['provider'] === $persona->provider ? (float) ($persona->cost_per_1k_chars ?? 0) : 0.0;
 

@@ -3,24 +3,6 @@ parameters:
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Console/Commands/BackfillUsageAggregates.php
-
-		-
-			message: '#^Ternary operator condition is always false\.$#'
-			identifier: ternary.alwaysFalse
-			count: 1
-			path: app/Console/Commands/VerifyEventChain.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Console/Commands/VerifyEventChain.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 4
 			path: app/Console/Commands/VoiceSmokeTest.php
 
@@ -61,12 +43,6 @@ parameters:
 			path: app/Http/Controllers/AdminController.php
 
 		-
-			message: '#^Offset ''config'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/AgentController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$automation_level\.$#'
 			identifier: property.notFound
 			count: 1
@@ -80,18 +56,6 @@ parameters:
 
 		-
 			message: '#^Offset ''ast'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/AtlasController.php
-
-		-
-			message: '#^Offset ''mode'' on array\{mode\: string, question\?\: string, questions\?\: array\<int, string\>, pending_action\?\: array\<string, mixed\>, consequence\?\: array\<string, mixed\>, confidence\?\: float\|null\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Http/Controllers/AtlasController.php
-
-		-
-			message: '#^Offset ''mode'' on array\{mode\: string, questions\?\: array\<int, string\>, suggested_next\?\: array\<string, mixed\>, profile_pct\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Http/Controllers/AtlasController.php
@@ -229,12 +193,6 @@ parameters:
 			path: app/Http/Controllers/FeaturePackController.php
 
 		-
-			message: '#^Offset ''session_id'' on array\{session_id\: string, checkout_url\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/FeaturePackController.php
-
-		-
 			message: '#^Parameter \#1 \$tenant of method App\\Services\\FeaturePackInstaller\:\:install\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -245,18 +203,6 @@ parameters:
 			identifier: match.unhandled
 			count: 1
 			path: app/Http/Controllers/Financial/FinancialController.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 2
-			path: app/Http/Controllers/ObservabilityController.php
-
-		-
-			message: '#^Call to method Illuminate\\Support\\Collection\<\(int\|string\),stdClass\|null\>\:\:isEmpty\(\) will always evaluate to false\.$#'
-			identifier: method.impossibleType
-			count: 1
-			path: app/Http/Controllers/Operating/OperatingController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>current_cycle_started_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -337,12 +283,6 @@ parameters:
 			path: app/Http/Controllers/VoiceController.php
 
 		-
-			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Http/Controllers/Webhooks/DodoWebhookController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -353,18 +293,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Middleware/RequirePackEntitlement.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Http/Middleware/VerifyTwilioSignature.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Jobs/AggregateUsageJob.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
@@ -419,18 +347,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Jobs/EvaluateSpendPolicyJob.php
-
-		-
-			message: '#^Offset ''cost_usd'' on array\{fields\: array, line_items\: array, overall_confidence\: float, method\: string, model\: string\|null, cost_usd\: float, latency_ms\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Jobs/ExtractSpendDocumentJob.php
-
-		-
-			message: '#^Offset ''line_items'' on array\{fields\: array, line_items\: array, overall_confidence\: float, method\: string, model\: string\|null, cost_usd\: float, latency_ms\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Jobs/ExtractSpendDocumentJob.php
 
 		-
 			message: '#^Parameter \#2 \$runDate of method App\\Jobs\\GenerateRecurringBillsJob\:\:advance\(\) expects Illuminate\\Support\\Carbon, Carbon\\Carbon given\.$#'
@@ -493,70 +409,10 @@ parameters:
 			path: app/Services/ApprovalEngine.php
 
 		-
-			message: '#^Call to function method_exists\(\) with App\\Services\\Financial\\PaymentService and ''onApprovalResolved'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/ApprovalEngine.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 3
-			path: app/Services/AtlasClarityGate.php
-
-		-
-			message: '#^Offset ''confidence'' on array\{intent\: string, entities\: array, confidence\: float, agent_target\: string\|null, requires_planning\: bool, raw_input\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/AtlasClarityGate.php
-
-		-
-			message: '#^Comparison operation "\<" between int\<60, max\> and 60 is always false\.$#'
-			identifier: smaller.alwaysFalse
-			count: 1
-			path: app/Services/AtlasDiscoveryService.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: app/Services/AtlasDiscoveryService.php
-
-		-
 			message: '#^Offset ''entity_key'' on array\{intent\: ''analyze_data'', entity_key\: ''analysis_target''\|''research_query''\}\|array\{intent\: ''create_flow'', entity_key\: ''flow_definition''\}\|array\{intent\: ''execute_flow'', entity_key\: ''flow_target''\}\|array\{intent\: ''manage_agent'', entity_key\: ''action''\}\|array\{intent\: ''monitor''\|''query_status'', entity_key\: ''target''\}\|array\{intent\: ''teach'', entity_key\: ''topic''\} in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.offset
 			count: 1
 			path: app/Services/AtlasIntentCompiler.php
-
-		-
-			message: '#^Offset ''atlas_response'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/AtlasInteractionLogger.php
-
-		-
-			message: '#^Offset ''execution_result'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/AtlasInteractionLogger.php
-
-		-
-			message: '#^Offset ''interaction_id'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/AtlasInteractionLogger.php
-
-		-
-			message: '#^Offset ''parsed_intent'' on array\{interaction_id\: string, tenant_id\: string, user_id\?\: string\|null, session_id\?\: string\|null, user_input\: string, parsed_intent\: array, atlas_response\: array, execution_result\: array, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/AtlasInteractionLogger.php
-
-		-
-			message: '#^Variable \$numbers in empty\(\) always exists and is not falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: app/Services/AtlasResponseFormatter.php
 
 		-
 			message: '#^Property App\\Services\\Connectors\\HttpApiConnector\:\:\$tenantId is never read, only written\.$#'
@@ -575,18 +431,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Services/Connectors/WebhookConnector.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 2
-			path: app/Services/CostGovernor.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/EventStore.php
 
 		-
 			message: '#^Unsafe access to private constant App\\Services\\FeatureFlag\:\:TTL through static\:\:\.$#'
@@ -684,24 +528,6 @@ parameters:
 			path: app/Services/Integrations/CrmAdapter.php
 
 		-
-			message: '#^Offset ''phone'' on array\{name\: string, phone\: string, email\: string\|null, metadata\: array\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/HubspotAdapter.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/HubspotAdapter.php
-
-		-
-			message: '#^Offset ''phone'' on array\{name\: string, phone\: string, email\: string\|null, metadata\: array\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/SalesforceAdapter.php
-
-		-
 			message: '#^Call to static method constructEvent\(\) on an unknown class Stripe\\Webhook\.$#'
 			identifier: class.notFound
 			count: 1
@@ -726,12 +552,6 @@ parameters:
 			path: app/Services/LLMService.php
 
 		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Services/LLMService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>automation_level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -750,40 +570,16 @@ parameters:
 			path: app/Services/Notifications/WebPushService.php
 
 		-
-			message: '#^Offset ''product_id'' on array\{label\: string, product_id\: string, price_usd\: float\|null, interval\: string, limits\: array\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Payments/DodoPaymentsService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 2
 			path: app/Services/Payments/DodoSubscriptionFulfiller.php
 
 		-
-			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: app/Services/Projections/StateTransitionProjection.php
-
-		-
-			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/Sales/FunnelSetupService.php
-
-		-
 			message: '#^PHPDoc tag @param references unknown parameter\: \$context$#'
 			identifier: parameter.notFound
 			count: 1
 			path: app/Services/Sales/FunnelSetupService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
-			path: app/Services/Spend/Accounting/AccountingExportService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
@@ -970,18 +766,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Services/Spend/Rails/DodoPaymentsRailAdapter.php
-
-		-
-			message: '#^Parameter \#1 \$array \(non\-empty\-list\<array\{amount\: float, boosted\: bool\}\>\) of array_values is already a list, call has no effect\.$#'
-			identifier: arrayValues.list
-			count: 1
-			path: app/Services/Spend/ReceiptHeuristics.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between array\{merchant\?\: 0\.3, total\?\: float, tax\?\: 0\.3, date\?\: 0\.4, currency\: float\} and array\{\} will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/Spend/ReceiptHeuristics.php
 
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'

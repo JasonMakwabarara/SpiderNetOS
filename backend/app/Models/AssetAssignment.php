@@ -20,6 +20,7 @@ class AssetAssignment extends Model
         'returned_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Asset, $this> */
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);

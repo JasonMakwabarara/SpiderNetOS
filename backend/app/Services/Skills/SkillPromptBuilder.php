@@ -109,7 +109,7 @@ class SkillPromptBuilder
         if ($affiliate !== null) {
             $fm = $this->frontmatterOf($affiliate);
             foreach (['join_url', 'commission', 'cookie_days', 'payout', 'terms_url', 'portal_subdomain', 'postal_address'] as $key) {
-                if (isset($fm[$key]) && $fm[$key] !== '' && $fm[$key] !== null) {
+                if (isset($fm[$key]) && $fm[$key] !== '') {
                     $facts['affiliate'][$key] = is_scalar($fm[$key]) ? $fm[$key] : json_encode($fm[$key]);
                 }
             }
@@ -252,7 +252,7 @@ class SkillPromptBuilder
         $fm = $this->frontmatterOf($file);
         $summary = [];
         foreach (['name', 'role', 'businesses', 'timezone', 'preferred_channel', 'quiet_hours', 'calendar_link', 'meeting_types'] as $key) {
-            if (isset($fm[$key]) && $fm[$key] !== '' && $fm[$key] !== null && $fm[$key] !== []) {
+            if (isset($fm[$key]) && $fm[$key] !== '' && $fm[$key] !== []) {
                 $summary[] = $key.': '.(is_array($fm[$key]) ? implode(', ', array_map('strval', $fm[$key])) : (string) $fm[$key]);
             }
         }

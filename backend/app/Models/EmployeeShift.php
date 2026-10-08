@@ -20,6 +20,7 @@ class EmployeeShift extends Model
         return ['effective_from' => 'date'];
     }
 
+    /** @return BelongsTo<Shift, $this> */
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);

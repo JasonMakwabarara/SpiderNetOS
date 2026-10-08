@@ -24,11 +24,13 @@ class GoodsReceipt extends Model
         'received_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<PurchaseOrder, $this> */
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
 
+    /** @return HasMany<GoodsReceiptLine, $this> */
     public function lines(): HasMany
     {
         return $this->hasMany(GoodsReceiptLine::class);

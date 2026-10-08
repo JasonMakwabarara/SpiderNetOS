@@ -38,7 +38,6 @@ from enum import Enum
 from typing import Optional
 
 import httpx
-
 from tts_providers import NoPersonaConfigured, default_persona
 
 logger = logging.getLogger(__name__)
