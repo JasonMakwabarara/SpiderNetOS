@@ -16,6 +16,7 @@ class Employee extends Model
     protected $fillable = [
         'tenant_id',
         'department_id',
+        'position_id',
         'employee_number',
         'name',
         'first_name',
@@ -36,5 +37,10 @@ class Employee extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(Position::class);
     }
 }

@@ -29,6 +29,10 @@ class AssetController extends Controller
         $data = $request->validate([
             'tag' => 'required|string|max:64',
             'name' => 'required|string|max:255',
+            'acquired_on' => 'nullable|date',
+            'cost' => 'nullable|numeric|gt:0',
+            'residual_value' => 'nullable|numeric|min:0',
+            'useful_life_months' => 'nullable|integer|min:1',
         ]);
         $asset = $this->assets->create((string) $request->attributes->get('tenant_id'), $data);
 
@@ -57,5 +61,34 @@ class AssetController extends Controller
         $asset = $this->assets->returnAsset((string) $request->attributes->get('tenant_id'), $id);
 
         return response()->json(['data' => $asset]);
+    }
+
+    public function repair(Request $request, string $id): JsonResponse
+    {
+        $asset = $this->assets->markRepair((string) $request->attributes->get('tenant_id'), $id);
+
+        return response()->json(['data' => $asset]);
+    }
+
+    public function restore(Request $request, string $id): JsonResponse
+    {
+        $asset = $this->assets->restore((string) $request->attributes->get('tenant_id'), $id);
+
+        return response()->json(['data' => $asset]);
+    }
+
+    public function dispose(Request $request, string $id): JsonResponse
+    {
+        $asset = $this->assets->dispose((string) $request->attributes->get('tenant_id'), $id);
+
+        return response()->json(['data' => $asset]);
+    }
+
+    public function depreciate(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['period' => 'required|date_format:Y-m']);
+        $entry = $this->assets->depreciate((string) $request->attributes->get('tenant_id'), $id, $data['period']);
+
+        return response()->json(['data' => $entry], 201);
     }
 }

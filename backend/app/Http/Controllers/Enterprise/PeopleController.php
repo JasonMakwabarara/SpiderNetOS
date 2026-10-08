@@ -6,10 +6,14 @@ namespace App\Http\Controllers\Enterprise;
 
 use App\Http\Controllers\Controller;
 use App\Models\AssetAssignment;
+use App\Models\AttendanceDay;
 use App\Models\ClockEvent;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\EmployeeShift;
+use App\Models\EmploymentContract;
 use App\Models\HrAuditEntry;
+use App\Models\LeaveRequest;
 use App\Services\Enterprise\AttendanceService;
 use App\Services\Enterprise\HrService;
 use Illuminate\Http\JsonResponse;
@@ -78,7 +82,10 @@ class PeopleController extends Controller
         ]);
 
         return response()->json([
-            'data' => ['job_description' => $this->hr->suggestJobDescription($data['position_title'])],
+            'data' => ['job_description' => $this->hr->suggestJobDescription(
+                (string) $request->attributes->get('tenant_id'),
+                $data['position_title'],
+            )],
         ]);
     }
 
@@ -117,7 +124,7 @@ class PeopleController extends Controller
     public function showEmployee(Request $request, string $id): JsonResponse
     {
         $tenantId = (string) $request->attributes->get('tenant_id');
-        $employee = Employee::forTenant($tenantId)->with('department')->findOrFail($id);
+        $employee = Employee::forTenant($tenantId)->with(['department', 'position'])->findOrFail($id);
         $assets = AssetAssignment::forTenant($tenantId)
             ->where('employee_id', $employee->id)
             ->whereNull('returned_at')
@@ -139,6 +146,10 @@ class PeopleController extends Controller
         return response()->json([
             'data' => $employee,
             'attendance' => $attendance,
+            'attendance_days' => AttendanceDay::forTenant($tenantId)->where('employee_id', $employee->id)->orderByDesc('work_date')->get(),
+            'leave' => LeaveRequest::forTenant($tenantId)->where('employee_id', $employee->id)->orderByDesc('starts_on')->get(),
+            'contracts' => EmploymentContract::forTenant($tenantId)->where('employee_id', $employee->id)->orderByDesc('created_at')->get(),
+            'shift' => EmployeeShift::forTenant($tenantId)->where('employee_id', $employee->id)->with('shift')->orderByDesc('effective_from')->first(),
             'assets' => $assets,
             'activity' => $activity,
         ]);

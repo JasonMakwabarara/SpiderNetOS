@@ -19,6 +19,7 @@ use App\Http\Controllers\Enterprise\EnterpriseRegistrationController;
 use App\Http\Controllers\Enterprise\PayablesController;
 use App\Http\Controllers\Enterprise\PeopleController;
 use App\Http\Controllers\Enterprise\PurchasingController;
+use App\Http\Controllers\Enterprise\WorkforceController;
 use App\Http\Controllers\FeaturePackController;
 use App\Http\Controllers\Financial\FinancialController;
 use App\Http\Controllers\Financial\InvoiceController;
@@ -456,6 +457,25 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
             Route::get('/employees/{id}', [PeopleController::class, 'showEmployee']);
             Route::patch('/employees/{id}', [PeopleController::class, 'updateEmployee']);
             Route::post('/employees/{id}/deactivate', [PeopleController::class, 'deactivateEmployee']);
+            Route::get('/positions', [WorkforceController::class, 'positions']);
+            Route::post('/positions', [WorkforceController::class, 'storePosition']);
+            Route::post('/job-description-templates', [WorkforceController::class, 'storeJobTemplate']);
+            Route::post('/employees/{id}/position', [WorkforceController::class, 'assignPosition']);
+            Route::get('/shifts', [WorkforceController::class, 'shifts']);
+            Route::post('/shifts', [WorkforceController::class, 'storeShift']);
+            Route::post('/employees/{id}/shift', [WorkforceController::class, 'assignShift']);
+            Route::get('/employees/{id}/attendance-days', [WorkforceController::class, 'attendanceDays']);
+            Route::post('/employees/{id}/attendance-days', [WorkforceController::class, 'closeDay']);
+            Route::post('/employees/{id}/leave', [WorkforceController::class, 'storeLeave']);
+            Route::get('/leave-requests/{id}', [WorkforceController::class, 'showLeave']);
+            Route::post('/leave-requests/{id}/submit', [WorkforceController::class, 'submitLeave']);
+            Route::post('/employees/{id}/contracts', [WorkforceController::class, 'storeContract']);
+            Route::get('/contracts/{id}', [WorkforceController::class, 'showContract']);
+            Route::post('/contracts/{id}/activate', [WorkforceController::class, 'activateContract']);
+            Route::post('/contracts/{id}/end', [WorkforceController::class, 'endContract']);
+            Route::post('/payroll-runs', [WorkforceController::class, 'storePayroll']);
+            Route::get('/payroll-runs/{id}', [WorkforceController::class, 'showPayroll']);
+            Route::post('/payroll-runs/{id}/post', [WorkforceController::class, 'postPayroll']);
         });
 
         Route::get('/requisitions', [PurchasingController::class, 'indexRequisitions']);
@@ -492,6 +512,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/assets/{id}', [AssetController::class, 'show']);
         Route::post('/assets/{id}/assign', [AssetController::class, 'assign']);
         Route::post('/assets/{id}/return', [AssetController::class, 'returnAsset']);
+        Route::post('/assets/{id}/repair', [AssetController::class, 'repair']);
+        Route::post('/assets/{id}/restore', [AssetController::class, 'restore']);
+        Route::post('/assets/{id}/dispose', [AssetController::class, 'dispose']);
+        Route::post('/assets/{id}/depreciate', [AssetController::class, 'depreciate']);
     });
 
 // ─── Financial Services (Financial OS) ───────────────────────────────

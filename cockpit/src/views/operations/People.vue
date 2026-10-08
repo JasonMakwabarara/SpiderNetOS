@@ -48,6 +48,18 @@
       </div>
     </form>
 
+    <section class="dct-card p-4 space-y-2" data-testid="payroll-run">
+      <p class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">Payroll</p>
+      <p v-if="payrollError" class="text-sm" data-testid="payroll-error" :style="{ color: 'var(--text-secondary)' }">{{ payrollError }}</p>
+      <p v-if="payroll" class="text-sm" data-testid="payroll-status" :style="{ color: 'var(--text-secondary)' }">{{ payroll.status }}</p>
+      <form class="flex flex-wrap gap-2" @submit.prevent="draftPayroll">
+        <input v-model="payrollForm.period_start" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="payroll-start" />
+        <input v-model="payrollForm.period_end" type="date" required class="px-3 py-2 rounded border" :style="field" data-testid="payroll-end" />
+        <button class="dct-btn-primary px-3 py-2 text-sm" data-testid="payroll-draft">Draft payroll</button>
+        <button type="button" class="px-3 py-2 text-sm rounded border" :style="field" data-testid="payroll-post" :disabled="!payroll || payroll.status !== 'draft'" @click="postPayroll">Post</button>
+      </form>
+    </section>
+
     <p v-if="message" class="text-sm" :style="{ color: 'var(--text-secondary)' }">{{ message }}</p>
 
     <div class="flex flex-wrap gap-3">
@@ -101,6 +113,9 @@ const suggestion = ref('')
 const descriptionSource = ref('suggested')
 const form = ref({ first_name: '', surname: '', position_title: '', department_id: '', start_date: '', job_description: '' })
 const filters = ref({ q: '', department_id: '', status: 'active' })
+const payroll = ref(null)
+const payrollError = ref('')
+const payrollForm = ref({ period_start: '', period_end: '', currency: 'USD' })
 
 async function load() {
   const res = await api.get('/api/enterprise/employees', { params: filters.value })
@@ -136,6 +151,26 @@ async function regenerate() {
   await fetchSuggestion()
   form.value.job_description = suggestion.value
   descriptionSource.value = 'suggested'
+}
+
+async function draftPayroll() {
+  payrollError.value = ''
+  try {
+    const res = await api.post('/api/enterprise/payroll-runs', { ...payrollForm.value, currency: 'USD' })
+    payroll.value = res.data.data
+  } catch (err) {
+    payrollError.value = err.response?.data?.message || 'Could not draft payroll.'
+  }
+}
+
+async function postPayroll() {
+  payrollError.value = ''
+  try {
+    const res = await api.post(`/api/enterprise/payroll-runs/${payroll.value.id}/post`)
+    payroll.value = res.data.data
+  } catch (err) {
+    payrollError.value = err.response?.data?.message || 'Could not post payroll.'
+  }
 }
 
 async function create() {
