@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: asset-management
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Assets"
+  description: "Asset register with assign and return. Custody is a row in asset_assignments."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    integrates_with: [hr]
+
+  provides:
+    dynamic_agents:
+      - id: steward
+        displayName: "Asset Steward"
+        capabilities: [list_assets, create_asset, assign_asset, return_asset]
+
+    ste_chains:
+      - id: asset_custody
+        description: "Asset is available or assigned"
+        states: [available, assigned]

@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: e-requisition
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "E-Requisition"
+  description: "Draft, submit, and resolve purchase requisitions. Approved means approved for procurement."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    integrates_with: [hr]
+
+  provides:
+    dynamic_agents:
+      - id: requisitions
+        displayName: "Requisition Clerk"
+        capabilities: [list_requisitions, create_requisition_draft, submit_requisition]
+
+    ste_chains:
+      - id: requisition_lifecycle
+        description: "Draft, submitted, approved for procurement, or rejected"
+        states: [draft, submitted, approved, rejected]

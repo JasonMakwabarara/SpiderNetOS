@@ -1,5 +1,5 @@
 <template>
-  <div class="py-10 px-6 text-center" role="status" aria-live="polite">
+  <div class="sn-empty py-10 px-6 text-center" role="status" aria-live="polite">
     <div v-if="icon" class="mx-auto w-12 h-12 mb-3 text-gray-400" v-html="icon" />
     <p class="text-base font-medium" style="color: var(--text-primary, #111);">
       <slot name="title">{{ title }}</slot>

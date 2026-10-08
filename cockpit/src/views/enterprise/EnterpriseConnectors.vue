@@ -78,21 +78,21 @@ onMounted(async () => {
 .sn-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  transition: border-color 0.18s ease;
+  border-radius: var(--radius-card);
+  transition: border-color var(--motion-hover-duration) ease;
 }
 .sn-card:hover { border-color: var(--border-active); }
 .sn-link { color: var(--accent); }
 .sn-link:hover { color: var(--text-primary); }
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .sn-btn-primary {
-  background: var(--accent-warm);
-  color: white;
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
   padding: 0.55rem 1.1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-button);
   font-weight: 500;
   font-size: 0.875rem;
-  transition: filter 0.15s;
+  transition: filter var(--motion-hover-duration);
 }
 .sn-btn-primary:hover { filter: brightness(1.1); }
 .sn-pill {
@@ -102,6 +102,6 @@ onMounted(async () => {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
   border: 1px solid var(--border);
 }
-.sn-pill-success { color: var(--success); border-color: rgba(49,214,123,0.4); background: rgba(49,214,123,0.06); }
-.sn-pill-warn { color: var(--warn); border-color: rgba(245,184,75,0.4); background: rgba(245,184,75,0.06); }
+.sn-pill-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 10%, transparent); }
+.sn-pill-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 </style>

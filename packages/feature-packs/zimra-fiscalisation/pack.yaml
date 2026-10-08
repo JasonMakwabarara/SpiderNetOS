@@ -1,0 +1,26 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: zimra-fiscalisation
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Fiscalisation"
+  description: "Sandbox fiscal submissions for invoices. Live FDMS transport is not called."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    integrates_with: [invoice-billing]
+
+  provides:
+    dynamic_agents:
+      - id: fiscal
+        displayName: "Fiscal Compliance"
+        capabilities: [list_fiscal_devices, register_fiscal_device, fiscalise_invoice_sandbox]
+
+    ste_chains:
+      - id: fiscal_submission
+        description: "Submission pending, accepted, or failed"
+        states: [pending, accepted, failed]

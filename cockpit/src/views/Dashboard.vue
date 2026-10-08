@@ -10,6 +10,9 @@
           Welcome back, <span style="color: var(--text-secondary);">{{ authStore.user?.name || 'Operator' }}</span> ·
           the last 24 hours of <span style="color: var(--accent);">{{ authStore.tenant?.name || 'your workspace' }}</span>.
         </p>
+        <p class="text-sm mt-2">
+          <RouterLink to="/billing" data-testid="dashboard-view-billing" style="color: var(--accent);">View billing</RouterLink>
+        </p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button class="sn-btn" data-testid="dashboard-run-atlas" @click="router.push('/atlas')">
@@ -28,7 +31,7 @@
     </header>
 
     <!-- Status strip -->
-    <section class="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="dashboard-stats">
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-3" data-testid="dashboard-stats">
       <div class="sn-card p-4">
         <div class="flex items-start justify-between">
           <div>
@@ -48,7 +51,7 @@
             <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">Pending approvals</div>
             <div class="mt-1 text-xl font-heading font-semibold" style="color: var(--text-primary);">{{ pendingApprovals }}</div>
           </div>
-          <span v-if="pendingApprovals > 0" class="sn-pill sn-pill-warn">Action</span>
+          <span v-if="pendingApprovals > 0" class="sn-pill sn-pill-attention">Action</span>
           <span v-else class="sn-pill sn-pill-success">Clear</span>
         </div>
         <div class="mt-3 text-xs">
@@ -66,21 +69,6 @@
         </div>
         <div class="mt-3 text-xs">
           <RouterLink to="/agents" class="hover:underline" style="color: var(--accent);">Manage agents →</RouterLink>
-        </div>
-      </div>
-
-      <div class="sn-card p-4">
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">Spend today</div>
-            <div class="mt-1 text-xl font-heading font-semibold mono" :style="costColorStyle">
-              ${{ (currentSpendDaily).toFixed(2) }}
-            </div>
-          </div>
-          <span class="sn-pill" :class="budgetPillClass">{{ dailyPct }}%</span>
-        </div>
-        <div class="mt-3 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-elevated);">
-          <div class="h-full rounded-full" :style="`width:${dailyPct}%; background: ${dailyPct > 80 ? 'var(--warn)' : 'var(--accent)'};`"></div>
         </div>
       </div>
     </section>
@@ -123,29 +111,6 @@
 
       <!-- Side column -->
       <div class="space-y-5">
-        <!-- Budget snapshot -->
-        <div class="sn-card p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-[10px] tracking-widest uppercase font-semibold" style="color: var(--text-muted);">This month</div>
-              <h3 class="font-heading text-[15px] font-semibold mt-0.5" style="color: var(--text-primary);">Budget</h3>
-            </div>
-            <RouterLink to="/usage" class="text-xs hover:underline" style="color: var(--accent);">Details →</RouterLink>
-          </div>
-          <div class="mt-3">
-            <div class="flex items-end justify-between">
-              <span class="text-2xl font-heading font-semibold mono" style="color: var(--text-primary);">${{ currentSpendMonthly.toFixed(0) }}</span>
-              <span class="text-xs mono" style="color: var(--text-muted);">/ ${{ monthlyCap.toFixed(0) }}</span>
-            </div>
-            <div class="mt-2 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-elevated);">
-              <div class="h-full rounded-full" :style="`width:${monthlyPct}%; background: ${monthlyPct > 80 ? 'var(--warn)' : 'var(--accent)'};`"></div>
-            </div>
-            <div class="mt-2 text-xs" style="color: var(--text-muted);">
-              Projected month-end: ${{ projected.toFixed(0) }}
-            </div>
-          </div>
-        </div>
-
         <!-- Hannah guidance -->
         <div class="sn-card p-4">
           <div class="flex items-center justify-between">
@@ -185,7 +150,6 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAgentsStore } from '../stores/agents.js'
 import { useFlowsStore } from '../stores/flows.js'
-import { useUsageStore } from '../stores/usage.js'
 import { useTracesStore } from '../stores/traces.js'
 import { useApprovalsStore } from '../stores/approvals.js'
 import { useAtlasStore } from '../stores/atlas.js'
@@ -194,7 +158,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 const agentsStore = useAgentsStore()
 const flowsStore = useFlowsStore()
-const usageStore = useUsageStore()
 const tracesStore = useTracesStore()
 const approvalsStore = useApprovalsStore()
 const atlasStore = useAtlasStore()
@@ -205,32 +168,15 @@ const suggestions = ref([
   { text: 'Promote Lead Qualifier to autonomous mode.', command: '/agents promote ag_1' },
 ])
 
-const currentSpendDaily   = computed(() => usageStore.currentSpend?.daily   ?? 0)
-const currentSpendMonthly = computed(() => usageStore.currentSpend?.monthly ?? 0)
-const monthlyCap   = computed(() => usageStore.budget?.monthly_limit ?? 1800)
-const dailyCap     = computed(() => usageStore.budget?.daily_limit   ?? 95)
-const dailyPct     = computed(() => Math.min(100, Math.round((currentSpendDaily.value / dailyCap.value) * 100)))
-const monthlyPct   = computed(() => Math.min(100, Math.round((currentSpendMonthly.value / monthlyCap.value) * 100)))
-const projected    = computed(() => currentSpendMonthly.value * (30 / Math.max(1, new Date().getDate())))
-
-const costColorStyle = computed(() =>
-  usageStore.isDegraded ? 'color: var(--warn);' :
-  usageStore.isNearLimit ? 'color: var(--amber);' :
-  'color: var(--text-primary);'
-)
-const budgetPillClass = computed(() =>
-  dailyPct.value > 80 ? 'sn-pill-warn' : dailyPct.value > 50 ? 'sn-pill' : 'sn-pill-success'
-)
-
 const activeAgentsCount = computed(() => (agentsStore.agents || []).filter((a) => a.status === 'active').length)
 const allAgentsCount    = computed(() => (agentsStore.agents || []).length)
 const pendingApprovals  = computed(() => (approvalsStore.approvals || []).filter((a) => a.status === 'pending').length)
 const recentTraces      = computed(() => (tracesStore.traces || []))
 
 function traceDot(status) {
-  if (status === 'ok') return 'background: var(--success); box-shadow: 0 0 6px rgba(34,211,155,0.6);'
-  if (status === 'warn') return 'background: var(--warn); box-shadow: 0 0 6px rgba(245,165,36,0.6);'
-  if (status === 'error') return 'background: var(--danger); box-shadow: 0 0 6px rgba(255,90,122,0.6);'
+  if (status === 'ok') return 'background: var(--success);'
+  if (status === 'warn') return 'background: var(--warn);'
+  if (status === 'error') return 'background: var(--danger);'
   return 'background: var(--text-muted);'
 }
 function traceKindPill(kind) {
@@ -258,8 +204,6 @@ function runSuggestion(s) {
 onMounted(() => {
   agentsStore.fetchAgents?.()
   flowsStore.fetchFlows?.()
-  usageStore.fetchBudget()
-  usageStore.fetchCurrentSpend()
   tracesStore.fetchTraces?.()
   approvalsStore.fetchApprovals?.()
 })

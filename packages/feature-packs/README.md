@@ -16,8 +16,20 @@ packages/feature-packs/
 │   ├── agents/
 │   ├── flows/
 │   └── policies/
-└── [future packs...]
+└── enterprise operations family       # vertical: enterprise_operations
+    ├── hr/
+    ├── attendance/                    # requires hr
+    ├── e-requisition/                 # integrates_with hr
+    ├── procurement/                   # integrates_with e-requisition
+    ├── asset-management/              # integrates_with hr
+    ├── invoice-billing/
+    ├── cash-management/               # integrates_with invoice-billing
+    └── zimra-fiscalisation/           # integrates_with invoice-billing
 ```
+
+Enterprise Operations packs declare capabilities. They do not provision database schema. Laravel migrations under `backend/database/migrations` are the only physical schema authority.
+
+Enterprise Operations canonicalization status: the HR register is canonical in `sn-brain`, not in this tree. Procurement (requisitions, purchase orders, and the shared spend vendor directory) is canonical in `sn-brain`. Cash management, credit notes, and fiscalisation in this tree are prototypes. They must not be merged wholesale because they conflict with canonical invoice and sequence ownership.
 
 ## Authoring a Feature Pack
 

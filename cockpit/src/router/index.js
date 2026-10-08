@@ -138,6 +138,17 @@ const routes = [
   { path: '/financial/accounting/export', name: 'ExportCenter',       component: ExportCenter,       meta: { requiresAuth: true, capability: 'accounting.manage' } },
   { path: '/financial/spend',             name: 'SpendAnalytics',     component: SpendAnalytics,     meta: { requiresAuth: true, capability: 'finance.view' } },
 
+  { path: '/operations', name: 'Operations', component: () => import('../views/operations/OperationsHub.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/people', name: 'OperationsPeople', component: () => import('../views/operations/People.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/people/:id', name: 'OperationsEmployee', component: () => import('../views/operations/EmployeeProfile.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/operations/attendance', name: 'OperationsAttendance', component: () => import('../views/operations/Attendance.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/requisitions', name: 'OperationsRequisitions', component: () => import('../views/operations/Requisitions.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/procurement', name: 'OperationsProcurement', component: () => import('../views/operations/Procurement.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/assets', name: 'OperationsAssets', component: () => import('../views/operations/Assets.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/cash', name: 'OperationsCash', component: () => import('../views/operations/Cash.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/billing', name: 'OperationsBilling', component: () => import('../views/operations/Billing.vue'), meta: { requiresAuth: true } },
+  { path: '/operations/fiscal', name: 'OperationsFiscal', component: () => import('../views/operations/Fiscal.vue'), meta: { requiresAuth: true } },
+
   // ---------------- ADMIN SPACE ----------------
   {
     path: '/admin',

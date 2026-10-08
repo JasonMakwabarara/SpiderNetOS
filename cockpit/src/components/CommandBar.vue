@@ -4,14 +4,14 @@
       <div
         v-if="visible"
         class="fixed inset-0 z-[9999] flex items-start justify-center pt-[14vh] px-4"
-        style="background: rgba(5,7,10,0.55); backdrop-filter: blur(8px);"
+        style="background: color-mix(in srgb, var(--color-bg-shell) 72%, transparent); backdrop-filter: blur(8px);"
         data-testid="command-palette"
         @click.self="close"
       >
         <div
           ref="panelRef"
           class="w-full max-w-xl sn-panel overflow-hidden"
-          style="border-color: var(--border-active); box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,229,200,0.18);"
+          style="border-color: var(--border-active); box-shadow: var(--shadow-floating), 0 0 0 1px var(--color-border-strong);"
           role="dialog"
           aria-modal="true"
           aria-label="Command palette"
@@ -98,7 +98,7 @@
       <div
         v-if="cheatVisible"
         class="fixed inset-0 z-[9999] flex items-center justify-center px-4"
-        style="background: rgba(5,7,10,0.65); backdrop-filter: blur(6px);"
+        style="background: color-mix(in srgb, var(--color-bg-shell) 78%, transparent); backdrop-filter: blur(6px);"
         role="dialog"
         aria-modal="true"
         aria-label="Keyboard shortcuts"

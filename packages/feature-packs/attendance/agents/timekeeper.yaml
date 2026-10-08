@@ -1,0 +1,8 @@
+id: timekeeper
+displayName: "Timekeeper"
+description: "Records clock in and clock out events. Does not repair sequences or build shifts."
+capabilities:
+  - id: list_clock_events
+    description: "List recorded clock events"
+  - id: record_clock_event
+    description: "Append a clock in or clock out for an employee in this tenant"

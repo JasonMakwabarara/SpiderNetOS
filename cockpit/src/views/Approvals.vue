@@ -9,7 +9,7 @@
         </p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <span v-if="pendingCount" class="sn-pill sn-pill-warn" data-testid="approvals-pending-count">{{ pendingCount }} pending</span>
+        <span v-if="pendingCount" class="sn-pill sn-pill-attention" data-testid="approvals-pending-count">{{ pendingCount }} pending</span>
         <button class="sn-btn" data-testid="approvals-refresh" @click="refresh">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8 8 0 004.582 9M20 20v-5h-.581m0 0a8 8 0 01-15.357-2"/>
@@ -25,7 +25,7 @@
         v-for="t in tabs" :key="t.value"
         class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
         :style="activeFilter === t.value
-          ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid rgba(0,229,200,0.30);'
+          ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid var(--color-border-strong);'
           : 'background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);'"
         :data-testid="`approvals-tab-${t.value}`"
         @click="activeFilter = t.value"
@@ -140,12 +140,12 @@
                 </div>
                 <div class="grid grid-cols-2">
                   <div class="px-3 py-2.5 text-xs mono"
-                       style="background: rgba(255,90,122,0.06); color: var(--danger); border-right: 1px solid var(--border);">
+                       style="background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); border-right: 1px solid var(--border);">
                     <div class="opacity-60 mb-1">— before</div>
                     <div class="break-all">{{ formatDiff(selected.diff.before) }}</div>
                   </div>
                   <div class="px-3 py-2.5 text-xs mono"
-                       style="background: rgba(34,211,155,0.06); color: var(--success);">
+                       style="background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success);">
                     <div class="opacity-60 mb-1">+ after</div>
                     <div class="break-all">{{ formatDiff(selected.diff.after) }}</div>
                   </div>
@@ -167,7 +167,7 @@
           <footer
             v-if="selected.status === 'pending'"
             class="px-5 py-3 border-t flex items-center justify-between gap-3"
-            style="border-color: var(--border); background: rgba(0,0,0,0.25);"
+            style="border-color: var(--border); background: color-mix(in srgb, var(--color-bg-shell) 35%, transparent);"
           >
             <span class="text-xs" style="color: var(--text-muted);">
               <span v-if="isHigh">High risk — typed confirm required</span>
@@ -176,13 +176,13 @@
             <div class="flex items-center gap-2">
               <button
                 class="sn-btn"
-                style="border-color: rgba(255,90,122,0.40); color: var(--danger);"
+                style="border-color: color-mix(in srgb, var(--danger) 45%, transparent); color: var(--danger);"
                 :data-testid="`approval-reject-${selected.id}`"
                 @click="onReject"
               >Reject</button>
               <button
                 class="sn-btn"
-                style="background: rgba(34,211,155,0.16); color: var(--success); border-color: rgba(34,211,155,0.40);"
+                style="background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent);"
                 :data-testid="`approval-approve-${selected.id}`"
                 @click="onApprove"
               >Approve</button>

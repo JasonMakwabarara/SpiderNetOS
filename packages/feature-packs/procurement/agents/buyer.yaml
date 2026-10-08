@@ -1,0 +1,14 @@
+id: buyer
+displayName: "Buyer"
+description: "Creates vendors and draft purchase orders, then issues a draft."
+capabilities:
+  - id: list_vendors
+    description: "List suppliers"
+  - id: create_vendor
+    description: "Create a supplier identity"
+  - id: list_purchase_orders
+    description: "List purchase orders"
+  - id: create_purchase_order_draft
+    description: "Create a draft purchase order with a PO number"
+  - id: issue_purchase_order
+    description: "Issue a draft purchase order"

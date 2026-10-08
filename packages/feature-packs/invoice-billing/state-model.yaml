@@ -1,0 +1,11 @@
+chains:
+  - id: credit_note_lifecycle
+    namespace: pack.invoice-billing
+    states: [draft, issued]
+    transitions:
+      - event: invoice.credit_note.created
+        from: null
+        to: draft
+      - event: invoice.credit_note.issued
+        from: draft
+        to: issued

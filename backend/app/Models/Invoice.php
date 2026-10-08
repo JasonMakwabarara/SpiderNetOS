@@ -16,6 +16,8 @@ class Invoice extends Model
         'customer_email', 'subtotal', 'tax_amount', 'discount_amount',
         'total_amount', 'currency', 'status', 'issue_date', 'due_date',
         'paid_at', 'cancelled_at', 'notes', 'terms', 'pdf_path', 'metadata',
+        // Specimen only. Canonical Invoice in sn-brain does not carry these.
+        'purchase_order_id', 'fiscal_status', 'fiscalised_at',
     ];
 
     protected $casts = [
@@ -28,6 +30,7 @@ class Invoice extends Model
         'paid_at' => 'date',
         'cancelled_at' => 'date',
         'metadata' => 'array',
+        'fiscalised_at' => 'datetime',
     ];
 
     public function tenant(): BelongsTo

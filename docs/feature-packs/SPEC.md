@@ -129,6 +129,12 @@ feature-pack/
     └── es.json
 ```
 
+## 3.1 Schema authority
+
+Feature packs may declare required persistence capabilities, but feature-pack manifests MUST NOT directly provision, mutate, or roll back application database schema. Laravel migrations remain the only physical schema authority. `spidernet:pack-install` copies the manifest and registers agents; it does not create tables.
+
+Enterprise Operations canonicalization status: the HR register is canonical in `sn-brain`. Procurement (requisitions, purchase orders, and the shared spend vendor directory) is canonical in `sn-brain`; it reuses `document_sequences` and does not alter `invoices`. Cash management, credit notes, and fiscalisation remain outer-tree prototypes in this tree, pending schema/service reconciliation. They must not be merged wholesale because they conflict with canonical invoice and sequence ownership.
+
 ## 4. Installation Semantics
 
 ```bash
