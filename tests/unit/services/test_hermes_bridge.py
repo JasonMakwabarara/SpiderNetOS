@@ -253,7 +253,7 @@ def api(monkeypatch):
 class TestRoutes:
     def test_app_module_imports(self):
         from services.api import main
-        assert any(getattr(r, 'path', '') == '/api/hermes/coordinate' for r in main.app.routes)
+        assert '/api/hermes/coordinate' in main.app.openapi()['paths']
 
     def test_coordinate_requires_internal_key(self, api):
         client, _ = api
