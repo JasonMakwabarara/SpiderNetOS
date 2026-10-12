@@ -8,7 +8,7 @@ The internal patterns, cost model, and extension points. Read this after you hav
 
 The core execution model has two steps:
 
-```
+```text
 Step 1: PRIME
   - Spawns a Claude Code agent
   - Agent reads workspace context files (via prime command)
@@ -57,7 +57,7 @@ The General agent and spawned agent topics use persistent sessions that survive 
 
 **Session lifecycle:**
 
-```
+```text
 User sends first message in General
   --> No session found
   --> Prime (creates session)
@@ -114,7 +114,7 @@ Telegram splits long pasted text into multiple messages. Users also fire off rap
 
 **The debounce mechanism:**
 
-```
+```text
 Message 1 arrives --> start 1.5s timer
 Message 2 arrives (0.5s later) --> cancel timer, restart 1.5s timer
 Message 3 arrives (0.3s later) --> cancel timer, restart 1.5s timer
@@ -165,6 +165,7 @@ def _is_authorized(message: Message) -> bool:
 **Why auto-capture instead of a config value?** It avoids a setup step. The first time you message the bot, it locks to you. If you need to change the owner, restart the bot and have the new owner send the first message.
 
 **For multi-user support:** Replace this with a whitelist check against configured user IDs:
+
 ```python
 AUTHORIZED_USERS = {123456789, 987654321}  # From config
 
@@ -193,6 +194,7 @@ if input_tokens > self.config.context_warning_threshold:
 ```
 
 **User options when context is high:**
+
 - `/compact` — asks the agent to summarize and compress its context (partial relief)
 - `/reset` — deletes the session entirely, next message starts fresh
 - `/new` — spawns a fresh agent in a new topic (preserves the old session)
@@ -216,6 +218,7 @@ _extract_created_files(text)  # returns [path, ...]
 ```
 
 **Delivery logic:**
+
 - Image files (`.png`, `.jpg`) are sent as Telegram photos with captions
 - PDFs and other files are sent as Telegram documents
 - The agent does not need to know about Telegram — it just writes files normally and the delivery system handles it
@@ -243,7 +246,7 @@ Long reports are auto-converted to PDF for easy reading on mobile.
 
 **The pipeline:**
 
-```
+```text
 Agent markdown output
   |
   v
@@ -279,7 +282,7 @@ For long-running tasks, the bot shows live progress by editing a status message 
 
 **The pattern:**
 
-```
+```text
 User sends message
   --> Bot sends "Working on it..."
   --> Agent starts running
@@ -290,6 +293,7 @@ User sends message
 ```
 
 **Tool-to-status mapping** (in `orchestrator.py`):
+
 ```python
 TOOL_STATUS_MAP = {
     "Read": "Reading files...",
@@ -325,6 +329,7 @@ Every agent interaction costs money. Here is the pricing structure (as of early 
 **Cost tracking:**
 
 Every interaction is logged to `data/command/costs.jsonl` with:
+
 - Task ID, topic, model
 - Cost in USD
 - Duration in milliseconds
@@ -344,6 +349,7 @@ The `/cost` command reads this file and sums today's entries.
 The Agent SDK enforces these limits. If an agent hits the budget or turn cap, it stops and returns whatever it has.
 
 **Typical daily costs:**
+
 - Light use (5-10 messages): $2-5/day
 - Moderate use (20-30 messages): $5-15/day
 - Heavy use (50+ messages, Opus agents): $15-30/day
@@ -363,6 +369,7 @@ Agents can be triggered on a schedule to produce daily reports, check metrics, o
 **Pattern:**
 
 1. Write a Python script that calls the agent worker directly:
+
 ```python
 # scripts/daily_report.py
 import asyncio
@@ -383,7 +390,8 @@ async def main():
 asyncio.run(main())
 ```
 
-2. Schedule it with cron (Linux) or launchd (macOS):
+1. Schedule it with cron (Linux) or launchd (macOS):
+
 ```bash
 # crontab -e
 0 7 * * * cd /path/to/workspace && .venv/bin/python scripts/daily_report.py
@@ -406,7 +414,8 @@ The delivery layer (`telegram_utils.py`) is Telegram-specific, but the agent lay
 Agents can generate images by writing Python scripts that call image generation APIs. The file path detection system will automatically deliver any created images.
 
 Example: add to the General agent prompt:
-```
+
+```text
 ## Image Generation
 When asked to create images, write a Python script that calls the OpenAI DALL-E API
 or GPT Image API. Save results to outputs/images/. The delivery system will automatically
@@ -425,7 +434,7 @@ Agents already have `WebSearch` and `WebFetch` tools built in via Claude Code. F
 
 ## Message Flow Diagram
 
-```
+```text
 Telegram Message
   |
   v

@@ -6,7 +6,7 @@ Enterprise Operations canonicalization status: the HR register is canonical in `
 
 ## Structure
 
-```
+```text
 packages/feature-packs/
 ├── README.md                          # This file
 ├── schema/
@@ -36,6 +36,7 @@ Enterprise Operations canonicalization status: the HR register is canonical in `
 ## Authoring a Feature Pack
 
 1. **Copy the skeleton:**
+
    ```bash
    cp -r real-estate-crm my-new-pack
    cd my-new-pack
@@ -61,16 +62,19 @@ Enterprise Operations canonicalization status: the HR register is canonical in `
    - Reference agents by `{pack_id}.{agent_id}`
 
 6. **Validate:**
+
    ```bash
    spidernet pack validate ./my-new-pack
    ```
 
 7. **Test locally:**
+
    ```bash
    spidernet pack install ./my-new-pack --dev
    ```
 
 8. **Sign and publish:**
+
    ```bash
    spidernet pack sign ./my-new-pack --key my-key
    spidernet pack publish ./my-new-pack --registry official

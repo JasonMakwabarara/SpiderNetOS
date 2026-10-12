@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Financial\DocumentNumberService;
 use App\Support\EmployeeNameBackfill;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use LogicException;
@@ -139,14 +140,14 @@ class EmployeeRegisterTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($admin, 'sanctum');
-        $createdRaw = \DB::table('event_log')->where('aggregate_id', $second['id'])->where('event_type', 'enterprise.employee.created')->value('payload');
+        $createdRaw = DB::table('event_log')->where('aggregate_id', $second['id'])->where('event_type', 'enterprise.employee.created')->value('payload');
         $createdEvent = is_array($createdRaw) ? $createdRaw : json_decode((string) $createdRaw, true);
         $this->assertEqualsCanonicalizing(['employee_id', 'fields_changed', 'actor_id'], array_keys($createdEvent));
         $encoded = json_encode($createdEvent);
         $this->assertStringNotContainsString('Rudo', $encoded);
         $this->assertStringNotContainsString('Accountant', $encoded);
 
-        $deactivatedRaw = \DB::table('event_log')->where('aggregate_id', $first['id'])->where('event_type', 'enterprise.employee.deactivated')->value('payload');
+        $deactivatedRaw = DB::table('event_log')->where('aggregate_id', $first['id'])->where('event_type', 'enterprise.employee.deactivated')->value('payload');
         $deactivated = is_array($deactivatedRaw) ? $deactivatedRaw : json_decode((string) $deactivatedRaw, true);
         $this->assertStringNotContainsString('Employment ended', json_encode($deactivated));
 

@@ -332,7 +332,7 @@ class BillApiTest extends TestCase
 
     public function test_upload_creates_draft_bill_with_spend_document_and_queues_extraction(): void
     {
-        Storage::fake('local');
+        $disk = Storage::fake('local');
         Bus::fake([ExtractSpendDocumentJob::class]);
 
         $tenant = $this->createTenant();
@@ -366,7 +366,7 @@ class BillApiTest extends TestCase
             'uploaded_by' => $user->id,
         ]);
 
-        Storage::disk('local')->assertExists($document['path']);
+        $disk->assertExists($document['path']);
         $this->assertStringStartsWith("spend/{$tenant->id}/bills/", $document['path']);
 
         Bus::assertDispatched(

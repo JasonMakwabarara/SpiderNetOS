@@ -46,7 +46,7 @@ kept and expanded.
   is re-pointed to the `follow-up-drafter` skill via `SkillTriggerProjection` in PR 2.
 - Every gate stays in PHP and generalises the `VoiceSafetyGuard` shape:
   `ToolGateway::call()` = flag → allowlist → autonomy ladder + `ApprovalEngine` → `RunBudget`
-  + `CostGovernor` → connector connected → execute → trace + events.
+  - `CostGovernor` → connector connected → execute → trace + events.
 - **Draft-only writes.** No agent tool ever sends or publishes. Writes return artifacts or
   proposals; `ApprovalEngine` executes them through `ArtifactApplier` (Google's own Gmail MCP
   ships `create_draft` and no `send` — same rule).
@@ -83,7 +83,7 @@ kept and expanded.
   `workspace_id`. All of a tenant's workspaces run concurrently on the same Knowledge brain;
   only the shared brain is write-guarded (proposals + approvals) — scratch is the agent's own.
 - A run = the workspace's scratch + a pinned `BrainSnapshot` + its `agent_artifacts` (drafts)
-  + `brain_proposals` + tool grants (card allowlist ∩ `tenant_skills.tool_overrides`) + the
+  - `brain_proposals` + tool grants (card allowlist ∩ `tenant_skills.tool_overrides`) + the
   workspace budget. Replay idempotency: partial unique `(tenant_id, skill_slug, trigger_ref)
   WHERE trigger_ref IS NOT NULL`. Leases (`claimed_by`, `lease_expires_at`,
   `config('agents.lease_seconds')`) let `FailStaleAgentRunsJob` free stuck slots.
@@ -141,6 +141,7 @@ map's core node do.
 ## Consequences
 
 **Positive**
+
 - The runtime is testable on SQLite in CI today (`Http::fake('*/generate')`), reuses every
   existing gate, and gains concurrency from Horizon for free.
 - Business context becomes human-readable, versioned, exportable and diffable; every run pins
@@ -149,6 +150,7 @@ map's core node do.
   because it only changes through proposals and approvals.
 
 **Negative / accepted costs**
+
 - Two runtimes for a while: PHP skills and the six Python core agents. The Python
   `DynamicAgent` class and its pack agent loading are dead code to remove once `SkillRegistry`
   covers the packs (`agents.config.skills[]`).

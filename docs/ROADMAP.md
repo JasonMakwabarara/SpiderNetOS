@@ -30,6 +30,7 @@ This roadmap runs on Priestley's Five A's (`docs/internal/operating-model.md`): 
 - Thompson Sampling bandit for Atlas copy optimization
 
 **Deliverables:**
+
 - `backend/` — Laravel API with STE projections
 - `intelligence/` — Python workers with 6 core agents
 - `cockpit/` — Vue SPA with Platform State Engine dashboard
@@ -124,6 +125,7 @@ php artisan spidernet:pack-install real-estate-crm --force
 | Differential privacy layer | ⏳ Phase 4 | Laplace noise on shared aggregates |
 
 **Success Criteria:**
+
 - New tenant with Real Estate CRM sees "system-optimized" defaults on day 1
 - `atlas_copy_variants` table shows `pack_id` rows with pooled alpha/beta
 - No PII (emails, names, addresses) in shared pool
@@ -148,6 +150,7 @@ php artisan spidernet:pack-install real-estate-crm --force
 | Autonomous performance SLOs | ⏳ Phase 5 | <10 min/week owner time, >100 decisions/day |
 
 **Success Criteria:**
+
 - 80% of tenants on Real Estate CRM run Autonomous mode
 - Weekly digest open rate > 60%
 - Average owner cockpit time < 10 minutes/week

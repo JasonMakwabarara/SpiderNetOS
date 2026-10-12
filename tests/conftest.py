@@ -30,6 +30,12 @@ def load_module(relative_path: str, name: str):
 
 
 @pytest.fixture(scope="session")
+def service_module():
+    """load_module, for tests that load several modules from one service."""
+    return load_module
+
+
+@pytest.fixture(scope="session")
 def cpl_policy_network():
     """The real PolicyNetwork from services/cpl-service."""
     return load_module("services/cpl-service/engine/policy_network.py", "cpl_policy_network")

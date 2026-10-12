@@ -145,7 +145,7 @@ class ToolRegistry:
         self.register("document_parse", _tool_document_parse)
 
         # Voice AI tools
-        from voice_tools import VOICE_TOOLS
+        from .voice_tools import VOICE_TOOLS
         for tool_id, handler in VOICE_TOOLS.items():
             self.register(tool_id, handler)
 

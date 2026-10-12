@@ -32,13 +32,13 @@ CommandOS gives you a Telegram bot powered by Claude Code. You message it from y
 
 Open Claude Code in your workspace and say:
 
-```
+```text
 Read INSTALL.md and help me set this up
 ```
 
 ## What's Inside
 
-```
+```text
 v1/
 ├── INSTALL.md           ← Claude reads this and walks you through setup
 ├── README.md            ← You are here

@@ -11,6 +11,7 @@ use App\Services\CostGovernor;
 use App\Services\FeatureFlag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -239,6 +240,7 @@ class VoiceWebhookTest extends TestCase
 
     private function mockCostGovernorAllows(): void
     {
+        /** @var CostGovernor&MockInterface $mock */
         $mock = \Mockery::mock(CostGovernor::class);
         $mock->shouldReceive('canExecute')->andReturn([
             'allowed' => true,

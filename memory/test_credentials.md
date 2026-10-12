@@ -65,18 +65,22 @@ Routes through MetaPlanner → Atlas agent → V2 evaluate → Redis `agent:disp
 ## Other sign-in flows (demo)
 
 ### Enterprise SSO — Demo IdP
+
 - Tenant slug: `demo`
 - Provider: **Demo IdP (OIDC, simulated)**
 - `POST /api/enterprise/auth/sso/start` → `{ completed: true, access_token, ... }`
 
 ### Magic link
+
 - Any email → `POST /api/enterprise/auth/magic-link/request`
 - Dev mode returns `dev_link.token` in the response
 
 ### TOTP
+
 - Code: `000000` (demo bypass)
 
 ### WebAuthn
+
 - Demo stub via `POST /api/enterprise/auth/webauthn/login`
 
 ## Enterprise registration wizard
@@ -87,11 +91,11 @@ Path: **`http://localhost/enterprise/register`** — 10 steps.
 
 | Service | URL |
 |---|---|
-| Landing + cockpit shell | http://localhost |
-| Laravel API (direct) | http://localhost:8000/api |
-| Enterprise API (direct) | http://localhost:8001/api |
-| V2 semantic gateway (direct) | http://localhost:8005 |
-| OpenJarvis bridge (direct) | http://localhost:8010 |
+| Landing + cockpit shell | <http://localhost> |
+| Laravel API (direct) | <http://localhost:8000/api> |
+| Enterprise API (direct) | <http://localhost:8001/api> |
+| V2 semantic gateway (direct) | <http://localhost:8005> |
+| OpenJarvis bridge (direct) | <http://localhost:8010> |
 | Postgres | `postgresql://postgres:postgres@localhost:5432/spidernet` |
 | Mongo (enterprise) | `mongodb://localhost:27017/spidernetos` |
 | Redis | `localhost:6379` |

@@ -9,6 +9,7 @@ use App\Services\Inference\InferenceUnavailableException;
 use App\Services\Skills\Eval\EvalCase;
 use App\Services\Skills\Eval\EvalRunner;
 use App\Services\Skills\Eval\PropertyChecker;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -29,13 +30,15 @@ class SkillsEvalHarnessTest extends TestCase
 
     private string $synthetic;
 
+    private LocalFilesystemAdapter $localDisk;
+
     /** @var list<string> */
     private array $written = [];
 
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('local');
+        $this->localDisk = Storage::fake('local');
         $this->synthetic = sys_get_temp_dir().'/sn-eval-'.uniqid().'.yaml';
         file_put_contents($this->synthetic, self::syntheticCases());
     }
@@ -177,7 +180,7 @@ YAML;
         $this->assertSame(["{$s['declared']} of {$s['declared']} case(s) did not execute"], $s['incomplete_reasons']);
         $this->assertArrayNotHasKey('pass_rate', $s);
         $this->assertSame('no expected_raw — needs --live', $report['cases'][0]['note']);
-        Storage::disk('local')->assertExists($report['report_path']);
+        $this->localDisk->assertExists($report['report_path']);
     }
 
     public function test_deterministic_replay_scores_stored_outputs_through_the_validator_and_properties(): void
@@ -212,8 +215,8 @@ YAML;
 
         $this->assertSame('skipped', $report['cases'][2]['status']);
 
-        Storage::disk('local')->assertExists($report['report_path']);
-        $written = json_decode(Storage::disk('local')->get($report['report_path']), true);
+        $this->localDisk->assertExists($report['report_path']);
+        $written = json_decode($this->localDisk->get($report['report_path']), true);
         $this->assertSame('1.0.0', $written['prompt_version']);
         $this->assertSame(2, $written['summary']['executed']);
         $this->assertFalse($written['summary']['complete']);

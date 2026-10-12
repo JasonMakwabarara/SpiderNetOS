@@ -12,6 +12,7 @@ use App\Services\Notifications\NotificationService;
 use App\Services\Spend\Accounting\SpendDigestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class SpendDigestTest extends TestCase
@@ -80,6 +81,7 @@ class SpendDigestTest extends TestCase
         $this->seedSpend($tenant, $user);
 
         $captured = [];
+        /** @var NotificationService&MockInterface $mock */
         $mock = \Mockery::mock(NotificationService::class);
         $mock->shouldReceive('notifyTenantRole')
             ->atLeast()->once()
@@ -147,6 +149,7 @@ class SpendDigestTest extends TestCase
         $this->createUser($tenant, 'admin');
         $this->seedSpend($tenant, $user);
 
+        /** @var NotificationService&MockInterface $mock */
         $mock = \Mockery::mock(NotificationService::class);
         $mock->shouldNotReceive('notifyTenantRole');
 
@@ -162,6 +165,7 @@ class SpendDigestTest extends TestCase
         $tenant = $this->createTenant();
         $this->createUser($tenant, 'admin');
 
+        /** @var NotificationService&MockInterface $mock */
         $mock = \Mockery::mock(NotificationService::class);
         $mock->shouldNotReceive('notifyTenantRole');
 

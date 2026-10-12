@@ -7,6 +7,7 @@ namespace Tests\Feature\Launch;
 use App\Models\BrainFile;
 use App\Models\BusinessLaunch;
 use App\Services\Launch\BusinessLaunchService;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\DB;
@@ -36,10 +37,12 @@ class LaunchApprovalTest extends LaunchTestCase
         'years' => [['year' => 1, 'revenue' => 31000.0]],
     ];
 
+    private LocalFilesystemAdapter $localDisk;
+
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('local');
+        $this->localDisk = Storage::fake('local');
         $this->flags(['launch.docgen' => 'on']);
     }
 
@@ -119,8 +122,8 @@ class LaunchApprovalTest extends LaunchTestCase
         $this->assertStringContainsString('Not legal or financial advice', $plan->content);
 
         $launch = BusinessLaunch::forTenant($this->tenant->id)->firstOrFail();
-        Storage::disk('local')->assertExists('launch/'.$this->tenant->id.'/'.$launch->id.'/model.xlsx');
-        Storage::disk('local')->assertExists('launch/'.$this->tenant->id.'/'.$launch->id.'/business-plan.docx');
+        $this->localDisk->assertExists('launch/'.$this->tenant->id.'/'.$launch->id.'/model.xlsx');
+        $this->localDisk->assertExists('launch/'.$this->tenant->id.'/'.$launch->id.'/business-plan.docx');
 
         $deliverables = collect($this->actingAsOwner()->getJson('/api/launch/deliverables')->assertOk()->json('data'))->keyBy('path');
         $this->assertTrue($deliverables['finance/model.xlsx']['available']);

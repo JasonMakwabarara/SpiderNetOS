@@ -4,7 +4,7 @@ Single application: **React landing** → **Vue cockpit** → **FastAPI enterpri
 
 ## Architecture
 
-```
+```text
 http://localhost:3000   React landing (dev)
   /                     Landing page
   /sign-in              Enterprise auth (SSO, magic link, passkey, TOTP)
@@ -39,7 +39,7 @@ npm install
 npm start
 ```
 
-Open **http://localhost:3000**
+Open **<http://localhost:3000>**
 
 ### 3. Sign in → Cockpit
 
@@ -53,7 +53,7 @@ cd ../frontend && npm run cockpit:build
 docker compose -f docker-compose.unified.yml up -d --build
 ```
 
-Open **http://localhost**
+Open **<http://localhost>**
 
 ## Laravel ↔ V2 bridge
 

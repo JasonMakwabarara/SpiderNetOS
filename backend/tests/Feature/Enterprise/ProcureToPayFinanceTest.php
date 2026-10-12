@@ -10,6 +10,7 @@ use App\Models\LedgerEntry;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -41,7 +42,7 @@ class ProcureToPayFinanceTest extends TestCase
             'lines' => [['description' => 'Widget A', 'quantity' => 2, 'unit_price' => 10]],
         ])->assertCreated()->json('data');
         $this->postJson('/api/enterprise/requisitions/'.$requisition['id'].'/submit')->assertOk();
-        $approvalId = \DB::table('approvals')->where('resource_id', $requisition['id'])->value('id');
+        $approvalId = DB::table('approvals')->where('resource_id', $requisition['id'])->value('id');
         $this->postJson('/api/approvals/'.$approvalId.'/approve', ['reason' => 'Buy them'])->assertOk();
 
         $order = $this->postJson('/api/enterprise/purchase-orders', [
@@ -68,7 +69,7 @@ class ProcureToPayFinanceTest extends TestCase
         $this->assertSame($order['id'], $invoice['purchase_order_id']);
         $this->postJson('/api/enterprise/purchase-orders/'.$order['id'].'/invoice')->assertStatus(409);
 
-        $linked = \DB::table('event_log')->where('aggregate_id', $invoice['id'])->where('event_type', 'enterprise.invoice.linked')->value('payload');
+        $linked = DB::table('event_log')->where('aggregate_id', $invoice['id'])->where('event_type', 'enterprise.invoice.linked')->value('payload');
         $linkedPayload = is_array($linked) ? $linked : json_decode((string) $linked, true);
         $keys = array_keys($linkedPayload);
         sort($keys);
@@ -98,7 +99,7 @@ class ProcureToPayFinanceTest extends TestCase
         $this->assertEquals(20, (float) $entries->firstWhere('side', 'debit')->amount);
         $this->assertEquals(20, (float) $entries->firstWhere('side', 'credit')->amount);
 
-        $posted = \DB::table('event_log')->where('aggregate_id', $posting['id'])->value('payload');
+        $posted = DB::table('event_log')->where('aggregate_id', $posting['id'])->value('payload');
         $postedPayload = is_array($posted) ? $posted : json_decode((string) $posted, true);
         $postedKeys = array_keys($postedPayload);
         sort($postedKeys);
@@ -106,14 +107,14 @@ class ProcureToPayFinanceTest extends TestCase
 
         $this->postJson('/api/enterprise/supplier-invoices/'.$invoice['id'].'/fiscalise', ['environment' => 'live'])
             ->assertStatus(409);
-        $this->assertSame(0, \DB::table('fiscal_submissions')->count());
+        $this->assertSame(0, DB::table('fiscal_submissions')->count());
         $fiscal = $this->postJson('/api/enterprise/supplier-invoices/'.$invoice['id'].'/fiscalise')
             ->assertCreated()
             ->json('data');
         $this->assertSame('sandbox', $fiscal['environment']);
         $this->assertSame('accepted', $fiscal['status']);
         $this->assertNull(Invoice::find($invoice['id'])->fiscal_status ?? null);
-        $fiscalEvent = \DB::table('event_log')->where('aggregate_id', $fiscal['id'])->value('payload');
+        $fiscalEvent = DB::table('event_log')->where('aggregate_id', $fiscal['id'])->value('payload');
         $fiscalPayload = is_array($fiscalEvent) ? $fiscalEvent : json_decode((string) $fiscalEvent, true);
         $fiscalKeys = array_keys($fiscalPayload);
         sort($fiscalKeys);
@@ -151,7 +152,7 @@ class ProcureToPayFinanceTest extends TestCase
             'invoice_id' => $invoice['id'],
         ])->assertCreated()->json('data');
         $this->assertSame('paid', Invoice::find($invoice['id'])->status);
-        $cashEvent = \DB::table('event_log')->where('aggregate_id', $movement['id'])->value('payload');
+        $cashEvent = DB::table('event_log')->where('aggregate_id', $movement['id'])->value('payload');
         $cashPayload = is_array($cashEvent) ? $cashEvent : json_decode((string) $cashEvent, true);
         $cashKeys = array_keys($cashPayload);
         sort($cashKeys);

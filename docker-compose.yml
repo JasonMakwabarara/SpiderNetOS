@@ -271,42 +271,42 @@ services:
 
   # ─── Laravel API (Control Plane) ───
   api:
-     build:
-       context: ./backend
-       dockerfile: Dockerfile
-     ports:
-       - "8000:8000"
-     volumes:
-       - ./backend:/var/www/html
-     env_file:
-       - .env
-     environment:
-       APP_ENV: local
-       APP_KEY: ${APP_KEY}
-       DB_CONNECTION: pgsql
-       DB_HOST: db-primary
-       DB_PORT: 5432
-       DB_DATABASE: spidernet
-       DB_USERNAME: spidernet
-       DB_PASSWORD: ${DB_PASSWORD}
-       REDIS_HOST: redis
-       REDIS_PORT: 6379
-       QUEUE_CONNECTION: redis
-       BROADCAST_DRIVER: pusher
-       PUSHER_APP_ID: spidernet
-       PUSHER_APP_KEY: ${PUSHER_APP_KEY}
-       PUSHER_APP_SECRET: ${PUSHER_APP_SECRET}
-       PUSHER_HOST: websocket
-       PUSHER_PORT: 6001
-       PUSHER_SCHEME: http
-       INFERENCE_URL: http://inference:9000
-       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-       COST_CEILING_DEFAULT: ${COST_CEILING_DEFAULT:-50.00}
-     depends_on:
-       db-primary:
-         condition: service_healthy
-       redis:
-         condition: service_healthy
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db-primary
+      DB_PORT: 5432
+      DB_DATABASE: spidernet
+      DB_USERNAME: spidernet
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      BROADCAST_DRIVER: pusher
+      PUSHER_APP_ID: spidernet
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET}
+      PUSHER_HOST: websocket
+      PUSHER_PORT: 6001
+      PUSHER_SCHEME: http
+      INFERENCE_URL: http://inference:9000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      COST_CEILING_DEFAULT: ${COST_CEILING_DEFAULT:-50.00}
+    depends_on:
+      db-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - spidernet
 
@@ -324,7 +324,7 @@ services:
       APP_ENV: local
       APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
-      DB_HOST: db
+      DB_HOST: db-primary
       DB_PORT: 5432
       DB_DATABASE: spidernet
       DB_USERNAME: spidernet
@@ -340,12 +340,12 @@ services:
       PUSHER_PORT: 6001
       PUSHER_SCHEME: http
       INFERENCE_URL: http://inference:9000
-       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-     depends_on:
-       db-primary:
-         condition: service_healthy
-       redis:
-         condition: service_healthy
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      db-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - spidernet
 
@@ -363,7 +363,7 @@ services:
       APP_ENV: local
       APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
-      DB_HOST: db
+      DB_HOST: db-primary
       DB_PORT: 5432
       DB_DATABASE: spidernet
       DB_USERNAME: spidernet
@@ -371,7 +371,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       QUEUE_CONNECTION: redis
-       INFERENCE_URL: http://inference:9000
+      INFERENCE_URL: http://inference:9000
     depends_on:
       db-primary:
         condition: service_healthy
@@ -388,16 +388,16 @@ services:
     volumes:
       - ./intelligence:/app
     environment:
-      DATABASE_URL: postgresql://spidernet:${DB_PASSWORD}@db:5432/spidernet
+      DATABASE_URL: postgresql://spidernet:${DB_PASSWORD}@db-primary:5432/spidernet
       REDIS_URL: redis://redis:6379/0
       INFERENCE_URL: http://inference:9000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-       LARAVEL_API_URL: http://api:8000
-     depends_on:
-       db-primary:
-         condition: service_healthy
-       redis:
-         condition: service_healthy
+      LARAVEL_API_URL: http://api:8000
+    depends_on:
+      db-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - spidernet
@@ -407,10 +407,16 @@ services:
     build:
       context: ./inference
       dockerfile: Dockerfile
+      additional_contexts:
+        intelligence: ./intelligence
     ports:
       - "9000:9000"
     volumes:
       - ./inference:/app
+      # The bind mount above hides what the image copied from intelligence/.
+      - ./intelligence/agents/voice_agent.py:/app/agents/voice_agent.py:ro
+      - ./intelligence/tools:/app/tools:ro
+      - ./intelligence/atlas/mc_simulator.py:/app/intelligence/atlas/mc_simulator.py:ro
     environment:
       REDIS_URL: redis://redis:6379/1
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}

@@ -528,12 +528,6 @@ parameters:
 			path: app/Services/Integrations/CrmAdapter.php
 
 		-
-			message: '#^Call to static method constructEvent\(\) on an unknown class Stripe\\Webhook\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Services/Integrations/StripeAdapter.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pack_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -544,12 +538,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Services/JarvisTierGate.php
-
-		-
-			message: '#^Call to static method client\(\) on an unknown class OpenAI\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Services/LLMService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>automation_level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'

@@ -14,6 +14,7 @@ use App\Services\Financial\DocumentNumberService;
 use App\Services\Financial\LedgerService;
 use App\Services\Financial\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -129,23 +130,17 @@ class DefectRegressionTest extends TestCase
         $other = $this->createTenant();
         $numbers = app(DocumentNumberService::class);
 
-        $a = null;
-        $b = null;
-        \DB::transaction(function () use (&$a, $numbers, $tenant) {
-            $a = $numbers->next($tenant->id, 'invoice', 'INV');
-        });
-        \DB::transaction(function () use (&$b, $numbers, $tenant) {
-            $b = $numbers->next($tenant->id, 'invoice', 'INV');
-        });
+        $a = DB::transaction(fn () => $numbers->next($tenant->id, 'invoice', 'INV'));
+        $b = DB::transaction(fn () => $numbers->next($tenant->id, 'invoice', 'INV'));
 
         $this->assertStringEndsWith('-000001', $a);
         $this->assertStringEndsWith('-000002', $b);
 
         // Independent sequence per tenant and per type.
-        \DB::transaction(function () use ($numbers, $other) {
+        DB::transaction(function () use ($numbers, $other) {
             $this->assertStringEndsWith('-000001', $numbers->next($other->id, 'invoice', 'INV'));
         });
-        \DB::transaction(function () use ($numbers, $tenant) {
+        DB::transaction(function () use ($numbers, $tenant) {
             $this->assertStringEndsWith('-000001', $numbers->next($tenant->id, 'payment', 'PAY'));
         });
     }

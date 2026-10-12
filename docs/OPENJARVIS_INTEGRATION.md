@@ -31,13 +31,13 @@ OPENJARVIS_URL=http://edge-node.internal:8080
 OPENJARVIS_API_KEY=your-key-if-required
 ```
 
-3. Bridge proxies `/v1/ask` to the full OpenJarvis server when reachable; falls back to OpenAI or template responses when not.
+1. Bridge proxies `/v1/ask` to the full OpenJarvis server when reachable; falls back to OpenAI or template responses when not.
 
 In `docker-compose.unified.yml`, only the **bridge** is on the SpiderNet network — never expose Jarvis UI or `/api/atlas/jarvis/*` to operators.
 
 ## Architecture
 
-```
+```text
 Operator → Atlas chat / Outcomes / Billing
                 │
                 ▼

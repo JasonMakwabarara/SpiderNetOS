@@ -11,6 +11,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# POST /voice/agent runs the voice agent and its tool registry, and
+# POST /ste/simulate runs the Monte Carlo simulator; all three live in
+# intelligence/. Compose passes that folder as the named build context
+# `intelligence`; a bare `docker build inference/` needs
+# `--build-context intelligence=intelligence`.
+COPY --from=intelligence agents/voice_agent.py ./agents/voice_agent.py
+COPY --from=intelligence tools/ ./tools/
+COPY --from=intelligence atlas/mc_simulator.py ./intelligence/atlas/mc_simulator.py
+
 EXPOSE 9000
 
 # Drop root. Everything above this line needs it (apt, pip); nothing below does.

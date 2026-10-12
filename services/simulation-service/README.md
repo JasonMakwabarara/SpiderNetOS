@@ -6,7 +6,7 @@ This service provides a safe simulation environment for training RL policies bef
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DeepSeek v4 (Vast.ai)                        │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────┐    │
@@ -48,25 +48,29 @@ This service provides a safe simulation environment for training RL policies bef
 ## Key Features
 
 ### 1. DeepSeek Scenario Generation
+
 - **AI-designed market scenarios**: Viral competitors, supply shocks, platform changes
 - **Progressive difficulty**: Easy → Medium → Hard → Extreme
 - **Curriculum learning**: Multi-stage training programs
 - **Scenario explanations**: Understand what each scenario teaches
 
 ### 2. Market Simulation
+
 - **Ornstein-Uhlenbeck process**: Realistic CPM mean reversion
 - **Jump diffusion**: Competitor/viral shocks
 - **Seasonal patterns**: Day-of-week and hourly effects
 - **Channel dynamics**: Meta, Google, TikTok with different behaviors
 
 ### 3. User Behavior Model
+
 - **Logistic response curves**: Diminishing returns
 - **Ad fatigue**: Exponential decay over time
 - **Segment-based**: Early adopters, bargain hunters, mainstream
 - **Channel affinity**: Different segments prefer different channels
 
 ### 4. Economic Reward Engine
-```
+
+```text
 Reward = α × Profit + β × ROAS - γ × Risk + δ × Smoothness
 
 Where:
@@ -77,6 +81,7 @@ Where:
 ```
 
 ### 5. DeepSeek Calibration Analysis
+
 - **Gap identification**: Why simulation diverges from reality
 - **Root cause analysis**: Model limitations vs market changes
 - **Predictive drift**: Forecast future calibration needs
@@ -85,6 +90,7 @@ Where:
 ## API Endpoints
 
 ### Scenario Management
+
 ```bash
 # Generate AI-designed scenario
 POST /scenario/generate?difficulty=hard&scenario_type=viral_competitor
@@ -94,6 +100,7 @@ POST /scenario/curriculum?stages=5&progression_type=gradual
 ```
 
 ### Training
+
 ```bash
 # Start training with DeepSeek scenarios
 POST /simulation/start
@@ -107,6 +114,7 @@ POST /simulation/start
 ```
 
 ### Calibration
+
 ```bash
 # Analyze sim-to-real gap with DeepSeek
 POST /calibration/analyze
@@ -120,6 +128,7 @@ GET /calibration/report
 ```
 
 ### Policy Management
+
 ```bash
 # Register new policy version
 POST /policy/register
@@ -175,6 +184,7 @@ result = await planner.plan_with_simulation(
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # DeepSeek / Ollama
 OLLAMA_URL=http://localhost:11434
@@ -197,6 +207,7 @@ CALIBRATION_LEARNING_RATE=0.01
 ## Running the Service
 
 ### Local Development
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -206,6 +217,7 @@ uvicorn main:app --reload --port 9200
 ```
 
 ### Production (Vast.ai)
+
 ```bash
 # Copy to Vast.ai instance
 cp -r services/simulation-service /workspace/SpiderNetOS/services/
@@ -221,6 +233,7 @@ docker-compose up simulation-service
 ## Training Pipeline
 
 ### Stage 1: Simulation-Only Training
+
 ```python
 # Run 1000 episodes in simulation
 for episode in range(1000):
@@ -243,12 +256,14 @@ for episode in range(1000):
 ```
 
 ### Stage 2: Shadow Mode
+
 ```python
 # Run policy alongside human decisions
 # Compare outcomes without affecting real campaigns
 ```
 
 ### Stage 3: A/B Testing
+
 ```python
 # 10% traffic to RL policy
 # 90% traffic to baseline
@@ -256,6 +271,7 @@ for episode in range(1000):
 ```
 
 ### Stage 4: Full Deployment
+
 ```python
 # RL policy controls all decisions
 # Continuous learning from real outcomes
@@ -265,6 +281,7 @@ for episode in range(1000):
 ## Calibration Process
 
 ### 1. Data Collection
+
 ```python
 # Every real campaign execution
 sim_to_real.calibrate(
@@ -274,6 +291,7 @@ sim_to_real.calibrate(
 ```
 
 ### 2. Gap Analysis (DeepSeek)
+
 ```python
 # Analyze discrepancies
 insight = deepseek_calibration.analyze_gap(
@@ -290,12 +308,14 @@ insight = deepseek_calibration.analyze_gap(
 ```
 
 ### 3. Parameter Update
+
 ```python
 # Apply DeepSeek suggestion
 market_env.base_cpm['meta'] *= 1.15
 ```
 
 ### 4. Validation
+
 ```python
 # Monitor for improvement
 cal_quality = sim_to_real.get_calibration_quality()
@@ -305,6 +325,7 @@ cal_quality = sim_to_real.get_calibration_quality()
 ## Monitoring
 
 ### Key Metrics
+
 ```python
 # Service health
 GET /health
@@ -317,6 +338,7 @@ GET /metrics
 ```
 
 ### DeepSeek Insights
+
 - Scenario generation quality
 - Calibration predictions accuracy
 - Policy decision explanations
@@ -325,25 +347,28 @@ GET /metrics
 ## Troubleshooting
 
 ### Simulation diverging from reality
+
 1. Check calibration quality: `GET /calibration/status`
 2. Analyze gaps: `POST /calibration/analyze`
 3. Review DeepSeek report: `GET /calibration/report`
 4. Adjust parameters based on suggestions
 
 ### Poor policy performance
+
 1. Generate harder scenarios: `POST /scenario/generate?difficulty=extreme`
 2. Check reward function alignment: `POST /policy/suggest-reward-improvements`
 3. Increase training episodes
 4. Review DeepSeek explanations
 
 ### DeepSeek unavailable
+
 - Falls back to default scenarios
 - Uses heuristic calibration
 - Logs warning but continues operation
 
 ## Files
 
-```
+```text
 services/simulation-service/
 ├── main.py                          # FastAPI service
 ├── engine/

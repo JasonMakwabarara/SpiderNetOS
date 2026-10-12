@@ -6,6 +6,7 @@ Run on Vast.ai to diagnose and fix site accessibility issues
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time

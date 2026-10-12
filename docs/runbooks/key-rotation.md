@@ -22,12 +22,14 @@ Every secret below has a **rotation trigger**, **rotation procedure**, and **rol
 **Purpose:** encrypts session data, encrypted Eloquent casts, `Crypt::encryptString()` output (which includes `tenant_secrets.secret_value`).
 
 **Trigger:**
+
 - Annually (scheduled), OR
 - Immediately if the value has leaked (e.g., accidental commit, repo exposure, developer laptop compromise).
 
 **Grace:** Laravel supports `APP_PREVIOUS_KEYS` (already wired in `@/c:/Users/HP/CascadeProjects/windsurf-project-2/backend/config/app.php:14-18`). Encrypted payloads produced with the old key remain decryptable during the grace window.
 
 **Procedure:**
+
 1. Generate a new key locally: `php artisan key:generate --show` (do not write yet).
 2. In the secrets store (Vault / ESO — Batch E) set:
    - `APP_KEY` = new value
@@ -39,6 +41,7 @@ Every secret below has a **rotation trigger**, **rotation procedure**, and **rol
 **Rollback:** move `APP_PREVIOUS_KEYS` back to `APP_KEY` and redeploy. Anything encrypted with the new key during the aborted rotation will be unreadable — acceptable only if the rotation is caught within minutes.
 
 **Smoke test:**
+
 ```bash
 kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('ok'));"
 # Must print: ok
@@ -53,6 +56,7 @@ kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('o
 **Grace:** Postgres supports multiple roles; we rotate by creating a new role + password, re-pointing the app, then revoking the old role.
 
 **Procedure:**
+
 1. `CREATE ROLE spidernet_v2 LOGIN PASSWORD '<new>' IN ROLE spidernet;` (via DB admin).
 2. Update `DB_USERNAME` / `DB_PASSWORD` in the secrets store.
 3. Rolling restart of `api` + `worker` deployments.
@@ -73,6 +77,7 @@ kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('o
 **Grace:** Redis 6+ supports ACL users. We rotate by adding a new user, re-pointing the app, then disabling the old user.
 
 **Procedure:**
+
 1. `ACL SETUSER spidernet_v2 on ><new> ~* &* +@all` (Redis).
 2. Update `REDIS_PASSWORD` (and optionally `REDIS_USERNAME` to `spidernet_v2`) in the secrets store.
 3. Rolling restart — **queue + broadcast + cache all depend on Redis**; do Horizon last to avoid missed jobs.
@@ -92,6 +97,7 @@ kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('o
 **Grace:** none natively — clients hold one app key at a time. Rotate during low-traffic window.
 
 **Procedure:**
+
 1. Provision new Pusher app (or Soketi config) alongside the old one.
 2. Update backend env + redeploy (server will now broadcast on the new app).
 3. Update cockpit env + redeploy (clients reconnect to the new app).
@@ -110,6 +116,7 @@ kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('o
 **Grace:** provider-dependent — OpenAI supports multiple active keys, Anthropic too.
 
 **Procedure:**
+
 1. Create new key in provider dashboard.
 2. Update the corresponding env in the secrets store.
 3. Rolling restart of `api`, `worker`, `inference`.
@@ -119,6 +126,7 @@ kubectl exec deploy/api -- php artisan tinker --execute="echo decrypt(encrypt('o
 **Rollback:** paste old key back, redeploy.
 
 **Smoke test:**
+
 ```bash
 curl -X POST http://api/api/atlas/chat \
   -H "Authorization: Bearer $TEST_TOKEN" \
@@ -135,6 +143,7 @@ curl -X POST http://api/api/atlas/chat \
 **Grace:** Twilio supports a single auth token per account. Webhook signature verification happens in `@/c:/Users/HP/CascadeProjects/windsurf-project-2/backend/app/Http/Middleware/VerifyTwilioSignature.php`; it must accept both the old and new token during the rollover.
 
 **Procedure:**
+
 1. Create a **secondary** auth token in the Twilio console (Twilio supports this during rotation).
 2. Update `VerifyTwilioSignature` middleware to accept either token via `TWILIO_AUTH_TOKEN` + `TWILIO_AUTH_TOKEN_PREVIOUS` env.
 3. Update the primary token in Twilio console.
@@ -179,6 +188,7 @@ This marks the old row `active=0 grace_until=NOW()+24h`, inserts a new row `acti
 **Grace:** none — tokens are single-use handles.
 
 **Procedure:**
+
 1. `DELETE FROM personal_access_tokens WHERE id = <token-id>;` OR user-initiated via `/api/auth/logout` on that token.
 2. If rotating for a user: delete all their tokens + force re-login via front-channel notification.
 
@@ -191,6 +201,7 @@ This marks the old row `active=0 grace_until=NOW()+24h`, inserts a new row `acti
 **Trigger:** quarterly, or on workflow repo change.
 
 **Procedure:** GitHub OIDC preferred (no long-lived tokens). If using PATs:
+
 1. Mint new PAT with minimal scopes (`read:packages`, `write:packages`).
 2. Update `secrets.GHCR_TOKEN` in the repo settings.
 3. Re-run one workflow on a dummy branch to confirm.
@@ -201,11 +212,13 @@ This marks the old row `active=0 grace_until=NOW()+24h`, inserts a new row `acti
 ## Audit & monitoring
 
 Every rotation MUST:
+
 - Be preceded by an `#spidernet-ops` announcement (planned) or paged incident declaration (emergency).
 - Append an entry to `admin_audit_log` (PHP paths do this automatically via `AdminAudit::log()`; manual SQL rotations must `INSERT` one by hand).
 - Be followed by 24h of enhanced monitoring on the affected surface (Grafana alert suppression lifted).
 
 Incident-response rotations additionally trigger:
+
 - Sev 1 postmortem within 5 business days.
 - SOC 2 control evidence capture (screenshot of rotation audit row + smoke-test result) in the `compliance/soc2/rotations/` folder.
 

@@ -5,7 +5,7 @@
 
 ## State Machine
 
-```
+```text
                     ┌─────────────────────┐
                     │       ABSENT        │
                     │  (not installed)    │
@@ -109,11 +109,13 @@
 **Trigger:** `spidernet pack install {pack_id}`
 
 **Actions:**
+
 - Resolve pack ID to registry URL or local path
 - Check version compatibility with SpiderNetOS core
 - Begin byte download
 
 **Failure modes:**
+
 - Network unreachable → FAILED
 - Pack not found in registry → FAILED
 - Version incompatible (core too old) → FAILED
@@ -123,11 +125,13 @@
 **Trigger:** Download complete
 
 **Actions:**
+
 - Compute manifest hash
 - Verify signature against publisher key
 - Validate YAML schema
 
 **Failure modes:**
+
 - Signature mismatch → FAILED
 - Schema validation error → FAILED
 
@@ -136,6 +140,7 @@
 **Trigger:** All checks pass
 
 **Actions:**
+
 - Begin database transaction
 - Check for conflicts (existing agents, chains)
 - Prepare mutation plan
@@ -145,12 +150,14 @@
 **Trigger:** All mutations succeed
 
 **Actions:**
+
 - Commit transaction
 - Activate dynamic agents
 - Seed bandit priors
 - Emit `feature_pack.installed` event
 
 **Failure → ROLLING BACK:**
+
 - Any mutation fails → automatic rollback
 - Conflict detected → manual resolution required
 
@@ -159,6 +166,7 @@
 **Trigger:** Rollback complete
 
 **Actions:**
+
 - Remove staged mutations
 - Clean up temporary files
 - Log failure reason
@@ -168,6 +176,7 @@
 **Trigger:** `spidernet pack upgrade {pack_id}` or newer version available
 
 **Actions:**
+
 - Download new version
 - Verify compatibility (migration hooks)
 - Execute migration hooks
@@ -196,6 +205,7 @@ migrations:
 **Trigger:** `spidernet pack uninstall {pack_id}`
 
 **Actions (graceful):**
+
 1. Set pack status to `uninstalling`
 2. Stop accepting new flow instantiations
 3. Wait for in-flight DAGs to complete (timeout: 5 min)
@@ -203,6 +213,7 @@ migrations:
 5. Mark pack as archived
 
 **Actions (force):**
+
 1. Immediate termination of in-flight flows
 2. Mark flows as failed
 3. Archive agents
@@ -213,6 +224,7 @@ migrations:
 **Trigger:** Cleanup complete
 
 **Actions:**
+
 - Emit `feature_pack.uninstalled` event
 - Retain `event_log` history (never delete)
 - Retain `ste_event_mapping` rows (historical queries)
@@ -245,7 +257,7 @@ Full event types:
 | `feature_pack.installation.failed` | `{pack_id, version, error, retryable}` |
 | `feature_pack.upgrade.started` | `{pack_id, from_version, to_version}` |
 | `feature_pack.upgrade.completed` | `{pack_id, from_version, to_version}` |
-| `feature_pack.uninstall.started` | `{pack_id, mode: graceful|force}` |
+| `feature_pack.uninstall.started` | `{pack_id, mode: graceful\|force}` |
 | `feature_pack.uninstall.completed` | `{pack_id, flows_terminated, flows_completed}` |
 
 These events flow into the STE for pack adoption analytics.

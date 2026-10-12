@@ -144,7 +144,10 @@ services:
 
   # Inference plane — policy routing to Ollama / OpenAI
   inference:
-    build: ./inference
+    build:
+      context: ./inference
+      additional_contexts:
+        intelligence: ./intelligence
     ports:
       - "9000:9000"
     environment:

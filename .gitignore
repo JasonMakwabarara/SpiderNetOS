@@ -25,6 +25,7 @@ backup_*
 
 # IDE
 .vscode/
+.venv/
 .idea/
 *.swp
 *.swo

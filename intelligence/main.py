@@ -4,6 +4,7 @@ Action Plane entry point with Meta-Planner integration
 """
 
 import asyncio
+import dataclasses
 import json
 import signal
 import sys
@@ -262,7 +263,7 @@ class IntelligenceWorker:
             }
             await self.redis.publish(
                 f"agent:result:{data['tenant_id']}",
-                json.dumps(result_data)
+                encode_result(result_data)
             )
 
         except Exception as e:
@@ -437,6 +438,20 @@ class LLMClient:
                 'cost': 0,
                 'latency_ms': 0,
             }
+
+
+def _jsonable(value):
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def encode_result(result_data: dict) -> str:
+    """JSON for agent:result. A successful dispatch carries an AgentResult
+    dataclass, which plain json.dumps rejects."""
+    return json.dumps(result_data, default=_jsonable)
 
 
 async def main():

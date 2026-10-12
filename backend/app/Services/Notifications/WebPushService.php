@@ -6,8 +6,6 @@ namespace App\Services\Notifications;
 
 use App\Models\PushSubscription;
 use Illuminate\Support\Facades\Log;
-use Minishlink\WebPush\Subscription;
-use Minishlink\WebPush\WebPush;
 
 /**
  * Sends encrypted web-push via the minishlink/web-push library when it and
@@ -19,11 +17,15 @@ use Minishlink\WebPush\WebPush;
  */
 class WebPushService
 {
+    private const WEB_PUSH = 'Minishlink\WebPush\WebPush';
+
+    private const SUBSCRIPTION = 'Minishlink\WebPush\Subscription';
+
     public function configured(): bool
     {
         return (bool) config('webpush.public_key')
             && (bool) config('webpush.private_key')
-            && class_exists(WebPush::class);
+            && class_exists(self::WEB_PUSH);
     }
 
     /**
@@ -43,8 +45,8 @@ class WebPushService
             return 0;
         }
 
-        $webPushClass = WebPush::class;
-        $subClass = Subscription::class;
+        $webPushClass = self::WEB_PUSH;
+        $subClass = self::SUBSCRIPTION;
 
         $webPush = new $webPushClass(['VAPID' => [
             'subject' => config('webpush.subject'),

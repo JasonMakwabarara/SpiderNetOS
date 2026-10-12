@@ -85,7 +85,7 @@ final class BrainReadTool implements ToolContract
         $start = $m[0][1] + strlen($m[0][0]);
         $rest = substr($markdown, $start);
         if (preg_match('/^#{1,'.$level.'}\s+/m', $rest, $n, PREG_OFFSET_CAPTURE)) {
-            $rest = substr($rest, 0, $n[0][1]);
+            $rest = substr($rest, 0, (int) $n[0][1]);
         }
 
         return trim($rest);

@@ -3,7 +3,6 @@
 namespace Tests\Unit\Services;
 
 use App\Services\PromptEnhancer;
-use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**

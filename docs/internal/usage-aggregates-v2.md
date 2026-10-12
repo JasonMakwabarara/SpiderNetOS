@@ -8,6 +8,7 @@
 
 The `usage_daily_aggregates` table schema defined `total_calls` and `calculated_at` but
 `AggregateUsageJob` was writing `request_count` + `updated_at`, causing:
+
 - NOT NULL violation on insert (job failure)
 - Empty Usage dashboard (reads return empty/500)
 - 600+ `function json_extract(jsonb, unknown)` errors (MySQL functions on Postgres)
@@ -89,10 +90,12 @@ python -m pytest intelligence/tests/ -v
 ## API Contract (v2)
 
 `GET /api/usage/daily`
+
 - Header: `X-Usage-Contract: 2` (returned by server)
 - Sending `X-Usage-Contract: 1` → **HTTP 410 Gone**
 
 Response:
+
 ```json
 {
   "contract_version": "2",

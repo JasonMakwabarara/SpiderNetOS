@@ -47,11 +47,13 @@ email sequence has nothing to send and all 98 queue as manual DMs. To get the
 automated channel working, get emails in by either:
 
 - **Finder over MCP** (its items do carry `emails`) — verify, then enable:
+
   ```bash
   php artisan outreach:spike finder hannah-ai
   php artisan outreach:enable finder --tenant=hannah-ai
   php artisan outreach:finder-sync hannah-ai --dry-run
   ```
+
 - **By hand** — Cockpit → Partners, paste the address from the creator's bio.
   Each one is validated (syntax, role/disposable, MX) and logged as
   `legitimate_interest_b2b` consent before it becomes sendable.

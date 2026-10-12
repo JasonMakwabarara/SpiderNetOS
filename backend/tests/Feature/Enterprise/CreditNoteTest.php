@@ -9,6 +9,7 @@ use App\Models\LedgerEntry;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class CreditNoteTest extends TestCase
             'lines' => [['description' => 'Widget A', 'quantity' => 2, 'unit_price' => 10]],
         ])->assertCreated()->json('data');
         $this->postJson('/api/enterprise/requisitions/'.$requisition['id'].'/submit')->assertOk();
-        $approvalId = \DB::table('approvals')->where('resource_id', $requisition['id'])->value('id');
+        $approvalId = DB::table('approvals')->where('resource_id', $requisition['id'])->value('id');
         $this->postJson('/api/approvals/'.$approvalId.'/approve', ['reason' => 'Buy them'])->assertOk();
 
         $order = $this->postJson('/api/enterprise/purchase-orders', [
@@ -81,7 +82,7 @@ class CreditNoteTest extends TestCase
         $this->assertSame(0, LedgerEntry::query()->where('reference_id', $draft['id'])->count());
         $this->postJson('/api/enterprise/credit-notes/'.$draft['id'].'/issue')->assertStatus(409);
 
-        $created = \DB::table('event_log')->where('aggregate_id', $draft['id'])->where('event_type', 'enterprise.credit_note.issued')->value('payload');
+        $created = DB::table('event_log')->where('aggregate_id', $draft['id'])->where('event_type', 'enterprise.credit_note.issued')->value('payload');
         $payload = is_array($created) ? $created : json_decode((string) $created, true);
         $keys = array_keys($payload);
         sort($keys);
@@ -98,7 +99,7 @@ class CreditNoteTest extends TestCase
             'lines' => [['description' => 'Widget A', 'quantity' => 2, 'unit_price' => 10]],
         ])->assertCreated()->json('data');
         $this->postJson('/api/enterprise/credit-notes/'.$over['id'].'/issue')->assertStatus(409);
-        $this->assertSame('draft', \DB::table('credit_notes')->where('id', $over['id'])->value('status'));
+        $this->assertSame('draft', DB::table('credit_notes')->where('id', $over['id'])->value('status'));
 
         $this->postJson('/api/enterprise/supplier-invoices/'.$invoice['id'].'/match')->assertOk();
         $this->postJson('/api/enterprise/supplier-invoices/'.$invoice['id'].'/post')->assertCreated();

@@ -57,6 +57,7 @@ Use the `CLAUDE.md.template` file in this kit as a starting point. Key sections:
 - **Workspace Structure** — folder layout so the agent can navigate.
 
 **Pro tips:**
+
 - The more context you put in CLAUDE.md, the smarter every interaction becomes
 - Update it as your workspace evolves — stale CLAUDE.md = confused agents
 - Keep it under 15K tokens (roughly 10,000 words) — longer files slow down priming
@@ -75,6 +76,7 @@ Prime commands tell agents which files to read when they start.
 **What to point them at:**
 
 Think about what context an agent needs to be useful in 80% of conversations:
+
 - Your CLAUDE.md (always)
 - Your current strategy or roadmap document
 - Your latest metrics or KPI file
@@ -82,6 +84,7 @@ Think about what context an agent needs to be useful in 80% of conversations:
 - Any reference docs that get used frequently
 
 Example `prime-telegram.md`:
+
 ```markdown
 # Prime (Telegram)
 
@@ -123,6 +126,7 @@ COLORS = {
 ```
 
 The `PALETTE` list controls the order of colors used for multi-series charts:
+
 ```python
 PALETTE = [
     COLORS["primary"], COLORS["secondary"], COLORS["accent1"],
@@ -188,6 +192,7 @@ BANNER = f"""\
 ```
 
 Also update the startup message in `main.py` — find the `on_startup` function:
+
 ```python
 await bot.send_message(
     chat_id=config.group_id,
@@ -204,23 +209,30 @@ You can register specific forum topics for specific personas or purposes. The pa
 1. **Create a topic** in your Telegram group (right-click or long-press --> "New Topic")
 2. **Get the topic ID** by sending a message in the topic and checking the bot logs for `message_thread_id`
 3. **Add a config entry** in `.env`:
-   ```
+
+   ```text
    MY_SPECIAL_TOPIC_ID=12345
    ```
+
 4. **Load it in config.py:**
+
    ```python
    my_special_topic_id: int | None
    # In load_config():
    my_special_topic_id=int(v) if (v := os.getenv("MY_SPECIAL_TOPIC_ID", "").strip()) else None,
    ```
+
 5. **Add routing in bot.py** (in `_flush_message_buffer`, before the General catch-all):
+
    ```python
    elif topic_id and _config.my_special_topic_id and topic_id == _config.my_special_topic_id:
        await _orchestrator.handle_my_special_topic(last_message, text_override=combined_text, photos=all_photos or None)
    ```
+
 6. **Add the handler in orchestrator.py** with a custom system prompt for that topic's purpose.
 
 **Examples of special topics:**
+
 - **Inbox topic** — for GTD inbox processing with a specialized prompt
 - **Content topic** — for content ideation with access to your content pipeline
 - **Research topic** — for deep research with a prompt that emphasizes web search
@@ -235,6 +247,7 @@ Agents can query any SQLite database in your workspace. The key is telling them 
 **Step 1:** Put your SQLite database somewhere in the workspace (e.g., `data/my-database.db`)
 
 **Step 2:** Add database info to your `CLAUDE.md`:
+
 ```markdown
 ## Database
 SQLite database at `data/my-database.db`. Key tables:
@@ -248,6 +261,7 @@ Example queries:
 ```
 
 **Step 3:** Add database context to the General agent prompt in `worker.py`:
+
 ```python
 _GENERAL_AGENT_PROMPT = """\
 ...

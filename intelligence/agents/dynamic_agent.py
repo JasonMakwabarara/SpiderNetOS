@@ -219,7 +219,7 @@ class DynamicAgent(AgentBase):
         Execute tool calls from the LLM response via the tool registry.
         Tools that delegate to agents do so through meta_planner.dispatch().
         """
-        from intelligence.tools.registry import ToolRegistry
+        from tools.registry import ToolRegistry
 
         registry = ToolRegistry.instance()
         tool_calls = response.get("tool_calls", [])

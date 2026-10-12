@@ -1,0 +1,22 @@
+// Read by the markdownlint editor extension and by `npx markdownlint-cli2`.
+{
+  "config": {
+    "default": true,
+    // Docs write one paragraph per line; wrapping is left to the editor.
+    "MD013": false,
+    // Table pipes are not column-aligned by hand.
+    "MD060": false,
+    // Repeated headings such as "Usage" are fine under different parents.
+    "MD024": { "siblings_only": true },
+    // Bold labels such as **Positive** are used deliberately, not as headings.
+    "MD036": false
+  },
+  "ignores": [
+    "**/node_modules/**",
+    "**/vendor/**",
+    ".pytest_cache/**",
+    ".kilo/**",
+    // Skill prompts are model input, not documents; their wording is the contract.
+    "packages/skills/*/prompts/**", "packages/feature-packs/*/prompts/**"
+  ]
+}

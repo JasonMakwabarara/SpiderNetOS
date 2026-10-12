@@ -23,6 +23,7 @@ echo "pusher_secret_key" | docker secret create pusher_app_secret -
 ## Required Environment Variables
 
 ### Database
+
 ```bash
 export DB_PASSWORD=""              # PostgreSQL password (also in Docker secret)
 export DB_REPL_PASSWORD=""         # Replication password (also in Docker secret)
@@ -30,28 +31,33 @@ export DB_ENCRYPTION_KEY=""        # 32-character hex encryption key
 ```
 
 ### Cache
+
 ```bash
 export REDIS_PASSWORD=""           # Redis password (also in Docker secret)
 ```
 
 ### WebSocket/Real-time
+
 ```bash
 export PUSHER_APP_KEY=""           # Pusher app key
 export PUSHER_APP_SECRET=""        # Pusher app secret (also in Docker secret)
 ```
 
 ### Laravel
+
 ```bash
 export APP_KEY=""                  # Laravel app key (generate with: php artisan key:generate)
 ```
 
 ### External APIs (Optional but recommended)
+
 ```bash
 export OPENAI_API_KEY=""           # OpenAI API key (optional)
 export OLLAMA_URL=""               # Ollama endpoint (optional, default: http://host.docker.internal:11434)
 ```
 
 ### Cost Control
+
 ```bash
 export COST_CEILING_DEFAULT="50.00"  # Default cost ceiling in USD
 ```

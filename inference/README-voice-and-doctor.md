@@ -16,7 +16,7 @@ inference directory (which is how the prod host is laid out). Neither prints a s
 
 ## 1. Doctor — `python -m inference.doctor`
 
-```
+```text
 python -m inference.doctor [--env-file path] [--inference-url http://127.0.0.1:9001] [--json]
 ```
 
@@ -116,7 +116,7 @@ Voice Design), Fish Audio (the provider from the reel), Intron Sahara (African a
 provider with a Shona voice) and Piper as the dev baseline. The Azure renderer stays in the code
 behind `--include-azure` for any future catalogue that lists Azure voices.
 
-```
+```text
 python -m inference.voice_previews --out <dir> [--only elevenlabs|fishaudio|intron|piper]
                                    [--personas inference/voice_personas.yaml]
                                    [--env-file inference/.env] [--no-discover] [--include-azure]
@@ -132,7 +132,7 @@ The three lines (Atlas voice — wise, crisp, warm):
 
 | Provider | Env | How it renders |
 |---|---|---|
-| **ElevenLabs** | `ELEVENLABS_API_KEY` | Library voices: `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}` with `eleven_multilingual_v2`, `output_format=mp3_44100_128`. Discovery placeholders (`provider_voice_id: null` + `discover: {accent}`) are filled from `GET /v1/shared-voices?accent=nigerian|south african|kenyan|ghanaian|zimbabwean&language=en` (free-text `search` fallback) and written to the manifest with the library `preview_url`. **Voice Design** candidates (`kind: design`): `POST /v1/text-to-voice/design` with `voice_description`, `model_id: eleven_multilingual_ttv_v2`, a fixed `seed` and `text` — the endpoint requires 100–1000 characters, so the text is the three lines in one clip (~270 chars). The response's `previews[]` each carry `audio_base_64` and a distinct `generated_voice_id`; every preview is saved as `<slug>/take-N.mp3` and described in `<slug>/design.json`. **Nothing is created in the ElevenLabs account**: promoting a chosen take is `POST /v1/text-to-voice` with `{voice_name, voice_description, generated_voice_id}` → `voice_id`, which PR 5 runs once for the take Jason picks (`design.json` carries `created: false` and the exact call). |
+| **ElevenLabs** | `ELEVENLABS_API_KEY` | Library voices: `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}` with `eleven_multilingual_v2`, `output_format=mp3_44100_128`. Discovery placeholders (`provider_voice_id: null` + `discover: {accent}`) are filled from `GET /v1/shared-voices?accent=nigerian\|south african\|kenyan\|ghanaian\|zimbabwean&language=en` (free-text `search` fallback) and written to the manifest with the library `preview_url`. **Voice Design** candidates (`kind: design`): `POST /v1/text-to-voice/design` with `voice_description`, `model_id: eleven_multilingual_ttv_v2`, a fixed `seed` and `text` — the endpoint requires 100–1000 characters, so the text is the three lines in one clip (~270 chars). The response's `previews[]` each carry `audio_base_64` and a distinct `generated_voice_id`; every preview is saved as `<slug>/take-N.mp3` and described in `<slug>/design.json`. **Nothing is created in the ElevenLabs account**: promoting a chosen take is `POST /v1/text-to-voice` with `{voice_name, voice_description, generated_voice_id}` → `voice_id`, which PR 5 runs once for the take Jason picks (`design.json` carries `created: false` and the exact call). |
 | **Fish Audio** | `FISH_AUDIO_API_KEY` | `POST https://api.fish.audio/v1/tts`, `Authorization: Bearer`, header `model: s2.1-pro` (S2.1 Pro; `s1`, `s2-pro`, `s2.1-pro-free`, `drama-3-preview` also exist), JSON `{text, reference_id, format: mp3, mp3_bitrate: 128, latency: normal, normalize: true}` → MP3 bytes. `reference_id` is the library model `_id`. Library search: `GET https://api.fish.audio/model?title=…&page_size=10&sort_by=score` (answers without a key; the docs list Bearer auth) → `items[]{_id, title, description, languages, tags, author, like_count, task_count, samples}`. The six catalogued voices were found this way: Zimbabwean male + female (Chiedza), Nigerian male (calm) + female (Storyteller), South African female narrator, Kenyan male; one Ghanaian placeholder is discovered at render time. |
 | **Intron Sahara** | `INTRON_API_KEY` | `POST https://infer.voice.intron.io/tts/v1/enqueue`, `Authorization: Bearer`, JSON `{text, voice_language, voice_accent, voice_gender, output_audio_format: wav}` → `data.text_id`; then `GET https://infer.voice.intron.io/tts/v1/status/{text_id}` until `processing_status` is `TTS_TEXT_AUDIO_GENERATED` (or `…_PROCESSING_FAILED`), honouring `Retry-After` on 429; the `audio_path` URL is downloaded (`.wav`). Limits: 4,096 chars, 60 enqueues/min, 100 status calls/min. There is no voice id — the voice is (language, accent, gender). Catalogued: English with accents zulu, xhosa, swahili, yoruba, igbo, hausa, sepedi, setswana (male + female = 16), plus **Shona (`sn`, accent `shona`)** male + female tagged `experimental` — Intron lists Shona as a TTS language, the first Shona voice found at any provider; the English lines pushed through it are a Zimbabwean-accent experiment. (`POST /tts/v1/generate` is a synchronous alternative returning `audio_path`; the enqueue/poll path is what the renderer uses.) |
 | **Piper** | `PIPER_URL` | `POST {PIPER_URL}/synthesize` with `{text, voice, speed}` — the same request `speech.py` makes. Returns WAV, so `.wav`. |
@@ -184,7 +184,7 @@ is the one the page preselects.
 
 Put the keys in `inference/.env` (already gitignored by the root `.gitignore`'s `*.env` rule):
 
-```
+```text
 ELEVENLABS_API_KEY=…
 FISH_AUDIO_API_KEY=…
 INTRON_API_KEY=…

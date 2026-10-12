@@ -43,7 +43,7 @@ concurrency accounted for 64.7% of that day.
 
 **Carry four fields on any consequential finding:**
 
-```
+```text
 Claim:
 Evidence:
 What remains unknown:
@@ -285,7 +285,7 @@ undeclared work **and** on a declaration whose subject is gone.
 
 For consequential work, in the commit body or the PR:
 
-```
+```text
 Objective:
 Observed evidence:
 Hypothesis and remaining uncertainty:
