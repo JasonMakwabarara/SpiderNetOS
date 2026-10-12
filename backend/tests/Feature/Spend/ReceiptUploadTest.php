@@ -61,7 +61,7 @@ class ReceiptUploadTest extends TestCase
 
     public function test_upload_sets_has_receipt_sha256_and_document_row(): void
     {
-        Storage::fake('local');
+        $disk = Storage::fake('local');
 
         $tenant = $this->createTenant();
         $user = $this->createUser($tenant);
@@ -93,7 +93,7 @@ class ReceiptUploadTest extends TestCase
         ]);
         $this->assertDatabaseHas('expense_items', ['id' => $itemId, 'has_receipt' => true]);
 
-        Storage::disk('local')->assertExists($document['path']);
+        $disk->assertExists($document['path']);
         $this->assertStringStartsWith("spend/{$tenant->id}/receipts/", $document['path']);
 
         $this->assertDatabaseHas('event_log', ['event_type' => 'expense_report.receipt_attached']);
@@ -101,7 +101,7 @@ class ReceiptUploadTest extends TestCase
 
     public function test_remove_receipt_clears_has_receipt_and_deletes_file(): void
     {
-        Storage::fake('local');
+        $disk = Storage::fake('local');
 
         $tenant = $this->createTenant();
         $user = $this->createUser($tenant);
@@ -122,7 +122,7 @@ class ReceiptUploadTest extends TestCase
 
         $this->assertDatabaseMissing('spend_documents', ['id' => $document['id']]);
         $this->assertDatabaseHas('expense_items', ['id' => $itemId, 'has_receipt' => false]);
-        Storage::disk('local')->assertMissing($document['path']);
+        $disk->assertMissing($document['path']);
     }
 
     public function test_rejects_disallowed_mime_type(): void

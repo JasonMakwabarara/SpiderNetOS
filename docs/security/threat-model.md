@@ -33,7 +33,7 @@ Out of scope (Tier 2/3):
 
 ## 2. Trust boundaries
 
-```
+```text
 ┌────────────┐   HTTPS   ┌────────────────┐   internal    ┌────────────────┐
 │  Browser   │──────────▶│  Laravel API   │──────────────▶│  Inference     │
 │ (cockpit)  │◀──────────│  (backend)     │◀──────────────│  (Python)      │

@@ -2,7 +2,6 @@
 
 use App\Services\Agents\AgentArtifactApprovals;
 use App\Services\Agents\AgentRunResumer;
-use App\Services\Brain\BrainProposalService;
 use App\Services\Enterprise\RequisitionService;
 use App\Services\Enterprise\WorkforceService;
 use App\Services\Launch\BusinessLaunchService;
@@ -40,8 +39,10 @@ return [
         // A tool call the autonomy ladder parked: resumes the run.
         'agent_tool_call' => [AgentRunResumer::class, 'onApprovalResolved'],
 
-        // Proposed Knowledge-brain changes (Stream A / PR 3).
-        'brain_proposal' => [BrainProposalService::class, 'onApprovalResolved'],
+        // Proposed Knowledge-brain changes (Stream A / PR 3). Named as a
+        // string because the service has not shipped; until it does the
+        // engine skips this entry.
+        'brain_proposal' => ['App\Services\Brain\BrainProposalService', 'onApprovalResolved'],
 
         // The business plan the business-launch pack drafts (plan D7 §5):
         // approved -> the launch goes live, rejected -> back to `drafted`

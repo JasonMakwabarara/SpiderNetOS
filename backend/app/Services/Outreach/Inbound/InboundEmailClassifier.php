@@ -95,13 +95,13 @@ class InboundEmailClassifier
         ];
         foreach ($separators as $pattern) {
             if (preg_match($pattern, $text, $m, PREG_OFFSET_CAPTURE) === 1) {
-                $text = substr($text, 0, $m[0][1]);
+                $text = substr($text, 0, (int) $m[0][1]);
             }
         }
 
         // Signature delimiter.
         if (preg_match('/^-- \s*$/m', $text, $m, PREG_OFFSET_CAPTURE) === 1) {
-            $text = substr($text, 0, $m[0][1]);
+            $text = substr($text, 0, (int) $m[0][1]);
         }
 
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;

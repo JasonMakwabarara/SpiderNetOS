@@ -10,7 +10,7 @@ docker compose -f docker-compose.unified.yml up -d --build
 powershell -ExecutionPolicy Bypass -File scripts/up.ps1
 ```
 
-Open: http://localhost
+Open: <http://localhost>
 
 ### Customer-facing cockpit routes (pack-aware)
 

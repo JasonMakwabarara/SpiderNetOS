@@ -7,6 +7,7 @@ namespace Tests\Feature\Voice;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\VoicePersona;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
@@ -34,6 +35,8 @@ abstract class VoiceTestCase extends TestCase
     /** @var array<string, mixed>|int status code, or the JSON body the plane returns */
     protected array|int $ttsReply = [];
 
+    protected LocalFilesystemAdapter $localDisk;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,7 +49,7 @@ abstract class VoiceTestCase extends TestCase
         config()->set('services.inference.token', 'plane-token');
         $this->flags(['voice.atlas_speak' => 'on', 'voice.inbound' => 'on']);
 
-        Storage::fake('local');
+        $this->localDisk = Storage::fake('local');
         Storage::fake('public');
 
         $this->ttsReply = $this->ttsBody('ID3-atlas-audio');

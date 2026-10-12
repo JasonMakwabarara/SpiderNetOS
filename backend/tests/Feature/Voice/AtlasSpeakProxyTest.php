@@ -8,7 +8,6 @@ use App\Models\Event;
 use App\Services\Voice\AtlasSpeechService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -66,7 +65,7 @@ class AtlasSpeakProxyTest extends VoiceTestCase
         // Cached on the local disk under the tenant, keyed sha256(text|persona).
         $key = hash('sha256', $normalized.'|eleven-leah');
         $this->assertSame($key, AtlasSpeechService::cacheKey($normalized, 'eleven-leah'));
-        Storage::disk('local')->assertExists("voice/atlas-speak/{$this->tenant->id}/{$key}.mp3");
+        $this->localDisk->assertExists("voice/atlas-speak/{$this->tenant->id}/{$key}.mp3");
 
         $this->api()->post('/api/atlas/speak', ['text' => $normalized])
             ->assertOk()->assertHeader('X-Atlas-Voice-Cache', 'hit')->assertContent('ID3-atlas-audio');
@@ -166,7 +165,7 @@ class AtlasSpeakProxyTest extends VoiceTestCase
                 ->assertHeader('X-Atlas-Voice-Cache', 'miss');
         }
         $this->assertCount(5, $this->ttsRequests);
-        $this->assertSame([], Storage::disk('local')->allFiles('voice/atlas-speak'));
+        $this->assertSame([], $this->localDisk->allFiles('voice/atlas-speak'));
         Http::assertSentCount(5);
     }
 }

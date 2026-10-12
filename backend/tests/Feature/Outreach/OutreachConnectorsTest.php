@@ -15,6 +15,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -26,6 +27,9 @@ class OutreachConnectorsTest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
+    /** @var array<string, mixed> What the fake mailer factory was last handed. */
+    private array $smtpCredentials = [];
 
     private function user(): User
     {
@@ -43,18 +47,23 @@ class OutreachConnectorsTest extends TestCase
 
     private function bindMailerFactory(Mailer $mailer): TenantMailerFactory
     {
-        $factory = new class(app(ConnectorManager::class), $mailer) extends TenantMailerFactory
-        {
-            public array $seen = [];
+        $record = function (array $credentials): void {
+            $this->smtpCredentials = $credentials;
+        };
 
-            public function __construct(ConnectorManager $connectors, private readonly Mailer $mailer)
-            {
+        $factory = new class(app(ConnectorManager::class), $mailer, $record) extends TenantMailerFactory
+        {
+            public function __construct(
+                ConnectorManager $connectors,
+                private readonly Mailer $mailer,
+                private readonly \Closure $record,
+            ) {
                 parent::__construct($connectors);
             }
 
             public function fromCredentials(array $credentials): Mailer
             {
-                $this->seen = $credentials;
+                ($this->record)($credentials);
 
                 return $this->mailer;
             }
@@ -156,6 +165,7 @@ class OutreachConnectorsTest extends TestCase
     {
         $user = $this->user();
 
+        /** @var Mailer&MockInterface $mailer */
         $mailer = Mockery::mock(Mailer::class);
         $mailer->shouldReceive('raw')->once()->withArgs(function (string $text, $callback) {
             return str_contains($text, 'connection test');
@@ -171,7 +181,7 @@ class OutreachConnectorsTest extends TestCase
             ],
         ])->assertCreated()->assertJsonPath('verified', true);
 
-        $this->assertSame('app-pass', $factory->seen['smtp_password']);
+        $this->assertSame('app-pass', $this->smtpCredentials['smtp_password']);
 
         $integration = TenantIntegration::forTenant($this->tenant->id)->where('provider', 'zoho_mail')->firstOrFail();
         $this->assertSame('email', $integration->type);
@@ -190,6 +200,7 @@ class OutreachConnectorsTest extends TestCase
     {
         $user = $this->user();
 
+        /** @var Mailer&MockInterface $mailer */
         $mailer = Mockery::mock(Mailer::class);
         $mailer->shouldReceive('raw')->once()->andThrow(new \RuntimeException('535 Authentication failed'));
         $this->bindMailerFactory($mailer);

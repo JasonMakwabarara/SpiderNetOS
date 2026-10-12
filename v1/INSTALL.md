@@ -35,6 +35,7 @@ This is where the Away-From-Desk Autonomy KPI starts climbing. Make decisions on
 You are helping a user install CommandOS — a Telegram bot that gives them an AI assistant on their phone, powered by Claude Code. This is a complex module with multiple moving parts (Telegram bot, Claude Agent SDK, persistent sessions). Follow these rules:
 
 **Critical rule — the user NEVER touches the terminal:**
+
 - YOU execute every single command. The user does not type in a terminal, ever.
 - The user's job is: answer your questions, do things in Telegram / browser (creating bots, getting API keys), and paste keys to you.
 - You handle ALL file creation, package installation, environment setup, configuration, testing, and deployment silently.
@@ -42,6 +43,7 @@ You are helping a user install CommandOS — a Telegram bot that gives them an A
 - The only time the user interacts with a terminal is if they explicitly choose to — but assume they won't and don't ask them to.
 
 **Behavior:**
+
 - Assume the user is non-technical — they may have never opened a terminal before
 - Explain what you are doing at each step in plain English BEFORE doing it
 - Celebrate milestones — getting the first bot response is a huge moment
@@ -50,6 +52,7 @@ You are helping a user install CommandOS — a Telegram bot that gives them an A
 - Use encouraging language throughout — they are building something genuinely powerful
 
 **Pacing:**
+
 - Do NOT rush. This is the most complex module. Pause after major milestones.
 - After prerequisites: "We've got all the tools. Ready to create your bot?"
 - After Telegram setup: "Your bot exists! Now let's give it a brain."
@@ -57,6 +60,7 @@ You are helping a user install CommandOS — a Telegram bot that gives them an A
 - After deployment: "Your bot is now running 24/7. From anywhere in the world, you can open Telegram and talk to your AI."
 
 **Error handling:**
+
 - If Python version is too old → provide exact upgrade instructions for their OS
 - If `claude` CLI not found → `npm install -g @anthropic-ai/claude-code`
 - If `claude_agent_sdk` import fails → `pip install claude-agent-sdk`
@@ -70,7 +74,8 @@ The user may already have a workspace with a CLAUDE.md (from ContextOS) or may b
 
 **Important — File placement:**
 When copying module files into the user's workspace, maintain the `apps/command/` package structure. The bot is a Python package that imports modules from within itself. The final structure in their workspace should be:
-```
+
+```text
 workspace/
 ├── CLAUDE.md
 ├── .env
@@ -132,6 +137,7 @@ Before installation, we need to figure out your setup. Ask the user these questi
 "Do you want to be able to send voice notes to your bot? You'd speak into your phone and the AI transcribes and processes it. This requires an OpenAI API key (for Whisper transcription)."
 
 **Options:**
+
 - **A) Yes, set up voice notes** — We'll need your OpenAI API key. If you don't have one, I'll walk you through creating it.
 - **B) Skip for now** — No problem, text and photos still work perfectly. You can always add voice notes later by adding an OpenAI key.
 
@@ -142,6 +148,7 @@ Record: `VOICE_ENABLED = true | false`
 "Do you want the bot to generate professional PDF reports? When you ask for analysis or reports, instead of a wall of text, you get a nicely formatted PDF delivered right to Telegram."
 
 **Options:**
+
 - **A) Yes, set up PDFs** (recommended) — Requires installing WeasyPrint (a PDF rendering library). I'll handle the installation.
 - **B) Skip for now** — Reports will still be delivered as text messages or markdown files.
 
@@ -152,6 +159,7 @@ Record: `PDF_ENABLED = true | false`
 "Do you want the bot to generate data visualizations? When you ask about metrics or data, the agent can create charts and deliver them as images in Telegram."
 
 **Options:**
+
 - **A) Yes, set up charts** (recommended) — Requires matplotlib. Easy to install.
 - **B) Skip for now** — Data will be presented as text/tables instead of visual charts.
 
@@ -162,6 +170,7 @@ Record: `CHARTS_ENABLED = true | false`
 "What machine will this bot run on? It needs to be always-on to receive Telegram messages."
 
 **Options:**
+
 - **A) Mac** (Mac Mini, MacBook, iMac) — We'll use macOS launchd to keep it running
 - **B) Linux** (VPS, cloud server, Raspberry Pi) — We'll use systemd
 - **C) Just my laptop for now** — That's fine for getting started. We'll skip the always-on setup and you can run it manually.
@@ -177,46 +186,61 @@ After scoping, summarize: "Here's what we're setting up: CommandOS with {voice s
 Check each prerequisite. Verify it works before proceeding.
 
 ### Python 3.11+
+
 ```bash
 python3 --version
 ```
+
 If not installed or too old: provide OS-specific install instructions.
+
 - macOS: `brew install python@3.12` or download from python.org
 - Linux: `sudo apt install python3.12` or equivalent
 
 ### Node.js (for Claude Code CLI)
+
 ```bash
 node --version
 ```
+
 If not installed:
+
 - macOS: `brew install node`
 - Linux: `curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs`
 
 ### Claude Code CLI
+
 ```bash
 claude --version
 ```
+
 If not installed:
+
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
 ### pip
+
 ```bash
 python3 -m pip --version
 ```
+
 If not installed:
+
 ```bash
 python3 -m ensurepip --upgrade
 ```
 
 ### Existing workspace (from ContextOS)
+
 ```bash
 ls CLAUDE.md
 ```
+
 If CLAUDE.md doesn't exist: "It looks like you don't have a workspace set up yet. That's okay — we'll create a basic one. But for the best experience, set up ContextOS first — it creates the workspace foundation that CommandOS plugs into."
 
 If no CLAUDE.md exists, create a minimal one:
+
 ```markdown
 # My Workspace
 
@@ -265,8 +289,8 @@ Now we need to create the group where you'll talk to your bot.
 
 Now we need the Group ID:
 
-6. Send any message in the group (even just "test")
-7. Then I'll run this command to find your group ID:
+1. Send any message in the group (even just "test")
+2. Then I'll run this command to find your group ID:
 
 ```bash
 # Replace YOUR_BOT_TOKEN with the token from above
@@ -289,6 +313,7 @@ else:
 The group ID will be a negative number starting with `-100`, like `-1001234567890`.
 
 [VERIFY]
+
 ```bash
 # Quick verify — bot can see the group
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getChat?chat_id=$TELEGRAM_GROUP_ID" | python3 -c "
@@ -302,6 +327,7 @@ else:
     print('Check that: (1) the bot token is correct, (2) the group ID is correct, (3) the bot is in the group')
 "
 ```
+
 Expected: "Connected to group: [name]" and "Topics enabled: True"
 
 If Topics not enabled: "Go to your Telegram group → Settings → Topics → turn it ON. This gives each agent its own thread."
@@ -321,6 +347,7 @@ This is the key that powers the Claude agents.
 **Note:** If you're on a Claude plan (Max, Team, or Enterprise), you may already have an API key through your organization. Check with your admin.
 
 [VERIFY]
+
 ```bash
 python3 -c "
 import os
@@ -348,6 +375,7 @@ This is for voice note transcription (Whisper).
 6. Paste it here
 
 [VERIFY]
+
 ```bash
 python3 -c "
 import os
@@ -383,21 +411,26 @@ pip install -r requirements.txt
 ```
 
 The `requirements.txt` from this module includes:
+
 - `aiogram>=3.0` — Telegram bot framework
 - `claude-agent-sdk` — Claude Code Agent SDK
 - `python-dotenv` — Environment variable loading
 - `markdown` — Markdown processing (for PDFs)
 
 **If PDF_ENABLED:**
+
 ```bash
 pip install weasyprint
 ```
+
 If WeasyPrint fails (common on macOS):
+
 ```bash
 # macOS — install system dependencies first
 brew install pango cairo gdk-pixbuf libffi
 pip install weasyprint
 ```
+
 ```bash
 # Linux
 sudo apt install python3-weasyprint
@@ -405,16 +438,19 @@ sudo apt install python3-weasyprint
 ```
 
 **If CHARTS_ENABLED:**
+
 ```bash
 pip install matplotlib
 ```
 
 **If VOICE_ENABLED:**
+
 ```bash
 pip install openai
 ```
 
 [VERIFY]
+
 ```bash
 python3 -c "
 from aiogram import Bot; print('aiogram OK')
@@ -422,7 +458,9 @@ from claude_agent_sdk import query; print('claude-agent-sdk OK')
 from dotenv import load_dotenv; print('dotenv OK')
 "
 ```
+
 Optional checks:
+
 ```bash
 python3 -c "from weasyprint import HTML; print('weasyprint OK')" 2>/dev/null || echo "weasyprint not installed (PDFs disabled)"
 python3 -c "import matplotlib; print('matplotlib OK')" 2>/dev/null || echo "matplotlib not installed (charts disabled)"
@@ -433,7 +471,7 @@ python3 -c "from openai import AsyncOpenAI; print('openai OK')" 2>/dev/null || e
 
 Write the .env file with the collected API keys. Place it in the workspace root (same folder as CLAUDE.md).
 
-```
+```text
 # === CommandOS ===
 TELEGRAM_BOT_TOKEN=your_token_here
 TELEGRAM_GROUP_ID=-100your_group_id
@@ -452,6 +490,7 @@ OPENAI_API_KEY=sk-your_openai_key_here
 **If a .env file already exists:** Append these keys to it. Don't overwrite existing keys.
 
 [VERIFY]
+
 ```bash
 python3 -c "
 from dotenv import load_dotenv; import os; load_dotenv()
@@ -471,7 +510,7 @@ else: print('OpenAI: not set (voice notes disabled)')
 
 Copy all the bot files from this module's `scripts/` directory into your workspace. The key structure is:
 
-```
+```text
 your-workspace/
 ├── apps/
 │   ├── __init__.py          (empty file)
@@ -500,6 +539,7 @@ Copy each file from `scripts/apps/` to the workspace's `apps/` directory. Make s
 **If the user already has an `apps/` directory:** Add the `command/` subdirectory alongside their existing apps. Don't overwrite anything.
 
 [VERIFY]
+
 ```bash
 python3 -c "
 from apps.command.config import load_config
@@ -507,6 +547,7 @@ c = load_config()
 print(f'Config loaded — group: {c.group_id}, model: {c.general_agent_model}')
 "
 ```
+
 Expected: Should print the group ID and model without import errors.
 
 ### Step 4: Set up prime commands
@@ -520,19 +561,23 @@ mkdir -p .claude/commands
 **If prime commands already exist** (from ContextOS): Leave them as-is. The bot will use whatever prime commands are already configured.
 
 **If no prime commands exist:** Copy the templates from this module:
+
 - `.claude/commands/prime.md` — Full prime for spawned agents (/new)
 - `.claude/commands/prime-telegram.md` — Shorter prime for the General agent (faster response)
 
 Then edit both files to reference YOUR context files. At minimum, each should tell the agent to read:
+
 1. `CLAUDE.md` — your workspace overview
 2. Any key business documents or strategy files you have
 
 The more relevant files you include in the prime command, the smarter your agents will be. But keep `prime-telegram.md` lean — it runs on every first message and the user is waiting.
 
 [VERIFY]
+
 ```bash
 ls .claude/commands/prime.md .claude/commands/prime-telegram.md
 ```
+
 Both files should exist.
 
 ### Step 5: Customize the worker prompt
@@ -556,6 +601,7 @@ mkdir -p data/command
 This is where the bot stores session data and logs.
 
 [VERIFY]
+
 ```bash
 ls -la data/command/
 ```
@@ -572,6 +618,7 @@ python -m apps.command.main
 ```
 
 You should see:
+
 1. A branded boot banner
 2. Configuration summary (model, workspace path)
 3. System checks (all green checkmarks)
@@ -641,34 +688,40 @@ Skip to WHAT'S NEXT.
 We'll use macOS launchd — it keeps the bot running and auto-restarts if it crashes.
 
 1. Copy the plist template from this module's `config/` folder:
+
 ```bash
 cp config/com.commandos.bot.plist ~/Library/LaunchAgents/com.commandos.bot.plist
 ```
 
-2. Edit the plist to set correct paths. Replace these placeholders:
+1. Edit the plist to set correct paths. Replace these placeholders:
    - `__VENV_PYTHON__` → full path to your venv Python (run `which python` with venv active to find it)
    - `__WORKSPACE_ROOT__` → full path to your workspace (run `pwd` in your workspace)
    - `__USERNAME__` → your macOS username (run `whoami`)
 
-3. Create the log directory:
+2. Create the log directory:
+
 ```bash
 mkdir -p data
 ```
 
-4. Load the service:
+1. Load the service:
+
 ```bash
 launchctl load ~/Library/LaunchAgents/com.commandos.bot.plist
 ```
 
-5. Verify:
+1. Verify:
+
 ```bash
 launchctl list | grep commandos
 ```
+
 Should show a PID and exit code 0.
 
-6. Stop the manual bot process if it's still running (Ctrl+C), launchd is now managing it.
+1. Stop the manual bot process if it's still running (Ctrl+C), launchd is now managing it.
 
 **Managing the bot:**
+
 - **Stop:** `launchctl unload ~/Library/LaunchAgents/com.commandos.bot.plist`
 - **Restart:** Unload then load, or send `/reboot` in Telegram
 - **View logs:** `tail -f data/command.stdout.log`
@@ -678,29 +731,34 @@ Should show a PID and exit code 0.
 We'll use systemd — Linux's built-in service manager.
 
 1. Copy the service template from this module's `config/` folder to systemd:
+
 ```bash
 sudo cp config/command-bot.service /etc/systemd/system/command-bot.service
 ```
 
-2. Edit the service file. Replace these placeholders:
+1. Edit the service file. Replace these placeholders:
    - `__VENV_PYTHON__` → full path to your venv Python
    - `__WORKSPACE_ROOT__` → full path to your workspace
    - `__USERNAME__` → your Linux username
 
-3. Enable and start:
+2. Enable and start:
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable command-bot
 sudo systemctl start command-bot
 ```
 
-4. Verify:
+1. Verify:
+
 ```bash
 sudo systemctl status command-bot
 ```
+
 Should show "active (running)".
 
 **Managing the bot:**
+
 - **Stop:** `sudo systemctl stop command-bot`
 - **Restart:** `sudo systemctl restart command-bot` or send `/reboot` in Telegram
 - **View logs:** `journalctl -u command-bot -f`
@@ -731,6 +789,7 @@ Now that CommandOS is running, here's your command reference:
 6. **Use /compact** when the agent starts giving shorter answers or seems to forget earlier context — it compresses the conversation to free up space.
 
 **Pro tip:** Add this to your CLAUDE.md so all agents know CommandOS is available:
+
 ```markdown
 ## CommandOS — Telegram AI Assistant
 - Bot: Running as always-on service
@@ -746,6 +805,7 @@ Now that CommandOS is running, here's your command reference:
 **Your AI is in your pocket.** From anywhere in the world, open Telegram and talk to your AIOS. That's a fundamental shift in how you run your business.
 
 Your AIOS journey continues:
+
 1. **Next: Daily Brief** — The capstone of Layer 3. Everything you've built (Context + Data + IntelOS + CommandOS) synthesized into a morning intelligence report delivered to Telegram. Wake up, check your phone, you're the most informed person in your org.
 2. **After Layer 3: Layer 4 — Automate** — The platform is built. Time to audit your tasks and start crossing them off permanently. This is where "cool AI system" becomes "I'm getting my life back."
 3. **Then: Layer 5 — Build** — Custom automations unique to your business.

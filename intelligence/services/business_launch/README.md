@@ -17,7 +17,7 @@ brain; this service does the parts that must never come from an LLM.
 
 ## Endpoints
 
-```
+```text
 GET  /health
 POST /finance/model        {"assumptions": {...}, "include_workbook": true}
 POST /docgen/render        {"template": "business-plan.md.j2", "context": {...}, "formats": ["md", "docx", "pdf"]}

@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Enterprise\Fiscal\FdmsSigner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -172,7 +173,7 @@ class FdmsLiveTest extends TestCase
         $this->assertSame(0, $status['receipt_counter']);
         $this->assertSame(102, $status['receipt_global_no']);
 
-        $event = \DB::table('event_log')->where('aggregate_id', $one['id'])->value('payload');
+        $event = DB::table('event_log')->where('aggregate_id', $one['id'])->value('payload');
         $payload = is_array($event) ? $event : json_decode((string) $event, true);
         $keys = array_keys($payload);
         sort($keys);
@@ -297,7 +298,7 @@ class FdmsLiveTest extends TestCase
             $c['fiscalCounterType'], $c['fiscalCounterTaxID'] ?? $c['fiscalCounterMoneyType'], $c['fiscalCounterValue'] + 0,
         ], $close['fiscalDayCounters']));
 
-        $event = \DB::table('event_log')->where('aggregate_id', $credit['id'])->value('payload');
+        $event = DB::table('event_log')->where('aggregate_id', $credit['id'])->value('payload');
         $keys = array_keys(is_array($event) ? $event : json_decode((string) $event, true));
         sort($keys);
         $this->assertSame(['credit_note_id', 'fdms_receipt_id', 'invoice_id', 'status'], $keys);

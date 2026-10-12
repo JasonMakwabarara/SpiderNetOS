@@ -8,29 +8,35 @@
 ## Kill-switches
 
 ### Global voice kill-switch (takes effect within 5 s)
+
 ```bash
 php artisan feature:set voice.inbound off
 ```
+
 Every subsequent Twilio webhook returns a static "service temporarily unavailable" TwiML.
 Callers hear the message and are disconnected gracefully.
 
 ### Per-tenant kill-switch
+
 ```bash
 php artisan feature:set voice.inbound off <tenant-uuid>
 ```
 
 ### Restore
+
 ```bash
 php artisan feature:set voice.inbound on
 php artisan feature:set voice.inbound on <tenant-uuid>
 ```
 
 ### Disable voice agent mode (revert to direct inference — Phase A path)
+
 ```bash
 php artisan feature:set voice.agent_mode off
 ```
 
 ### Disable streaming mode (revert to Gather mode)
+
 ```bash
 php artisan feature:set voice.streaming off
 ```
@@ -38,6 +44,7 @@ php artisan feature:set voice.streaming off
 ---
 
 ## Smoke test
+
 ```bash
 # Quick config/DB check (no call placed)
 php artisan voice:smoke
@@ -76,26 +83,29 @@ php artisan voice:smoke --tenant=<uuid> --call
 
 ## Twilio console references
 
-- **Manage phone numbers:** https://console.twilio.com/us1/develop/phone-numbers/manage/incoming
+- **Manage phone numbers:** <https://console.twilio.com/us1/develop/phone-numbers/manage/incoming>
 - **Webhook URL:** `https://<your-domain>/api/voice/inbound`
 - **Status callback URL:** `https://<your-domain>/api/voice/status`
 - **Recording callback URL:** `https://<your-domain>/api/voice/recording`
-- **Error log:** https://console.twilio.com/us1/monitor/logs/notifications
+- **Error log:** <https://console.twilio.com/us1/monitor/logs/notifications>
 
 ---
 
 ## Rollback procedures per phase
 
 ### Phase A rollback
+
 1. `php artisan feature:set voice.inbound off` — kills all inbound silently
 2. Revert migration: `php artisan migrate:rollback --step=1` (removes hardening columns)
 3. Revert `bootstrap/app.php` alias additions if needed (git revert)
 
 ### Phase B rollback
+
 1. `php artisan feature:set voice.agent_mode off` — reverts to Phase A direct inference path
 2. No migration rollback needed (agent policy cols are nullable with safe defaults)
 
 ### Phase C rollback
+
 1. `php artisan feature:set voice.streaming off` — reverts to Gather mode per number
 2. `php artisan feature:set voice.post_call_summary off` — disables summary DAG
 3. Revert streaming migration: `php artisan migrate:rollback --step=1`

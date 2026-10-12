@@ -100,6 +100,7 @@ A dynamic agent may be promoted to a core class when **all** of the following ar
 4. **Stability:** Zero critical bugs in the dynamic config for 30 consecutive days.
 
 Promotion requires:
+
 - New `intelligence/agents/{name}_agent.py` class
 - Migration: existing `Agent::TYPE_DYNAMIC` rows → `Agent::TYPE_CORE` with same slug
 - ADR superseding this one

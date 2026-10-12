@@ -9,6 +9,7 @@ use App\Services\CostGovernor;
 use App\Services\FeatureFlag;
 use App\Services\VoiceSafetyGuard;
 use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -18,9 +19,9 @@ use Tests\TestCase;
  */
 class VoiceSafetyGuardTest extends TestCase
 {
-    private CostGovernor $costGovernor;
+    private CostGovernor&MockInterface $costGovernor;
 
-    private ApprovalEngine $approvalEngine;
+    private ApprovalEngine&MockInterface $approvalEngine;
 
     private VoiceSafetyGuard $guard;
 

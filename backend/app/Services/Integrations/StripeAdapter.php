@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Integrations;
 
 use Illuminate\Support\Facades\Http;
-use Stripe\Webhook;
 
 class StripeAdapter
 {
@@ -129,48 +128,85 @@ class StripeAdapter
             throw new \RuntimeException('Stripe webhook secret not configured');
         }
 
-        $event = Webhook::constructEvent(
-            $payload,
-            $signature,
-            $this->webhookSecret
-        );
+        $this->verifySignature($payload, $signature);
 
-        return match ($event->type) {
+        $event = json_decode($payload, true);
+        if (! is_array($event) || ! isset($event['type'])) {
+            throw new \RuntimeException('Stripe webhook payload is not an event');
+        }
+        $object = $event['data']['object'] ?? [];
+
+        return match ($event['type']) {
             'payment_intent.succeeded' => [
                 'type' => 'payment_succeeded',
-                'payment_intent_id' => $event->data->object->id,
-                'amount' => $event->data->object->amount_received / 100,
+                'payment_intent_id' => $object['id'],
+                'amount' => $object['amount_received'] / 100,
             ],
             'payment_intent.payment_failed' => [
                 'type' => 'payment_failed',
-                'payment_intent_id' => $event->data->object->id,
-                'error' => $event->data->object->last_payment_error->message,
+                'payment_intent_id' => $object['id'],
+                'error' => $object['last_payment_error']['message'] ?? null,
             ],
             'invoice.paid' => [
                 'type' => 'invoice_paid',
-                'invoice_id' => $event->data->object->id,
-                'amount' => $event->data->object->amount_paid / 100,
+                'invoice_id' => $object['id'],
+                'amount' => $object['amount_paid'] / 100,
             ],
             'invoice.payment_failed' => [
                 'type' => 'invoice_payment_failed',
-                'invoice_id' => $event->data->object->id,
+                'invoice_id' => $object['id'],
             ],
             'customer.subscription.created' => [
                 'type' => 'subscription_created',
-                'subscription_id' => $event->data->object->id,
+                'subscription_id' => $object['id'],
             ],
             'customer.subscription.deleted' => [
                 'type' => 'subscription_cancelled',
-                'subscription_id' => $event->data->object->id,
+                'subscription_id' => $object['id'],
             ],
-            default => ['type' => $event->type, 'data' => $event->data->object],
+            default => ['type' => $event['type'], 'data' => $object],
         };
+    }
+
+    /**
+     * Stripe-Signature is `t=<unix>,v1=<hex>[,v1=<hex>…]`: an HMAC-SHA256 of
+     * "<t>.<payload>" under the endpoint secret. Several v1 entries appear
+     * while a secret is being rolled; any one matching is enough.
+     */
+    private function verifySignature(string $payload, string $header, int $toleranceSeconds = 300): void
+    {
+        $timestamp = null;
+        $signatures = [];
+        foreach (explode(',', $header) as $part) {
+            [$key, $value] = array_pad(explode('=', trim($part), 2), 2, '');
+            if ($key === 't' && ctype_digit($value)) {
+                $timestamp = (int) $value;
+            } elseif ($key === 'v1' && $value !== '') {
+                $signatures[] = $value;
+            }
+        }
+
+        if ($timestamp === null || $signatures === []) {
+            throw new \RuntimeException('Stripe webhook signature header is malformed');
+        }
+        if (abs(time() - $timestamp) > $toleranceSeconds) {
+            throw new \RuntimeException('Stripe webhook timestamp is outside the tolerance');
+        }
+
+        $expected = hash_hmac('sha256', $timestamp.'.'.$payload, $this->webhookSecret);
+        foreach ($signatures as $candidate) {
+            if (hash_equals($expected, $candidate)) {
+                return;
+            }
+        }
+
+        throw new \RuntimeException('Stripe webhook signature does not match');
     }
 
     public function verifyPayment(string $paymentIntentId): array
     {
         $response = Http::withToken($this->apiKey)
-            ->get("https://api.stripe.com/v1/payment_intentions/{$paymentIntentId}");
+            ->get("https://api.stripe.com/v1/payment_intents/{$paymentIntentId}");
 
         if ($response->failed()) {
             throw new \RuntimeException('Stripe API error: '.$response->body());

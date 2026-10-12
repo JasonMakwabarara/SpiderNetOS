@@ -20,7 +20,7 @@ This pack enables real estate professionals to:
 
 ### Lead Lifecycle Chain
 
-```
+```text
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
 │ CAPTURED │───▶│QUALIFIED │───▶│CONTACTED │───▶│SCHEDULED │
 └──────────┘    └──────────┘    └──────────┘    └──────────┘

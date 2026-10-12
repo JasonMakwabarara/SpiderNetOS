@@ -5,6 +5,7 @@
 **Integration Strategy:** Deploy the external Hermes Agent (nousresearch.com) alongside SpiderNetOS to create a unified AI communication platform. Hermes handles multi-channel communication, while SpiderNetOS provides specialized agent coordination and RL training.
 
 **Key Benefits:**
+
 - ✅ Immediate access to 15+ messaging platforms (Telegram, Discord, Slack, etc.)
 - ✅ Built-in autonomous AI with learning loop and skill creation
 - ✅ Voice mode and real-time communication
@@ -12,7 +13,8 @@
 - ✅ No need to build custom communication layer
 
 **Integration Architecture:**
-```
+
+```text
 User Channels (15+ platforms)
         ↓
     [Hermes Agent] ← Autonomous AI hub
@@ -27,6 +29,7 @@ User Channels (15+ platforms)
 ## Phase 1: Hermes Agent Deployment & Configuration
 
 ### 1.1 Install Hermes Agent
+
 ```bash
 # Install the autonomous Hermes agent
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
@@ -36,6 +39,7 @@ hermes --version
 ```
 
 ### 1.2 Configure SpiderNetOS Integration
+
 ```bash
 # Create SpiderNetOS-specific configuration
 mkdir -p ~/.hermes/spidernet
@@ -48,6 +52,7 @@ hermes config set \
 ```
 
 ### 1.3 Set Up Multi-Channel Communication
+
 ```bash
 # Configure all major communication platforms
 hermes messaging setup telegram --token "$TELEGRAM_BOT_TOKEN"
@@ -59,6 +64,7 @@ hermes messaging setup sms --provider twilio --sid "$TWILIO_SID"
 ```
 
 ### 1.4 Create SpiderNetOS Personality
+
 ```yaml
 # ~/.hermes/SOUL.md - SpiderNetOS Integration Personality
 name: "SpiderNetOS Communication Hub"
@@ -85,6 +91,7 @@ personality: |
 ## Phase 2: SpiderNetOS API Integration
 
 ### 2.1 Create Hermes Integration API
+
 ```python
 # services/api/routes/hermes_integration.py
 from fastapi import APIRouter, HTTPException, BackgroundTasks
@@ -165,6 +172,7 @@ async def sync_learning_data(learning_data: Dict[str, Any]):
 ```
 
 ### 2.2 Extend MetaPlanner for Hermes Coordination
+
 ```python
 # core/meta_planner.py - Add Hermes integration
 class MetaPlanner:
@@ -214,6 +222,7 @@ class MetaPlanner:
 ```
 
 ### 2.3 Create Learning Signal Bridge
+
 ```python
 # services/api/learning_bridge.py
 class HermesLearningBridge:
@@ -287,6 +296,7 @@ class HermesLearningBridge:
 ### 3.1 Create Communication Pattern Skills in Hermes
 
 **Skill: spidernet_agent_coordinator**
+
 ```yaml
 name: "SpiderNetOS Agent Coordinator"
 description: "Coordinate complex workflows across SpiderNetOS specialized agents"
@@ -331,6 +341,7 @@ logic: |
 ```
 
 **Skill: communication_pattern_optimizer**
+
 ```yaml
 name: "Communication Pattern Optimizer"
 description: "Learn and optimize communication patterns using RL feedback"
@@ -376,6 +387,7 @@ logic: |
 ```
 
 ### 3.2 Set Up Autonomous Learning Loop
+
 ```bash
 # Automated learning synchronization (cron job)
 */15 * * * * /opt/spidernet/scripts/sync-hermes-learning.sh
@@ -397,6 +409,7 @@ rm /tmp/hermes_learning.json
 ```
 
 ### 3.3 Create Communication Quality Metrics
+
 ```python
 # services/api/metrics/communication_metrics.py
 class CommunicationMetricsCollector:
@@ -457,6 +470,7 @@ class CommunicationMetricsCollector:
 ## Phase 4: Multi-Channel Unified Experience
 
 ### 4.1 Create Universal Conversation Context
+
 ```python
 # services/shared/conversation_context.py
 class UniversalConversationContext:
@@ -537,6 +551,7 @@ class UniversalConversationContext:
 ```
 
 ### 4.2 Implement Channel-Agnostic Responses
+
 ```python
 # services/api/responses/channel_adaptive_responses.py
 class ChannelAdaptiveResponseGenerator:
@@ -616,6 +631,7 @@ class ChannelAdaptiveResponseGenerator:
 ## Phase 5: Production Deployment & Scaling
 
 ### 5.1 Deploy Integrated Stack
+
 ```yaml
 # docker-compose.yml - Integrated SpiderNetOS + Hermes
 version: '3.8'
@@ -657,6 +673,7 @@ networks:
 ```
 
 ### 5.2 Configure Learning Synchronization
+
 ```bash
 # Automated learning sync
 */15 * * * * /opt/spidernet/scripts/sync-hermes-learning.sh
@@ -666,6 +683,7 @@ networks:
 ```
 
 ### 5.3 Set Up Monitoring Integration
+
 ```yaml
 # Prometheus configuration for Hermes
 scrape_configs:
@@ -681,21 +699,25 @@ scrape_configs:
 ## Success Metrics & Validation
 
 ### Communication Unification Metrics
+
 - **Channel Coverage:** 15+ platforms active
 - **Context Preservation:** >95% conversation continuity across channels
 - **Response Time:** <2 seconds average across all channels
 
 ### Agent Coordination Metrics
+
 - **Workflow Success Rate:** >90% complex workflow completion
 - **Agent Utilization:** Balanced load across Atlas, Nexus, Prism, etc.
 - **Coordination Latency:** <5 seconds for multi-agent orchestration
 
 ### Learning & Adaptation Metrics
+
 - **Pattern Recognition:** >80% intent detection accuracy
 - **RL Improvement:** 15-25% better communication outcomes over time
 - **User Satisfaction:** >4.5/5 average rating
 
 ### External Integration Metrics
+
 - **API Success Rate:** >99% external API call success
 - **Webhook Processing:** <1 second average processing time
 - **System Uptime:** >99.9% integrated system availability
@@ -705,6 +727,7 @@ scrape_configs:
 ## Architecture Benefits
 
 ### **Immediate Advantages**
+
 1. **No Custom Communication Layer:** Leverage battle-tested Hermes Agent
 2. **15+ Channels Out-of-Box:** Telegram, Discord, Slack, WhatsApp, etc.
 3. **Autonomous AI:** Built-in learning loop and skill creation
@@ -712,6 +735,7 @@ scrape_configs:
 5. **MCP Integration:** Connect to external systems seamlessly
 
 ### **Integration Advantages**
+
 1. **Unified API:** Single coordination point for all SpiderNetOS agents
 2. **RL Learning Bridge:** Communication patterns improve SpiderNetOS RL models
 3. **Workflow Orchestration:** Complex multi-agent coordination via natural language
@@ -719,6 +743,7 @@ scrape_configs:
 5. **External System Integration:** API and webhook handling via MCP
 
 ### **Scalability Advantages**
+
 1. **Horizontal Scaling:** Multiple Hermes instances with load balancing
 2. **Serverless Deployment:** Daytona/Modal support for cost-effective scaling
 3. **Global Distribution:** Deploy Hermes agents worldwide

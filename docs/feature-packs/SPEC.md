@@ -106,7 +106,7 @@ spec:
 
 ## 3. Directory Structure
 
-```
+```text
 feature-pack/
 ├── pack.yaml              # Manifest (required)
 ├── pack.yaml.sig          # Signature (required for signed packs)
@@ -223,11 +223,13 @@ policies:
 ```
 
 **Shared policies:**
+
 - Outcomes write to pack-scoped global bandit (`pack_id` column in `atlas_copy_variants`)
 - New tenants start with pooled priors
 - Privacy-preserving aggregation uses `keys_hash` + `field_count` (see ADR-0001 onboarding hardenings)
 
 **Private policies:**
+
 - Tenant-local only
 - No cross-tenant data sharing
 - Useful for competitive-sensitive optimizations
@@ -236,7 +238,7 @@ policies:
 
 **Registry model:**
 
-```
+```text
 SpiderNet Official Registry
 ├── keys/
 │   └── spidernet-official.pub   # Ed25519 public key
@@ -291,7 +293,7 @@ spidernet pack uninstall real-estate-crm --force
 
 ## 9. Pack Lifecycle
 
-```
+```text
 absent → downloading → verifying → installing → active
                                        │
                                        ▼

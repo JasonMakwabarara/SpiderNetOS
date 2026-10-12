@@ -101,7 +101,7 @@ block — re-instate the Echo + Pusher wiring once the broadcaster is up.
 
 ## Information architecture
 
-```
+```text
 /login, /403, /404                         public
 /                                          Dashboard
 /atlas                                     Command + context surface

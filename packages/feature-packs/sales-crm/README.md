@@ -21,7 +21,7 @@ A SpiderNetOS Feature Pack that runs the entire lead-to-sale funnel over email a
 
 ## State Model
 
-```
+```text
 lead_lifecycle:  captured -> qualified -> engaged -> meeting_booked -> proposal -> won
                                                                           -> lost -> recycled
 

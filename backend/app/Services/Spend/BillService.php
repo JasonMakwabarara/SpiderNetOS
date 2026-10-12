@@ -8,7 +8,6 @@ use App\Jobs\ExtractSpendDocumentJob;
 use App\Models\Bill;
 use App\Models\BillLineItem;
 use App\Models\PaymentInstruction;
-use App\Models\SpendDocument;
 use App\Services\ApprovalEngine;
 use App\Services\EventStore;
 use App\Services\Financial\DocumentNumberService;

@@ -7,7 +7,6 @@ SpiderNet OS ships automation that lives **outside** the core `backend/`, `cockp
 > and superseded self-review reports moved to [`docs/archive/`](../archive/).
 > Update any muscle-memory paths accordingly — filenames are unchanged.
 
-
 ## Core product entry points
 
 | Path | Purpose |

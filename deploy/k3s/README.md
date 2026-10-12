@@ -4,7 +4,7 @@ Tier 1 deliverable: **scaffold only**. These manifests are not applied during Ti
 
 ## Layout
 
-```
+```text
 deploy/k3s/
 ├── README.md                          (this file)
 ├── external-secrets/
@@ -20,22 +20,26 @@ deploy/k3s/
 ## Tier 2 bring-up order
 
 1. Install External Secrets Operator:
+
    ```bash
    helm repo add external-secrets https://charts.external-secrets.io
    helm upgrade --install external-secrets external-secrets/external-secrets \
      -n external-secrets-system --create-namespace \
      -f deploy/k3s/external-secrets/operator-values.yaml
    ```
+
 2. Apply the Vault SecretStore (requires Vault running + a Kubernetes auth method mounted):
+
    ```bash
    kubectl apply -f deploy/k3s/external-secrets/vault-secret-store.yaml
    ```
+
 3. Apply ExternalSecret bundles — they will materialise native `Secret` objects that pod envFroms reference.
 4. Apply Traefik middlewares and attach them to ingress routes.
 
 ## Vault paths (production layout)
 
-```
+```text
 kv/spidernet/app/        → APP_KEY, APP_PREVIOUS_KEYS
 kv/spidernet/db/         → DB_USERNAME, DB_PASSWORD
 kv/spidernet/redis/      → REDIS_PASSWORD

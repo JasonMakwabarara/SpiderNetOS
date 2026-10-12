@@ -15,17 +15,20 @@ This pack enables real estate agents and brokerages to:
 ## Agents Included
 
 ### Growth Agent
+
 Finds and attracts potential buyers through optimized landing pages and ad campaigns.
 
 ### CRM Agent
+
 Manages your lead pipeline, coordinates viewings, and tracks offers.
 
 ### Retention Agent
+
 Maintains relationships with past clients for referrals and repeat business.
 
 ## State Model
 
-```
+```text
 captured → qualified → contacted → scheduled → offer → negotiate → closed → archived
                                     ↓
                                     lost

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Services\Financial\DocumentNumberService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -58,7 +59,7 @@ class ProcurementCanonicalTest extends TestCase
         $this->assertSame('submitted', $submitted['status']);
         $this->postJson('/api/enterprise/requisitions/'.$draft['id'].'/submit')->assertStatus(409);
 
-        $approvalId = \DB::table('approvals')
+        $approvalId = DB::table('approvals')
             ->where('tenant_id', $tenant->id)
             ->where('resource_type', 'requisition')
             ->where('resource_id', $draft['id'])
@@ -70,7 +71,7 @@ class ProcurementCanonicalTest extends TestCase
         $this->assertSame(0, PurchaseOrder::query()->count());
         $this->assertSame(0, Invoice::query()->count());
 
-        $created = \DB::table('event_log')
+        $created = DB::table('event_log')
             ->where('aggregate_id', $draft['id'])
             ->where('event_type', 'enterprise.requisition.approved')
             ->value('payload');
@@ -115,7 +116,7 @@ class ProcurementCanonicalTest extends TestCase
 
         $order->refresh();
         $this->assertSame('issued', $order->status);
-        $this->assertSame(0, \DB::table('goods_receipts')->where('purchase_order_id', $order->id)->count());
+        $this->assertSame(0, DB::table('goods_receipts')->where('purchase_order_id', $order->id)->count());
         $this->actingAs($otherAdmin, 'sanctum');
         $this->assertNotContains(
             $order->id,
@@ -126,7 +127,7 @@ class ProcurementCanonicalTest extends TestCase
         ])->assertNotFound();
         $order->refresh();
         $this->assertSame('issued', $order->status);
-        $this->assertSame(0, \DB::table('goods_receipts')->where('purchase_order_id', $order->id)->count());
+        $this->assertSame(0, DB::table('goods_receipts')->where('purchase_order_id', $order->id)->count());
         $this->actingAs($admin, 'sanctum');
 
         $this->postJson('/api/enterprise/purchase-orders/'.$order->id.'/receipts', [
@@ -139,7 +140,7 @@ class ProcurementCanonicalTest extends TestCase
             'lines' => [['purchase_order_line_id' => $lineId, 'quantity' => 2]],
         ])->assertCreated()->json('data');
         $this->assertSame('received', $order->refresh()->status);
-        $recorded = \DB::table('event_log')->where('aggregate_id', $receipt['id'])->value('payload');
+        $recorded = DB::table('event_log')->where('aggregate_id', $receipt['id'])->value('payload');
         $recordedPayload = is_array($recorded) ? $recorded : json_decode((string) $recorded, true);
         $keys = array_keys($recordedPayload);
         sort($keys);

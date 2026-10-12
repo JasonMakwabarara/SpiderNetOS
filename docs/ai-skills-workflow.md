@@ -11,11 +11,13 @@ SpiderNetOS-native **skills-style engineering loops** for AI-assisted developmen
 Reproduce → Hypothesize → Instrument → Fix → Verify
 
 **When to use:**
+
 - Production incidents (500 errors, route mismatches, theme/CSS regressions)
 - Configuration/env fallback failures
 - Cache/deploy hardening issues
 
 **Command recipe:**
+
 ```bash
 # 1. Reproduce
 php artisan test --filter=<failing_test>
@@ -37,11 +39,13 @@ php artisan test --filter=<failing_test>
 Red → Green → Refactor
 
 **When to use:**
+
 - New features with clear acceptance criteria
 - Bug fixes requiring regression tests
 - API contract changes
 
 **Command recipe:**
+
 ```bash
 # 1. Red (write failing test)
 php artisan make:test Feature/TestName
@@ -59,6 +63,7 @@ php artisan make:test Feature/TestName
 Convert → Evaluate → Gate → Apply
 
 **When to use:**
+
 - Processing Cursor conversation exports
 - Building datasets for model fine-tuning
 - Quality-gating training examples
@@ -104,6 +109,7 @@ Training data must pass **all** gates:
 | `preference_quality_hit_ratio` | 0.8 | 80% of preference rows quality ≥ 2 |
 
 **Quality scoring (0-4):**
+
 - +1 for verification/result wording
 - +1 for executed test/command evidence
 - +1 for measurable outcomes (9/9, passed, exit code)
@@ -113,7 +119,7 @@ Training data must pass **all** gates:
 
 ## Directory Structure
 
-```
+```text
 training_data/
 ├── bundle_001/
 │   ├── sft.jsonl              # Supervised fine-tuning data
@@ -134,6 +140,7 @@ training_data/
 **Automatic gate running:** `.github/workflows/training-data-quality-gate.yml`
 
 Triggers on:
+
 - Pull requests modifying `**/sft.jsonl` or `**/preference.jsonl`
 - Pushes to `main` modifying training data
 - Manual `workflow_dispatch`
@@ -145,7 +152,8 @@ Artifacts uploaded as `quality-gate-reports-{run_id}` for PR review.
 ## Atlas Integration
 
 Gated training data auto-copies to:
-```
+
+```text
 intelligence/atlas/training/current/
 ├── sft.jsonl
 └── preference.jsonl
@@ -167,7 +175,7 @@ intelligence/atlas/training/current/
 
 ## References
 
-- Matt Pocock Skills: https://github.com/mattpocock/skills
+- Matt Pocock Skills: <https://github.com/mattpocock/skills>
 - Conversion script: `scripts/convert_cursor_markdown_to_jsonl.py`
 - Evaluator: `scripts/eval_training_data_quality.py`
 - PowerShell helper: `scripts/training-gate.ps1`

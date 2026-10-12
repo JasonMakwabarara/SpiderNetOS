@@ -9,6 +9,7 @@ use App\Models\LedgerEntry;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -101,10 +102,10 @@ class WorkforceDepthTest extends TestCase
         $this->postJson('/api/enterprise/employees/'.$employee['id'].'/attendance-days', [
             'work_date' => '2026-10-09',
         ])->assertNotFound();
-        $this->assertSame(1, \DB::table('attendance_days')->count());
+        $this->assertSame(1, DB::table('attendance_days')->count());
         $this->actingAs($admin, 'sanctum');
 
-        $closed = \DB::table('event_log')->where('aggregate_id', $day['id'])->value('payload');
+        $closed = DB::table('event_log')->where('aggregate_id', $day['id'])->value('payload');
         $closedPayload = is_array($closed) ? $closed : json_decode((string) $closed, true);
         $closedKeys = array_keys($closedPayload);
         sort($closedKeys);
@@ -120,12 +121,12 @@ class WorkforceDepthTest extends TestCase
         $this->actingAs($otherAdmin, 'sanctum');
         $this->getJson('/api/enterprise/leave-requests/'.$leave['id'])->assertNotFound();
         $this->actingAs($admin, 'sanctum');
-        $approvalId = \DB::table('approvals')->where('resource_id', $leave['id'])->value('id');
+        $approvalId = DB::table('approvals')->where('resource_id', $leave['id'])->value('id');
         $this->postJson('/api/approvals/'.$approvalId.'/approve', ['reason' => 'Granted'])->assertOk();
-        $this->assertSame('approved', \DB::table('leave_requests')->where('id', $leave['id'])->value('status'));
+        $this->assertSame('approved', DB::table('leave_requests')->where('id', $leave['id'])->value('status'));
         $this->assertSame('active', Employee::find($employee['id'])->status);
 
-        $leaveEvent = \DB::table('event_log')->where('aggregate_id', $leave['id'])->where('event_type', 'enterprise.leave.approved')->value('payload');
+        $leaveEvent = DB::table('event_log')->where('aggregate_id', $leave['id'])->where('event_type', 'enterprise.leave.approved')->value('payload');
         $leavePayload = is_array($leaveEvent) ? $leaveEvent : json_decode((string) $leaveEvent, true);
         $leaveKeys = array_keys($leavePayload);
         sort($leaveKeys);
@@ -158,7 +159,7 @@ class WorkforceDepthTest extends TestCase
         $entries = LedgerEntry::query()->where('reference_id', $run['id'])->get();
         $this->assertCount(2, $entries);
         $this->assertEquals(36.666, (float) $entries->first()->amount);
-        $payrollEvent = \DB::table('event_log')->where('aggregate_id', $run['id'])->where('event_type', 'enterprise.payroll.posted')->value('payload');
+        $payrollEvent = DB::table('event_log')->where('aggregate_id', $run['id'])->where('event_type', 'enterprise.payroll.posted')->value('payload');
         $payrollPayload = is_array($payrollEvent) ? $payrollEvent : json_decode((string) $payrollEvent, true);
         $payrollKeys = array_keys($payrollPayload);
         sort($payrollKeys);
@@ -202,7 +203,7 @@ class WorkforceDepthTest extends TestCase
         ])->assertNotFound();
         $this->actingAs($admin, 'sanctum');
 
-        $depEvent = \DB::table('event_log')->where('aggregate_id', $entry['id'])->value('payload');
+        $depEvent = DB::table('event_log')->where('aggregate_id', $entry['id'])->value('payload');
         $depPayload = is_array($depEvent) ? $depEvent : json_decode((string) $depEvent, true);
         $depKeys = array_keys($depPayload);
         sort($depKeys);
