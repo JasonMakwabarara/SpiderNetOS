@@ -1,0 +1,22 @@
+{
+  // Read by Pylance and by `npx pyright`. Import roots mirror how each Python
+  // service runs: from its own folder, plus anything its image copies in.
+  "typeCheckingMode": "off",
+  "exclude": [
+    "**/node_modules", "**/vendor", "**/__pycache__", "**/.*", "backend/storage", "v1"
+  ],
+  "executionEnvironments": [
+    // inference/Dockerfile copies intelligence's voice agent, tools and
+    // simulator in; the simulator keeps its `intelligence.` package path.
+    { "root": "inference", "extraPaths": ["intelligence", "."] },
+    // The business-launch tests import through the `intelligence` package.
+    { "root": "intelligence/tests", "extraPaths": ["intelligence", "."] },
+    { "root": "intelligence" },
+    // Its Dockerfile copies services/shared to /app/shared.
+    { "root": "services/simulation-service", "extraPaths": ["services"] },
+    // Boots the service's main.py with the image's import roots.
+    { "root": "tests/unit/services/simulation-service", "extraPaths": ["services/simulation-service", "services", "."] },
+    { "root": "services/cpl-service", "extraPaths": ["services"] },
+    { "root": "." }
+  ]
+}

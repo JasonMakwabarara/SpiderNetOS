@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 import numpy as np
 
 # Agents
-from agents.campaign_agent import CampaignAgent
+from agents.campaign_agent import CampaignAgent, CampaignConfig
 from agents.policy_registry import PolicyRegistry
 from engine.deepseek_calibration_analyzer import DeepSeekCalibrationAnalyzer
 from engine.deepseek_scenario_generator import DeepSeekScenarioGenerator, MarketScenario
@@ -42,7 +42,14 @@ class SimulationStartRequest(BaseModel):
     budget: float = Field(default=1000.0, ge=100)
     randomize: bool = Field(default=True)
     use_deepseek_scenarios: bool = Field(default=True)
-    difficulty: str = Field(default="medium", regex="^(easy|medium|hard|extreme)$")
+    difficulty: str = Field(default="medium", pattern="^(easy|medium|hard|extreme)$")
+
+
+class CampaignRegisterRequest(BaseModel):
+    campaign_id: str
+    budget_daily: float = Field(..., gt=0)
+    target_roas: float = Field(default=3.0, gt=0)
+    target_cac: float = Field(default=30.0, gt=0)
 
 
 class CampaignActionRequest(BaseModel):
@@ -52,7 +59,7 @@ class CampaignActionRequest(BaseModel):
 
 
 class PolicyVersionRequest(BaseModel):
-    version_id: str
+    version_id: str = Field(..., pattern=r"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,63}$")
     description: str
 
 
@@ -86,7 +93,7 @@ async def lifespan(app: FastAPI):
     """Service lifespan manager"""
     global market_env, user_model, reward_engine, sim_to_real
     global campaign_agent, policy_registry, event_producer
-    global deepseek_scenarios, deepseek_calibration
+    global deepseek_scenarios, deepseek_calibration, active_scenario
 
     logger.info("=" * 60)
     logger.info("Starting SpiderNetOS Simulation Service v2.0")
@@ -97,13 +104,17 @@ async def lifespan(app: FastAPI):
     market_env = MarketEnv(seed=42)
     user_model = UserBehaviorModel()
     reward_engine = EconomicRewardEngine()
-    sim_to_real = SimToRealBridge()
+    sim_to_real = SimToRealBridge(
+        calibration_window=int(os.getenv("CALIBRATION_WINDOW_HOURS", "168"))
+    )
     policy_registry = PolicyRegistry()
 
     # Initialize DeepSeek components
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    deepseek_model = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash:cloud")
     try:
-        deepseek_scenarios = DeepSeekScenarioGenerator()
-        deepseek_calibration = DeepSeekCalibrationAnalyzer()
+        deepseek_scenarios = DeepSeekScenarioGenerator(ollama_url=ollama_url, model=deepseek_model)
+        deepseek_calibration = DeepSeekCalibrationAnalyzer(ollama_url=ollama_url, model=deepseek_model)
         logger.info("✓ DeepSeek components initialized")
     except Exception as e:
         logger.warning(f"⚠ DeepSeek not available: {e}")
@@ -113,8 +124,7 @@ async def lifespan(app: FastAPI):
     # Initialize Kafka
     try:
         event_producer = EventProducer(
-            bootstrap_servers="localhost:9092",
-            client_id="simulation-service"
+            bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP", "localhost:9092")
         )
         event_producer.start()
         logger.info("✓ Kafka producer connected")
@@ -125,7 +135,8 @@ async def lifespan(app: FastAPI):
     # Initialize campaign agent
     campaign_agent = CampaignAgent(
         event_producer=event_producer,
-        api_clients={}
+        api_clients={},
+        outcome_topic=KafkaTopics.EXECUTION_OUTCOME,
     )
 
     # Load or generate initial scenario
@@ -348,10 +359,11 @@ async def _run_training_simulation(
             # Step environment
             next_state, _, done, info = market_env.step(action)
 
-            # Simulate user behavior
+            # Simulate user behavior: CPM is the cost of 1000 impressions.
             impressions = {
-                ch: int(info[f'cpm_{ch}'] * action['budget_allocation'] / 1000)
+                ch: int(info['spend'] * action['channel_mix'].get(ch, 0.0) / info[f'cpm_{ch}'] * 1000)
                 for ch in ['meta', 'google', 'tiktok']
+                if info[f'cpm_{ch}'] > 0
             }
 
             conversions, _ = user_model.predict_conversions(impressions)
@@ -398,6 +410,18 @@ async def _run_training_simulation(
     logger.info(f"Training complete: {episodes} episodes")
 
 
+@app.post("/campaign/register")
+async def register_campaign(request: CampaignRegisterRequest):
+    """Register a campaign so policy actions can be executed against it"""
+    config = campaign_agent.register_campaign(CampaignConfig(
+        campaign_id=request.campaign_id,
+        budget_daily=request.budget_daily,
+        target_roas=request.target_roas,
+        target_cac=request.target_cac,
+    ))
+    return {"status": "registered", "campaign_id": config.campaign_id}
+
+
 @app.post("/campaign/execute")
 async def execute_campaign_action(request: CampaignActionRequest):
     """Execute action on real campaign with calibration checks"""
@@ -409,13 +433,18 @@ async def execute_campaign_action(request: CampaignActionRequest):
     if cal_quality['quality'] == 'insufficient_data':
         logger.warning("Executing with insufficient calibration data")
 
-    results = await campaign_agent.execute_action(
-        campaign_id=request.campaign_id,
-        action={
-            'budget_allocation': request.budget_allocation,
-            'channel_mix': request.channel_mix
-        }
-    )
+    try:
+        results = await campaign_agent.execute_action(
+            campaign_id=request.campaign_id,
+            action={
+                'budget_allocation': request.budget_allocation,
+                'channel_mix': request.channel_mix
+            }
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Campaign not registered") from None
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
     return {
         "status": "executed",
@@ -541,17 +570,20 @@ async def register_policy_version(request: PolicyVersionRequest):
         'timestamp': datetime.utcnow().isoformat()
     }
 
-    version = policy_registry.register_version(
-        version_id=request.version_id,
-        policy_state=policy_state,
-        description=request.description,
-        training_episodes=1000,
-        sim_performance={
-            'avg_reward': 150.0,
-            'profit': 5000.0,
-            'roas': 3.5
-        }
-    )
+    try:
+        version = policy_registry.register_version(
+            version_id=request.version_id,
+            policy_state=policy_state,
+            description=request.description,
+            training_episodes=1000,
+            sim_performance={
+                'avg_reward': 150.0,
+                'profit': 5000.0,
+                'roas': 3.5
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
     return {
         "version_id": version.version_id,

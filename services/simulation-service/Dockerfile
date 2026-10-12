@@ -20,6 +20,11 @@ COPY services/shared /app/shared
 COPY services/simulation-service /app/services/simulation-service
 WORKDIR /app/services/simulation-service
 
+# `shared` sits at /app/shared, outside the working directory uvicorn puts on
+# the path. Policies live in the volume compose mounts at /app/policies.
+ENV PYTHONPATH=/app \
+    POLICY_REGISTRY_PATH=/app/policies
+
 # Create directories
 RUN mkdir -p /app/policies /app/logs
 

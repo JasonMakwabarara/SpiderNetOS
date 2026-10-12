@@ -8,11 +8,10 @@ reports "skipped" instead of failing noisily.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 
 import pytest
-
 from spidernet_client import AuthError, SpiderNetClient
-
 
 DEFAULT_EMAIL = os.getenv("SPIDERNET_EMAIL", "admin@spidernet.local")
 DEFAULT_PASSWORD = os.getenv("SPIDERNET_PASSWORD", "password")
@@ -32,7 +31,7 @@ def live_stack_url() -> str:
 
 
 @pytest.fixture()
-def client(live_stack_url: str) -> SpiderNetClient:
+def client(live_stack_url: str) -> Iterator[SpiderNetClient]:
     """Unauthenticated client, one per test."""
     with SpiderNetClient(base_url=live_stack_url) as c:
         yield c
