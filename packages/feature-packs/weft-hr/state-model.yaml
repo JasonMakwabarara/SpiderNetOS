@@ -1,0 +1,27 @@
+chains:
+  - id: pay_run
+    namespace: pack.weft-hr
+    states: [draft, calculated, approved, posted]
+    transitions:
+      - event: weft.pay_run.calculated
+        from: draft
+        to: calculated
+      - event: weft.pay_run.approved
+        from: calculated
+        to: approved
+      - event: weft.pay_run.posted
+        from: approved
+        to: posted
+  - id: leave_request
+    namespace: pack.weft-hr
+    states: [pending, approved, rejected]
+    transitions:
+      - event: weft.leave.requested
+        from: null
+        to: pending
+      - event: weft.leave.approved
+        from: pending
+        to: approved
+      - event: weft.leave.rejected
+        from: pending
+        to: rejected

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Exceptions\DomainException;
 use App\Models\LedgerEntry;
 use App\Models\FinancialAccount;
 use App\Models\ChartOfAccount;
 use App\Models\Transaction;
+use App\Services\Enterprise\Cents;
 use App\Services\EventStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -213,6 +215,115 @@ class LedgerService
             'financing' => $financingActivities,
             'period' => ['start' => $startDate, 'end' => $endDate],
         ];
+    }
+
+    /**
+     * @param  list<array{account_id: string, side: string, amount: string, description?: string}>  $lines
+     */
+    public function postBalancedJournal(
+        string $tenantId,
+        array $lines,
+        string $currency,
+        string $description,
+        ?string $referenceType = null,
+        ?string $referenceId = null,
+    ): Transaction {
+        $grouped = [];
+        foreach ($lines as $line) {
+            $side = $line['side'] ?? '';
+            if (! in_array($side, ['debit', 'credit'], true)) {
+                throw new DomainException('Journal lines must be debit or credit.');
+            }
+            $cents = Cents::from($line['amount'] ?? 0);
+            if ($cents < 0) {
+                throw new DomainException('Journal amounts cannot be negative.');
+            }
+            if ($cents === 0) {
+                continue;
+            }
+            $key = $line['account_id'].'|'.$side;
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'account_id' => $line['account_id'],
+                    'side' => $side,
+                    'cents' => 0,
+                    'description' => $line['description'] ?? $description,
+                ];
+            }
+            $grouped[$key]['cents'] += $cents;
+        }
+
+        $debit = 0;
+        $credit = 0;
+        foreach ($grouped as $line) {
+            if ($line['side'] === 'debit') {
+                $debit += $line['cents'];
+            } else {
+                $credit += $line['cents'];
+            }
+        }
+        if ($debit === 0 || $debit !== $credit) {
+            throw new DomainException('Journal debits and credits must balance.');
+        }
+
+        return DB::transaction(function () use ($tenantId, $grouped, $debit, $currency, $description, $referenceType, $referenceId) {
+            $firstDebit = null;
+            $firstCredit = null;
+            foreach ($grouped as $line) {
+                if ($line['side'] === 'debit' && ! $firstDebit) {
+                    $firstDebit = $line['account_id'];
+                }
+                if ($line['side'] === 'credit' && ! $firstCredit) {
+                    $firstCredit = $line['account_id'];
+                }
+            }
+
+            $transaction = Transaction::create([
+                'tenant_id' => $tenantId,
+                'transaction_number' => $this->generateTransactionNumber($tenantId),
+                'type' => 'journal_entry',
+                'amount' => Cents::toString($debit),
+                'currency' => $currency,
+                'status' => 'completed',
+                'description' => $description,
+                'source_account_id' => $firstCredit,
+                'destination_account_id' => $firstDebit,
+                'initiated_at' => now(),
+                'completed_at' => now(),
+                'idempotency_key' => $referenceType && $referenceId ? $referenceType.':'.$referenceId : null,
+            ]);
+
+            foreach ($grouped as $line) {
+                LedgerEntry::create([
+                    'tenant_id' => $tenantId,
+                    'account_id' => $line['account_id'],
+                    'transaction_id' => $transaction->transaction_number,
+                    'entry_type' => 'journal',
+                    'side' => $line['side'],
+                    'amount' => Cents::toString($line['cents']),
+                    'currency' => $currency,
+                    'description' => $line['description'],
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'posted_at' => now(),
+                ]);
+                $account = FinancialAccount::where('tenant_id', $tenantId)->findOrFail($line['account_id']);
+                if ($line['side'] === 'debit') {
+                    $account->increment('balance', Cents::toString($line['cents']));
+                } else {
+                    $account->decrement('balance', Cents::toString($line['cents']));
+                }
+            }
+
+            $this->eventStore->append($tenantId, 'ledger', $transaction->id, 'ledger.entry_posted', [
+                'transaction_id' => $transaction->transaction_number,
+                'amount' => Cents::toString($debit),
+                'currency' => $currency,
+                'lines' => count($grouped),
+            ]);
+
+            return $transaction;
+        });
     }
 
     private function updateAccountBalances(

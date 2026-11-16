@@ -74,7 +74,7 @@ class ApprovalController extends Controller
         }
 
         // Specimen short-circuit. Canonical sn-brain registers requisition in config/approvals.php.
-        if (($approval->resource_type ?? '') === 'requisition') {
+        if (in_array(($approval->resource_type ?? ''), ['requisition', 'leave_request', 'pay_run'], true)) {
             $resolved = $this->approvalEngine->resolveApproval(
                 (string) $id,
                 (string) $request->user()->id,
@@ -165,7 +165,7 @@ class ApprovalController extends Controller
         }
 
         // Specimen short-circuit. Canonical sn-brain registers requisition in config/approvals.php.
-        if (($approval->resource_type ?? '') === 'requisition') {
+        if (in_array(($approval->resource_type ?? ''), ['requisition', 'leave_request', 'pay_run'], true)) {
             $resolved = $this->approvalEngine->resolveApproval(
                 (string) $id,
                 (string) $request->user()->id,

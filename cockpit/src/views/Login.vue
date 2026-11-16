@@ -71,6 +71,30 @@
           >Create account</button>
         </div>
 
+        <div class="mb-4">
+          <label class="block mb-1">Application</label>
+          <div class="grid grid-cols-2 gap-1.5" data-testid="login-product">
+            <button
+              type="button"
+              class="px-2 py-1.5 text-xs rounded-md"
+              :style="product === 'spidernet'
+                ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid var(--color-border-strong);'
+                : 'background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);'"
+              data-testid="login-product-spidernet"
+              @click="chooseProduct('spidernet')"
+            >SpiderNetOS</button>
+            <button
+              type="button"
+              class="px-2 py-1.5 text-xs rounded-md"
+              :style="product === 'weft'
+                ? 'background: var(--accent-weak); color: var(--accent); border: 1px solid var(--color-border-strong);'
+                : 'background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);'"
+              data-testid="login-product-weft"
+              @click="chooseProduct('weft')"
+            >Weft HR</button>
+          </div>
+        </div>
+
         <form v-if="mode === 'login'" class="space-y-3" @submit.prevent="handleLogin">
           <div>
             <label class="block mb-1">Email</label>
@@ -158,9 +182,12 @@ import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
+import { currentProduct, productHome, setProduct } from '../composables/useProduct.js'
+
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const product = ref(currentProduct())
 
 const mode = ref('login')
 const buildId = ref('1.0.0-' + Math.random().toString(36).slice(2, 7))
@@ -184,11 +211,16 @@ const registerForm = reactive({
   tenantName: '',
 })
 
+function chooseProduct(next) {
+  product.value = next
+  setProduct(next)
+}
+
 function postAuthRedirect() {
   const target = typeof route.query.return_to === 'string' ? route.query.return_to : null
   if (target && target.startsWith('/')) return router.push(target)
   if (authStore.requiresOnboarding()) return router.push('/onboarding')
-  return router.push('/')
+  return router.push(productHome())
 }
 
 async function handleLogin() {

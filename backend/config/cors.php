@@ -20,6 +20,8 @@ if (empty($allowedOrigins) && in_array(env('APP_ENV', 'production'), ['local', '
     $allowedOrigins = [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'http://localhost:3010',
+        'http://127.0.0.1:3010',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'http://localhost:8000',
@@ -43,6 +45,8 @@ return [
         'X-CSRF-TOKEN',
         'X-XSRF-TOKEN',
         'X-Tenant-ID',
+        'X-Jetson-Site',
+        'X-Jetson-Secret',
     ],
     'exposed_headers' => ['X-Request-ID'],
     'max_age' => (int) env('CORS_MAX_AGE', 3600),

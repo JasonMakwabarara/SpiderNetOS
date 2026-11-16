@@ -13,7 +13,17 @@ class ClockEvent extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['tenant_id', 'employee_id', 'type', 'recorded_at'];
+    protected $fillable = [
+        'tenant_id',
+        'employee_id',
+        'type',
+        'recorded_at',
+        'source',
+        'attendance_site_id',
+        'attendance_device_id',
+        'external_event_id',
+        'sensor_id',
+    ];
 
     protected $casts = ['recorded_at' => 'datetime'];
 

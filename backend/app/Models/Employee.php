@@ -26,15 +26,30 @@ class Employee extends Model
         'status',
         'inactive_from',
         'inactive_reason',
+        'employment_type',
+        'pay_basis',
+        'pay_rate',
+        'pay_currency',
+        'national_id',
+        'nssa_number',
+        'reports_to',
+        'user_id',
+        'jetson_person_id',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'inactive_from' => 'date',
+        'pay_rate' => 'decimal:2',
     ];
 
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reports_to');
     }
 }

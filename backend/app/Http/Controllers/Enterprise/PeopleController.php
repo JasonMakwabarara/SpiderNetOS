@@ -10,6 +10,7 @@ use App\Models\ClockEvent;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\HrAuditEntry;
+use App\Models\LeaveRequest;
 use App\Services\Enterprise\AttendanceService;
 use App\Services\Enterprise\HrService;
 use Illuminate\Http\JsonResponse;
@@ -97,7 +98,7 @@ class PeopleController extends Controller
 
     public function storeEmployee(Request $request): JsonResponse
     {
-        $data = $request->validate($this->ownedFieldRules() + [
+        $data = $request->validate($this->ownedFieldRules() + $this->payFieldRules() + [
             'first_name' => 'required|string|max:100',
             'surname' => 'required|string|max:100',
             'position_title' => 'required|string|max:150',
@@ -128,7 +129,13 @@ class PeopleController extends Controller
             ->where('employee_id', $employee->id)
             ->orderByDesc('recorded_at')
             ->limit(30)
-            ->get(['id', 'type', 'recorded_at']);
+            ->get(['id', 'type', 'recorded_at', 'source']);
+        $leave = LeaveRequest::forTenant($tenantId)
+            ->where('employee_id', $employee->id)
+            ->with('leaveType')
+            ->orderByDesc('starts_on')
+            ->limit(30)
+            ->get();
         $activity = HrAuditEntry::forTenant($tenantId)
             ->where('employee_id', $employee->id)
             ->orderByDesc('created_at')
@@ -139,6 +146,7 @@ class PeopleController extends Controller
         return response()->json([
             'data' => $employee,
             'attendance' => $attendance,
+            'leave' => $leave,
             'assets' => $assets,
             'activity' => $activity,
         ]);
@@ -146,7 +154,7 @@ class PeopleController extends Controller
 
     public function updateEmployee(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate($this->ownedFieldRules() + [
+        $data = $request->validate($this->ownedFieldRules() + $this->payFieldRules() + [
             'first_name' => 'sometimes|required|string|max:100',
             'surname' => 'sometimes|required|string|max:100',
             'position_title' => 'sometimes|required|string|max:150',
@@ -211,6 +219,24 @@ class PeopleController extends Controller
             'employee_number' => 'prohibited',
             'name' => 'prohibited',
             'status' => 'prohibited',
+            'jetson_person_id' => 'prohibited',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function payFieldRules(): array
+    {
+        return [
+            'employment_type' => 'sometimes|in:permanent,casual',
+            'pay_basis' => 'sometimes|in:monthly,daily,hourly',
+            'pay_rate' => 'sometimes|numeric|min:0',
+            'pay_currency' => ['sometimes', 'string', 'regex:/^[A-Za-z]{3,4}$/'],
+            'national_id' => 'sometimes|nullable|string|max:50',
+            'nssa_number' => 'sometimes|nullable|string|max:50',
+            'reports_to' => 'sometimes|nullable|uuid',
+            'user_id' => 'sometimes|nullable|uuid',
         ];
     }
 

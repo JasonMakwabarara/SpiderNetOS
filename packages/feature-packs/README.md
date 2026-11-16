@@ -19,6 +19,7 @@ packages/feature-packs/
 └── enterprise operations family       # vertical: enterprise_operations
     ├── hr/
     ├── attendance/                    # requires hr
+    ├── weft-hr/                       # requires hr and attendance
     ├── e-requisition/                 # integrates_with hr
     ├── procurement/                   # integrates_with e-requisition
     ├── asset-management/              # integrates_with hr

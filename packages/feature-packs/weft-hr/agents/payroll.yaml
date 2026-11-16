@@ -1,0 +1,10 @@
+id: payroll
+displayName: "Payroll"
+description: "Calculates pay from synced Jetson hours and posts a balanced journal."
+capabilities:
+  - id: sync_attendance
+    description: "Accept an offline Jetson register sync of people, devices, and clock events"
+  - id: calculate_pay
+    description: "Calculate a pay run from hours, leave, and the tenant statutory rule"
+  - id: post_pay_run
+    description: "Post an approved pay run to the ledger"

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +23,10 @@ class SecurityServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        if (config('database.default') === 'sqlite') {
+            DB::connection()->getPdo()->sqliteCreateFunction('now', fn () => gmdate('Y-m-d H:i:s'));
+        }
+
         $tiers = (array) config('security.rate_limits', []);
 
         // ── Authentication (login / register / step-up) ─────────────────

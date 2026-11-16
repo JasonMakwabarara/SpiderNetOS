@@ -1,6 +1,7 @@
 <template>
   <div class="p-6 space-y-6" :style="{ background: 'var(--bg)' }" data-testid="ops-people">
-    <router-link to="/operations" class="text-sm" :style="{ color: 'var(--charge-vivid)' }">Operations</router-link>
+    <WeftSubnav />
+    <router-link v-if="!isWeft" to="/operations" class="text-sm" :style="{ color: 'var(--charge-vivid)' }">Operations</router-link>
     <div class="flex items-center justify-between gap-4">
       <h1 class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">People</h1>
       <button class="dct-btn-primary px-4 py-2 text-sm" data-testid="employee-add-toggle" @click="showForm = !showForm">Add employee</button>
@@ -70,7 +71,7 @@
       <router-link
         v-for="row in rows"
         :key="row.id"
-        :to="`/operations/people/${row.id}`"
+        :to="`${peopleBase}/${row.id}`"
         class="grid grid-cols-4 gap-3 px-4 py-3 text-sm border-t"
         :style="{ color: 'var(--text-primary)', borderColor: 'var(--border)' }"
         :data-testid="`employee-row-${row.employee_number}`"
@@ -86,11 +87,15 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import WeftSubnav from '../../components/weft/WeftSubnav.vue'
 import api from '../../services/api.js'
 
+const route = useRoute()
 const router = useRouter()
+const isWeft = computed(() => route.path.startsWith('/weft'))
+const peopleBase = computed(() => (isWeft.value ? '/weft/people' : '/operations/people'))
 const field = { background: 'var(--surface-low)', color: 'var(--text-primary)', borderColor: 'var(--border)' }
 const rows = ref([])
 const departments = ref([])
@@ -151,7 +156,7 @@ async function create() {
     }
     const res = await api.post('/api/enterprise/employees', payload)
     const created = res.data.data
-    await router.push({ path: `/operations/people/${created.id}`, query: { created: created.employee_number } })
+    await router.push({ path: `${peopleBase.value}/${created.id}`, query: { created: created.employee_number } })
   } catch (err) {
     message.value = err.response?.data?.message || 'Could not create the employee.'
   }

@@ -146,6 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function applyPrincipal(data) {
+    window.__snSessionExpiring = false
     token.value = data.token
     user.value = data.user
     tenant.value = data.tenant
@@ -182,6 +183,11 @@ export const useAuthStore = defineStore('auth', () => {
     // Clear BOTH the legacy and the React shell keys.
     ;['token', 'user', 'tenant', 'caps', 'impersonating',
       'sn_access_token', 'sn_user', 'sn_tenant'].forEach((k) => localStorage.removeItem(k))
+  }
+
+  if (typeof window !== 'undefined' && !window.__snSessionListener) {
+    window.__snSessionListener = true
+    window.addEventListener('sn:session-expired', () => logout())
   }
 
   /**

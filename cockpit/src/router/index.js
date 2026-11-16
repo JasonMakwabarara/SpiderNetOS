@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import { productHome } from '../composables/useProduct.js'
 
 // ---------------------------------------------------------------------------
 // Eagerly-loaded user views (existing)
@@ -96,6 +97,15 @@ const routes = [
   { path: '/operations/billing', name: 'OperationsBilling', component: () => import('../views/operations/Billing.vue'), meta: { requiresAuth: true } },
   { path: '/operations/fiscal', name: 'OperationsFiscal', component: () => import('../views/operations/Fiscal.vue'), meta: { requiresAuth: true } },
 
+  { path: '/weft', redirect: '/weft/people' },
+  { path: '/weft/people', name: 'WeftPeople', component: () => import('../views/operations/People.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/weft/people/:id', name: 'WeftEmployee', component: () => import('../views/operations/EmployeeProfile.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/weft/attendance', name: 'WeftAttendance', component: () => import('../views/operations/Attendance.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/weft/leave', name: 'WeftLeave', component: () => import('../views/weft/Leave.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/weft/payroll', name: 'WeftPayroll', component: () => import('../views/weft/Payroll.vue'), meta: { requiresAuth: true, roles: ['admin', 'super_admin'] } },
+  { path: '/weft/me', name: 'WeftMe', component: () => import('../views/weft/MyRecord.vue'), meta: { requiresAuth: true } },
+  { path: '/weft/settings', name: 'WeftSettings', component: () => import('../views/weft/Settings.vue'), meta: { requiresAuth: true } },
+
   // ---------------- ADMIN SPACE ----------------
   {
     path: '/admin',
@@ -156,7 +166,7 @@ router.beforeEach((to, _from, next) => {
 
   // Public / guest routes
   if (to.meta.guest) {
-    return auth.isAuthenticated ? next('/') : next()
+    return auth.isAuthenticated ? next(productHome()) : next()
   }
 
   // Auth requirement
@@ -172,7 +182,11 @@ router.beforeEach((to, _from, next) => {
 
   // If onboarding is complete, don't allow returning to onboarding
   if (auth.isOnboardingComplete && to.path === '/onboarding') {
-    return next('/atlas')
+    return next(productHome() === '/weft/people' ? '/weft/people' : '/atlas')
+  }
+
+  if (to.path.startsWith('/weft') && to.meta.roles && !to.meta.roles.includes(auth.role)) {
+    return next('/weft/me')
   }
 
   // Role check

@@ -20,7 +20,10 @@ use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\FeaturePackController;
 use App\Http\Controllers\Enterprise\AssetController;
+use App\Http\Controllers\Enterprise\AttendanceGatewayController;
 use App\Http\Controllers\Enterprise\FinanceOpsController;
+use App\Http\Controllers\Enterprise\LeaveController;
+use App\Http\Controllers\Enterprise\PayrollController;
 use App\Http\Controllers\Enterprise\PeopleController;
 use App\Http\Controllers\Enterprise\PurchasingController;
 
@@ -268,6 +271,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
         Route::get('/trades', [\App\Http\Controllers\Financial\PortfolioController::class, 'trades']);
     });
 
+// Jetson calls this with the site secret when internet returns. It does not use a user session.
+Route::post('/enterprise/attendance/sync', [AttendanceGatewayController::class, 'syncBatch'])
+    ->middleware('throttle:api');
+
 // ─── Enterprise Operations ──────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit', 'throttle:api'])
     ->prefix('enterprise')
@@ -287,7 +294,30 @@ Route::middleware(['auth:sanctum', 'tenant', 'onboarding.required', 'cost.limit'
             Route::get('/employees/{id}', [PeopleController::class, 'showEmployee']);
             Route::patch('/employees/{id}', [PeopleController::class, 'updateEmployee']);
             Route::post('/employees/{id}/deactivate', [PeopleController::class, 'deactivateEmployee']);
+
+            Route::get('/attendance/sites', [AttendanceGatewayController::class, 'indexSites']);
+            Route::post('/attendance/sites', [AttendanceGatewayController::class, 'storeSite']);
+            Route::get('/attendance/devices', [AttendanceGatewayController::class, 'devices']);
+            Route::post('/attendance/devices/{id}/revoke', [AttendanceGatewayController::class, 'revokeDevice']);
+            Route::get('/attendance/report', [AttendanceGatewayController::class, 'report']);
+
+            Route::get('/leave/requests', [LeaveController::class, 'index']);
+
+            Route::get('/payroll/rules', [PayrollController::class, 'rules']);
+            Route::post('/payroll/rules', [PayrollController::class, 'storeRule']);
+            Route::get('/payroll/runs', [PayrollController::class, 'index']);
+            Route::post('/payroll/runs', [PayrollController::class, 'store']);
+            Route::get('/payroll/runs/{id}', [PayrollController::class, 'show']);
+            Route::post('/payroll/runs/{id}/calculate', [PayrollController::class, 'calculate']);
+            Route::post('/payroll/runs/{id}/submit', [PayrollController::class, 'submit']);
+            Route::post('/payroll/runs/{id}/approve', [PayrollController::class, 'approve']);
+            Route::post('/payroll/runs/{id}/post', [PayrollController::class, 'postRun']);
         });
+
+        Route::get('/weft/me', [PayrollController::class, 'me']);
+        Route::get('/leave/types', [LeaveController::class, 'types']);
+        Route::post('/leave/requests', [LeaveController::class, 'store']);
+        Route::post('/leave/requests/{id}/resolve', [LeaveController::class, 'resolve']);
 
         Route::get('/clock-events', [PeopleController::class, 'clockEvents']);
         Route::post('/clock-events', [PeopleController::class, 'storeClockEvent']);

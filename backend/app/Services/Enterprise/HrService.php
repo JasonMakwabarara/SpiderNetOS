@@ -83,6 +83,10 @@ class HrService
 
     public function createEmployee(string $tenantId, array $data, ?string $actorId): Employee
     {
+        $this->assertPay($data);
+        $this->assertReportsTo($tenantId, null, $data['reports_to'] ?? null);
+        $this->assertLinkedUser($tenantId, $data['user_id'] ?? null);
+
         try {
             $employee = DB::transaction(function () use ($tenantId, $data, $actorId) {
                 $this->assertDepartment($tenantId, $data['department_id'] ?? null);
@@ -104,6 +108,15 @@ class HrService
                     'job_description' => $jobDescription,
                     'start_date' => $data['start_date'] ?? null,
                     'status' => 'active',
+                    'employment_type' => $data['employment_type'] ?? 'permanent',
+                    'pay_basis' => $data['pay_basis'] ?? 'monthly',
+                    'pay_rate' => number_format((float) ($data['pay_rate'] ?? 0), 2, '.', ''),
+                    'pay_currency' => strtoupper((string) ($data['pay_currency'] ?? 'USD')),
+                    'national_id' => $data['national_id'] ?? null,
+                    'nssa_number' => $data['nssa_number'] ?? null,
+                    'reports_to' => $data['reports_to'] ?? null,
+                    'user_id' => $data['user_id'] ?? null,
+                    'jetson_person_id' => $data['jetson_person_id'] ?? null,
                 ]);
 
                 $changes = [
@@ -121,17 +134,65 @@ class HrService
                 if ($employee->start_date) {
                     $changes['start_date'] = [null, $employee->start_date->toDateString()];
                 }
+                foreach (['employment_type', 'pay_basis', 'pay_rate', 'pay_currency', 'national_id', 'nssa_number', 'reports_to', 'user_id', 'jetson_person_id'] as $field) {
+                    if ($employee->{$field} !== null && $employee->{$field} !== '') {
+                        $changes[$field] = [null, $employee->{$field}];
+                    }
+                }
 
                 $this->auditFields($tenantId, $employee->id, $actorId, 'created', $changes);
                 $this->structural($tenantId, $employee->id, 'enterprise.employee.created', array_keys($changes), $actorId);
 
                 return $employee;
             });
-        } catch (UniqueConstraintViolationException) {
-            throw new DomainException('Employee number already exists for this tenant.');
+        } catch (UniqueConstraintViolationException $e) {
+            throw new DomainException($this->uniqueMessage($e));
         }
 
         return $employee->load('department');
+    }
+
+    /**
+     * Match a person recorded on a Jetson Pi, or create one and return the server employee number.
+     *
+     * @param  array{jetson_person_id: string, first_name: string, surname: string, employee_number?: string|null}  $person
+     */
+    public function upsertFromJetson(string $tenantId, array $person): Employee
+    {
+        return DB::transaction(function () use ($tenantId, $person) {
+            $localId = trim((string) $person['jetson_person_id']);
+            $existingByLocal = Employee::forTenant($tenantId)->where('jetson_person_id', $localId)->lockForUpdate()->first();
+            $byNumber = null;
+            $number = trim((string) ($person['employee_number'] ?? ''));
+            if ($number !== '') {
+                $byNumber = Employee::forTenant($tenantId)->where('employee_number', $number)->lockForUpdate()->first();
+            }
+            if ($existingByLocal && $byNumber && $existingByLocal->id !== $byNumber->id) {
+                throw new DomainException('identity_conflict');
+            }
+
+            $employee = $existingByLocal ?: $byNumber;
+            if (! $employee) {
+                $employee = $this->createEmployee($tenantId, [
+                    'first_name' => $person['first_name'],
+                    'surname' => $person['surname'],
+                    'position_title' => 'Employee',
+                    'jetson_person_id' => $localId,
+                ], null);
+
+                return $employee;
+            }
+
+            if (! $employee->jetson_person_id) {
+                $employee->jetson_person_id = $localId;
+                $employee->save();
+            }
+
+            return $this->updateEmployee($tenantId, $employee->id, [
+                'first_name' => $person['first_name'],
+                'surname' => $person['surname'],
+            ], null);
+        });
     }
 
     public function search(string $tenantId, array $filters): LengthAwarePaginator
@@ -173,17 +234,41 @@ class HrService
             if (array_key_exists('department_id', $data)) {
                 $this->assertDepartment($tenantId, $data['department_id']);
             }
+            if (array_key_exists('reports_to', $data)) {
+                $this->assertReportsTo($tenantId, $employeeId, $data['reports_to']);
+            }
+            if (array_key_exists('user_id', $data)) {
+                $this->assertLinkedUser($tenantId, $data['user_id']);
+            }
+            if (array_key_exists('pay_currency', $data) && $data['pay_currency']) {
+                $data['pay_currency'] = Money::code((string) $data['pay_currency']);
+            }
+            $this->assertPay($data);
 
             $changes = [];
-            foreach (['first_name', 'surname', 'position_title', 'job_description', 'department_id', 'start_date'] as $field) {
+            $fields = [
+                'first_name', 'surname', 'position_title', 'job_description', 'department_id', 'start_date',
+                'employment_type', 'pay_basis', 'pay_rate', 'pay_currency', 'national_id', 'nssa_number',
+                'reports_to', 'user_id', 'jetson_person_id',
+            ];
+            foreach ($fields as $field) {
                 if (! array_key_exists($field, $data)) {
                     continue;
                 }
-                $next = $field === 'start_date' || $field === 'department_id'
+                $next = in_array($field, ['start_date', 'department_id', 'reports_to', 'user_id', 'pay_rate'], true)
                     ? $data[$field]
                     : (is_string($data[$field]) ? trim($data[$field]) : $data[$field]);
+                if ($field === 'pay_rate') {
+                    $next = number_format((float) $next, 2, '.', '');
+                }
+                if ($next === '') {
+                    $next = null;
+                }
                 $current = $employee->{$field};
                 $currentValue = $current instanceof \DateTimeInterface ? $current->format('Y-m-d') : $current;
+                if ($field === 'pay_rate') {
+                    $currentValue = number_format((float) $currentValue, 2, '.', '');
+                }
                 $nextValue = $next instanceof \DateTimeInterface ? $next->format('Y-m-d') : $next;
                 if ((string) $currentValue !== (string) $nextValue) {
                     $changes[$field] = [$currentValue, $nextValue];
@@ -311,6 +396,54 @@ class HrService
         if ($departmentId) {
             Department::forTenant($tenantId)->findOrFail($departmentId);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function assertPay(array $data): void
+    {
+        if (array_key_exists('employment_type', $data) && ! in_array($data['employment_type'], ['permanent', 'casual'], true)) {
+            throw new DomainException('Employment type must be permanent or casual.');
+        }
+        if (array_key_exists('pay_basis', $data) && ! in_array($data['pay_basis'], ['monthly', 'daily', 'hourly'], true)) {
+            throw new DomainException('Pay basis must be monthly, daily, or hourly.');
+        }
+        if (array_key_exists('pay_rate', $data) && $data['pay_rate'] !== null && (float) $data['pay_rate'] < 0) {
+            throw new DomainException('Pay rate cannot be negative.');
+        }
+    }
+
+    private function assertReportsTo(string $tenantId, ?string $employeeId, ?string $reportsTo): void
+    {
+        if (! $reportsTo) {
+            return;
+        }
+        if ($employeeId && $reportsTo === $employeeId) {
+            throw new DomainException('An employee cannot report to themselves.');
+        }
+        Employee::forTenant($tenantId)->findOrFail($reportsTo);
+    }
+
+    private function assertLinkedUser(string $tenantId, ?string $userId): void
+    {
+        if (! $userId) {
+            return;
+        }
+        User::query()->where('tenant_id', $tenantId)->findOrFail($userId);
+    }
+
+    private function uniqueMessage(UniqueConstraintViolationException $e): string
+    {
+        $message = $e->getMessage();
+        if (str_contains($message, 'user')) {
+            return 'That user is already linked to an employee.';
+        }
+        if (str_contains($message, 'jetson')) {
+            return 'That Jetson person is already linked to an employee.';
+        }
+
+        return 'Employee number already exists for this tenant.';
     }
 
     private function displayName(string $firstName, string $surname): string

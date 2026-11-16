@@ -1,0 +1,29 @@
+apiVersion: spidernet/v1
+kind: FeaturePack
+
+metadata:
+  id: weft-hr
+  version: 0.1.0
+  vertical: enterprise_operations
+  displayName: "Weft HR"
+  description: "Connects Jetson attendance to the employee register, leave, and payroll."
+
+spec:
+  requires:
+    core_agents: [atlas]
+    min_spidernet_version: 3.2.0
+    feature_packs: [hr, attendance]
+
+  provides:
+    dynamic_agents:
+      - id: payroll
+        displayName: "Payroll"
+        capabilities: [sync_attendance, calculate_pay, post_pay_run]
+
+    ste_chains:
+      - id: pay_run
+        description: "Pay run moves from draft to posted"
+        states: [draft, calculated, approved, posted]
+      - id: leave_request
+        description: "Leave request is approved or rejected"
+        states: [pending, approved, rejected]

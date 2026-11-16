@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Event;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
@@ -161,13 +162,24 @@ class CostGovernor
     
     private function getDailySpend(string $tenantId, string $date): float
     {
-        $key = sprintf(self::REDIS_KEY_DAILY, $tenantId, $date);
-        return (float) Redis::get($key) ?: 0;
+        return $this->readSpend(sprintf(self::REDIS_KEY_DAILY, $tenantId, $date));
     }
-    
+
     private function getMonthlySpend(string $tenantId, string $month): float
     {
-        $key = sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month);
+        return $this->readSpend(sprintf(self::REDIS_KEY_MONTHLY, $tenantId, $month));
+    }
+
+    /**
+     * Production keeps the unprefixed Redis counters. The test and local
+     * array cache have no Redis, so those environments read an empty counter.
+     */
+    private function readSpend(string $key): float
+    {
+        if (config('cache.default') !== 'redis') {
+            return (float) Cache::get($key, 0);
+        }
+
         return (float) Redis::get($key) ?: 0;
     }
     

@@ -11,7 +11,10 @@
     <RouterView />
   </div>
 
-  <!-- Authenticated shell -->
+  <!-- Separate Weft HR application. SpiderNet keeps its own shell. -->
+  <WeftShell v-else-if="isWeftApp" />
+
+  <!-- Authenticated SpiderNet shell -->
   <div v-else class="min-h-screen flex flex-col" style="background: var(--bg);">
     <ImpersonationBanner />
 
@@ -243,9 +246,9 @@
       <main class="sn-canvas flex-1 flex flex-col min-w-0">
         <div class="sn-atmosphere" aria-hidden="true"></div>
         <div class="flex-1 overflow-auto relative z-[1]">
-          <RouterView v-slot="{ Component }">
+          <RouterView v-slot="{ Component, route: viewRoute }">
             <transition name="sn-fade" mode="out-in">
-              <component :is="Component" />
+              <component :is="Component" v-if="Component" :key="viewRoute.path" />
             </transition>
           </RouterView>
         </div>
@@ -273,6 +276,8 @@ import { useTracesStore } from './stores/traces.js'
 import { useAtlasStore } from './stores/atlas.js'
 
 import { useAppearance } from './composables/useAppearance.js'
+import { useProduct } from './composables/useProduct.js'
+import WeftShell from './shells/WeftShell.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -284,6 +289,7 @@ const approvalsStore = useApprovalsStore()
 const tracesStore = useTracesStore()
 const atlasStore = useAtlasStore()
 const { theme } = useAppearance()
+const { isWeftApp } = useProduct()
 
 const showUserMenu = ref(false)
 const showTenantMenu = ref(false)
@@ -325,6 +331,7 @@ const userNav = {
     { key: 'dashboard', name: 'Dashboard', path: '/', exact: true, icon: ic.dashboard },
     { key: 'atlas', name: 'Atlas', path: '/atlas', icon: ic.atlas, badge: null },
     { key: 'operations', name: 'Operations', path: '/operations', icon: ic.overview },
+    { key: 'weft', name: 'Weft HR', path: '/weft', icon: ic.users },
     { key: 'approvals', name: 'Approvals', path: '/approvals', icon: ic.approvals },
     { key: 'traces', name: 'Traces', path: '/traces', icon: ic.traces },
   ],

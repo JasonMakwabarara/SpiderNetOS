@@ -19,7 +19,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('token') || localStorage.getItem('sn_access_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
 
   try {
@@ -38,13 +38,20 @@ function redirectToLogin() {
   window.location.assign(`${base}#/login?return_to=${encodeURIComponent(returnTo)}`)
 }
 
+const SESSION_KEYS = ['token', 'user', 'tenant', 'caps', 'impersonating', 'sn_access_token', 'sn_user', 'sn_tenant']
+
+function expireSession() {
+  if (window.__snSessionExpiring) return
+  window.__snSessionExpiring = true
+  SESSION_KEYS.forEach((key) => localStorage.removeItem(key))
+  window.dispatchEvent(new CustomEvent('sn:session-expired'))
+  redirectToLogin()
+}
+
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      redirectToLogin()
-    }
+    if (err.response?.status === 401) expireSession()
     if (err.response?.status === 429) {
       const retry = err.response.headers?.['retry-after'] || 15
       window.dispatchEvent(new CustomEvent('sn:rate-limited', { detail: { retry } }))
@@ -61,17 +68,14 @@ axios.interceptors.request.use((config) => {
   if (!config.url?.startsWith('http')) {
     // Already handled by baseURL
   }
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('token') || localStorage.getItem('sn_access_token')
   if (token && !config.headers.Authorization) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 axios.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      redirectToLogin()
-    }
+    if (err.response?.status === 401) expireSession()
     return Promise.reject(err)
   }
 )

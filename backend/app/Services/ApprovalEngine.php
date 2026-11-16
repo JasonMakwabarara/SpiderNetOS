@@ -170,6 +170,22 @@ class ApprovalEngine
                 $response,
             );
         }
+        if ($resourceType === 'leave_request') {
+            app(\App\Services\Enterprise\LeaveService::class)->onApprovalResolved(
+                $tenantId,
+                $resourceId,
+                $granted,
+                $response,
+            );
+        }
+        if ($resourceType === 'pay_run') {
+            app(\App\Services\Enterprise\PayrollService::class)->onApprovalResolved(
+                $tenantId,
+                $resourceId,
+                $granted,
+                $response,
+            );
+        }
     }
 
     // ------------------------------------------------------------------ //

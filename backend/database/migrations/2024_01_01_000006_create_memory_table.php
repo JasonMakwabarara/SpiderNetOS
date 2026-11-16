@@ -14,7 +14,11 @@ return new class extends Migration
             $table->uuid('agent_id')->nullable()->index();
             $table->string('node_type', 32)->index();
             $table->text('content');
-            $table->vector('embedding', 384)->nullable();
+            if (Schema::getConnection()->getDriverName() === 'pgsql') {
+                $table->vector('embedding', 384)->nullable();
+            } else {
+                $table->json('embedding')->nullable();
+            }
             $table->jsonb('metadata')->nullable();
             $table->float('recency_score')->default(0);
             $table->float('importance_score')->default(0);
@@ -38,7 +42,9 @@ return new class extends Migration
             $table->unique(['source_id', 'target_id', 'relation_type']);
         });
         
-        DB::statement('CREATE INDEX ON memory_nodes USING ivfflat (embedding vector_cosine_ops)');
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX ON memory_nodes USING ivfflat (embedding vector_cosine_ops)');
+        }
     }
     
     public function down(): void
